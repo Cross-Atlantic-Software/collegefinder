@@ -5,11 +5,15 @@
   --foreground: #171717;
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope-sans);
+
+  /* Brand Colors */
+  --color-pink: #DB0078;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +26,52 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Manrope, Arial, Helvetica, sans-serif;
+}
+
+button{
+  cursor: pointer;
+}
+
+@utility bg-lightGradient {
+  background-image: linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%);
+}
+
+@utility bg-darkGradient {
+  background-image: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%);
+}
+
+@utility appContainer {
+  width: 100%;
+  margin-inline: auto;
+
+  /* mobile padding + notched devices */
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .appContainer {
+    max-width: 640px;
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+}
+@media (min-width: 768px) {
+  .appContainer {
+    max-width: 768px;
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}
+@media (min-width: 1024px) {
+  .appContainer { max-width: 1024px; }
+}
+@media (min-width: 1280px) {
+  .appContainer { max-width: 1280px; }
+}
+@media (min-width: 1536px) {
+  .appContainer { max-width: 1400px; }
 }
