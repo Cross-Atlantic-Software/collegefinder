@@ -4,14 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
-  lightSrc?: string;     // logo for light mode
-  darkSrc?: string;      // logo for dark mode
+  lightSrc?: string;
+  darkSrc?: string;
   alt?: string;
   href?: string;
   width?: number;
   height?: number;
   className?: string;
   priority?: boolean;
+
+  // NEW PROP
+  mode?: "auto" | "light" | "dark";  
 };
 
 export default function Logo({
@@ -23,30 +26,59 @@ export default function Logo({
   height = 40,
   className = "",
   priority,
+  mode = "auto",   // default: auto (light + dark based on tailwind)
 }: Props) {
-  const content = (
-    <>
-      {/* Light mode logo */}
-      <Image
-        src={lightSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        priority={priority}
-        className={`block dark:hidden ${className}`}
-      />
+  const renderLogo = () => {
+    if (mode === "light") {
+      return (
+        <Image
+          src={lightSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          className={className}
+        />
+      );
+    }
 
-      {/* Dark mode logo */}
-      <Image
-        src={darkSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        priority={priority}
-        className={`hidden dark:block ${className}`}
-      />
-    </>
-  );
+    if (mode === "dark") {
+      return (
+        <Image
+          src={darkSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          className={className}
+        />
+      );
+    }
+
+    // AUTO (default) — Tailwind manages dark mode
+    return (
+      <>
+        <Image
+          src={lightSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          className={`block dark:hidden ${className}`}
+        />
+        <Image
+          src={darkSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          className={`hidden dark:block ${className}`}
+        />
+      </>
+    );
+  };
+
+  const content = renderLogo();
 
   return href ? (
     <Link href={href} aria-label={alt} className="inline-flex items-center">

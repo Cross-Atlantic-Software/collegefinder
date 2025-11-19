@@ -94,7 +94,7 @@ export default function CareerGuidanceSection() {
                                 className="
                                     relative mt-6 w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-xl
                                     dark:border-slate-800 dark:bg-slate-950
-                                    md:absolute md:-left-0 md:-bottom-16 md:w-[85%] md:-translate-x-1/2 md:mt-0
+                                    md:absolute md:left-40 xl:-left-10 md:-bottom-16 md:w-[85%] md:-translate-x-1/2 md:mt-0
                                 "
                             >
                                 <h3 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-white">

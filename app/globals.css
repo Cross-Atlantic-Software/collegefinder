@@ -41,6 +41,10 @@ button{
   background-image: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%);
 }
 
+@utility bg-blueGradient {
+  background-image: linear-gradient(to right, #140E27 0%, #240F3C 50%, #341050 100%);
+}
+
 @utility appContainer {
   width: 100%;
   margin-inline: auto;

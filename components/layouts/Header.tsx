@@ -65,7 +65,7 @@ export default function Header() {
                                 <FiUser className="text-[18px] text-black dark:text-gray-100" />
                             </button>
 
-                            <Button variant="LightGradient" size="sm">
+                            <Button variant="LightGradient" size="sm" href="/login">
                                 Get Started
                             </Button>
                         </div>
