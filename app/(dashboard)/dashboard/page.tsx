@@ -1,8 +1,33 @@
+"use client";
 
-export default function Dashboard() {
+import { MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
+import { useState } from "react";
+
+export default function DashboardPage() {
+  // closed by default (affects only mobile)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setSidebarOpen(v => !v);
+
   return (
-    <main className="text-center bg-blueGradient min-h-screen flex items-center justify-center text-white text-6xl font-bold">
-      Welcome to Dashboard
-    </main>
+    <div className="h-screen bg-blueGradient text-slate-50 flex">
+      <Sidebar sidebarOpen={sidebarOpen} onToggle={toggleSidebar} />
+
+      <div className="flex h-screen flex-1 flex-col">
+        <TopBar onToggleSidebar={toggleSidebar} />
+
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col gap-6 px-4 py-4 md:px-6 md:py-6 xl:flex-row overflow-y-auto">
+            <main className="flex-1 space-y-4">
+              <MiddleContent />
+            </main>
+
+            <aside className="w-full space-y-4 xl:w-80">
+              <RightSidebar />
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
