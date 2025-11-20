@@ -44,7 +44,7 @@ export default function MiddleContent() {
 
       {/* Feed cards */}
       <section className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <article
             key={i}
             className="rounded-md bg-white/20 p-4 text-xs text-slate-200"

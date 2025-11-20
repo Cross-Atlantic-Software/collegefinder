@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { BiMenu } from "react-icons/bi";
 import {
   FaHome,
@@ -10,50 +9,70 @@ import {
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 
+type SectionId =
+  | "dashboard"
+  | "profile"
+  | "exam-shortlist"
+  | "applications"
+  | "exam-prep";
+
 type SidebarProps = {
   sidebarOpen: boolean;
   onToggle: () => void;
+  activeSection: SectionId;
+  onSectionChange: (id: SectionId) => void;
 };
 
-const navItems = [
+const navItems: {
+  id: SectionId;
+  label: string;
+  sub: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value?: string;
+}[] = [
   {
+    id: "dashboard",
     label: "Dashboard",
     sub: "Your command center",
-    href: "/dashboard",
     icon: FaHome,
     value: "Overview",
   },
   {
+    id: "profile",
     label: "My Profile",
     sub: "Complete",
-    href: "/profile",
     icon: FaUserCircle,
     value: "85%",
   },
   {
+    id: "exam-shortlist",
     label: "Exam Shortlist",
     sub: "Exams selected",
-    href: "/exam-shortlist",
     icon: FaClipboardList,
     value: "8",
   },
   {
+    id: "applications",
     label: "Applications",
     sub: "in progress",
-    href: "/applications",
     icon: FaFileAlt,
     value: "3",
   },
   {
+    id: "exam-prep",
     label: "Exam Prep",
     sub: "Study time",
-    href: "/exam-prep",
     icon: FaBookOpen,
     value: "156h",
   },
 ];
 
-export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
+export default function Sidebar({
+  sidebarOpen,
+  onToggle,
+  activeSection,
+  onSectionChange,
+}: SidebarProps) {
   return (
     <aside
       className={`
@@ -68,7 +87,13 @@ export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
       <div className="flex items-center justify-between gap-2 px-4 py-4">
         <div className="flex items-center gap-2">
           <div className="relative flex items-center justify-center text-xs font-semibold">
-            <Image src="/favicon.svg" width={32} height={32} alt="Logo" className="object-contain" />
+            <Image
+              src="/favicon.svg"
+              width={32}
+              height={32}
+              alt="Logo"
+              className="object-contain"
+            />
           </div>
 
           <div
@@ -81,7 +106,6 @@ export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
           </div>
         </div>
 
-        {/* mobile toggle only */}
         <button onClick={onToggle} className="inline-flex md:hidden">
           <BiMenu className="h-6 w-6 text-white" />
         </button>
@@ -116,22 +140,26 @@ export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
 
       {/* Nav items */}
       <nav className="flex-1 space-y-2 px-3 text-[13px] overflow-y-auto">
-        {navItems.map((item, i) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = i === 0;
+          const isActive = activeSection === item.id;
 
           return (
-            <Link
-              key={item.label}
-              href={item.href}
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                onSectionChange(item.id);
+                onToggle(); // closes drawer on mobile
+              }}
               className={`
-                flex items-center gap-3 rounded-md p-3 transition duration-500 group
-                ${isActive
-                  ? "bg-darkGradient text-white shadow-md"
-                  : "bg-white/10 text-slate-800 hover:bg-lightGradient"
+                flex w-full items-center gap-3 rounded-md p-3 text-left transition duration-500 group
+                ${
+                  isActive
+                    ? "bg-darkGradient text-white shadow-md"
+                    : "bg-white/10 text-slate-800 hover:bg-lightGradient"
                 }
               `}
-              onClick={() => onToggle()} // closes drawer on mobile
             >
               <Icon
                 className={`
@@ -173,7 +201,7 @@ export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
                   </span>
                 )}
               </div>
-            </Link>
+            </button>
           );
         })}
       </nav>
@@ -182,12 +210,16 @@ export default function Sidebar({ sidebarOpen, onToggle }: SidebarProps) {
       <div className="mt-auto space-y-2 px-3 pb-4 text-[13px]">
         <button className="flex w-full items-center gap-3 rounded-md bg-white/10 px-3 py-2.5 text-white transition duration-500 hover:bg-darkGradient">
           <FiSettings className="h-5 w-5 text-white" />
-          <span className={`${sidebarOpen ? "inline" : "hidden md:inline"}`}>Settings</span>
+          <span className={`${sidebarOpen ? "inline" : "hidden md:inline"}`}>
+            Settings
+          </span>
         </button>
 
         <button className="flex w-full items-center gap-3 rounded-md bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition duration-500 hover:bg-red-700">
           <FiLogOut className="h-5 w-5 text-white" />
-          <span className={`${sidebarOpen ? "inline" : "hidden md:inline"}`}>Logout</span>
+          <span className={`${sidebarOpen ? "inline" : "hidden md:inline"}`}>
+            Logout
+          </span>
         </button>
       </div>
     </aside>

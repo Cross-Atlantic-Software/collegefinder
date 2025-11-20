@@ -22,7 +22,7 @@ export default function BasicInfoForm() {
 
     return (
         <>
-        <div className="rounded border border-white/10 bg-pink/5 px-4 py-6 text-sm text-slate-100 sm:px-6 sm:py-7">
+        <div className="rounded bg-white/5 px-4 py-6 text-sm text-slate-100 sm:px-6 sm:py-7">
             {/* Section title */}
             <h2 className="mb-4 text-base font-semibold text-pink sm:text-lg">
                 Basic Information
@@ -32,22 +32,22 @@ export default function BasicInfoForm() {
                 {/* Name */}
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <label className="mb-1 block text-sm font-medium text-slate-200 dark:text-slate-200">
                             First Name
                         </label>
                         <input
                             type="text"
-                            className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                             placeholder="First name"
                         />
                     </div>
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <label className="mb-1 block text-sm font-medium text-slate-200 dark:text-slate-200">
                             Last Name
                         </label>
                         <input
                             type="text"
-                            className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                             placeholder="Last name"
                         />
                     </div>
@@ -55,13 +55,13 @@ export default function BasicInfoForm() {
 
                 {/* DOB */}
                 <div>
-                    <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-200 dark:text-slate-200">
                         <span>Date of Birth</span>
                         <LuLock className="h-3 w-3 text-white/50" />
                     </div>
                     <input
                         type="date"
-                        className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                        className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                         placeholder="Last name"
                     />
                 </div>
@@ -70,7 +70,7 @@ export default function BasicInfoForm() {
                 <div className="space-y-1">
                     {/* Label + status */}
                     <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <label className="text-sm font-medium text-slate-200 dark:text-slate-200">
                             Email
                         </label>
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 dark:border-red-400/70 dark:bg-red-500/10 dark:text-red-300">
@@ -82,7 +82,7 @@ export default function BasicInfoForm() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <input
                             type="text"
-                            className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white dark:placeholder:text-white"
+                            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white dark:placeholder:text-white"
                             placeholder="dinesh@gmail.com" disabled
                         />
                         <button
@@ -98,7 +98,7 @@ export default function BasicInfoForm() {
                 <div className="space-y-1">
                     {/* Label + status */}
                     <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <label className="text-sm font-medium text-slate-200 dark:text-slate-200">
                             Phone
                         </label>
                         <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-green-700 dark:border-green-400/70 dark:bg-green-500/10 dark:text-green-300">
@@ -110,7 +110,7 @@ export default function BasicInfoForm() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <input
                             type="text"
-                            className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500dark:text-white dark:placeholder:text-white"
+                            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500dark:text-white dark:placeholder:text-white"
                             placeholder="(+91) 888 88 88888" disabled
                         />
                     </div>
@@ -118,12 +118,12 @@ export default function BasicInfoForm() {
 
                 {/* Location */}
                 <div>
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1 flex gap-1 items-center">
+                    <label className="text-sm font-medium text-slate-200 dark:text-slate-200 mb-1 flex gap-1 items-center">
                         Location <IoLocationSharp className="text-pink"/>
                     </label>
                     <input
                         type="text"
-                        className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                        className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                         placeholder="City, State"
                     />
                 </div>
@@ -131,7 +131,7 @@ export default function BasicInfoForm() {
                 {/* Gender */}
 
                 <div className="space-y-2">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                    <p className="text-sm font-medium text-slate-200 dark:text-slate-200 flex items-center gap-1">
                         Gender <FaUser className="text-pink" />
                     </p>
 
@@ -148,7 +148,7 @@ export default function BasicInfoForm() {
                                         "flex items-center gap-2 w-full rounded-full px-3 py-2 border transition duration-500",
                                         isActive
                                             ? "bg-pink text-white border-pink-600"
-                                            : "border-pink/10 bg-pink/5 text-slate-800 hover:bg-pink-100 dark:bg-slate-900 dark:text-slate-200 dark:border-pink-400/50 dark:hover:text-slate-800",
+                                            : "border-pink/10 bg-white/10 text-slate-100 hover:bg-pink-100 dark:bg-slate-900 dark:text-slate-200 dark:border-pink-400/50 dark:hover:text-slate-100",
                                     ].join(" ")}
                                 >
                                     <Image
@@ -174,10 +174,9 @@ export default function BasicInfoForm() {
                 {/* Update Button - Full Gradient Pill */}
                 <Button
                     variant="DarkGradient"
-                    size="lg"
-                    className="w-full sm:w-2/3 flex items-center justify-center gap-2 rounded-full"
+                    size="md"
+                    className="w-full sm:w-1/2 text-pink font-medium rounded-full"
                 >
-                    <span className="text-lg">⬇️</span>
                     Update Details
                 </Button>
 
@@ -186,7 +185,7 @@ export default function BasicInfoForm() {
                 <Button
                     variant="LightGradient"
                     size="md"
-                    className="w-full sm:w-1/3 text-pink font-medium rounded-full"
+                    className="w-full sm:w-1/2 text-pink font-medium rounded-full"
                 >
                     Skip for Now
                 </Button>
