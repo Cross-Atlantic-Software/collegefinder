@@ -20,7 +20,7 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
 
         {/* Search */}
         <div className="flex-1 flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-2 rounded-full bg-white/10 p-3 text-xs text-slate-300">
+          <div className="md:flex-1 flex items-center gap-2 rounded-full bg-white/10 p-3 text-xs text-slate-300">
             <BiSearch className="text-xl"/>
             <input
               placeholder="Search exams, tutorials, colleges..."

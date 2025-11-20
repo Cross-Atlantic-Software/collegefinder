@@ -43,23 +43,20 @@ export default function MiddleContent() {
       </section>
 
       {/* Feed cards */}
-      <section className="space-y-3">
+      <section className="space-y-3 w-full">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <article
             key={i}
             className="rounded-md bg-white/20 p-4 text-xs text-slate-200"
           >
             <h2 className="text-sm font-semibold">
-              Why Winning Is Not Everything – Jack Sock Shows Amazing
-              Sportsmanship
+              Why Winning Is Not Everything – Jack Sock Shows Amazing Sportsmanship
             </h2>
             <p className="mt-1 text-[11px] text-slate-400">
               By | April 13, 2019
             </p>
             <p className="mt-2 line-clamp-2 text-[12px] text-slate-300">
-              In this day and age of cut-throat rivalries in the sporting world,
-              athletes are rarely seen giving their opponents an edge of any
-              sort. Winning at all costs is the norm...
+              In this day and age of cut-throat rivalries in the sporting world, athletes are rarely seen giving their opponents an edge of any sort. Winning at all costs is the norm...
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="DarkGradient" size="sm" className="!py-2"> Show More</Button>
