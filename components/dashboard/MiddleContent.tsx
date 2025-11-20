@@ -6,7 +6,7 @@ export default function MiddleContent() {
   return (
     <>
       {/* Welcome card */}
-      <section className="rounded-md bg-darkGradient p-5 text-sm shadow-xl">
+      <section className="rounded-md bg-darkGradient p-5 text-sm shadow-xl hidden">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <p className="text-xs text-pink-100/90">Welcome back,</p>
@@ -33,7 +33,7 @@ export default function MiddleContent() {
       </section>
 
       {/* Middle search bar */}
-      <section className="flex items-center gap-2 rounded-full bg-white/10 p-1 pl-4 text-xs text-slate-300">
+      <section className="flex items-center gap-2 rounded-full bg-white/10 p-1 pl-4 text-xs text-slate-300 hidden">
         <BiSearch className="text-xl"/>
         <input
           placeholder="Search exams, tutorials, colleges..."
@@ -44,7 +44,7 @@ export default function MiddleContent() {
 
       {/* Feed cards */}
       <section className="space-y-3">
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3, 4].map((i) => (
           <article
             key={i}
             className="rounded-md bg-white/20 p-4 text-xs text-slate-200"

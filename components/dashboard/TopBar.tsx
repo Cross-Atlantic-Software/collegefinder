@@ -34,7 +34,6 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
           <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-red-400" />
         </button>
 
-        <Button href="/submit" variant="DarkGradient" size="sm"> <BiPlus className="mr-1 text-lg"/> Quick Apply</Button>
       </div>
     </header>
   );

@@ -1,24 +1,14 @@
 import Link from "next/link";
 import { FaCalendarAlt } from "react-icons/fa";
-import { HiCalendarDateRange } from "react-icons/hi2";
 import { Button } from "../shared";
 import { FaArrowRightLong } from "react-icons/fa6";
+import UrgentImportantSwiper from "./UrgentImportantSwiper";
 
 export default function RightSidebar() {
   return (
     <>
       {/* Urgent banner */}
-      <section className="rounded-md bg-lightGradient p-4 text-xs text-slate-900 shadow-lg">
-        <p className="text-lg font-semibold uppercase tracking-wide text-pink">
-          Urgent & Important
-        </p>
-        <p className="mt-2 text-sm font-semibold">
-          IIT Madras B.Sc. (Bachelor of Science)
-        </p>
-        <p className="mt-1 text-[11px]">
-          Based on your profile, this exam is highly recommended.
-        </p>
-      </section>
+      <UrgentImportantSwiper />
 
       {/* Upcoming deadlines */}
       <section className="rounded-md bg-white/5 p-4 text-slate-200">
