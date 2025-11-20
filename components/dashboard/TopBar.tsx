@@ -1,5 +1,6 @@
 import { BiBell, BiMenu, BiPlus, BiSearch } from "react-icons/bi";
 import { Button } from "../shared";
+import { IoFunnel } from "react-icons/io5";
 
 type TopBarProps = {
   onToggleSidebar: () => void;
@@ -18,14 +19,15 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
         </button>
 
         {/* Search */}
-        <div className="flex-1">
-          <div className="flex items-center gap-2 rounded-full bg-white/10 p-3 text-xs text-slate-300">
+        <div className="flex-1 flex items-center gap-3">
+          <div className="flex-1 flex items-center gap-2 rounded-full bg-white/10 p-3 text-xs text-slate-300">
             <BiSearch className="text-xl"/>
             <input
               placeholder="Search exams, tutorials, colleges..."
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
             />
           </div>
+          <Button variant="themeButton" size="sm" className="flex gap-2"> <IoFunnel /> Filters</Button>
         </div>
 
         {/* Right side */}
