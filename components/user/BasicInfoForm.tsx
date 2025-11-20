@@ -22,7 +22,7 @@ export default function BasicInfoForm() {
 
     return (
         <>
-        <div className="rounded bg-white/5 px-4 py-6 text-sm text-slate-100 sm:px-6 sm:py-7">
+        <div className="rounded bg-white/5 text-sm text-slate-100 p-4">
             {/* Section title */}
             <h2 className="mb-4 text-base font-semibold text-pink sm:text-lg">
                 Basic Information

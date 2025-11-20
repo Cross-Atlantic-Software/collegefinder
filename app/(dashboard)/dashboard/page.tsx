@@ -45,9 +45,7 @@ export default function DashboardPage() {
               {activeSection === "dashboard" && <MiddleContent />}
 
               {activeSection === "profile" && (
-                <section className="rounded-md bg-white/5 p-4">
-                  <BasicInfoForm />
-                </section>
+                <BasicInfoForm />
               )}
 
               {activeSection === "exam-shortlist" && (
