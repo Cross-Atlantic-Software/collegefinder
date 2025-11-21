@@ -1,3 +1,4 @@
+'use client'
 import { useState } from "react";
 import { BiSearch } from "react-icons/bi";
 import { Button } from "../shared";
