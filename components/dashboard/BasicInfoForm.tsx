@@ -9,7 +9,7 @@ import { LuLock } from "react-icons/lu";
 import { CiCircleInfo } from "react-icons/ci";
 import { IoLocationSharp } from "react-icons/io5";
 import { FaRegLightbulb, FaUser } from "react-icons/fa6";
-import ProTipBanner from "./ProTipBanner";
+import ProTipBanner from "../user/ProTipBanner";
 
 const genderOptions = [
     { label: "Male", icon: "/icons/male.png" },

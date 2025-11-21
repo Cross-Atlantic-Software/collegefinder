@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
-import { BasicInfoForm } from "@/components/user";
+import { ApplicationsPage, MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
+import { BasicInfoForm, ShortlistExams } from "@/components/user";
 
 type SectionId =
   | "dashboard"
@@ -49,15 +49,11 @@ export default function DashboardPage() {
               )}
 
               {activeSection === "exam-shortlist" && (
-                <div className="rounded-md bg-white/5 p-4 text-sm">
-                  Exam Shortlist content goes here…
-                </div>
+                <ShortlistExams />
               )}
 
               {activeSection === "applications" && (
-                <div className="rounded-md bg-white/5 p-4 text-sm">
-                  Applications content goes here…
-                </div>
+                <ApplicationsPage />
               )}
 
               {activeSection === "exam-prep" && (

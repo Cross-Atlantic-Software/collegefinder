@@ -2,7 +2,7 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { LuUser, LuBookOpen, LuTarget } from "react-icons/lu";
-import BasicInfoForm from "./BasicInfoForm";
+import BasicInfoForm from "../dashboard/BasicInfoForm";
 import AcademicsProfile from "./AcademicsProfile";
 import CareerGoalsTab from "./CareerGoals";
 

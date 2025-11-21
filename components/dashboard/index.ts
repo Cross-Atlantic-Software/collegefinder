@@ -3,3 +3,7 @@ export { default as TopBar } from "./TopBar";
 export { default as MiddleContent } from "./MiddleContent";
 export { default as RightSidebar } from "./RightSidebar";
 export { default as UrgentImportantSwiper } from "./UrgentImportantSwiper";
+export { default as BasicInfoForm } from "./BasicInfoForm";
+export { default as ShortlistExams } from "./ShortlistExams";
+export { default as ApplicationsPage } from "./Applications";
+export { default as ExamBox } from "./ExamBox";
