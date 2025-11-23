@@ -7,3 +7,5 @@ export { default as BasicInfoForm } from "./BasicInfoForm";
 export { default as ShortlistExams } from "./ShortlistExams";
 export { default as ApplicationsPage } from "./Applications";
 export { default as ExamBox } from "./ExamBox";
+export { default as ExamPreparation } from "./ExamPreparation";
+export { default as CoachingCentersTab } from "./CoachingCentersTab";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApplicationsPage, MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
+import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
 import { BasicInfoForm, ShortlistExams } from "@/components/user";
 
 type SectionId =
@@ -57,9 +57,7 @@ export default function DashboardPage() {
               )}
 
               {activeSection === "exam-prep" && (
-                <div className="rounded-md bg-white/5 p-4 text-sm">
-                  Exam Prep content goes here…
-                </div>
+                <ExamPreparation />
               )}
             </main>
 
