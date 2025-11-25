@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar } from "@/components/dashboard";
-import { BasicInfoForm, ShortlistExams } from "@/components/user";
+import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, AcademicsProfile, CareerGoalsTab } from "@/components/dashboard";
+import { BasicInfoForm, ShortlistExams } from "@/components/dashboard";
 
 type SectionId =
   | "dashboard"
   | "profile"
   | "exam-shortlist"
   | "applications"
+  | "academics"
+  | "careerGoals"
   | "exam-prep";
 
 export default function DashboardPage() {
@@ -54,6 +56,14 @@ export default function DashboardPage() {
 
               {activeSection === "applications" && (
                 <ApplicationsPage />
+              )}
+
+              {activeSection === "academics" && (
+                <AcademicsProfile />
+              )}
+
+              {activeSection === "careerGoals" && (
+                <CareerGoalsTab />
               )}
 
               {activeSection === "exam-prep" && (

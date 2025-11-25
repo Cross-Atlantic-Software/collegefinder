@@ -70,16 +70,16 @@ export default function CareerGoalsTab() {
     };
 
     return (
-        <section className="rounded border border-white/10 bg-pink/5 px-4 py-6 text-sm text-slate-100 sm:px-6 sm:py-7">
+        <section className="rounded bg-white/5 text-sm text-slate-100 p-4">
             {/* Section title */}
             <h2 className="mb-1 text-base font-semibold text-pink sm:text-lg">
                 Academic Profile
             </h2>
-            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200">Tell us what excites you! This helps us find the perfect matches.</p>
+            <p className="text-sm sm:text-sm text-slate-300 dark:text-slate-200">Tell us what excites you! This helps us find the perfect matches.</p>
 
             {/* What excites you */}
-            <div className="mt-6 space-y-3">
-                <h3 className="text-sm font-semibold sm:text-lg text-slate-800 dark:text-slate-200">
+            <div className="mt-4 space-y-3">
+                <h3 className="text-sm font-semibold sm:text-lg text-slate-100 dark:text-slate-200">
                     What excites you?
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -95,7 +95,7 @@ export default function CareerGoalsTab() {
                                     "border group",
                                     active
                                         ? "bg-pink text-pink border-pink"
-                                        : "bg-pink/5 border-pink/20 hover:bg-pink",
+                                        : "bg-white/5 border-white/20 hover:bg-pink",
                                 ].join(" ")}
                             >
                                 <Image
@@ -108,7 +108,7 @@ export default function CareerGoalsTab() {
                                 />
                                 <span
                                     className={`text-md font-semibold transition duration-500 ${
-                                        active ? "text-white" : "text-slate-800 group-hover:text-white dark:text-slate-200"
+                                        active ? "text-white" : "text-slate-200 group-hover:text-white dark:text-slate-200"
                                     }`}
                                 >
                                     {opt.label}
@@ -121,7 +121,7 @@ export default function CareerGoalsTab() {
 
             {/* Dream Careers */}
             <div className="mt-8 space-y-3">
-                <h3 className="text-sm font-semibold sm:text-lg text-slate-800 dark:text-slate-200">
+                <h3 className="text-sm font-semibold sm:text-lg text-slate-100 dark:text-slate-200">
                     Dream Careers
                 </h3>
 
@@ -142,7 +142,7 @@ export default function CareerGoalsTab() {
 
                 {/* Input */}
                 <div className="mt-2">
-                    <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <label className="mb-1 block text-sm font-medium text-slate-300 dark:text-slate-200">
                         Type to add more careers
                     </label>
                     <div className="">
@@ -152,7 +152,7 @@ export default function CareerGoalsTab() {
                             onChange={(e) => setCareerInput(e.target.value)}
                             onKeyDown={handleCareerKeyDown}
                             placeholder="e.g. Product Manager"
-                            className="w-full rounded border border-pink/10 bg-pink/5 px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                         />
                     </div>
                 </div>
@@ -160,7 +160,7 @@ export default function CareerGoalsTab() {
 
             {/* Your Vibe */}
             <div className="mt-8 space-y-3">
-                <h3 className="text-sm font-semibold sm:text-lg text-slate-800 dark:text-slate-200">
+                <h3 className="text-sm font-semibold sm:text-lg text-slate-100 dark:text-slate-200">
                     Your Vibe
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -176,11 +176,11 @@ export default function CareerGoalsTab() {
                                     "border group",
                                     active
                                         ? "bg-pink text-pink border-pink"
-                                        : "bg-pink/5 border-pink/20 hover:bg-pink",
+                                        : "bg-white/5 border-white/20 hover:bg-pink",
                                 ].join(" ")}
                             >
                                 <span className={`text-md font-semibold transition duration-500 ${
-                                        active ? "text-white" : "text-slate-800 group-hover:text-white dark:text-slate-200"
+                                        active ? "text-white" : "text-slate-200 group-hover:text-white dark:text-slate-200"
                                     }`}
                                 >{vibe}</span>
                             </button>

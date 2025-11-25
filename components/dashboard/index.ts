@@ -9,3 +9,6 @@ export { default as ApplicationsPage } from "./Applications";
 export { default as ExamBox } from "./ExamBox";
 export { default as ExamPreparation } from "./ExamPreparation";
 export { default as CoachingCentersTab } from "./CoachingCentersTab";
+export { default as CareerGoalsTab } from "./CareerGoals";
+export { default as AcademicsProfile } from "./AcademicsProfile";
+export { SubjectInputList } from "./SubjectInputList";
