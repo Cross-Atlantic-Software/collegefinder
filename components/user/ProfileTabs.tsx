@@ -2,9 +2,9 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { LuUser, LuBookOpen, LuTarget } from "react-icons/lu";
-import BasicInfoForm from "../dashboard/BasicInfoForm";
-import AcademicsProfile from "../dashboard/AcademicsProfile";
-import CareerGoalsTab from "../dashboard/CareerGoals";
+import BasicInfoForm from "../dashboard/ProfileTabs/BasicInfoForm";
+import AcademicsProfile from "../dashboard/ProfileTabs/AcademicsProfile";
+import CareerGoalsTab from "../dashboard/ProfileTabs/CareerGoals";
 
 type TabId = "basic" | "academics" | "goals";
 

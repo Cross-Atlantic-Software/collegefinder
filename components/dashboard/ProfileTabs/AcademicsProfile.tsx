@@ -1,7 +1,7 @@
 "use client";
 
 import { FaChevronDown } from "react-icons/fa6";
-import { SubjectInputList } from "./SubjectInputList";
+import { SubjectInputList } from "../SubjectInputList";
 
 const subjectData = [
     { name: "Physics", percent: 89, barColor: "bg-green-500" },

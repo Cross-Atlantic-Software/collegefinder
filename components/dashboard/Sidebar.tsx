@@ -14,8 +14,6 @@ type SectionId =
   | "profile"
   | "exam-shortlist"
   | "applications"
-  | "academics"
-  | "careerGoals"
   | "exam-prep";
 
 type SidebarProps = {
@@ -56,20 +54,6 @@ const navItems: {
   {
     id: "applications",
     label: "Applications",
-    sub: "in progress",
-    icon: FaFileAlt,
-    value: "3",
-  },
-  {
-    id: "academics",
-    label: "Academics",
-    sub: "in progress",
-    icon: FaFileAlt,
-    value: "3",
-  },
-  {
-    id: "careerGoals",
-    label: "Career Goals",
     sub: "in progress",
     icon: FaFileAlt,
     value: "3",
