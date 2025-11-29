@@ -31,13 +31,13 @@ docker-compose up -d
 npm run dev
 ```
 
-The backend will run on `http://localhost:5000`
+The backend will run on `http://localhost:5001`
 
 ### 2. Frontend Setup
 
 1. Create `.env.local` file in the root directory:
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
 ```
 
 2. Start the frontend development server:
