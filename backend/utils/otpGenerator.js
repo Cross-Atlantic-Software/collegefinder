@@ -4,16 +4,12 @@
  * @returns {string} - Generated OTP code
  */
 const generateOTP = (length = 6) => {
-  // Hardcoded OTP for development/testing
-  return '000000';
-  
-  // Original random generation (commented out for now)
-  // const digits = '0123456789';
-  // let otp = '';
-  // for (let i = 0; i < length; i++) {
-  //   otp += digits[Math.floor(Math.random() * digits.length)];
-  // }
-  // return otp;
+  const digits = '0123456789';
+  let otp = '';
+  for (let i = 0; i < length; i++) {
+    otp += digits[Math.floor(Math.random() * digits.length)];
+  }
+  return otp;
 };
 
 /**
