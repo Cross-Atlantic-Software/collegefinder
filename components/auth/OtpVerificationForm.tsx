@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "../shared";
+import { verifyOTP, resendOTP } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const OTP_LENGTH = 6;
 
@@ -16,6 +19,11 @@ export function OtpVerificationForm({
 }: OtpVerificationFormProps) {
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
 
   // Correct ref type
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -69,14 +77,57 @@ export function OtpVerificationForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isComplete) return;
+    if (!isComplete || !emailHint) return;
+
+    setSubmitting(true);
+    setError(null);
 
     try {
-      setSubmitting(true);
-      // TODO: verify OTP
-      onVerified?.(code);
+      const response = await verifyOTP(emailHint, code);
+      
+      if (response.success && response.data) {
+        setSuccess(true);
+        // Store token and user data
+        login(response.data.token, response.data.user);
+        onVerified?.(code);
+        
+        // Redirect to onboarding or dashboard
+        setTimeout(() => {
+          router.push("/step-1");
+        }, 1000);
+      } else {
+        setError(response.message || "Invalid OTP code. Please try again.");
+        // Clear OTP on error
+        setOtp(Array(OTP_LENGTH).fill(""));
+        inputsRef.current[0]?.focus();
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error verifying OTP:", err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!emailHint || resending) return;
+
+    setResending(true);
+    setError(null);
+
+    try {
+      const response = await resendOTP(emailHint);
+      if (response.success) {
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        setError(response.message || "Failed to resend OTP. Please try again.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error resending OTP:", err);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -99,6 +150,17 @@ export function OtpVerificationForm({
         onSubmit={handleSubmit}
         className="space-y-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-md"
       >
+        {error && (
+          <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-400">
+            {resending ? "OTP resent successfully!" : "Verification successful! Redirecting..."}
+          </div>
+        )}
         <div className="flex justify-between gap-2 sm:gap-3">
           {otp.map((value, index) => (
             <input
@@ -135,10 +197,11 @@ export function OtpVerificationForm({
         <div className="flex flex-col gap-2 text-xs text-slate-300/80 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
-            className="text-left underline underline-offset-2 hover:text-pink-300"
-            onClick={() => console.log("Resend OTP")}
+            className="text-left underline underline-offset-2 hover:text-pink-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleResend}
+            disabled={resending || !emailHint}
           >
-            Didn&apos;t get the code? Resend
+            {resending ? "Resending..." : "Didn't get the code? Resend"}
           </button>
           <p>Using a different email? Go back and update it.</p>
         </div>

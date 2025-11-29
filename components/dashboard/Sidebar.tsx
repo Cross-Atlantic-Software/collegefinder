@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import { BiMenu } from "react-icons/bi";
 import {
@@ -8,6 +10,7 @@ import {
   FaBookOpen,
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SectionId =
   | "dashboard"
@@ -73,6 +76,12 @@ export default function Sidebar({
   activeSection,
   onSectionChange,
 }: SidebarProps) {
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
     <aside
       className={`
@@ -215,7 +224,10 @@ export default function Sidebar({
           </span>
         </button>
 
-        <button className="flex w-full items-center gap-3 rounded-md bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition duration-500 hover:bg-red-700">
+        <button 
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-md bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition duration-500 hover:bg-red-700"
+        >
           <FiLogOut className="h-5 w-5 text-white" />
           <span className={`${sidebarOpen ? "inline" : "hidden md:inline"}`}>
             Logout

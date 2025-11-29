@@ -2,17 +2,39 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "../shared";
+import { sendOTP } from "@/lib/api";
 
 export function LoginStepOneForm() {
   const [email, setEmail] = useState("");
   const [agree, setAgree] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!agree) return;
-    // TODO: route to Step 2 (OTP) or call API
-    console.log("Login step 1:", email);
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await sendOTP(email);
+      
+      if (response.success) {
+        // Navigate to OTP verification page with email as query param
+        router.push(`/otpverification?email=${encodeURIComponent(email)}`);
+      } else {
+        setError(response.message || "Failed to send OTP. Please try again.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error sending OTP:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -66,14 +88,20 @@ export function LoginStepOneForm() {
           </span>
         </label>
 
+        {error && (
+          <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         <Button
           type="submit"
-          disabled={!email || !agree}
+          disabled={!email || !agree || isLoading}
           variant="DarkGradient"
           size="lg"
           className="w-full mt-2"
         >
-          Continue to verification
+          {isLoading ? "Sending..." : "Continue to verification"}
         </Button>
 
         <p className="pt-2 text-center text-xs text-slate-300/70">
