@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthRedirectProps {
@@ -11,6 +11,7 @@ interface AuthRedirectProps {
 
 /**
  * Redirects authenticated users away from auth pages (login, OTP, etc.)
+ * But allows access to onboarding pages (/step-1, /step-2, /step-3)
  */
 export function AuthRedirect({ 
   children, 
@@ -18,12 +19,16 @@ export function AuthRedirect({
 }: AuthRedirectProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if current route is an onboarding step
+  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-3)/.test(pathname || '');
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && !isOnboardingRoute) {
       router.push(redirectTo);
     }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+  }, [isAuthenticated, isLoading, router, redirectTo, isOnboardingRoute]);
 
   if (isLoading) {
     return (
@@ -36,7 +41,7 @@ export function AuthRedirect({
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !isOnboardingRoute) {
     return null;
   }
 

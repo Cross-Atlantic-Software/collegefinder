@@ -7,13 +7,17 @@ type WelcomeLayoutProps = {
 
 export function WelcomeLayout({ children, progress }: WelcomeLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-br from-slate-950 via-purple-950 to-fuchsia-900 text-white px-6 sm:px-16 py-10">
-      <div className="flex-1 flex items-center">{children}</div>
+    <div className="flex flex-col w-full flex-1 text-white">
+      {/* This area will now fill available height and can center children */}
+      <div className="flex-1 flex items-center justify-center">
+        {children}
+      </div>
 
-      <div className="w-full mt-10">
-        <div className="h-2 rounded-full bg-white/10 w-full relative overflow-hidden">
+      {/* Bottom progress bar */}
+      <div className="w-full px-28 pb-8">
+        <div className="h-2 rounded-full bg-white/10 w-full overflow-hidden">
           <div
-            className="h-full bg-pink-500 transition-all duration-700"
+            className="h-full bg-[#DB0078] transition-all duration-700"
             style={{ width: `${progress}%` }}
           />
         </div>

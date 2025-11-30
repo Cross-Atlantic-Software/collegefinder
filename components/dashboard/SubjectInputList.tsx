@@ -43,7 +43,7 @@ export function SubjectInputList() {
                         className="grid gap-3 sm:grid-cols-2 text-xs sm:text-sm"
                     >
                         <div>
-                            <p className="mb-1 font-medium text-slate-200 dark:text-slate-300">
+                            <p className="mb-1 font-medium text-slate-600 dark:text-slate-300">
                                 Subject Name
                             </p>
                             <input
@@ -53,12 +53,12 @@ export function SubjectInputList() {
                                     handleChange(row.id, "name", e.target.value)
                                 }
                                 placeholder="e.g. Physics"
-                                className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                                className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-600 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                             />
                         </div>
 
                         <div>
-                            <p className="mb-1 font-medium text-slate-200 dark:text-slate-300">
+                            <p className="mb-1 font-medium text-slate-600 dark:text-slate-300">
                                 Exam Percentage%
                             </p>
                             <input
@@ -72,7 +72,7 @@ export function SubjectInputList() {
                                     )
                                 }
                                 placeholder="e.g. 88"
-                                className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
+                                className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-600 outline-none placeholder:text-white/50 focus:outline-none focus:border-pink transition duration-500 dark:text-white"
                             />
                         </div>
                     </div>

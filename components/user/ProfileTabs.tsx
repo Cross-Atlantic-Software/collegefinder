@@ -42,7 +42,7 @@ export default function ProfileTabs() {
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
                             className={[
-                                "flex min-w-max items-center px-5 py-3 text-sm font-medium transition-colors duration-200 sm:text-sm gap-2 transition duration-500  dark:text-slate-300",
+                                "flex min-w-max items-center px-5 py-3 text-sm font-medium transition-colors :text-sm gap-2 duration-500  dark:text-slate-300",
                                 isActive
                                     ? "bg-pink text-white"
                                     : "text-slate-900 hover:bg-pink/5",
