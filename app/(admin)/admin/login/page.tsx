@@ -41,32 +41,30 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-lightGradient flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="inline-block px-8 py-4 rounded-lg bg-darkGradient">
+    <div className="min-h-screen bg-lightGradient flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo Banner */}
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-darkGradient shadow-xl">
             <Logo 
               mode="dark" 
               darkSrc="/svgs/logo-white.svg"
               width={200}
-              height={50}
+              height={45}
             />
           </div>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Admin Login</h2>
+        {/* Login Form Card */}
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {/* Title */}
+          <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Admin Login</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email <span className="text-pink">*</span>
-              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <FiMail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -75,7 +73,7 @@ export default function AdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none transition"
+                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white"
                   placeholder="Enter your email"
                 />
               </div>
@@ -83,11 +81,8 @@ export default function AdminLoginPage() {
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password <span className="text-pink">*</span>
-              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <FiLock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -96,18 +91,19 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none transition"
+                  className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center hover:opacity-70 transition-opacity"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <FiEyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <FiEyeOff className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <FiEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <FiEye className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
               </div>
@@ -124,13 +120,13 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-darkGradient text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-darkGradient text-white py-4 px-6 rounded-xl font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg mt-8 text-base"
             >
               {isLoading ? (
-                'Signing in...'
+                <span>Signing in...</span>
               ) : (
                 <>
-                  Sign In
+                  <span>Sign In</span>
                   <FiArrowRight className="h-5 w-5" />
                 </>
               )}
@@ -138,10 +134,10 @@ export default function AdminLoginPage() {
           </form>
 
           {/* Back Link */}
-          <div className="mt-6 text-center">
+          <div className="mt-10 text-center">
             <Link
               href="/"
-              className="text-pink hover:text-[#B903B8] inline-flex items-center gap-2 text-sm transition-colors"
+              className="text-pink hover:text-[#B903B8] inline-flex items-center gap-2 text-sm font-medium transition-colors"
             >
               <FiArrowLeft className="h-4 w-4" />
               Go back to College Finder website

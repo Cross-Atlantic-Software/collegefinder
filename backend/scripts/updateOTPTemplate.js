@@ -21,65 +21,62 @@ async function updateOTPTemplate() {
       process.exit(1);
     }
 
-    // New OTP template with website's pink gradient theme
+    // New OTP template with AWS-style clean design
     const newTemplate = {
-      subject: 'Your Verification Code - College Finder',
+      subject: 'Verify your email address - College Finder',
       body_html: `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Manrope', Arial, Helvetica, sans-serif; background-color: #f5f5f5;">
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f5f5;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header with Gradient -->
+      <td align="center" style="padding: 0;">
+        <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff;">
+          <!-- Header with Dark Background -->
           <tr>
-            <td style="background: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.5px;">College Finder</h1>
+            <td style="background-color: #232f3e; padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">College Finder</h1>
             </td>
           </tr>
           
           <!-- Content -->
           <tr>
-            <td style="padding: 40px 30px; background-color: #ffffff;">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <h2 style="margin: 0 0 10px 0; color: #1a1a1a; font-size: 24px; font-weight: 600;">Email Verification</h2>
-                <p style="margin: 0; color: #666666; font-size: 14px;">Verify your email address to continue</p>
-              </div>
+            <td style="padding: 50px 40px; background-color: #ffffff;">
+              <!-- Title -->
+              <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 28px; font-weight: bold; line-height: 1.2;">Verify your email address</h2>
               
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">Hello {{userName}},</p>
+              <!-- Body Text -->
+              <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 40px 0;">
+                Thanks for starting the College Finder account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
+              </p>
               
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">Your verification code for College Finder is:</p>
+              <!-- Verification Code Label -->
+              <p style="color: #232f3e; font-size: 16px; font-weight: bold; margin: 0 0 15px 0;">Verification code</p>
               
-              <!-- OTP Code Box -->
-              <div style="text-align: center; margin: 35px 0;">
-                <div style="display: inline-block; background: linear-gradient(135deg, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%); padding: 25px 50px; border-radius: 12px; border: 2px solid #DB0078;">
-                  <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #DB0078; font-family: 'Courier New', monospace;">
-                    {{otpCode}}
-                  </div>
+              <!-- OTP Code - Large and Bold -->
+              <div style="margin: 0 0 15px 0;">
+                <div style="font-size: 48px; font-weight: bold; color: #232f3e; font-family: 'Courier New', Courier, monospace; letter-spacing: 8px;">
+                  {{otpCode}}
                 </div>
               </div>
               
-              <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0; text-align: center;">
-                <strong style="color: #DB0078;">⏱️ This code will expire in 10 minutes</strong>
-              </p>
-              
-              <p style="color: #999999; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; text-align: center;">
-                If you didn't request this verification code, please ignore this email or contact our support team.
+              <!-- Validity Period -->
+              <p style="color: #666666; font-size: 14px; font-style: italic; margin: 0;">
+                (This code is valid for 10 minutes)
               </p>
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 30px; background-color: #f9f9f9; text-align: center; border-top: 1px solid #eeeeee;">
-              <p style="margin: 0 0 10px 0; color: #999999; font-size: 12px;">
+            <td style="padding: 30px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee;">
+              <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">
                 © ${new Date().getFullYear()} College Finder. All rights reserved.
               </p>
-              <p style="margin: 0; color: #999999; font-size: 12px;">
+              <p style="margin: 0; color: #666666; font-size: 12px;">
                 This is an automated email, please do not reply.
               </p>
             </td>
