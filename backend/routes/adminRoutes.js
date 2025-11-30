@@ -5,7 +5,9 @@ const { authenticateAdmin, requireSuperAdmin } = require('../middleware/adminAut
 const {
   validateAdminLogin,
   validateCreateAdmin,
-  validateUpdateAdmin
+  validateUpdateAdmin,
+  validateCreateUser,
+  validateUpdateUser
 } = require('../middleware/validators');
 
 /**
@@ -28,6 +30,34 @@ router.get('/me', authenticateAdmin, AdminController.getMe);
  * @access  Private (Admin)
  */
 router.get('/users', authenticateAdmin, AdminController.getAllUsers);
+
+/**
+ * @route   GET /api/admin/users/:id
+ * @desc    Get user by ID
+ * @access  Private (Admin)
+ */
+router.get('/users/:id', authenticateAdmin, AdminController.getUserById);
+
+/**
+ * @route   POST /api/admin/users
+ * @desc    Create new user
+ * @access  Private (Admin)
+ */
+router.post('/users', authenticateAdmin, validateCreateUser, AdminController.createUser);
+
+/**
+ * @route   PUT /api/admin/users/:id
+ * @desc    Update user
+ * @access  Private (Admin)
+ */
+router.put('/users/:id', authenticateAdmin, validateUpdateUser, AdminController.updateUser);
+
+/**
+ * @route   DELETE /api/admin/users/:id
+ * @desc    Delete user
+ * @access  Private (Admin)
+ */
+router.delete('/users/:id', authenticateAdmin, AdminController.deleteUser);
 
 /**
  * @route   GET /api/admin/admins

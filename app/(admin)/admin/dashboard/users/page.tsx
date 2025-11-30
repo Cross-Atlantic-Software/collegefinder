@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
-import UsersTable from '@/components/admin/UsersTable';
+import UsersTable, { UsersTableRef } from '@/components/admin/UsersTable';
 import { getAllUsers, SiteUser } from '@/lib/api';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiPlus } from 'react-icons/fi';
 
 export default function UsersPage() {
   const router = useRouter();
@@ -15,6 +15,8 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const usersTableRef = useRef<UsersTableRef>(null);
 
   useEffect(() => {
     // Check admin authentication
@@ -45,7 +47,7 @@ export default function UsersPage() {
     };
 
     fetchUsers();
-  }, [router]);
+  }, [router, refreshTrigger]);
 
   // Debounced search handler
   useEffect(() => {
@@ -70,6 +72,22 @@ export default function UsersPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allUsers]);
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleUserCreated = () => {
+    handleRefresh();
+  };
+
+  const handleUserUpdated = () => {
+    handleRefresh();
+  };
+
+  const handleUserDeleted = () => {
+    handleRefresh();
+  };
 
   if (error) {
     return (
@@ -98,6 +116,13 @@ export default function UsersPage() {
             <p className="text-sm text-gray-600">Manage registered site users and their information.</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -118,10 +143,24 @@ export default function UsersPage() {
                 />
               </div>
             </div>
+            <button
+              onClick={() => usersTableRef.current?.showCreateModal()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <FiPlus className="h-4 w-4" />
+              Add User
+            </button>
           </div>
 
           {/* Users Table */}
-          <UsersTable users={users} isLoading={isLoading} />
+          <UsersTable 
+            ref={usersTableRef}
+            users={users} 
+            isLoading={isLoading}
+            onUserCreated={handleUserCreated}
+            onUserUpdated={handleUserUpdated}
+            onUserDeleted={handleUserDeleted}
+          />
         </main>
       </div>
     </div>

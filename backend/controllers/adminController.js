@@ -130,6 +130,169 @@ class AdminController {
   }
 
   /**
+   * Get user by ID
+   * GET /api/admin/users/:id
+   */
+  static async getUserById(req, res) {
+    try {
+      const { id } = req.params;
+      const user = await User.findById(id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: { user }
+      });
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch user'
+      });
+    }
+  }
+
+  /**
+   * Create new user
+   * POST /api/admin/users
+   */
+  static async createUser(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email, name } = req.body;
+
+      // Check if email already exists
+      const existingUser = await User.findByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already exists'
+        });
+      }
+
+      const user = await User.createWithDetails(email, name || null);
+
+      res.status(201).json({
+        success: true,
+        message: 'User created successfully',
+        data: { user }
+      });
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create user'
+      });
+    }
+  }
+
+  /**
+   * Update user
+   * PUT /api/admin/users/:id
+   */
+  static async updateUser(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { id } = req.params;
+      const { email, name, email_verified, is_active } = req.body;
+
+      // Check if user exists
+      const existingUser = await User.findById(id);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if email is being changed and if new email already exists
+      if (email && email !== existingUser.email) {
+        const emailExists = await User.findByEmail(email);
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already exists'
+          });
+        }
+      }
+
+      const updateData = {};
+      if (email !== undefined) updateData.email = email;
+      if (name !== undefined) updateData.name = name;
+      if (email_verified !== undefined) updateData.email_verified = email_verified;
+      if (is_active !== undefined) updateData.is_active = is_active;
+
+      const updatedUser = await User.update(id, updateData);
+
+      res.json({
+        success: true,
+        message: 'User updated successfully',
+        data: { user: updatedUser }
+      });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to update user'
+      });
+    }
+  }
+
+  /**
+   * Delete user
+   * DELETE /api/admin/users/:id
+   */
+  static async deleteUser(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Check if user exists
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      await User.delete(id);
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete user'
+      });
+    }
+  }
+
+  /**
    * Get all admin users
    * GET /api/admin/admins
    */

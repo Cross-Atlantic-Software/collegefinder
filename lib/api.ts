@@ -60,12 +60,25 @@ async function apiRequest<T>(
       },
     });
 
-    const data = await response.json();
+    // Check if response is ok before trying to parse JSON
+    let data;
+    try {
+      const text = await response.text();
+      data = text ? JSON.parse(text) : {};
+    } catch (parseError) {
+      // If JSON parsing fails, return a more helpful error
+      return {
+        success: false,
+        message: response.status === 0 
+          ? 'Cannot connect to server. Please make sure the backend server is running on http://localhost:5001'
+          : `Server error (${response.status}): Invalid response format`,
+      };
+    }
 
     if (!response.ok) {
       return {
         success: false,
-        message: data.message || 'An error occurred',
+        message: data.message || `Server error (${response.status})`,
         errors: data.errors,
       };
     }
@@ -76,6 +89,15 @@ async function apiRequest<T>(
     };
   } catch (error) {
     console.error('API request error:', error);
+    
+    // Provide more specific error messages
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return {
+        success: false,
+        message: 'Cannot connect to server. Please make sure the backend server is running on http://localhost:5001',
+      };
+    }
+    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Network error occurred',
@@ -150,6 +172,50 @@ export interface GetAllUsersResponse {
 export async function getAllUsers(): Promise<ApiResponse<GetAllUsersResponse>> {
   return apiRequest<GetAllUsersResponse>('/admin/users', {
     method: 'GET',
+  });
+}
+
+/**
+ * Get user by ID (Admin only)
+ */
+export async function getUserById(id: number): Promise<ApiResponse<{ user: SiteUser }>> {
+  return apiRequest<{ user: SiteUser }>(`/admin/users/${id}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Create user (Admin only)
+ */
+export async function createUser(
+  email: string,
+  name?: string
+): Promise<ApiResponse<{ user: SiteUser }>> {
+  return apiRequest<{ user: SiteUser }>('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ email, name }),
+  });
+}
+
+/**
+ * Update user (Admin only)
+ */
+export async function updateUser(
+  id: number,
+  data: { email?: string; name?: string; email_verified?: boolean; is_active?: boolean }
+): Promise<ApiResponse<{ user: SiteUser }>> {
+  return apiRequest<{ user: SiteUser }>(`/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete user (Admin only)
+ */
+export async function deleteUser(id: number): Promise<ApiResponse<void>> {
+  return apiRequest<void>(`/admin/users/${id}`, {
+    method: 'DELETE',
   });
 }
 

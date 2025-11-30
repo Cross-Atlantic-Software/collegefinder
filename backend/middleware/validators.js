@@ -121,6 +121,45 @@ const validateUpdateEmailTemplate = [
     .trim()
 ];
 
+/**
+ * Validation rules for creating user
+ */
+const validateCreateUser = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Name must be less than 255 characters')
+];
+
+/**
+ * Validation rules for updating user
+ */
+const validateUpdateUser = [
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Name must be less than 255 characters'),
+  body('email_verified')
+    .optional()
+    .isBoolean()
+    .withMessage('email_verified must be a boolean'),
+  body('is_active')
+    .optional()
+    .isBoolean()
+    .withMessage('is_active must be a boolean')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -129,6 +168,8 @@ module.exports = {
   validateCreateAdmin,
   validateUpdateAdmin,
   validateCreateEmailTemplate,
-  validateUpdateEmailTemplate
+  validateUpdateEmailTemplate,
+  validateCreateUser,
+  validateUpdateUser
 };
 

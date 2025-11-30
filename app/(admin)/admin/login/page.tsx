@@ -33,7 +33,9 @@ export default function AdminLoginPage() {
         setError(response.message || 'Invalid email or password');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      // The error message from apiRequest should already be user-friendly
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      setError(errorMessage);
       console.error('Admin login error:', err);
     } finally {
       setIsLoading(false);
