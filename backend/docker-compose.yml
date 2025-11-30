@@ -1,23 +1,164 @@
-version: '3.8'
+# =============================================================================
+# Docker Compose Configuration
+# =============================================================================
+# Single file for both development and production environments
+# Uses environment variables to switch between dev and prod modes
+#
+# Usage:
+#   Development (default):
+#     docker-compose up
+#
+#   Production:
+#     NODE_ENV=production docker-compose up
+#     Or add to .env: NODE_ENV=production
+# =============================================================================
 
 services:
+  # -----------------------------------------------------------------------------
+  # PostgreSQL Database Service
+  # -----------------------------------------------------------------------------
+  # Stores all application data (users, OTPs, etc.)
+  # Same configuration for both dev and prod, with environment-based overrides
   postgres:
+    # Official PostgreSQL Alpine image (lightweight, secure)
     image: postgres:15-alpine
-    container_name: collegefinder_db
+    
+    # Container name - defaults to collegefinder_db, override for production
+    # Example: POSTGRES_CONTAINER=collegefinder_db_prod
+    container_name: ${POSTGRES_CONTAINER:-collegefinder_db}
+    
+    # Automatically restart container if it crashes or server reboots
+    restart: unless-stopped
+    
+    # Database credentials from .env file with fallback defaults
+    # REQUIRED in production, defaults work for development
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: collegefinder_db
+      POSTGRES_USER: ${DB_USER:-postgres}           # Database username
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}   # Database password
+      POSTGRES_DB: ${DB_NAME:-collegefinder_db}     # Database name
+    
+    # Port mapping - exposes database to host machine
+    # Development: "5432:5432" (accessible from anywhere on host)
+    # Production: "127.0.0.1:5432:5432" (localhost only for security)
+    # Override: POSTGRES_PORT=127.0.0.1:5432:5432 in .env for production
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    
+    # Persistent storage - data survives container restarts
+    # Named volume stores database files on host filesystem
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    
+    # Health check ensures database is ready before backend starts
+    # Prevents connection errors during startup
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s    # Check every 10 seconds
+      timeout: 5s      # Fail if no response in 5 seconds
+      retries: 5        # Retry 5 times before marking unhealthy
+      start_period: 10s # Wait 10s before first check (allows DB to initialize)
+    
+    # Isolated network for service-to-service communication
+    networks:
+      - collegefinder_network
 
+  # -----------------------------------------------------------------------------
+  # Backend API Service
+  # -----------------------------------------------------------------------------
+  # Handles all API requests (authentication, OTP verification, etc.)
+  # Different behavior for development (hot-reload) vs production (optimized)
+  backend:
+    # Build configuration
+    build:
+      context: .  # Build from current directory
+      # Single Dockerfile supports both dev and prod via build args
+      dockerfile: Dockerfile
+      args:
+        # Pass NODE_ENV to Dockerfile to determine which dependencies to install
+        NODE_ENV: ${NODE_ENV:-development}
+    
+    # Image tag - defaults to dev, override for production
+    # Example: BACKEND_IMAGE=collegefinder-backend:latest
+    image: ${BACKEND_IMAGE:-collegefinder-backend:dev}
+    
+    # Container name - defaults to dev name, override for production
+    # Example: BACKEND_CONTAINER=collegefinder_backend_prod
+    container_name: ${BACKEND_CONTAINER:-collegefinder_backend}
+    
+    # Automatically restart on failure
+    restart: unless-stopped
+    
+    # Expose backend API port to host
+    # Port comes from .env (PORT variable) or defaults to 5001
+    ports:
+      - "${PORT:-5001}:5001"
+    
+    # Load all environment variables from .env file
+    # Includes: DB credentials, JWT_SECRET, EMAIL config, etc.
+    env_file:
+      - .env
+    
+    # Override specific variables for Docker environment
+    environment:
+      - DB_HOST=postgres              # Use service name for Docker networking
+      - NODE_ENV=${NODE_ENV:-development}  # development or production
+    
+    # Wait for database to be healthy before starting backend
+    # Prevents backend from starting before database is ready
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    # Health check endpoint for monitoring
+    # Used by orchestration tools to know if service is running
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s     # Check every 30 seconds
+      timeout: 10s     # Fail if no response in 10 seconds
+      retries: 3        # Retry 3 times before marking unhealthy
+      start_period: 40s # Wait 40s before first check (allows app to start)
+    
+    # Isolated network for service-to-service communication
+    networks:
+      - collegefinder_network
+    
+    # Logging configuration prevents disk space issues
+    # Automatically rotates logs when they get too large
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"    # Each log file max 10MB
+        max-file: ${LOG_FILES:-2}  # Keep 2 files (dev) or 3 (prod)
+    
+    # Volume mounts - ENABLED in development, DISABLED in production
+    # Development: Mounts source code for hot-reload (code changes auto-restart server)
+    # Production: Set VOLUME_MOUNT="" in .env to disable (code baked into image)
+    volumes:
+      - ${VOLUME_MOUNT:-.:/app}  # Mount project directory (dev) or empty (prod)
+      - /app/node_modules        # Preserve node_modules in container (faster)
+    
+    # Command to run - different for dev vs prod
+    # Development: npm run dev (uses nodemon for hot-reload)
+    # Production:  node server.js (direct node execution)
+    # Override: BACKEND_CMD=node server.js in .env for production
+    # Note: NODE_ENV from build args determines which dependencies are installed
+    command: ${BACKEND_CMD:-npm run dev}
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+# Named volumes for persistent data storage
+# Data in these volumes survives container deletion and restarts
 volumes:
   postgres_data:
+    driver: local  # Store on local filesystem
 
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+# Docker network for service-to-service communication
+# Services can communicate using service names (e.g., "postgres", "backend")
+# instead of IP addresses
+networks:
+  collegefinder_network:
+    driver: bridge  # Standard bridge network for container communication
