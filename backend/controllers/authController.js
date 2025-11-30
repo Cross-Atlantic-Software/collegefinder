@@ -117,6 +117,9 @@ class AuthController {
       // Mark OTP as used
       await Otp.markAsUsed(otpRecord.id);
 
+      // Mark email as verified
+      await User.markEmailAsVerified(user.id);
+
       // Update last login
       await User.updateLastLogin(user.id);
 

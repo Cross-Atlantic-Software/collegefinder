@@ -15,6 +15,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin/email-templates', require('./routes/emailTemplateRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

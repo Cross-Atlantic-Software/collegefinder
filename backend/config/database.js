@@ -26,11 +26,25 @@ pool.on('error', (err) => {
 // Initialize database tables
 const init = async () => {
   try {
-    // Read and execute SQL schema
-    const schemaPath = path.join(__dirname, '../database/schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
+    const dbDir = path.join(__dirname, '../database');
     
-    await pool.query(schema);
+    // Define schema files in execution order
+    const schemaFiles = [
+      'functions.sql',        // Functions must be loaded first
+      'users.sql',            // Base users table
+      'otps.sql',             // OTP table (depends on users)
+      'admin_users.sql',      // Admin users table (self-referencing)
+      'email_templates.sql'   // Email templates table
+    ];
+
+    // Execute each schema file in order
+    for (const file of schemaFiles) {
+      const filePath = path.join(dbDir, file);
+      const sql = fs.readFileSync(filePath, 'utf8');
+      await pool.query(sql);
+      console.log(`✅ Loaded schema: ${file}`);
+    }
+    
     console.log('✅ Database tables initialized');
   } catch (error) {
     // If tables already exist, that's okay

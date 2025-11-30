@@ -19,8 +19,18 @@ class User {
 
   static async create(email) {
     const result = await db.query(
-      'INSERT INTO users (email) VALUES ($1) RETURNING *',
+      `INSERT INTO users (email, auth_provider, email_verified) 
+       VALUES ($1, 'email', false) 
+       RETURNING *`,
       [email]
+    );
+    return result.rows[0];
+  }
+
+  static async markEmailAsVerified(id) {
+    const result = await db.query(
+      'UPDATE users SET email_verified = true WHERE id = $1 RETURNING *',
+      [id]
     );
     return result.rows[0];
   }
@@ -40,7 +50,37 @@ class User {
     );
     return result.rows[0];
   }
+
+  // Get all users for admin panel
+  static async findAll() {
+    try {
+      // Try to select with new columns first
+      const result = await db.query(
+        `SELECT id, email, name, email_verified, auth_provider, created_at, last_login, is_active 
+         FROM users 
+         ORDER BY created_at DESC`
+      );
+      return result.rows;
+    } catch (error) {
+      // If columns don't exist, fall back to basic query and add defaults
+      if (error.code === '42703') { // column does not exist
+        console.log('⚠️  New user columns not found, using fallback query');
+        const result = await db.query(
+          `SELECT id, email, created_at, last_login, is_active 
+           FROM users 
+           ORDER BY created_at DESC`
+        );
+        // Add default values for missing columns
+        return result.rows.map(user => ({
+          ...user,
+          name: null,
+          email_verified: false,
+          auth_provider: 'email'
+        }));
+      }
+      throw error;
+    }
+  }
 }
 
 module.exports = User;
-

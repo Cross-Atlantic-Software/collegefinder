@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const EmailTemplate = require('../models/EmailTemplate');
 
 // Create transporter (configure based on your email provider)
 const createTransporter = () => {
@@ -33,13 +34,51 @@ const createTransporter = () => {
 };
 
 /**
- * Send OTP email
+ * Send OTP email using template
  * @param {string} email - Recipient email
  * @param {string} otp - OTP code
  * @returns {Promise<boolean>} - Success status
  */
 const sendOTPEmail = async (email, otp) => {
   const transporter = createTransporter();
+
+  // Get email template
+  let template = await EmailTemplate.findByType('OTP_Verification');
+  
+  // Fallback to default template if not found
+  if (!template) {
+    template = {
+      subject: 'Your College Finder Verification Code',
+      body_html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #2c5530; margin: 0; font-size: 28px;">Email Verification</h1>
+            </div>
+            <div style="margin-bottom: 25px;">
+              <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">Dear {{userName}},</p>
+              <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">Your verification code is:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <div style="display: inline-block; background-color: #f0f0f0; padding: 20px 40px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2c5530;">
+                  {{otpCode}}
+                </div>
+              </div>
+              <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">This code will expire in 10 minutes.</p>
+              <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">If you didn't request this code, please ignore this email.</p>
+            </div>
+          </div>
+        </div>
+      `
+    };
+  }
+
+  // Replace template variables
+  const subject = EmailTemplate.replaceVariables(template.subject, { otpCode: otp });
+  const html = EmailTemplate.replaceVariables(template.body_html, {
+    otpCode: otp,
+    userName: email.split('@')[0] || 'User',
+    email: email
+  });
 
   // In development without email config, just log
   if (!transporter) {
@@ -51,35 +90,8 @@ const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
     from: `"College Finder" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Your College Finder Verification Code',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">College Finder</h1>
-          </div>
-          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #DB0078;">Your Verification Code</h2>
-            <p>Hello!</p>
-            <p>Your verification code for College Finder is:</p>
-            <div style="background: white; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #DB0078; border: 2px dashed #DB0078; border-radius: 8px; margin: 20px 0;">
-              ${otp}
-            </div>
-            <p>This code will expire in 10 minutes.</p>
-            <p>If you didn't request this code, please ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              © ${new Date().getFullYear()} College Finder. All rights reserved.
-            </p>
-          </div>
-        </body>
-      </html>
-    `,
+    subject: subject,
+    html: html,
     text: `Your College Finder verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`
   };
 
