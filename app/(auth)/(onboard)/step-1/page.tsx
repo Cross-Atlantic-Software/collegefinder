@@ -2,33 +2,45 @@ import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
 
 export default function StepOne() {
-
   return (
-    <WelcomeLayout progress={33}>
-      <div className="flex gap-6 items-center justify-center w-full">
-        <Robot variant="three" />
+    <div
+      className="h-screen w-full flex flex-col"   // <-- h-screen + flex
+      style={{
+        background:
+          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
+      }}
+    >
+      <WelcomeLayout progress={33}>
+        <div className="flex items-center justify-center gap-20 w-full max-w-6xl">
+          {/* Robot */}
+          <Robot variant="three" />
 
-        <div className="flex flex-col gap-4">
-          <Bubble>
-            Welcome!, I’m Support Agent<br />
-            I’ll be your companion throughout your Learning journey.
-          </Bubble>
+          {/* Bubbles + Button */}
+          <div className="flex flex-col gap-6 w-[500px]">
+            <Bubble>
+              Welcome!, I’m Support Agent
+              <br />
+              I’ll be your companion throughout your Learning journey.
+            </Bubble>
 
-          <Bubble>
-            Exam Preparation is one of the best expertise that we have.
-          </Bubble>
+            <Bubble>
+              Exam Preparation is one of the best expertise that we have.
+            </Bubble>
 
-            <Button
+            <div className="flex justify-end mt-2">
+              <Button
                 type="submit"
                 variant="DarkGradient"
                 size="lg"
-                className="w-full mt-2"
                 href="/step-2"
-            >
+                className="px-10 rounded-full"
+              >
                 Continue
-            </Button>
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    </WelcomeLayout>
+      </WelcomeLayout>
+    </div>
   );
 }

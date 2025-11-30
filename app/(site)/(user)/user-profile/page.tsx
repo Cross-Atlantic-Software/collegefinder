@@ -13,11 +13,6 @@ export default function UserProfile() {
                   <div className="flex-1 min-w-0">
                     <ProfileTabs/>
                   </div>
-                  <div className="w-full shrink-0 space-y-6 lg:w-80">
-                    <EligibleExams/>
-                    <UpcomingDeadlines/>
-                    <QuickShortcuts/>
-                  </div>
               </div>
             </div>
           </div>

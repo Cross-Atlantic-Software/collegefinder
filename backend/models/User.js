@@ -56,7 +56,21 @@ class User {
     try {
       // Try to select with new columns first
       const result = await db.query(
-        `SELECT id, email, name, email_verified, auth_provider, created_at, last_login, is_active 
+        `SELECT 
+           id, 
+           email, 
+           name, 
+           first_name, 
+           last_name, 
+           date_of_birth, 
+           gender, 
+           phone_number, 
+           location, 
+           email_verified, 
+           auth_provider, 
+           created_at, 
+           last_login, 
+           is_active 
          FROM users 
          ORDER BY created_at DESC`
       );
@@ -74,6 +88,12 @@ class User {
         return result.rows.map(user => ({
           ...user,
           name: null,
+          first_name: null,
+          last_name: null,
+          date_of_birth: null,
+          gender: null,
+          phone_number: null,
+          location: null,
           email_verified: false,
           auth_provider: 'email'
         }));

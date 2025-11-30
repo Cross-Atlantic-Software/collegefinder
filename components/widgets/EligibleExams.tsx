@@ -19,7 +19,7 @@ export default function EligibleExams() {
         <section className="w-full max-w-sm rounded-md bg-pink/5 px-5 pb-6 pt-6 dark:bg-slate-900">
             {/* Heading */}
             <div className="mb-4">
-                <h3 className="text-xl font-semibold leading-tight dark:text-white mb-2">
+                <h3 className="text-xl font-semibold leading-tight text-slate-900 dark:text-gray-50">
                     Eligible Exams
                 </h3>
                 <p className="text-sm text-slate-800 dark:text-slate-300">Based on your profile</p>
