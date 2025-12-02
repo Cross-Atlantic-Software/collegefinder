@@ -42,7 +42,7 @@ const validateAdminLogin = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }), // Don't remove dots - keep email as entered
   body('password')
     .notEmpty()
     .withMessage('Password is required')

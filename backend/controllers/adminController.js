@@ -30,20 +30,20 @@ class AdminController {
         });
       }
 
+      // Check if admin is active
+      if (!admin.is_active) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin account is inactive'
+        });
+      }
+
       // Verify password
       const isValidPassword = await Admin.verifyPassword(admin, password);
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
           message: 'Invalid email or password'
-        });
-      }
-
-      // Check if admin is active
-      if (!admin.is_active) {
-        return res.status(403).json({
-          success: false,
-          message: 'Admin account is inactive'
         });
       }
 

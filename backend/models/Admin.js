@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 
 class Admin {
   static async findByEmail(email) {
+    // Exact email match (case-sensitive)
     const result = await db.query(
       'SELECT * FROM admin_users WHERE email = $1',
       [email]
@@ -90,9 +91,12 @@ class Admin {
       'SELECT password_hash FROM admin_users WHERE id = $1',
       [admin.id]
     );
-    if (!result.rows[0]) return false;
+    if (!result.rows[0]) {
+      return false;
+    }
 
-    return await bcrypt.compare(password, result.rows[0].password_hash);
+    const passwordHash = result.rows[0].password_hash;
+    return await bcrypt.compare(password, passwordHash);
   }
 }
 
