@@ -7,7 +7,6 @@ const validateSendOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
 ];
 
 /**
@@ -16,8 +15,7 @@ const validateSendOTP = [
 const validateVerifyOTP = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('code')
     .isLength({ min: 6, max: 6 })
     .withMessage('OTP code must be 6 digits')
@@ -32,7 +30,6 @@ const validateResendOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
 ];
 
 /**
@@ -41,8 +38,7 @@ const validateResendOTP = [
 const validateAdminLogin = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail({ gmail_remove_dots: false }), // Don't remove dots - keep email as entered
+    .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -56,8 +52,7 @@ const validateAdminLogin = [
 const validateCreateAdmin = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
