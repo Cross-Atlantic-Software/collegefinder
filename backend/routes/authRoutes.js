@@ -5,7 +5,8 @@ const { authenticate } = require('../middleware/auth');
 const {
   validateSendOTP,
   validateVerifyOTP,
-  validateResendOTP
+  validateResendOTP,
+  validateUpdateProfile
 } = require('../middleware/validators');
 
 /**
@@ -35,6 +36,13 @@ router.post('/resend-otp', validateResendOTP, AuthController.resendOTP);
  * @access  Private
  */
 router.get('/me', authenticate, AuthController.getMe);
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Update user profile (name)
+ * @access  Private
+ */
+router.put('/profile', authenticate, validateUpdateProfile, AuthController.updateProfile);
 
 module.exports = router;
 

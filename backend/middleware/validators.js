@@ -33,6 +33,18 @@ const validateResendOTP = [
 ];
 
 /**
+ * Validation rules for updating user profile
+ */
+const validateUpdateProfile = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters')
+];
+
+/**
  * Validation rules for admin login
  */
 const validateAdminLogin = [
@@ -120,6 +132,7 @@ module.exports = {
   validateSendOTP,
   validateVerifyOTP,
   validateResendOTP,
+  validateUpdateProfile,
   validateAdminLogin,
   validateCreateAdmin,
   validateUpdateAdmin,

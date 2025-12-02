@@ -1,10 +1,52 @@
 'use client'
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
+import { updateProfile } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function StepTwo() {
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { user, refreshUser } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name) {
+      setError("Please enter your name");
+      return;
+    }
+
+    if (!user) {
+      setError("You must be logged in to save your name");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await updateProfile(name);
+      
+      if (response.success) {
+        // Refresh user data to get updated name
+        await refreshUser();
+        // Navigate to next step
+        router.push("/step-3");
+      } else {
+        setError(response.message || "Failed to save name. Please try again.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error updating profile:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div
@@ -25,25 +67,37 @@ export default function StepTwo() {
           <div className="flex flex-col gap-5 w-full max-w-xl">
             <Bubble>I am curious. What shall I call you?</Bubble>
 
-            <div className="flex gap-3">
+            {error && (
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex gap-3">
               <input
                 type="text"
                 placeholder="Type your name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="block w-full rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+                className="block w-full rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500"
+                required
+                minLength={1}
+                maxLength={255}
               />
 
               <Button
-                type="button"
+                type="submit"
                 variant="DarkGradient"
                 size="lg"
                 className="w-40 rounded-full"
-                href="/step-3"
+                disabled={saving || !name}
               >
-                Sounds Good
+                {saving ? "Saving..." : "Sounds Good"}
               </Button>
-            </div>
+            </form>
           </div>
         </div>
       </WelcomeLayout>

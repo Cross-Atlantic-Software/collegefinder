@@ -24,6 +24,7 @@ export interface VerifyOTPResponse {
 export interface User {
   id: number;
   email: string;
+  name?: string;
   createdAt: string;
   lastLogin?: string;
 }
@@ -122,6 +123,16 @@ export async function resendOTP(email: string): Promise<ApiResponse<SendOTPRespo
 export async function getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
   return apiRequest<{ user: User }>('/auth/me', {
     method: 'GET',
+  });
+}
+
+/**
+ * Update user profile (name)
+ */
+export async function updateProfile(name: string): Promise<ApiResponse<{ user: User }>> {
+  return apiRequest<{ user: User }>('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
   });
 }
 

@@ -77,8 +77,9 @@ export default function Sidebar({
   activeSection,
   onSectionChange,
 }: SidebarProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const router = useRouter();
+  const userName = user?.name || "User";
 
   const handleLogout = () => {
     logout();
@@ -137,7 +138,7 @@ export default function Sidebar({
             className={`${sidebarOpen ? "flex" : "hidden md:flex"} flex-1 flex-col`}
           >
             <p className="text-[11px] text-slate-700">Welcome</p>
-            <p className="text-sm font-semibold text-slate-900">Dinesh</p>
+            <p className="text-sm font-semibold text-slate-900">{userName}</p>
             <p className="mt-1 h-1.5 w-full rounded-full bg-slate-200">
               <span className="block h-1.5 w-2/3 rounded-full bg-pink" />
             </p>

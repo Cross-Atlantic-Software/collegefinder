@@ -1,7 +1,12 @@
+'use client'
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function StepThree() {
+  const { user } = useAuth();
+  const userName = user?.name || "there";
+
   return (
     <div
       className="h-screen w-full flex flex-col"
@@ -20,8 +25,8 @@ export default function StepThree() {
           {/* Bubbles + Button */}
           <div className="flex flex-col gap-4 w-[500px]">
             <Bubble>
-              Hey, Dinesh!<br />
-              I’ll guide you step by step through theory and practice.
+              Hey, {userName}!<br />
+              I'll guide you step by step through theory and practice.
             </Bubble>
 
             <Bubble>I’ll also help you build a reading habit.</Bubble>

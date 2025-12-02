@@ -95,7 +95,7 @@ export default function BasicInfoForm() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="text"
-              placeholder="dinesh@gmail.com"
+              placeholder="user@gmail.com"
               disabled
               className={`${inputBase} flex-1 cursor-not-allowed border border-[#ffc9eb] bg-[#fff2fb] text-slate-500 placeholder:text-pink/50`}
             />

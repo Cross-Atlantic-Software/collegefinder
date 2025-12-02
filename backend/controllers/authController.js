@@ -202,6 +202,7 @@ class AuthController {
           user: {
             id: user.id,
             email: user.email,
+            name: user.name,
             createdAt: user.created_at,
             lastLogin: user.last_login
           }
@@ -212,6 +213,47 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: 'Failed to get user information'
+      });
+    }
+  }
+
+  /**
+   * Update user profile (name)
+   * PUT /api/auth/profile
+   */
+  static async updateProfile(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { name } = req.body;
+      const userId = req.user.id;
+
+      const updatedUser = await User.updateName(userId, name);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          user: {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            createdAt: updatedUser.created_at
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile'
       });
     }
   }

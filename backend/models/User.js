@@ -51,6 +51,14 @@ class User {
     return result.rows[0];
   }
 
+  static async updateName(id, name) {
+    const result = await db.query(
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      [name, id]
+    );
+    return result.rows[0];
+  }
+
   // Get all users for admin panel
   static async findAll() {
     try {
