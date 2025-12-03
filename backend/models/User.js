@@ -10,11 +10,24 @@ class User {
   }
 
   static async findById(id) {
+    // Ensure id is a number
+    const userId = typeof id === 'string' ? parseInt(id, 10) : id;
+    if (isNaN(userId)) {
+      console.error('❌ Invalid userId passed to findById:', id);
+      return null;
+    }
+    console.log('🔍 User.findById - Looking for ID:', userId, 'Type:', typeof userId);
     const result = await db.query(
       'SELECT * FROM users WHERE id = $1',
-      [id]
+      [userId]
     );
-    return result.rows[0] || null;
+    const user = result.rows[0] || null;
+    if (user) {
+      console.log('✅ User found - ID:', user.id, 'Email:', user.email);
+    } else {
+      console.log('❌ User not found - ID:', userId);
+    }
+    return user;
   }
 
   static async create(email) {

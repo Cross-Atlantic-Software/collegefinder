@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../shared";
-import { sendOTP } from "@/lib/api";
+import { sendOTP } from "@/api";
 
 export function LoginStepOneForm() {
   const [email, setEmail] = useState("");

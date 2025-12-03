@@ -3,20 +3,49 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
+import { updateProfile } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function StepTwo() {
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name) {
+      setError("Please enter your name");
       return;
     }
 
-    // Navigate to next step
-    router.push("/step-3");
+    if (!user) {
+      setError("You must be logged in to save your name");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await updateProfile(name);
+      
+      if (response.success) {
+        // Refresh user data to get updated name
+        await refreshUser();
+        // Navigate to next step
+        router.push("/step-3");
+      } else {
+        setError(response.message || "Failed to save name. Please try again.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error updating profile:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -38,6 +67,12 @@ export default function StepTwo() {
           <div className="flex flex-col gap-5 w-full max-w-xl">
             <Bubble>I am curious. What shall I call you?</Bubble>
 
+            {error && (
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="flex gap-3">
               <input
                 type="text"
@@ -55,9 +90,9 @@ export default function StepTwo() {
                 variant="DarkGradient"
                 size="lg"
                 className="w-40 rounded-full"
-                disabled={!name}
+                disabled={saving || !name}
               >
-                Sounds Good
+                {saving ? "Saving..." : "Sounds Good"}
               </Button>
             </form>
           </div>
