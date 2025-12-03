@@ -34,7 +34,7 @@ export default function Header() {
     };
 
     const handleProfileClick = () => {
-        router.push('/profile');
+        router.push('/dashboard');
     };
 
     return (

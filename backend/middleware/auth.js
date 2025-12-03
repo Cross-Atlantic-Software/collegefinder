@@ -21,10 +21,18 @@ const authenticate = async (req, res, next) => {
 
     // Get user from database
     const user = await User.findById(decoded.userId);
-    if (!user || !user.is_active) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not found or inactive'
+        message: 'User not found'
+      });
+    }
+    
+    // Check if user is active (null defaults to true since default in DB is TRUE)
+    if (user.is_active === false) {
+      return res.status(401).json({
+        success: false,
+        message: 'User account is inactive'
       });
     }
 
