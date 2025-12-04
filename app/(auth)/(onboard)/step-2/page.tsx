@@ -1,17 +1,51 @@
 'use client'
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
 import { updateProfile } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function StepTwo() {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isLoading } = useAuth();
+
+  // Redirect to dashboard if user already has a name (completed onboarding)
+  // But NEVER redirect if we're saving or navigating to step-3
+  useEffect(() => {
+    // Only redirect if we're not in the middle of saving or navigating to step-3
+    if (!isLoading && user?.name && !isNavigatingToStep3 && !saving) {
+      setIsRedirecting(true);
+      // Prefetch dashboard for faster loading
+      router.prefetch('/dashboard');
+      // Small delay for smooth transition
+      const timer = setTimeout(() => {
+        router.replace('/dashboard');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLoading, router, isNavigatingToStep3, saving]);
+
+  // Show smooth loader while checking auth or redirecting (but NEVER while saving/navigating to step-3)
+  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
+    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+  }
+
+  // Don't render if user has name and we're not saving/navigating to step-3
+  if (user?.name && !saving && !isNavigatingToStep3) {
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
+  // Show saving state if we're navigating to step-3
+  if (saving || isNavigatingToStep3) {
+    return <OnboardingLoader message="Saving your name..." />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,23 +62,27 @@ export default function StepTwo() {
 
     setSaving(true);
     setError(null);
+    setIsNavigatingToStep3(true); // Set flag immediately to prevent any redirects
 
     try {
       const response = await updateProfile(name);
       
       if (response.success) {
-        // Refresh user data to get updated name
-        await refreshUser();
-        // Navigate to next step
-        router.push("/step-3");
+        // Prefetch step-3 for faster loading
+        router.prefetch("/step-3");
+        // Navigate to step-3 immediately - don't refresh user data here
+        // The user data will be updated naturally when step-3 loads
+        router.replace("/step-3");
       } else {
         setError(response.message || "Failed to save name. Please try again.");
+        setSaving(false);
+        setIsNavigatingToStep3(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       console.error("Error updating profile:", err);
-    } finally {
       setSaving(false);
+      setIsNavigatingToStep3(false);
     }
   };
 

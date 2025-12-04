@@ -144,6 +144,7 @@ class AuthController {
           user: {
             id: user.id,
             email: user.email,
+            name: user.name || null,
             createdAt: user.created_at
           },
           token

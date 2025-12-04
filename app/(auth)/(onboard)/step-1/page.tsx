@@ -1,7 +1,40 @@
+'use client'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
+import { useAuth } from "@/contexts/AuthContext";
+import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function StepOne() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Redirect to dashboard if user already has a name (completed onboarding)
+  useEffect(() => {
+    if (!isLoading && user?.name) {
+      setIsRedirecting(true);
+      // Prefetch dashboard for faster loading
+      router.prefetch('/dashboard');
+      // Small delay for smooth transition
+      const timer = setTimeout(() => {
+        router.replace('/dashboard');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLoading, router]);
+
+  // Show smooth loader while checking auth or redirecting
+  if (isLoading || isRedirecting) {
+    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+  }
+
+  // Don't render if user has name (will redirect)
+  if (user?.name) {
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
   return (
     <div
       className="h-screen w-full flex flex-col"   // <-- h-screen + flex

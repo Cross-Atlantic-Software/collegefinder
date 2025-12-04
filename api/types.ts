@@ -29,6 +29,7 @@ export interface VerifyOTPResponse {
   user: {
     id: number;
     email: string;
+    name: string | null;
     createdAt: string;
   };
   token: string;

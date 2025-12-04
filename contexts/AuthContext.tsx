@@ -4,10 +4,12 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { User, getCurrentUser } from '@/api';
 import { getAuthToken, setAuthToken, setUser, removeAuthToken, getUser as getStoredUser } from '@/lib/auth';
+import LogoutLoader from '@/components/shared/LogoutLoader';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isLoggingOut: boolean;
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
@@ -19,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
   // Initialize auth state on mount
@@ -58,9 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    removeAuthToken();
-    setUserState(null);
-    router.push('/login');
+    setIsLoggingOut(true);
+    // Small delay for smooth transition
+    setTimeout(() => {
+      removeAuthToken();
+      setUserState(null);
+      setIsLoggingOut(false);
+      router.replace('/login');
+    }, 300);
   };
 
   const refreshUser = async () => {
@@ -78,13 +86,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user,
     isLoading,
+    isLoggingOut,
     isAuthenticated: !!user,
     login,
     logout,
     refreshUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {isLoggingOut && <LogoutLoader />}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

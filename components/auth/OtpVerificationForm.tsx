@@ -88,13 +88,30 @@ export function OtpVerificationForm({
       if (response.success && response.data) {
         setSuccess(true);
         // Store token and user data
-        login(response.data.token, response.data.user);
+        // Convert null to undefined for name property to match User type
+        const user = {
+          ...response.data.user,
+          name: response.data.user.name ?? undefined
+        };
+        login(response.data.token, user);
         onVerified?.(code);
         
-        // Redirect to onboarding or dashboard
+        // Redirect based on whether user has completed onboarding
+        const userHasName = response.data.user?.name;
+        // Prefetch target route for faster loading
+        if (userHasName) {
+          router.prefetch("/dashboard");
+        } else {
+          router.prefetch("/step-1");
+        }
+        // Small delay for smooth transition, then redirect
         setTimeout(() => {
-          router.push("/step-1");
-        }, 1000);
+          if (userHasName) {
+            router.replace("/dashboard");
+          } else {
+            router.replace("/step-1");
+          }
+        }, 300);
       } else {
         setError(response.message || "Invalid OTP code. Please try again.");
         // Clear OTP on error

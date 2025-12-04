@@ -1,11 +1,48 @@
 'use client'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
 import { useAuth } from "@/contexts/AuthContext";
+import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function StepThree() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isLoading, refreshUser } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasLoadedUser, setHasLoadedUser] = useState(false);
   const userName = user?.name || "there";
+
+  // Refresh user data when component mounts to get the updated name
+  useEffect(() => {
+    if (!isLoading && !hasLoadedUser) {
+      refreshUser().then(() => {
+        setHasLoadedUser(true);
+      }).catch(err => {
+        console.error("Error refreshing user:", err);
+        setHasLoadedUser(true); // Continue even if refresh fails
+      });
+    }
+  }, [isLoading, hasLoadedUser, refreshUser]);
+
+  // Only redirect if user doesn't have a name after loading (shouldn't be here - they need to complete step-2 first)
+  useEffect(() => {
+    if (!isLoading && hasLoadedUser && !user?.name) {
+      // User doesn't have a name, redirect to step-2 to complete onboarding
+      setIsRedirecting(true);
+      router.replace('/step-2');
+    }
+  }, [user, isLoading, router, hasLoadedUser]);
+
+  // Show smooth loader while checking auth or loading user data
+  if (isLoading || !hasLoadedUser) {
+    return <OnboardingLoader message="Loading..." />;
+  }
+
+  // If user doesn't have a name after loading, show loader while redirecting to step-2
+  if (!user?.name) {
+    return <OnboardingLoader message="Redirecting to complete onboarding..." />;
+  }
 
   return (
     <div
