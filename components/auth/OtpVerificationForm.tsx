@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../shared";
-import { verifyOTP, resendOTP } from "@/lib/api";
+import { verifyOTP, resendOTP } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const OTP_LENGTH = 6;

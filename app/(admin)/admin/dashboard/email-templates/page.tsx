@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { getAllEmailTemplates, deleteEmailTemplate, EmailTemplate } from '@/lib/api';
+import { getAllEmailTemplates, deleteEmailTemplate, EmailTemplate } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import EmailTemplateModal from '@/components/admin/EmailTemplateModal';
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
-import { adminLogin } from '@/lib/api';
+import { adminLogin } from '@/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();

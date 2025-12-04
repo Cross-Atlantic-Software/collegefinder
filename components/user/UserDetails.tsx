@@ -8,8 +8,12 @@ import {
 } from "react-icons/pi";
 import { FaChartBar } from "react-icons/fa";
 import { Button } from "../shared";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserDetails() {
+  const { user } = useAuth();
+  const userName = user?.name || "there";
+
   return (
     // ⬇️ extra bottom padding so there is gradient space below the stat cards
     <section className="relative overflow-hidden rounded-t-md bg-darkGradient dark:bg-none dark:bg-slate-900/80 pt-10 pb-24 text-white">
@@ -31,7 +35,7 @@ export default function UserDetails() {
                 <p className="text-sm text-slate-50 dark:text-slate-300">
                   Good Afternoon,
                 </p>
-                <h2 className="text-2xl font-semibold">Dinesh!</h2>
+                <h2 className="text-2xl font-semibold">{userName}!</h2>
                 <p className="text-sm text-slate-50 dark:text-slate-300">
                   Let&apos;s make your college dream happen
                 </p>

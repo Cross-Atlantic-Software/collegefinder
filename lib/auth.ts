@@ -1,4 +1,4 @@
-import { User } from './api';
+import { User } from '@/api';
 
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';

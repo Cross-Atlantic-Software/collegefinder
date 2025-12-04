@@ -106,13 +106,17 @@ class AuthController {
       }
 
       // Get user
+      console.log('🔍 OTP Verification - Looking up user ID:', otpRecord.user_id);
       const user = await User.findById(otpRecord.user_id);
       if (!user) {
+        console.error('❌ User not found during OTP verification - ID:', otpRecord.user_id);
         return res.status(404).json({
           success: false,
           message: 'User not found'
         });
       }
+
+      console.log('✅ User found during OTP verification - ID:', user.id, 'Type:', typeof user.id, 'Email:', user.email);
 
       // Mark OTP as used
       await Otp.markAsUsed(otpRecord.id);
@@ -124,10 +128,14 @@ class AuthController {
       await User.updateLastLogin(user.id);
 
       // Generate JWT token
-      const token = generateToken({
+      console.log('🎫 Generating token for user - ID:', user.id, 'Type:', typeof user.id, 'Email:', user.email);
+      const tokenPayload = {
         userId: user.id,
         email: user.email
-      });
+      };
+      console.log('🎫 Token payload:', JSON.stringify(tokenPayload, null, 2));
+      const token = generateToken(tokenPayload);
+      console.log('✅ Token generated successfully');
 
       res.json({
         success: true,
@@ -202,6 +210,7 @@ class AuthController {
           user: {
             id: user.id,
             email: user.email,
+            name: user.name,
             createdAt: user.created_at,
             lastLogin: user.last_login
           }
@@ -212,6 +221,47 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: 'Failed to get user information'
+      });
+    }
+  }
+
+  /**
+   * Update user profile (name)
+   * PUT /api/auth/profile
+   */
+  static async updateProfile(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { name } = req.body;
+      const userId = req.user.id;
+
+      const updatedUser = await User.updateName(userId, name);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          user: {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            createdAt: updatedUser.created_at
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile'
       });
     }
   }

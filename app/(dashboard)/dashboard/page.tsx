@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar} from "@/components/dashboard";
 import { ShortlistExams } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
-import UserProfile from "@/app/(site)/(user)/user-profile/page";
 
 type SectionId =
   | "dashboard"
@@ -47,7 +46,9 @@ export default function DashboardPage() {
               {activeSection === "dashboard" && <MiddleContent />}
 
               {activeSection === "profile" && (
-                <UserProfile/>
+                <div className="w-full">
+                  <ProfileTabs />
+                </div>
               )}
 
               {activeSection === "exam-shortlist" && (

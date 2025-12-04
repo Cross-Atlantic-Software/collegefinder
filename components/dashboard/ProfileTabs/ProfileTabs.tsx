@@ -22,7 +22,7 @@ export default function ProfileTabs() {
   return (
     <div className="">
       {/* Tabs bar */}
-      <div className="mb-5 flex w-full overflow-hidden rounded-md bg-white/10 text-xs font-semibold text-slate-300 sm:text-sm">
+      <div className="mb-5 flex w-full overflow-hidden rounded-md bg-white/10 text-sm font-medium text-slate-300">
         {tabs.map((t) => {
           const isActive = activeTab === t.key;
           return (
@@ -30,8 +30,8 @@ export default function ProfileTabs() {
               key={t.key}
               type="button"
               onClick={() => setActiveTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-2 py-3 transition ${
-                isActive ? "bg-pink text-white shadow-sm" : "hover:bg-white/5"
+              className={`flex flex-1 items-center justify-center gap-2 py-3 text-center transition ${
+                isActive ? "bg-pink text-white" : "hover:bg-white/5"
               }`}
             >
               {t.icon}

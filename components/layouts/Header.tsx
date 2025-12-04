@@ -7,10 +7,13 @@ import {
     FiUser,
     FiMenu,
     FiX,
+    FiLogOut,
 } from "react-icons/fi";
 
 import { Button, Logo, Navigation, ThemeToggle } from "../shared";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 const mobileNavLinks = [
     { label: "Career & Exams", href: "/career" },
@@ -23,6 +26,16 @@ const mobileNavLinks = [
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const { isAuthenticated, logout, user } = useAuth();
+    const router = useRouter();
+
+    const handleLogout = () => {
+        logout();
+    };
+
+    const handleProfileClick = () => {
+        router.push('/dashboard');
+    };
 
     return (
         <header className="bg-white py-3 dark:bg-[#050816]">
@@ -57,17 +70,31 @@ export default function Header() {
 
                             <ThemeToggle />
 
-                            <button
-                                type="button"
-                                aria-label="Profile"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/80 transition hover:bg-gray-50 dark:border-gray-200 dark:hover:bg-gray-800"
-                            >
-                                <FiUser className="text-[18px] text-black dark:text-gray-100" />
-                            </button>
-
-                            <Button variant="LightGradient" size="sm" href="/login">
-                                Get Started
-                            </Button>
+                            {isAuthenticated ? (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        aria-label="Profile"
+                                        onClick={handleProfileClick}
+                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-6 py-3 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
+                                    >
+                                        <FiUser className="text-[18px]" />
+                                        {user?.name && <span>{user.name}</span>}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-label="Logout"
+                                        onClick={handleLogout}
+                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-6 py-3 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
+                                    >
+                                        <FiLogOut className="text-[18px]" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <Button variant="LightGradient" size="sm" href="/login">
+                                    Sign in
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -87,13 +114,27 @@ export default function Header() {
 
                             <ThemeToggle />
 
-                            <button
-                                type="button"
-                                aria-label="Profile"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/80 transition hover:bg-gray-50 dark:border-gray-200 dark:hover:bg-gray-800"
-                            >
-                                <FiUser className="text-[18px] text-black dark:text-gray-100" />
-                            </button>
+                            {isAuthenticated ? (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        aria-label="Profile"
+                                        onClick={handleProfileClick}
+                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-4 py-2 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
+                                    >
+                                        <FiUser className="text-[16px]" />
+                                        {user?.name && <span className="hidden sm:inline">{user.name}</span>}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-label="Logout"
+                                        onClick={handleLogout}
+                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-4 py-2 text-sm rounded-full font-medium inline-flex items-center justify-center"
+                                    >
+                                        <FiLogOut className="text-[16px]" />
+                                    </button>
+                                </div>
+                            ) : null}
 
                             {/* Hamburger */}
                             <button
@@ -125,15 +166,18 @@ export default function Header() {
                                 </Link>
                             ))}
 
-                            <div className="mt-3">
-                                <Button
-                                    variant="LightGradient"
-                                    size="sm"
-                                    className="w-full justify-center"
-                                >
-                                    Get Started
-                                </Button>
-                            </div>
+                            {!isAuthenticated && (
+                                <div className="mt-3">
+                                    <Button
+                                        variant="LightGradient"
+                                        size="sm"
+                                        className="w-full justify-center"
+                                        href="/login"
+                                    >
+                                        Sign in
+                                    </Button>
+                                </div>
+                            )}
                         </nav>
                     )}
                 </div>

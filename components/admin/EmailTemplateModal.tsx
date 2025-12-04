@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
-import { createEmailTemplate, updateEmailTemplate, EmailTemplate } from '@/lib/api';
+import { createEmailTemplate, updateEmailTemplate, EmailTemplate } from '@/api';
 
 interface EmailTemplateModalProps {
   template: EmailTemplate | null;

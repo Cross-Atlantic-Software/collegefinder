@@ -8,6 +8,9 @@
 #   Development (default):
 #     docker-compose up
 #
+#   With pgAdmin (optional database viewer):
+#     docker-compose --profile pgadmin up
+#
 #   Production:
 #     NODE_ENV=production docker-compose up
 #     Or add to .env: NODE_ENV=production
@@ -144,6 +147,36 @@ services:
     # Note: NODE_ENV from build args determines which dependencies are installed
     command: ${BACKEND_CMD:-npm run dev}
 
+  # -------------------------------------------------------------------------
+  # pgAdmin (PostgreSQL Management GUI) - OPTIONAL
+  # -------------------------------------------------------------------------
+  # This service is optional and only starts when using the 'pgadmin' profile
+  # Developers can use their preferred database viewer (DBeaver, TablePlus, etc.)
+  # 
+  # To start with pgAdmin:
+  #   docker-compose --profile pgadmin up
+  #
+  # To start without pgAdmin (default):
+  #   docker-compose up
+  #
+  # Access pgAdmin at: http://localhost:5050
+  # Connect to database: Host: postgres, Port: 5432, User: postgres, Password: postgres
+  pgadmin:
+    profiles:
+      - pgadmin  # Only start when explicitly requested
+    image: dpage/pgadmin4
+    container_name: ${PGADMIN_CONTAINER:-pgadmin}
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:- process.env.PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:- process.env.PGADMIN_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - collegefinder_network
 # -----------------------------------------------------------------------------
 # Volumes
 # -----------------------------------------------------------------------------
@@ -162,3 +195,6 @@ volumes:
 networks:
   collegefinder_network:
     driver: bridge  # Standard bridge network for container communication
+
+     
+

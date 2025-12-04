@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import UsersTable from '@/components/admin/UsersTable';
-import { getAllUsers, SiteUser } from '@/lib/api';
+import { getAllUsers, SiteUser } from '@/api';
 import { FiSearch } from 'react-icons/fi';
 
 export default function UsersPage() {

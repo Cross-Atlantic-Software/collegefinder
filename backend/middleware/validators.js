@@ -7,7 +7,6 @@ const validateSendOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
 ];
 
 /**
@@ -16,8 +15,7 @@ const validateSendOTP = [
 const validateVerifyOTP = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('code')
     .isLength({ min: 6, max: 6 })
     .withMessage('OTP code must be 6 digits')
@@ -32,7 +30,18 @@ const validateResendOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
+];
+
+/**
+ * Validation rules for updating user profile
+ */
+const validateUpdateProfile = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters')
 ];
 
 /**
@@ -41,8 +50,7 @@ const validateResendOTP = [
 const validateAdminLogin = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -56,8 +64,7 @@ const validateAdminLogin = [
 const validateCreateAdmin = [
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -125,6 +132,7 @@ module.exports = {
   validateSendOTP,
   validateVerifyOTP,
   validateResendOTP,
+  validateUpdateProfile,
   validateAdminLogin,
   validateCreateAdmin,
   validateUpdateAdmin,

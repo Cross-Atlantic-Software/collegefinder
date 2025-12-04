@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, getCurrentUser } from '@/lib/api';
+import { User, getCurrentUser } from '@/api';
 import { getAuthToken, setAuthToken, setUser, removeAuthToken, getUser as getStoredUser } from '@/lib/auth';
 
 interface AuthContextType {
@@ -29,21 +29,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (token && storedUser) {
         setUserState(storedUser);
-        // Optionally verify token is still valid
+        
+        // Verify token is still valid in the background (silently update user data)
+        // Never automatically log out - only logout button can log out
         try {
           const response = await getCurrentUser();
           if (response.success && response.data) {
+            // Update with fresh data from server
             setUserState(response.data.user);
             setUser(response.data.user);
-          } else {
-            // Token invalid, clear auth
-            removeAuthToken();
-            setUserState(null);
           }
+          // If API call fails, keep the stored user - don't log out
         } catch (error) {
           console.error('Error verifying token:', error);
-          removeAuthToken();
-          setUserState(null);
+          // Keep stored user even if API call fails - never auto-logout
         }
       }
       setIsLoading(false);

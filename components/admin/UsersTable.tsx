@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SiteUser } from '@/lib/api';
+import { SiteUser } from '@/api';
 import { FiChevronUp, FiChevronDown } from 'react-icons/fi';
 
 interface UsersTableProps {
