@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { type IconType } from "react-icons";
 
 import { BiCheck } from "react-icons/bi";
 import { LuLock } from "react-icons/lu";
 import { CiCircleInfo } from "react-icons/ci";
 import { IoLocationSharp } from "react-icons/io5";
-import { FaUser, FaGraduationCap, FaBullseye } from "react-icons/fa6";
+import { FaUser } from "react-icons/fa6";
 
 import { Button } from "../../shared";
 
@@ -19,40 +18,39 @@ const genderOptions = [
 ];
 
 const inputBase =
-  "w-full rounded-xl border px-4 py-3 text-sm transition focus:outline-none";
+  "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
 
 export default function BasicInfoForm() {
   const [selected, setSelected] = useState<string>("Male");
 
   return (
-    <div className="space-y-6 border border-[#ffd6f1] bg-white/95 p-6 text-sm text-slate-600 shadow-[0_20px_60px_-25px_rgba(203,67,145,0.35)] backdrop-blur sm:p-8">
-
-      <div className="space-y-5 rounded-3xl border border-[#ffe1f6] bg-white/70 p-6 shadow-inner">
-        <h2 className="text-base font-semibold text-[#d50076] sm:text-lg">
+    <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
+      <div className="space-y-5 rounded-md bg-white/5 p-6">
+        <h2 className="text-base font-semibold text-pink sm:text-lg">
           Basic Information
         </h2>
 
         {/* Name */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-600">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
               First Name <span className="text-pink">*</span>
             </label>
             <input
               type="text"
               placeholder="First name"
-              className={`${inputBase} border-[#ffc9eb] bg-[#fff2fb] text-slate-700 placeholder:text-pink/50 focus:border-pink focus:bg-white focus:ring-2 focus:ring-pink/20`}
+              className={inputBase}
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-600">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
               Last Name
             </label>
             <input
               type="text"
               placeholder="Last name"
-              className={`${inputBase} border-[#ffc9eb] bg-[#fff2fb] text-slate-700 placeholder:text-pink/50 focus:border-pink focus:bg-white focus:ring-2 focus:ring-pink/20`}
+              className={inputBase}
             />
           </div>
         </div>
@@ -60,25 +58,25 @@ export default function BasicInfoForm() {
         {/* DOB & Location */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
               Date of Birth
               <LuLock className="h-4 w-4 text-slate-400" />
             </label>
             <input
               type="date"
               defaultValue="2006-05-15"
-              className={`${inputBase} border-[#ffc9eb] bg-[#fff2fb] text-slate-700 focus:border-pink focus:bg-white focus:ring-2 focus:ring-pink/20`}
+              className={inputBase}
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
               Location <IoLocationSharp className="h-4 w-4 text-pink" />
             </label>
             <input
               type="text"
               placeholder="City, State"
-              className={`${inputBase} border-[#ffc9eb] bg-[#fff2fb] text-slate-700 placeholder:text-pink/50 focus:border-pink focus:bg-white focus:ring-2 focus:ring-pink/20`}
+              className={inputBase}
             />
           </div>
         </div>
@@ -86,8 +84,8 @@ export default function BasicInfoForm() {
         {/* Email */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-slate-600">Email</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#ffe3ea] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#d91a46]">
+            <p className="text-sm font-medium text-slate-300">Email</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
               <CiCircleInfo className="text-xs" />
               Unverified
             </span>
@@ -97,11 +95,11 @@ export default function BasicInfoForm() {
               type="text"
               placeholder="user@gmail.com"
               disabled
-              className={`${inputBase} flex-1 cursor-not-allowed border border-[#ffc9eb] bg-[#fff2fb] text-slate-500 placeholder:text-pink/50`}
+              className={`${inputBase} flex-1 cursor-not-allowed opacity-50`}
             />
             <button
               type="button"
-              className="rounded-xl bg-[#ff2d20] px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow transition hover:bg-[#ff4639]"
+              className="rounded-md bg-pink-600 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow transition hover:bg-pink-700"
             >
               Verify Now
             </button>
@@ -111,8 +109,8 @@ export default function BasicInfoForm() {
         {/* Phone */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-slate-600">Phone</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#d3f8df] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1d9a4a]">
+            <p className="text-sm font-medium text-slate-300">Phone</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
               <BiCheck className="text-xs" />
               Verified
             </span>
@@ -122,7 +120,7 @@ export default function BasicInfoForm() {
               type="text"
               placeholder="(+91) 888 88 88888"
               disabled
-              className={`${inputBase} cursor-not-allowed border border-[#c8f1d9] bg-[#f2fff6] pr-14 text-emerald-600`}
+              className={`${inputBase} cursor-not-allowed pr-14 opacity-50`}
             />
             <span className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-emerald-500 text-white shadow">
               <BiCheck className="text-lg" />
@@ -132,7 +130,7 @@ export default function BasicInfoForm() {
 
         {/* Gender */}
         <div className="space-y-3">
-          <p className="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <p className="flex items-center gap-2 text-sm font-medium text-slate-300">
             Gender <FaUser className="text-pink" />
           </p>
           <div className="grid gap-3 md:grid-cols-3">
@@ -144,10 +142,10 @@ export default function BasicInfoForm() {
                   key={gender.label}
                   type="button"
                   onClick={() => setSelected(gender.label)}
-                  className={`flex w-full items-center gap-3 rounded-full border px-4 py-3 text-left transition ${
+                  className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition ${
                     isActive
-                      ? "border-transparent bg-gradient-to-r from-[#a616ff] to-[#ff0f7b] text-white shadow-[0_15px_35px_-20px_rgba(162,22,255,0.75)]"
-                      : "border-[#ffd6f1] bg-white text-pink hover:border-pink hover:text-pink"
+                      ? "border-transparent bg-pink-600 text-white shadow"
+                      : "border-white/10 bg-white/5 text-slate-200 hover:border-pink hover:bg-white/10"
                   }`}
                 >
                   <Image
@@ -170,7 +168,7 @@ export default function BasicInfoForm() {
         <Button
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full shadow-[0_18px_40px_-20px_rgba(162,22,255,0.8)]"
+          className="w-full flex-1 rounded-full"
         >
           Update Details
         </Button>
@@ -178,7 +176,7 @@ export default function BasicInfoForm() {
         <Button
           variant="LightGradient"
           size="md"
-          className="w-full flex-1 rounded-full text-pink shadow-inner shadow-white/40"
+          className="w-full flex-1 rounded-full text-pink"
         >
           Skip for Now
         </Button>

@@ -69,14 +69,14 @@ export default function CareerGoalsTab() {
     };
 
     return (
-        <div className="space-y-6 border border-[#ffd6f1] bg-white/95 p-6 text-sm text-slate-600 shadow-[0_20px_60px_-25px_rgba(203,67,145,0.35)] backdrop-blur sm:p-8">
-            <div className="space-y-5 rounded-3xl border border-[#ffe1f6] bg-white/70 p-6 shadow-inner">
-                <h2 className="text-base font-semibold text-[#d50076] sm:text-lg">Career Goals</h2>
-                <p className="text-sm text-slate-600">Tell us what excites you! This helps us find the perfect matches.</p>
+        <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
+            <div className="space-y-5 rounded-md bg-white/5 p-6">
+                <h2 className="text-base font-semibold text-pink sm:text-lg">Career Goals</h2>
+                <p className="text-sm text-slate-300">Tell us what excites you! This helps us find the perfect matches.</p>
 
                 {/* What excites you */}
                 <div className="mt-4 space-y-3">
-                    <h3 className="text-sm font-semibold sm:text-lg text-slate-600">What excites you?</h3>
+                    <h3 className="text-sm font-semibold sm:text-lg text-slate-300">What excites you?</h3>
                     <div className="grid gap-4 sm:grid-cols-3">
                         {interestOptions.map((opt) => {
                             const active = selectedInterests.includes(opt.id);
@@ -89,8 +89,8 @@ export default function CareerGoalsTab() {
                                         "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
                                         "border group",
                                         active
-                                            ? "bg-pink text-pink border-pink"
-                                            : "bg-white/5 border-white/20 hover:bg-pink",
+                                            ? "bg-pink text-white border-pink"
+                                            : "bg-white/5 border-white/10 hover:bg-white/10",
                                     ].join(" ")}
                                 >
                                     <Image
@@ -103,7 +103,7 @@ export default function CareerGoalsTab() {
                                     />
                                     <span
                                         className={`text-md font-semibold transition duration-500 ${
-                                            active ? "text-white" : "text-slate-600 group-hover:text-white"
+                                            active ? "text-white" : "text-slate-200 group-hover:text-white"
                                         }`}
                                     >
                                         {opt.label}
@@ -116,7 +116,7 @@ export default function CareerGoalsTab() {
 
                 {/* Dream Careers */}
                 <div className="mt-8 space-y-3">
-                    <h3 className="text-sm font-semibold sm:text-lg text-slate-600">Dream Careers</h3>
+                    <h3 className="text-sm font-semibold sm:text-lg text-slate-300">Dream Careers</h3>
 
                     {/* Chips */}
                     <div className="flex flex-wrap gap-2">
@@ -124,7 +124,7 @@ export default function CareerGoalsTab() {
                             <button
                                 key={career}
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#7B2FF7] via-[#C32DE0] to-[#FF2D92] px-4 py-1.5 text-xs font-medium shadow-md"
+                                className="inline-flex items-center gap-2 rounded-full bg-darkGradient px-4 py-1.5 text-xs font-medium text-white shadow-md hover:opacity-90"
                                 onClick={() => removeCareer(career)}
                             >
                                 <span>{career}</span>
@@ -135,7 +135,7 @@ export default function CareerGoalsTab() {
 
                     {/* Input */}
                     <div className="mt-2">
-                        <label className="mb-1 block text-sm font-medium text-slate-600">Type to add more careers</label>
+                        <label className="mb-1 block text-sm font-medium text-slate-300">Type to add more careers</label>
                         <div className="">
                             <input
                                 type="text"
@@ -143,7 +143,7 @@ export default function CareerGoalsTab() {
                                 onChange={(e) => setCareerInput(e.target.value)}
                                 onKeyDown={handleCareerKeyDown}
                                 placeholder="e.g. Product Manager"
-                                className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm text-slate-600 outline-none placeholder:text-pink/50 focus:outline-none focus:border-pink transition duration-500"
+                                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200 outline-none placeholder:text-slate-400 focus:outline-none focus:border-pink focus:bg-white/5 transition duration-500"
                             />
                         </div>
                     </div>
@@ -151,7 +151,7 @@ export default function CareerGoalsTab() {
 
                 {/* Your Vibe */}
                 <div className="mt-8 space-y-3">
-                    <h3 className="text-sm font-semibold sm:text-lg text-slate-600">Your Vibe</h3>
+                    <h3 className="text-sm font-semibold sm:text-lg text-slate-300">Your Vibe</h3>
                     <div className="grid gap-3 sm:grid-cols-2">
                         {vibeOptions.map((vibe) => {
                             const active = selectedVibes.includes(vibe);
@@ -164,11 +164,11 @@ export default function CareerGoalsTab() {
                                         "flex flex-col items-center justify-center rounded-md p-4 text-center transition duration-500",
                                         "border group",
                                         active
-                                            ? "bg-pink text-pink border-pink"
-                                            : "bg-white/5 border-white/20 hover:bg-pink",
+                                            ? "bg-pink text-white border-pink"
+                                            : "bg-white/5 border-white/10 hover:bg-white/10",
                                     ].join(" ")}
                                 >
-                                    <span className={`text-md font-semibold transition duration-500 ${active ? "text-white" : "text-slate-600 group-hover:text-white"}`}>
+                                    <span className={`text-md font-semibold transition duration-500 ${active ? "text-white" : "text-slate-200 group-hover:text-white"}`}>
                                         {vibe}
                                     </span>
                                 </button>

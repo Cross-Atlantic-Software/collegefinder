@@ -11,7 +11,6 @@ import {
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from 'next/navigation';
 
 type SectionId =
   | "dashboard"
@@ -78,7 +77,6 @@ export default function Sidebar({
   onSectionChange,
 }: SidebarProps) {
   const { logout, user } = useAuth();
-  const router = useRouter();
   const userName = user?.name || "User";
 
   const handleLogout = () => {
@@ -161,13 +159,6 @@ export default function Sidebar({
               key={item.id}
               type="button"
               onClick={() => {
-                    // If clicking the Profile item, navigate to the dedicated /profile route
-                    if (item.id === 'profile') {
-                      onToggle(); // close drawer on mobile
-                      router.push('/profile');
-                      return;
-                    }
-
                     onSectionChange(item.id);
                     onToggle(); // closes drawer on mobile
                   }}
