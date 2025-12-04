@@ -12,13 +12,30 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+
+// Body parsing middleware - but skip for multipart/form-data (handled by multer)
+app.use((req, res, next) => {
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    return next(); // Skip JSON parsing for multipart/form-data
+  }
+  express.json()(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging middleware (for debugging)
+app.use((req, res, next) => {
+  if (req.path.includes('upload-image') || req.path.includes('career-goals')) {
+    console.log(`🔍 ${req.method} ${req.path}`);
+    console.log('   Content-Type:', req.headers['content-type']);
+  }
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/admin/email-templates', require('./routes/emailTemplateRoutes'));
+app.use('/api/career-goals', require('./routes/careerGoalsRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

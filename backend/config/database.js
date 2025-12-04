@@ -13,6 +13,13 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+// Configure JSONB type handling
+const types = require('pg').types;
+// JSONB type code is 3802
+types.setTypeParser(3802, (val) => {
+  return val; // Return as-is, pg will handle JSONB conversion
+});
+
 // Test connection
 pool.on('connect', () => {
   console.log('✅ Connected to PostgreSQL database');
@@ -34,7 +41,10 @@ const init = async () => {
       'users.sql',            // Base users table
       'otps.sql',             // OTP table (depends on users)
       'admin_users.sql',      // Admin users table (self-referencing)
-      'email_templates.sql'   // Email templates table
+      'email_templates.sql',  // Email templates table
+      'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
+      'user_academics.sql',   // User academics table (depends on users)
+      'user_career_goals.sql' // User career goals table (depends on users)
     ];
 
     // Execute each schema file in order

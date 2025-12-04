@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import {
   PiGraduationCapFill,
   PiTargetBold,
@@ -9,10 +10,37 @@ import {
 import { FaChartBar } from "react-icons/fa";
 import { Button } from "../shared";
 import { useAuth } from "@/contexts/AuthContext";
+import { getProfileCompletion } from "@/api";
 
 export default function UserDetails() {
   const { user } = useAuth();
   const userName = user?.name || "there";
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCompletion = async () => {
+      try {
+        const response = await getProfileCompletion();
+        if (response.success && response.data) {
+          setCompletionPercentage(response.data.percentage);
+        }
+      } catch (err) {
+        console.error("Error fetching profile completion:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompletion();
+  }, []);
+
+  const getCompletionMessage = () => {
+    if (completionPercentage >= 90) return "Excellent! Your profile is complete";
+    if (completionPercentage >= 70) return "Almost there! Complete your profile";
+    if (completionPercentage >= 50) return "Halfway there! Keep going";
+    return "Get started! Complete your profile";
+  };
 
   return (
     // ⬇️ extra bottom padding so there is gradient space below the stat cards
@@ -48,16 +76,21 @@ export default function UserDetails() {
             <div className="rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-slate-50 shadow-xl backdrop-blur-xl">
               <div className="mb-1 flex items-center justify-between text-sm font-semibold">
                 <span className="text-pink">Profile Strength</span>
-                <span className="text-pink">75%</span>
+                <span className="text-pink">
+                  {loading ? "..." : `${completionPercentage}%`}
+                </span>
               </div>
 
               {/* Progress bar */}
               <div className="mt-2 h-3 w-full rounded-full bg-white/10">
-                <div className="h-3 w-3/4 rounded-full bg-gradient-to-r from-pink-500 to-rose-500" />
+                <div 
+                  className="h-3 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500" 
+                  style={{ width: `${completionPercentage}%` }}
+                />
               </div>
 
               <p className="mt-3 text-sm text-slate-800 dark:text-slate-300">
-                Almost there! Complete your profile
+                {getCompletionMessage()}
               </p>
 
               <div className="mt-5">

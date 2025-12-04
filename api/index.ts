@@ -12,3 +12,7 @@ export * from './auth';
 // Export admin APIs
 export * from './admin';
 
+// Export career goals API (public) - use explicit exports to avoid conflicts
+export { getAllCareerGoals as getAllCareerGoalsPublic } from './career-goals';
+export type { CareerGoal as CareerGoalPublic } from './career-goals';
+
