@@ -86,7 +86,8 @@ class User {
            date_of_birth, 
            gender, 
            phone_number, 
-           location, 
+           state, 
+           district,
            email_verified, 
            auth_provider, 
            created_at, 
@@ -114,7 +115,8 @@ class User {
           date_of_birth: null,
           gender: null,
           phone_number: null,
-          location: null,
+          state: null,
+          district: null,
           email_verified: false,
           auth_provider: 'email'
         }));

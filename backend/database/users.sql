@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   date_of_birth DATE,
   gender VARCHAR(50),
   phone_number VARCHAR(25),
-  location VARCHAR(255),
+  state VARCHAR(100),
+  district VARCHAR(100),
   email_verified BOOLEAN DEFAULT FALSE,
   auth_provider VARCHAR(50) DEFAULT 'email',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -28,7 +29,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(25);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR(100);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import { BiMenu } from "react-icons/bi";
 import {
   FaHome,
@@ -11,6 +12,7 @@ import {
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import { getProfileCompletion } from "@/api";
 
 type SectionId =
   | "dashboard"
@@ -26,47 +28,47 @@ type SidebarProps = {
   onSectionChange: (id: SectionId) => void;
 };
 
-const navItems: {
+const baseNavItems: {
   id: SectionId;
   label: string;
   sub: string;
   icon: React.ComponentType<{ className?: string }>;
-  value?: string;
+  getValue?: (completion: number) => string;
 }[] = [
   {
     id: "dashboard",
     label: "Dashboard",
     sub: "Your command center",
     icon: FaHome,
-    value: "Overview",
+    getValue: () => "Overview",
   },
   {
     id: "profile",
     label: "My Profile",
     sub: "Complete",
     icon: FaUserCircle,
-    value: "85%",
+    getValue: (completion) => `${completion}%`,
   },
   {
     id: "exam-shortlist",
     label: "Exam Shortlist",
     sub: "Exams selected",
     icon: FaClipboardList,
-    value: "8",
+    getValue: () => "8",
   },
   {
     id: "applications",
     label: "Applications",
     sub: "in progress",
     icon: FaFileAlt,
-    value: "3",
+    getValue: () => "3",
   },
   {
     id: "exam-prep",
     label: "Exam Prep",
     sub: "Study time",
     icon: FaBookOpen,
-    value: "156h",
+    getValue: () => "156h",
   },
 ];
 
@@ -78,6 +80,28 @@ export default function Sidebar({
 }: SidebarProps) {
   const { logout, user } = useAuth();
   const userName = user?.name || "User";
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+
+  useEffect(() => {
+    const fetchCompletion = async () => {
+      try {
+        const response = await getProfileCompletion();
+        if (response.success && response.data) {
+          setCompletionPercentage(response.data.percentage);
+        }
+      } catch (err) {
+        console.error("Error fetching profile completion:", err);
+      }
+    };
+
+    fetchCompletion();
+  }, []);
+
+  // Create navItems with dynamic values
+  const navItems = baseNavItems.map(item => ({
+    ...item,
+    value: item.getValue ? item.getValue(completionPercentage) : undefined,
+  }));
 
   const handleLogout = () => {
     logout();

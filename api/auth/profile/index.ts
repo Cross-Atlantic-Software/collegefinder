@@ -32,3 +32,168 @@ export async function updateProfile(
   });
 }
 
+/**
+ * Get user basic info
+ */
+export async function getBasicInfo(): Promise<ApiResponse<{
+  id: number;
+  email: string;
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  phone_number: string | null;
+  state: string | null;
+  district: string | null;
+  email_verified: boolean;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Update user basic info
+ */
+export async function updateBasicInfo(data: {
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  gender?: string;
+  state?: string;
+  district?: string;
+  phone_number?: string;
+}): Promise<ApiResponse<{
+  id: number;
+  email: string;
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  state: string | null;
+  district: string | null;
+  phone_number: string | null;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get user academics
+ */
+export async function getAcademics(): Promise<ApiResponse<{
+  // Matric (10th) fields
+  matric_board: string | null;
+  matric_school_name: string | null;
+  matric_passing_year: number | null;
+  matric_roll_number: string | null;
+  matric_total_marks: number | null;
+  matric_obtained_marks: number | null;
+  matric_percentage: number | null;
+  // Post-Matric (12th) fields
+  postmatric_board: string | null;
+  postmatric_school_name: string | null;
+  postmatric_passing_year: number | null;
+  postmatric_roll_number: string | null;
+  postmatric_total_marks: number | null;
+  postmatric_obtained_marks: number | null;
+  postmatric_percentage: number | null;
+  stream: string | null;
+  subjects: Array<{ name: string; percent: number }>;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Update user academics
+ */
+export async function updateAcademics(data: {
+  // Matric (10th) fields
+  matric_board?: string;
+  matric_school_name?: string;
+  matric_passing_year?: number;
+  matric_roll_number?: string;
+  matric_total_marks?: number;
+  matric_obtained_marks?: number;
+  matric_percentage?: number;
+  // Post-Matric (12th) fields
+  postmatric_board?: string;
+  postmatric_school_name?: string;
+  postmatric_passing_year?: number;
+  postmatric_roll_number?: string;
+  postmatric_total_marks?: number;
+  postmatric_obtained_marks?: number;
+  postmatric_percentage?: number;
+  stream?: string;
+  subjects?: Array<{ name: string; percent: number }>;
+}): Promise<ApiResponse<{
+  // Matric (10th) fields
+  matric_board: string | null;
+  matric_school_name: string | null;
+  matric_passing_year: number | null;
+  matric_roll_number: string | null;
+  matric_total_marks: number | null;
+  matric_obtained_marks: number | null;
+  matric_percentage: number | null;
+  // Post-Matric (12th) fields
+  postmatric_board: string | null;
+  postmatric_school_name: string | null;
+  postmatric_passing_year: number | null;
+  postmatric_roll_number: string | null;
+  postmatric_total_marks: number | null;
+  postmatric_obtained_marks: number | null;
+  postmatric_percentage: number | null;
+  stream: string | null;
+  subjects: Array<{ name: string; percent: number }>;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get user career goals
+ */
+export async function getCareerGoals(): Promise<ApiResponse<{
+  interests: string[];
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_CAREER_GOALS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Update user career goals
+ */
+export async function updateCareerGoals(data: {
+  interests?: string[];
+}): Promise<ApiResponse<{
+  interests: string[];
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_CAREER_GOALS, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get profile completion percentage
+ */
+export async function getProfileCompletion(): Promise<ApiResponse<{
+  percentage: number;
+  completedFields: number;
+  totalFields: number;
+  missingFields: Array<{ section: string; field: string }>;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_COMPLETION, {
+    method: 'GET',
+  });
+}
+

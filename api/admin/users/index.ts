@@ -19,3 +19,71 @@ export async function getAllUsers(): Promise<ApiResponse<GetAllUsersResponse>> {
   });
 }
 
+/**
+ * Get all users with basic info (Admin only)
+ */
+export async function getAllUsersBasicInfo(): Promise<ApiResponse<GetAllUsersResponse>> {
+  return apiRequest<GetAllUsersResponse>(API_ENDPOINTS.ADMIN.USERS_BASIC_INFO, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Get all users with academics (Admin only)
+ */
+export async function getAllUsersAcademics(): Promise<ApiResponse<{
+  users: Array<{
+    user: {
+      id: number;
+      email: string;
+      name: string | null;
+    };
+    academics: {
+      // Matric (10th) fields
+      matric_board: string | null;
+      matric_school_name: string | null;
+      matric_passing_year: number | null;
+      matric_roll_number: string | null;
+      matric_total_marks: number | null;
+      matric_obtained_marks: number | null;
+      matric_percentage: number | null;
+      // Post-Matric (12th) fields
+      postmatric_board: string | null;
+      postmatric_school_name: string | null;
+      postmatric_passing_year: number | null;
+      postmatric_roll_number: string | null;
+      postmatric_total_marks: number | null;
+      postmatric_obtained_marks: number | null;
+      postmatric_percentage: number | null;
+      stream: string | null;
+      subjects: Array<{ name: string; percent: number }>;
+    } | null;
+  }>;
+  total: number;
+}>> {
+  return apiRequest(API_ENDPOINTS.ADMIN.USERS_ACADEMICS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Get all users with career goals (Admin only)
+ */
+export async function getAllUsersCareerGoals(): Promise<ApiResponse<{
+  users: Array<{
+    user: {
+      id: number;
+      email: string;
+      name: string | null;
+    };
+    careerGoals: {
+      interests: string[];
+    } | null;
+  }>;
+  total: number;
+}>> {
+  return apiRequest(API_ENDPOINTS.ADMIN.USERS_CAREER_GOALS, {
+    method: 'GET',
+  });
+}
+

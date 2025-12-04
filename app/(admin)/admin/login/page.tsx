@@ -24,11 +24,16 @@ export default function AdminLoginPage() {
       const response = await adminLogin(email, password);
       
       if (response.success && response.data) {
-        // Store admin token and info
+        // Store admin token and info in localStorage (for client-side)
         localStorage.setItem('admin_token', response.data.token);
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_user', JSON.stringify(response.data.admin));
-        router.push('/admin/dashboard/users');
+        
+        // Also set cookie for server-side access
+        document.cookie = `admin_token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        
+        router.push('/admin/users/basic-info');
       } else {
         setError(response.message || 'Invalid email or password');
       }

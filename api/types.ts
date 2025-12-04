@@ -41,11 +41,18 @@ export interface VerifyOTPResponse {
 export interface SiteUser {
   id: number;
   email: string;
-  name?: string;
+  name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  phone_number?: string | null;
+  state?: string | null;
+  district?: string | null;
   email_verified: boolean;
   auth_provider: string;
   created_at: string;
-  last_login?: string;
+  last_login?: string | null;
   is_active: boolean;
 }
 
