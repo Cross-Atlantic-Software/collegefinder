@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminSidebar from '@/components/admin/layout/AdminSidebar';
+import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllEmailTemplates, deleteEmailTemplate, EmailTemplate } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
-import EmailTemplateModal from '@/components/admin/EmailTemplateModal';
+import EmailTemplateModal from '@/components/admin/modals/EmailTemplateModal';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function EmailTemplatesPage() {

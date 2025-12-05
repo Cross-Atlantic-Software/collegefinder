@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CareerGoalsTable from './CareerGoalsTable';
-import CareerGoalsTaxonomyModal from './CareerGoalsTaxonomyModal';
+import CareerGoalsTaxonomyModal from '../modals/CareerGoalsTaxonomyModal';
 import { FiSearch, FiSettings } from 'react-icons/fi';
 
 interface UserCareerGoals {

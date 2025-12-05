@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Eye, Search } from 'lucide-react';
 import { SiteUser } from '@/api';
-import UserDetailsModal from './UserDetailsModal';
+import UserDetailsModal from '../modals/UserDetailsModal';
 
 interface SimplifiedUsersTableProps {
   initialUsers: SiteUser[];

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
-import SimplifiedUsersTable from '@/components/admin/SimplifiedUsersTable';
+import AdminSidebar from '@/components/admin/layout/AdminSidebar';
+import AdminHeader from '@/components/admin/layout/AdminHeader';
+import SimplifiedUsersTable from '@/components/admin/tables/SimplifiedUsersTable';
 import { getAllUsersBasicInfo } from '@/lib/server/adminData';
 
 export default async function SiteUsersPage() {

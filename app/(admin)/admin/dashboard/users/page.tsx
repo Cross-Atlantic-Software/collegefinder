@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
-import UsersTable from '@/components/admin/UsersTable';
+import AdminSidebar from '@/components/admin/layout/AdminSidebar';
+import AdminHeader from '@/components/admin/layout/AdminHeader';
+import UsersTable from '@/components/admin/tables/UsersTable';
 import { getAllUsers, SiteUser } from '@/api';
 import { FiSearch } from 'react-icons/fi';
 
