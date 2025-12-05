@@ -36,12 +36,12 @@ const navGroups: NavGroup[] = [
     children: [
       {
         label: 'Site Users',
-        href: '/admin',
+        href: '/admin/site-users',
         icon: <FiUser className="h-4 w-4" />,
       },
       {
         label: 'Admin Users',
-        href: '/admin/manage',
+        href: '/admin/admin-users',
         icon: <FiShield className="h-4 w-4" />,
       },
     ],

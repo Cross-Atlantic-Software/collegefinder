@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
         document.cookie = `admin_token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         
-        router.push('/admin/users/basic-info');
+        router.push('/admin/site-users');
       } else {
         setError(response.message || 'Invalid email or password');
       }
