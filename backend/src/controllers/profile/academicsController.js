@@ -1,4 +1,4 @@
-const UserAcademics = require('../models/UserAcademics');
+const UserAcademics = require('../../models/user/UserAcademics');
 const { validationResult } = require('express-validator');
 
 class AcademicsController {

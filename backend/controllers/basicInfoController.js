@@ -136,7 +136,7 @@ class BasicInfoController {
       }
 
       values.push(userId);
-      const db = require('../../config/database');
+      const db = require('../config/database');
       const query = `
         UPDATE users 
         SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP

@@ -7,7 +7,7 @@
 
 require('dotenv').config();
 const db = require('../config/database');
-const Exam = require('../src/models/Exam');
+const Exam = require('../src/models/taxonomy/Exam');
 
 const examsData = [
   { name: "JEE Main", code: "JEE_MAIN", description: "Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges" },

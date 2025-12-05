@@ -24,11 +24,11 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Routes
-app.use('/api/auth', require('./src/routes/authRoutes'));
-app.use('/api/admin', require('./src/routes/adminRoutes'));
-app.use('/api/admin/email-templates', require('./src/routes/emailTemplateRoutes'));
-app.use('/api/career-goals', require('./src/routes/careerGoalsRoutes'));
-app.use('/api/exams', require('./src/routes/examsRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin/email-templates', require('./routes/emailTemplateRoutes'));
+app.use('/api/career-goals', require('./routes/careerGoalsRoutes'));
+app.use('/api/exams', require('./routes/examsRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

@@ -1,6 +1,6 @@
-const User = require('../models/User');
-const Admin = require('../models/Admin');
-const { generateToken } = require('../utils/jwt');
+const User = require('../../models/user/User');
+const Admin = require('../../models/admin/Admin');
+const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
 
 class AdminController {

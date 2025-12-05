@@ -1,6 +1,6 @@
-const CareerGoal = require('../models/CareerGoal');
-const UserCareerGoals = require('../models/UserCareerGoals');
-const { uploadToS3, deleteFromS3 } = require('../../utils/s3Upload');
+const CareerGoal = require('../../models/taxonomy/CareerGoal');
+const UserCareerGoals = require('../../models/user/UserCareerGoals');
+const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class CareerGoalsTaxonomyController {
   /**

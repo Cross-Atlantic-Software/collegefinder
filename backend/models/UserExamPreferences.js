@@ -1,8 +1,8 @@
-const db = require('../../config/database');
+const db = require('../config/database');
 
-class UserCareerGoals {
+class UserExamPreferences {
   /**
-   * Find career goals by user ID
+   * Find exam preferences by user ID
    */
   static async findByUserId(userId) {
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
@@ -11,14 +11,14 @@ class UserCareerGoals {
     }
 
     const result = await db.query(
-      'SELECT * FROM user_career_goals WHERE user_id = $1',
+      'SELECT * FROM user_exam_preferences WHERE user_id = $1',
       [userIdNum]
     );
     return result.rows[0] || null;
   }
 
   /**
-   * Create or update user career goals
+   * Create or update user exam preferences
    */
   static async upsert(userId, data) {
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
@@ -26,29 +26,36 @@ class UserCareerGoals {
       throw new Error('Invalid user ID');
     }
 
-    const { interests } = data;
+    const { target_exams, previous_attempts } = data;
 
     // Ensure arrays are properly formatted for PostgreSQL INTEGER[]
-    // Convert string IDs to integers if needed
-    let interestsArray = [];
-    if (Array.isArray(interests)) {
-      interestsArray = interests.map(id => {
+    let targetExamsArray = [];
+    if (Array.isArray(target_exams)) {
+      targetExamsArray = target_exams.map(id => {
         const numId = typeof id === 'string' ? parseInt(id, 10) : id;
         return isNaN(numId) ? null : numId;
       }).filter(id => id !== null);
     }
 
+    // Ensure previous_attempts is valid JSONB
+    let previousAttemptsJson = null;
+    if (Array.isArray(previous_attempts) && previous_attempts.length > 0) {
+      previousAttemptsJson = JSON.stringify(previous_attempts);
+    }
+
     const result = await db.query(
-      `INSERT INTO user_career_goals (user_id, interests)
-      VALUES ($1, $2)
+      `INSERT INTO user_exam_preferences (user_id, target_exams, previous_attempts)
+      VALUES ($1, $2, $3::jsonb)
       ON CONFLICT (user_id)
       DO UPDATE SET
-        interests = EXCLUDED.interests,
+        target_exams = EXCLUDED.target_exams,
+        previous_attempts = EXCLUDED.previous_attempts,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *`,
       [
         userIdNum,
-        interestsArray.length > 0 ? interestsArray : null
+        targetExamsArray.length > 0 ? targetExamsArray : null,
+        previousAttemptsJson
       ]
     );
 
@@ -56,7 +63,7 @@ class UserCareerGoals {
   }
 
   /**
-   * Delete user career goals
+   * Delete user exam preferences
    */
   static async deleteByUserId(userId) {
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
@@ -65,13 +72,12 @@ class UserCareerGoals {
     }
 
     const result = await db.query(
-      'DELETE FROM user_career_goals WHERE user_id = $1 RETURNING *',
+      'DELETE FROM user_exam_preferences WHERE user_id = $1 RETURNING *',
       [userIdNum]
     );
     return result.rows[0] || null;
   }
 }
 
-module.exports = UserCareerGoals;
-
+module.exports = UserExamPreferences;
 

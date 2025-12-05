@@ -1,5 +1,5 @@
-const { verifyToken } = require('../utils/jwt');
-const Admin = require('../src/models/Admin');
+const { verifyToken } = require('../utils/auth/jwt');
+const Admin = require('../src/models/admin/Admin');
 
 /**
  * Admin authentication middleware

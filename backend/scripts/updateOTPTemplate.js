@@ -5,7 +5,7 @@
 
 require('dotenv').config();
 const db = require('../config/database');
-const EmailTemplate = require('../src/models/EmailTemplate');
+const EmailTemplate = require('../src/models/taxonomy/EmailTemplate');
 
 async function updateOTPTemplate() {
   try {

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const CareerGoalsController = require('../controllers/careerGoalsController');
+const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 
 /**
  * @route   GET /api/career-goals
