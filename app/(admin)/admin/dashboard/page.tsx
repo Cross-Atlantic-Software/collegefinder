@@ -7,6 +7,7 @@ import AdminHeader from '@/components/admin/AdminHeader';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // Check admin authentication
@@ -16,8 +17,20 @@ export default function AdminDashboardPage() {
       return;
     }
     // Redirect to users page for now
-    router.replace('/admin/dashboard/users');
+    setIsRedirecting(true);
+    // Use setTimeout to ensure state update happens after mount
+    setTimeout(() => {
+      router.replace('/admin/dashboard/users');
+    }, 0);
   }, [router]);
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-gray-500">Redirecting...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
