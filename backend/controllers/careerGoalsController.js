@@ -118,9 +118,6 @@ class CareerGoalsTaxonomyController {
    */
   static async uploadImage(req, res) {
     try {
-      console.log('📤 Upload image route hit - POST /api/admin/career-goals/upload-image');
-      console.log('Request file:', req.file ? `File: ${req.file.originalname}, Size: ${req.file.size}` : 'No file');
-      
       if (!req.file) {
         return res.status(400).json({
           success: false,

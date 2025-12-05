@@ -22,20 +22,13 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware (for debugging)
-app.use((req, res, next) => {
-  if (req.path.includes('upload-image') || req.path.includes('career-goals')) {
-    console.log(`🔍 ${req.method} ${req.path}`);
-    console.log('   Content-Type:', req.headers['content-type']);
-  }
-  next();
-});
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/admin/email-templates', require('./routes/emailTemplateRoutes'));
 app.use('/api/career-goals', require('./routes/careerGoalsRoutes'));
+app.use('/api/exams', require('./routes/examsRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

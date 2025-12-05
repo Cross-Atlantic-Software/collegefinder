@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         hostname: '*.s3.amazonaws.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn-icons-png.flaticon.com',
+        pathname: '/**',
+      },
     ],
   },
 };

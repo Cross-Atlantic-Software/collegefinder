@@ -47,6 +47,8 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   state: string | null;
   district: string | null;
   email_verified: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
@@ -64,6 +66,8 @@ export async function updateBasicInfo(data: {
   state?: string;
   district?: string;
   phone_number?: string;
+  latitude?: number;
+  longitude?: number;
 }): Promise<ApiResponse<{
   id: number;
   email: string;
@@ -75,6 +79,8 @@ export async function updateBasicInfo(data: {
   state: string | null;
   district: string | null;
   phone_number: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'PUT',
@@ -103,7 +109,8 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number }>;
+  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  is_pursuing_12th: boolean;
 } | null>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
     method: 'GET',
@@ -131,7 +138,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks?: number;
   postmatric_percentage?: number;
   stream?: string;
-  subjects?: Array<{ name: string; percent: number }>;
+  subjects?: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  is_pursuing_12th?: boolean;
 }): Promise<ApiResponse<{
   // Matric (10th) fields
   matric_board: string | null;
@@ -150,7 +158,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number }>;
+  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  is_pursuing_12th: boolean;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
     method: 'PUT',

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 import { createEmailTemplate, updateEmailTemplate, EmailTemplate } from '@/api';
+import { useToast } from '@/components/shared';
 
 interface EmailTemplateModalProps {
   template: EmailTemplate | null;
@@ -11,6 +12,7 @@ interface EmailTemplateModalProps {
 
 
 export default function EmailTemplateModal({ template, onClose }: EmailTemplateModalProps) {
+  const { showSuccess, showError } = useToast();
   const [type, setType] = useState(template?.type || '');
   const [subject, setSubject] = useState(template?.subject || '');
   const [bodyHtml, setBodyHtml] = useState(template?.body_html || '');
@@ -41,26 +43,36 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
         // Update existing template
         const response = await updateEmailTemplate(template.id, subject, bodyHtml);
         if (response.success) {
+          showSuccess('Email template updated successfully');
           onClose();
         } else {
-          setError(response.message || 'Failed to update template');
+          const errorMsg = response.message || 'Failed to update template';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       } else {
         // Create new template
         if (!type) {
-          setError('Type is required');
+          const errorMsg = 'Type is required';
+          setError(errorMsg);
+          showError(errorMsg);
           setIsLoading(false);
           return;
         }
         const response = await createEmailTemplate(type, subject, bodyHtml);
         if (response.success) {
+          showSuccess('Email template created successfully');
           onClose();
         } else {
-          setError(response.message || 'Failed to create template');
+          const errorMsg = response.message || 'Failed to create template';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       }
     } catch (err) {
-      setError('An error occurred while saving the template');
+      const errorMsg = 'An error occurred while saving the template';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error saving template:', err);
     } finally {
       setIsLoading(false);

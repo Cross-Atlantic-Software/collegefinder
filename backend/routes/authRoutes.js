@@ -4,6 +4,7 @@ const AuthController = require('../controllers/authController');
 const BasicInfoController = require('../controllers/basicInfoController');
 const AcademicsController = require('../controllers/academicsController');
 const CareerGoalsController = require('../controllers/careerGoalsController');
+const ExamsController = require('../controllers/examsController');
 const ProfileCompletionController = require('../controllers/profileCompletionController');
 const { authenticate } = require('../middleware/auth');
 const {
@@ -92,6 +93,20 @@ router.get('/profile/career-goals', authenticate, CareerGoalsController.getCaree
  * @access  Private
  */
 router.put('/profile/career-goals', authenticate, validateUpdateCareerGoals, CareerGoalsController.updateCareerGoals);
+
+/**
+ * @route   GET /api/auth/profile/exam-preferences
+ * @desc    Get user's exam preferences
+ * @access  Private
+ */
+router.get('/profile/exam-preferences', authenticate, ExamsController.getExamPreferences);
+
+/**
+ * @route   PUT /api/auth/profile/exam-preferences
+ * @desc    Update user's exam preferences
+ * @access  Private
+ */
+router.put('/profile/exam-preferences', authenticate, ExamsController.updateExamPreferences);
 
 /**
  * @route   GET /api/auth/profile/completion

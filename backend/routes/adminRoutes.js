@@ -4,6 +4,7 @@ const multer = require('multer');
 const AdminController = require('../controllers/adminController');
 const AdminUsersController = require('../controllers/adminUsersController');
 const CareerGoalsController = require('../controllers/careerGoalsController');
+const ExamsController = require('../controllers/examsController');
 const { authenticateAdmin, requireSuperAdmin } = require('../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -68,6 +69,13 @@ router.get('/users/academics', authenticateAdmin, AdminUsersController.getAllUse
 router.get('/users/career-goals', authenticateAdmin, AdminUsersController.getAllUsersCareerGoals);
 
 /**
+ * @route   GET /api/admin/users/:id
+ * @desc    Get single user with complete details (basic + academics + career goals)
+ * @access  Private (Admin)
+ */
+router.get('/users/:id', authenticateAdmin, AdminUsersController.getUserDetails);
+
+/**
  * @route   GET /api/admin/users
  * @desc    Get all registered users
  * @access  Private (Admin)
@@ -119,11 +127,7 @@ router.get('/career-goals', authenticateAdmin, CareerGoalsController.getAllAdmin
  * @access  Private (Admin)
  * IMPORTANT: This route must come BEFORE /career-goals/:id to avoid route conflicts
  */
-router.post('/career-goals/upload-image', (req, res, next) => {
-  console.log('🔍 Route matched: POST /api/admin/career-goals/upload-image');
-  console.log('Request headers:', req.headers['content-type']);
-  next();
-}, authenticateAdmin, upload.single('image'), CareerGoalsController.uploadImage);
+router.post('/career-goals/upload-image', authenticateAdmin, upload.single('image'), CareerGoalsController.uploadImage);
 
 /**
  * @route   POST /api/admin/career-goals
@@ -152,6 +156,45 @@ router.put('/career-goals/:id', authenticateAdmin, CareerGoalsController.update)
  * @access  Private (Admin)
  */
 router.delete('/career-goals/:id', authenticateAdmin, CareerGoalsController.delete);
+
+/**
+ * Exams Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/exams
+ * @desc    Get all exams (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/exams', authenticateAdmin, ExamsController.getAllAdmin);
+
+/**
+ * @route   POST /api/admin/exams
+ * @desc    Create new exam (for admin)
+ * @access  Private (Admin)
+ */
+router.post('/exams', authenticateAdmin, ExamsController.create);
+
+/**
+ * @route   GET /api/admin/exams/:id
+ * @desc    Get exam by ID (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/exams/:id', authenticateAdmin, ExamsController.getById);
+
+/**
+ * @route   PUT /api/admin/exams/:id
+ * @desc    Update exam (for admin)
+ * @access  Private (Admin)
+ */
+router.put('/exams/:id', authenticateAdmin, ExamsController.update);
+
+/**
+ * @route   DELETE /api/admin/exams/:id
+ * @desc    Delete exam (for admin)
+ * @access  Private (Admin)
+ */
+router.delete('/exams/:id', authenticateAdmin, ExamsController.delete);
 
 module.exports = router;
 

@@ -66,8 +66,6 @@ export async function uploadCareerGoalLogo(file: File): Promise<ApiResponse<{
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
   const apiUrl = `${API_BASE_URL}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/upload-image`;
   
-  console.log('📤 Uploading logo to:', apiUrl);
-  
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
@@ -78,7 +76,6 @@ export async function uploadCareerGoalLogo(file: File): Promise<ApiResponse<{
 
   const data = await response.json();
   if (!response.ok) {
-    console.error('Upload error:', data);
     throw new Error(data.message || `Failed to upload logo (${response.status})`);
   }
   // Map imageUrl to logoUrl for consistency

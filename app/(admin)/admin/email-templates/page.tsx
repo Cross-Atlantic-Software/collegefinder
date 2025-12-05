@@ -7,9 +7,11 @@ import AdminHeader from '@/components/admin/AdminHeader';
 import { getAllEmailTemplates, deleteEmailTemplate, EmailTemplate } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import EmailTemplateModal from '@/components/admin/EmailTemplateModal';
+import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function EmailTemplatesPage() {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +19,9 @@ export default function EmailTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [allTemplates, setAllTemplates] = useState<EmailTemplate[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Check admin authentication
@@ -71,19 +76,38 @@ export default function EmailTemplatesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, allTemplates]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this email template?')) return;
+  const handleDeleteClick = (id: number) => {
+    setDeletingId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
 
     try {
-      const response = await deleteEmailTemplate(id);
+      setIsDeleting(true);
+      const response = await deleteEmailTemplate(deletingId);
       if (response.success) {
+        showSuccess('Email template deleted successfully');
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
         fetchTemplates();
       } else {
-        setError(response.message || 'Failed to delete email template');
+        const errorMsg = response.message || 'Failed to delete email template';
+        setError(errorMsg);
+        showError(errorMsg);
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
       }
     } catch (err) {
-      setError('An error occurred while deleting email template');
+      const errorMsg = 'An error occurred while deleting email template';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error deleting template:', err);
+      setShowDeleteConfirm(false);
+      setDeletingId(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -186,6 +210,9 @@ export default function EmailTemplatesPage() {
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        LAST UPDATED
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         ACTIONS
                       </th>
                     </tr>
@@ -193,7 +220,7 @@ export default function EmailTemplatesPage() {
                   <tbody className="divide-y divide-gray-200">
                     {templates.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
                           {templates.length < allTemplates.length ? 'No templates found matching your search' : 'No email templates found'}
                         </td>
                       </tr>
@@ -211,6 +238,13 @@ export default function EmailTemplatesPage() {
                               year: 'numeric',
                             })}
                           </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
+                            {new Date(template.updated_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <button
@@ -220,7 +254,7 @@ export default function EmailTemplatesPage() {
                                 <FiEdit2 className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => handleDelete(template.id)}
+                                onClick={() => handleDeleteClick(template.id)}
                                 className="p-2 text-red-600 hover:text-red-800 transition-colors"
                               >
                                 <FiTrash2 className="h-4 w-4" />
@@ -245,6 +279,22 @@ export default function EmailTemplatesPage() {
           onClose={handleModalClose}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingId(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Email Template"
+        message="Are you sure you want to delete this email template? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

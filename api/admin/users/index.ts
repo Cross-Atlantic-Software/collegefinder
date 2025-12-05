@@ -87,3 +87,45 @@ export async function getAllUsersCareerGoals(): Promise<ApiResponse<{
   });
 }
 
+/**
+ * Get single user with complete details (Admin only)
+ */
+export async function getUserDetails(userId: number): Promise<ApiResponse<{
+  user: import('../../types').SiteUser;
+  academics: {
+    matric_board: string | null;
+    matric_school_name: string | null;
+    matric_passing_year: number | null;
+    matric_roll_number: string | null;
+    matric_total_marks: number | null;
+    matric_obtained_marks: number | null;
+    matric_percentage: number | null;
+    postmatric_board: string | null;
+    postmatric_school_name: string | null;
+    postmatric_passing_year: number | null;
+    postmatric_roll_number: string | null;
+    postmatric_total_marks: number | null;
+    postmatric_obtained_marks: number | null;
+    postmatric_percentage: number | null;
+    stream: string | null;
+    subjects: Array<{ name: string; percent: number }>;
+  } | null;
+  careerGoals: {
+    interests: string[];
+  } | null;
+  examPreferences: {
+    target_exams: string[];
+    previous_attempts: Array<{
+      exam_name: string;
+      year: number;
+      rank: number | null;
+    }>;
+    created_at?: string | null;
+    updated_at?: string | null;
+  } | null;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
+    method: 'GET',
+  });
+}
+

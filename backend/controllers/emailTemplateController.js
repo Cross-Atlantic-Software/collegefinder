@@ -173,3 +173,4 @@ class EmailTemplateController {
 
 module.exports = EmailTemplateController;
 
+

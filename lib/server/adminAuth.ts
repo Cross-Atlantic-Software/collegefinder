@@ -1,5 +1,4 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+// Server-only module - do not import in client components
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
@@ -7,9 +6,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/a
  * Get admin token from cookies
  */
 export async function getAdminToken(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_token')?.value;
-  return token || null;
+  // Runtime check to ensure this is only used on the server
+  if (typeof window !== 'undefined') {
+    throw new Error('getAdminToken can only be used in Server Components');
+  }
+
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const token = cookieStore.get('admin_token')?.value;
+    return token || null;
+  } catch (error) {
+    console.error('Error getting admin token from cookies:', error);
+    return null;
+  }
 }
 
 /**
@@ -50,9 +60,15 @@ export async function getAdminUser() {
  * Require admin authentication - redirects to login if not authenticated
  */
 export async function requireAdmin() {
+  // Runtime check to ensure this is only used on the server
+  if (typeof window !== 'undefined') {
+    throw new Error('requireAdmin can only be used in Server Components');
+  }
+
   const admin = await getAdminUser();
   
   if (!admin) {
+    const { redirect } = await import('next/navigation');
     redirect('/admin/login');
   }
 

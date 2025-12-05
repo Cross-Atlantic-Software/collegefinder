@@ -62,6 +62,31 @@ class Admin {
     return result.rows[0];
   }
 
+  static async updateEmail(id, email) {
+    // Check if email already exists
+    const existing = await this.findByEmail(email);
+    if (existing && existing.id !== id) {
+      throw new Error('Email already in use');
+    }
+
+    const result = await db.query(
+      'UPDATE admin_users SET email = $1 WHERE id = $2 RETURNING id, email, type, is_active',
+      [email, id]
+    );
+    return result.rows[0];
+  }
+
+  static async updatePassword(id, password) {
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const result = await db.query(
+      'UPDATE admin_users SET password_hash = $1 WHERE id = $2 RETURNING id, email, type, is_active',
+      [passwordHash, id]
+    );
+    return result.rows[0];
+  }
+
   static async findAll() {
     const result = await db.query(
       `SELECT id, email, type, is_active, created_at, last_login, created_by

@@ -39,7 +39,12 @@ export async function createAdmin(
  */
 export async function updateAdmin(
   id: number,
-  data: { type?: 'user' | 'super_admin'; is_active?: boolean }
+  data: { 
+    email?: string; 
+    password?: string; 
+    type?: 'user' | 'super_admin'; 
+    is_active?: boolean 
+  }
 ): Promise<ApiResponse<{ admin: AdminUser }>> {
   return apiRequest<{ admin: AdminUser }>(`${API_ENDPOINTS.ADMIN.ADMINS}/${id}`, {
     method: 'PUT',

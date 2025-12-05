@@ -80,6 +80,14 @@ const validateCreateAdmin = [
  * Validation rules for updating admin user
  */
 const validateUpdateAdmin = [
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
   body('type')
     .optional()
     .isIn(['user', 'super_admin'])

@@ -44,3 +44,4 @@ router.delete('/:id', authenticateAdmin, requireSuperAdmin, EmailTemplateControl
 
 module.exports = router;
 
+

@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     USERS_CAREER_GOALS: '/admin/users/career-goals',
     EMAIL_TEMPLATES: '/admin/email-templates',
     CAREER_GOALS: '/admin/career-goals',
+    EXAMS: '/admin/exams',
   },
 } as const;
 

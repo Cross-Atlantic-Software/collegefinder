@@ -26,3 +26,13 @@ export {
   deleteCareerGoal,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
+
+// Export exams taxonomy management APIs
+export {
+  getAllExamsAdmin,
+  getExamById,
+  createExam,
+  updateExam,
+  deleteExam,
+} from './exams';
+export type { Exam } from './exams';

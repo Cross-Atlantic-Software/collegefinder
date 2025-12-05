@@ -31,7 +31,9 @@ class BasicInfoController {
           phone_number: user.phone_number,
           state: user.state,
           district: user.district,
-          email_verified: user.email_verified
+          email_verified: user.email_verified,
+          latitude: user.latitude,
+          longitude: user.longitude
         }
       });
     } catch (error) {
@@ -66,7 +68,9 @@ class BasicInfoController {
         gender,
         state,
         district,
-        phone_number
+        phone_number,
+        latitude,
+        longitude
       } = req.body;
 
       // Build update query dynamically
@@ -83,8 +87,21 @@ class BasicInfoController {
         values.push(last_name);
       }
       if (date_of_birth !== undefined) {
-        updates.push(`date_of_birth = $${paramCount++}`);
-        values.push(date_of_birth);
+        // Ensure date is in YYYY-MM-DD format for PostgreSQL DATE type
+        let dateValue = date_of_birth;
+        if (date_of_birth && typeof date_of_birth === 'string') {
+          // Validate and format date string (YYYY-MM-DD)
+          const dateMatch = date_of_birth.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (!dateMatch) {
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid date format. Expected YYYY-MM-DD'
+            });
+          }
+          dateValue = dateMatch[0]; // Use matched YYYY-MM-DD format
+        }
+        updates.push(`date_of_birth = $${paramCount++}::DATE`);
+        values.push(dateValue);
       }
       if (gender !== undefined) {
         updates.push(`gender = $${paramCount++}`);
@@ -101,6 +118,14 @@ class BasicInfoController {
       if (phone_number !== undefined) {
         updates.push(`phone_number = $${paramCount++}`);
         values.push(phone_number);
+      }
+      if (latitude !== undefined) {
+        updates.push(`latitude = $${paramCount++}`);
+        values.push(latitude);
+      }
+      if (longitude !== undefined) {
+        updates.push(`longitude = $${paramCount++}`);
+        values.push(longitude);
       }
 
       if (updates.length === 0) {
@@ -135,7 +160,9 @@ class BasicInfoController {
           gender: updatedUser.gender,
           state: updatedUser.state,
           district: updatedUser.district,
-          phone_number: updatedUser.phone_number
+          phone_number: updatedUser.phone_number,
+          latitude: updatedUser.latitude,
+          longitude: updatedUser.longitude
         }
       });
     } catch (error) {

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 
 import { BiCheck } from "react-icons/bi";
 import { CiCircleInfo } from "react-icons/ci";
 import { IoLocationSharp } from "react-icons/io5";
 import { FaUser } from "react-icons/fa6";
 
-import { Button } from "../../shared";
+import { Button, DateOfBirthPicker, PhoneInput, Select, SelectOption, Notification } from "../../shared";
+import { useToast } from "../../shared";
 import { getBasicInfo, updateBasicInfo } from "@/api";
 import { EmailVerificationModal } from "./EmailVerificationModal";
 import { indianStatesDistricts, getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
@@ -24,7 +24,7 @@ const inputBase =
   "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
 
 export default function BasicInfoForm() {
-  const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +52,21 @@ export default function BasicInfoForm() {
         setLoading(true);
         const response = await getBasicInfo();
         if (response.success && response.data) {
-          // Format date_of_birth for HTML date input (YYYY-MM-DD)
+          // Format date_of_birth for DateOfBirthPicker (YYYY-MM-DD)
           let formattedDate = "";
           if (response.data.date_of_birth) {
-            const date = new Date(response.data.date_of_birth);
-            if (!isNaN(date.getTime())) {
-              // Format as YYYY-MM-DD for HTML date input
-              formattedDate = date.toISOString().split('T')[0];
+            // If already in YYYY-MM-DD format, use directly
+            if (typeof response.data.date_of_birth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(response.data.date_of_birth)) {
+              formattedDate = response.data.date_of_birth.split('T')[0]; // Remove time part if present
+            } else {
+              // Parse date object and format as YYYY-MM-DD
+              const date = new Date(response.data.date_of_birth);
+              if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                formattedDate = `${year}-${month}-${day}`;
+              }
             }
           }
           
@@ -86,6 +94,34 @@ export default function BasicInfoForm() {
     fetchData();
   }, []);
 
+  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by this browser");
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("Error getting location:", error.message);
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -94,6 +130,9 @@ export default function BasicInfoForm() {
     setSuccess(false);
 
     try {
+      // Get current location coordinates
+      const location = await getCurrentLocation();
+      
       const response = await updateBasicInfo({
         first_name: formData.first_name || undefined,
         last_name: formData.last_name || undefined,
@@ -102,10 +141,15 @@ export default function BasicInfoForm() {
         state: formData.state || undefined,
         district: formData.district || undefined,
         phone_number: formData.phone_number || undefined,
+        ...(location && {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
       });
 
       if (response.success) {
         setSuccess(true);
+        showSuccess("Profile updated successfully!");
         setTimeout(() => setSuccess(false), 3000);
       } else {
         // Handle validation errors from backend
@@ -129,10 +173,6 @@ export default function BasicInfoForm() {
     }
   };
 
-  const handleSkip = () => {
-    // Just close the form or navigate away - user can come back later
-    router.push("/dashboard");
-  };
 
   const handleEmailVerified = async () => {
     // Refresh basic info to get updated email_verified status
@@ -165,15 +205,21 @@ export default function BasicInfoForm() {
           </h2>
 
           {error && (
-            <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
+            <Notification
+              type="error"
+              message={error}
+              onClose={() => setError(null)}
+            />
           )}
 
           {success && (
-            <div className="rounded-md bg-emerald-500/20 border border-emerald-500/50 px-4 py-3 text-sm text-emerald-200">
-              Profile updated successfully!
-            </div>
+            <Notification
+              type="success"
+              message="Profile updated successfully!"
+              onClose={() => setSuccess(false)}
+              autoClose={true}
+              duration={3000}
+            />
           )}
 
           {/* Name */}
@@ -218,48 +264,36 @@ export default function BasicInfoForm() {
               <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
                 Date of Birth
               </label>
-              <input
-                type="date"
+              <DateOfBirthPicker
                 value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                className={`${inputBase} ${validationErrors.date_of_birth ? 'border-red-500' : ''} [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:invert`}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
+                error={validationErrors.date_of_birth}
+                maxYear={new Date().getFullYear()}
               />
-              {validationErrors.date_of_birth && (
-                <p className="text-xs text-red-400">{validationErrors.date_of_birth}</p>
-              )}
-              {formData.date_of_birth && (
-                <p className="text-xs text-slate-400">
-                  Selected: {new Date(formData.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                State <IoLocationSharp className="h-4 w-4 text-pink" />
+                Domicile State <IoLocationSharp className="h-4 w-4 text-pink" />
               </label>
-              <select
+              <Select
+                options={getAllStates().map((state) => ({
+                  value: state,
+                  label: state,
+                }))}
                 value={formData.state}
-                onChange={(e) => {
-                  setFormData({ 
-                    ...formData, 
-                    state: e.target.value,
-                    district: "" // Reset district when state changes
+                onChange={(value) => {
+                  setFormData({
+                    ...formData,
+                    state: value || "",
+                    district: "", // Reset district when state changes
                   });
                 }}
-                className={`${inputBase} ${validationErrors.state ? 'border-red-500' : ''}`}
-              >
-                <option value="">Select State</option>
-                {getAllStates().map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-              {validationErrors.state && (
-                <p className="text-xs text-red-400">{validationErrors.state}</p>
-              )}
+                placeholder="Select Domicile State"
+                error={validationErrors.state}
+                isSearchable={true}
+                isClearable={true}
+              />
             </div>
           </div>
 
@@ -268,22 +302,23 @@ export default function BasicInfoForm() {
             <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
               District <IoLocationSharp className="h-4 w-4 text-pink" />
             </label>
-            <select
+            <Select
+              options={
+                formData.state
+                  ? getDistrictsForState(formData.state).map((district) => ({
+                      value: district,
+                      label: district,
+                    }))
+                  : []
+              }
               value={formData.district}
-              onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, district: value || "" })}
+              placeholder={formData.state ? "Select District" : "Select State first"}
+              error={validationErrors.district}
               disabled={!formData.state}
-              className={`${inputBase} ${validationErrors.district ? 'border-red-500' : ''} ${!formData.state ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <option value="">{formData.state ? 'Select District' : 'Select State first'}</option>
-              {formData.state && getDistrictsForState(formData.state).map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
-            {validationErrors.district && (
-              <p className="text-xs text-red-400">{validationErrors.district}</p>
-            )}
+              isSearchable={true}
+              isClearable={true}
+            />
           </div>
 
           {/* Email */}
@@ -323,16 +358,13 @@ export default function BasicInfoForm() {
           <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
             Phone Number
           </label>
-          <input
-            type="tel"
-            placeholder="+1 (555) 123-4567"
+          <PhoneInput
             value={formData.phone_number}
-            onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-            className={`${inputBase} ${validationErrors.phone_number ? 'border-red-500' : ''}`}
+            onChange={(phone) => setFormData({ ...formData, phone_number: phone || "" })}
+            error={validationErrors.phone_number}
+            placeholder="Enter phone number"
+            defaultCountryCode="+91"
           />
-          {validationErrors.phone_number && (
-            <p className="text-xs text-red-400">{validationErrors.phone_number}</p>
-          )}
         </div>
 
           {/* Gender */}
@@ -383,16 +415,6 @@ export default function BasicInfoForm() {
             disabled={saving}
           >
             {saving ? "Updating..." : "Update Details"}
-          </Button>
-
-          <Button
-            type="button"
-            variant="LightGradient"
-            size="md"
-            className="w-full flex-1 rounded-full text-pink"
-            onClick={handleSkip}
-          >
-            Skip for Now
           </Button>
         </div>
       </form>

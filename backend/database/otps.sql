@@ -17,3 +17,4 @@ CREATE INDEX IF NOT EXISTS idx_otps_email ON otps(email);
 CREATE INDEX IF NOT EXISTS idx_otps_code ON otps(code);
 CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
 
+

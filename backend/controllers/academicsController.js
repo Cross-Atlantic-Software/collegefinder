@@ -18,6 +18,19 @@ class AcademicsController {
         });
       }
 
+      // Parse matric_subjects JSONB if it exists
+      let matricSubjects = [];
+      if (academics.matric_subjects) {
+        try {
+          matricSubjects = typeof academics.matric_subjects === 'string' 
+            ? JSON.parse(academics.matric_subjects) 
+            : academics.matric_subjects;
+        } catch (e) {
+          console.error('Error parsing matric_subjects:', e);
+          matricSubjects = [];
+        }
+      }
+
       // Parse subjects JSONB if it exists
       let subjects = [];
       if (academics.subjects) {
@@ -51,7 +64,9 @@ class AcademicsController {
           postmatric_obtained_marks: academics.postmatric_obtained_marks,
           postmatric_percentage: academics.postmatric_percentage,
           stream: academics.stream,
-          subjects: subjects
+          matric_subjects: matricSubjects,
+          subjects: subjects,
+          is_pursuing_12th: academics.is_pursuing_12th || false
         }
       });
     } catch (error) {
@@ -79,14 +94,20 @@ class AcademicsController {
       }
 
       const userId = req.user.id;
-      console.log('📝 Updating academics for user:', userId);
-      console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
-      console.log('📝 Subjects type:', typeof req.body.subjects);
-      console.log('📝 Subjects value:', req.body.subjects);
-      console.log('📝 Subjects isArray:', Array.isArray(req.body.subjects));
-      
       const academics = await UserAcademics.upsert(userId, req.body);
-      console.log('✅ Academics updated successfully');
+
+      // Parse matric_subjects JSONB if it exists
+      let matricSubjects = [];
+      if (academics.matric_subjects) {
+        try {
+          matricSubjects = typeof academics.matric_subjects === 'string' 
+            ? JSON.parse(academics.matric_subjects) 
+            : academics.matric_subjects;
+        } catch (e) {
+          console.error('Error parsing matric_subjects:', e);
+          matricSubjects = [];
+        }
+      }
 
       // Parse subjects JSONB if it exists
       let subjects = [];
@@ -122,7 +143,9 @@ class AcademicsController {
           postmatric_obtained_marks: academics.postmatric_obtained_marks,
           postmatric_percentage: academics.postmatric_percentage,
           stream: academics.stream,
-          subjects: subjects
+          matric_subjects: matricSubjects,
+          subjects: subjects,
+          is_pursuing_12th: academics.is_pursuing_12th || false
         }
       });
     } catch (error) {

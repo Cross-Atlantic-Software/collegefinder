@@ -7,9 +7,11 @@ import AdminHeader from '@/components/admin/AdminHeader';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, CareerGoalAdmin } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiUpload, FiX } from 'react-icons/fi';
 import Image from 'next/image';
+import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function CareerGoalsPage() {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [careerGoals, setCareerGoals] = useState<CareerGoalAdmin[]>([]);
   const [allCareerGoals, setAllCareerGoals] = useState<CareerGoalAdmin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +23,9 @@ export default function CareerGoalsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -80,11 +85,16 @@ export default function CareerGoalsPage() {
         setFormData({ ...formData, logo: response.data.logoUrl });
         setLogoPreview(response.data.logoUrl);
         setError(null);
+        showSuccess('Logo uploaded successfully');
       } else {
-        setError(response.message || 'Failed to upload logo');
+        const errorMsg = response.message || 'Failed to upload logo';
+        setError(errorMsg);
+        showError(errorMsg);
       }
     } catch (err) {
-      setError('An error occurred while uploading logo');
+      const errorMsg = 'An error occurred while uploading logo';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error uploading logo:', err);
     } finally {
       setUploading(false);
@@ -117,41 +127,68 @@ export default function CareerGoalsPage() {
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
+          showSuccess('Career goal updated successfully');
           setShowModal(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          setError(response.message || 'Failed to update career goal');
+          const errorMsg = response.message || 'Failed to update career goal';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       } else {
         const response = await createCareerGoal(formData);
         if (response.success) {
+          showSuccess('Career goal created successfully');
           setShowModal(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          setError(response.message || 'Failed to create career goal');
+          const errorMsg = response.message || 'Failed to create career goal';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       }
     } catch (err) {
-      setError('An error occurred while saving career goal');
+      const errorMsg = 'An error occurred while saving career goal';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error saving career goal:', err);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this career goal?')) return;
+  const handleDeleteClick = (id: number) => {
+    setDeletingId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
 
     try {
-      const response = await deleteCareerGoal(id);
+      setIsDeleting(true);
+      const response = await deleteCareerGoal(deletingId);
       if (response.success) {
+        showSuccess('Career goal deleted successfully');
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
         fetchCareerGoals();
       } else {
-        setError(response.message || 'Failed to delete career goal');
+        const errorMsg = response.message || 'Failed to delete career goal';
+        setError(errorMsg);
+        showError(errorMsg);
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
       }
     } catch (err) {
-      setError('An error occurred while deleting career goal');
+      const errorMsg = 'An error occurred while deleting career goal';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error deleting career goal:', err);
+      setShowDeleteConfirm(false);
+      setDeletingId(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -264,6 +301,9 @@ export default function CareerGoalsPage() {
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        LAST UPDATED
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         ACTIONS
                       </th>
                     </tr>
@@ -271,7 +311,7 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
                           {careerGoals.length < allCareerGoals.length ? 'No career goals found matching your search' : 'No career goals found'}
                         </td>
                       </tr>
@@ -303,6 +343,13 @@ export default function CareerGoalsPage() {
                               year: 'numeric',
                             })}
                           </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
+                            {new Date(cg.updated_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <button
@@ -312,7 +359,7 @@ export default function CareerGoalsPage() {
                                 <FiEdit2 className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => handleDelete(cg.id)}
+                                onClick={() => handleDeleteClick(cg.id)}
                                 className="p-2 text-red-600 hover:text-red-800 transition-colors"
                               >
                                 <FiTrash2 className="h-4 w-4" />
@@ -381,7 +428,13 @@ export default function CareerGoalsPage() {
                     )}
                     <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                       <FiUpload className="h-4 w-4" />
-                      <span>{logoFile ? 'Change Logo' : 'Upload Logo'}</span>
+                      <span>
+                        {editingCareerGoal && logoPreview && !logoFile 
+                          ? 'Update Logo' 
+                          : logoPreview 
+                            ? 'Change Logo' 
+                            : 'Upload Logo'}
+                      </span>
                       <input
                         type="file"
                         accept="image/*"
@@ -426,6 +479,22 @@ export default function CareerGoalsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingId(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Career Goal"
+        message="Are you sure you want to delete this career goal? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

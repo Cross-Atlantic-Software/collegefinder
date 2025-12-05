@@ -31,6 +31,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(25);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;

@@ -16,3 +16,6 @@ export * from './admin';
 export { getAllCareerGoals as getAllCareerGoalsPublic } from './career-goals';
 export type { CareerGoal as CareerGoalPublic } from './career-goals';
 
+// Export exams API
+export * from './exams';
+

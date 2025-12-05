@@ -12,6 +12,18 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Track initial load completion
+  useEffect(() => {
+    if (!isLoading && user) {
+      // Small delay to show loader during navigation
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, user]);
 
   // Redirect to onboarding if user doesn't have a name (hasn't completed onboarding)
   useEffect(() => {
@@ -29,8 +41,8 @@ export default function DashboardLayout({
   }, [user, isLoading, router]);
 
   // Show smooth loader while checking auth and onboarding status
-  if (isLoading || (user && !user.name) || isRedirecting) {
-    return <OnboardingLoader message="Redirecting to onboarding..." />;
+  if (isLoading || isInitialLoad || (user && !user.name) || isRedirecting) {
+    return <OnboardingLoader message={isRedirecting ? "Redirecting to onboarding..." : "Loading dashboard..."} />;
   }
 
   return (

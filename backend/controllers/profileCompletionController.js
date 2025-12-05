@@ -13,8 +13,33 @@ class ProfileCompletionController {
       
       // Get all profile data
       const user = await User.findById(userId);
-      const academics = await UserAcademics.findByUserId(userId);
+      const academicsRaw = await UserAcademics.findByUserId(userId);
       const careerGoals = await UserCareerGoals.findByUserId(userId);
+
+      // Parse JSONB fields from academics if they exist
+      let academics = academicsRaw;
+      if (academicsRaw) {
+        // Parse matric_subjects if it exists
+        if (academicsRaw.matric_subjects) {
+          try {
+            academics.matric_subjects = typeof academicsRaw.matric_subjects === 'string' 
+              ? JSON.parse(academicsRaw.matric_subjects) 
+              : academicsRaw.matric_subjects;
+          } catch (e) {
+            academics.matric_subjects = null;
+          }
+        }
+        // Parse subjects if it exists
+        if (academicsRaw.subjects) {
+          try {
+            academics.subjects = typeof academicsRaw.subjects === 'string' 
+              ? JSON.parse(academicsRaw.subjects) 
+              : academicsRaw.subjects;
+          } catch (e) {
+            academics.subjects = null;
+          }
+        }
+      }
 
       if (!user) {
         return res.status(404).json({
@@ -57,7 +82,8 @@ class ProfileCompletionController {
         { key: 'matric_roll_number', label: '10th Roll Number', value: academics?.matric_roll_number },
         { key: 'matric_total_marks', label: '10th Total Marks', value: academics?.matric_total_marks },
         { key: 'matric_obtained_marks', label: '10th Obtained Marks', value: academics?.matric_obtained_marks },
-        { key: 'matric_percentage', label: '10th Percentage', value: academics?.matric_percentage }
+        { key: 'matric_percentage', label: '10th Percentage', value: academics?.matric_percentage },
+        { key: 'matric_subjects', label: '10th Subjects', value: academics?.matric_subjects }
       ];
 
       // Academics Section - Post-Matric (12th) - Only if not pursuing
@@ -89,7 +115,8 @@ class ProfileCompletionController {
 
       academicsFields.forEach(field => {
         totalFields++;
-        if (field.key === 'subjects') {
+        // Check for subjects (both matric_subjects and subjects for 12th)
+        if (field.key === 'subjects' || field.key === 'matric_subjects') {
           // Check if subjects array exists and has at least one entry
           let hasSubjects = false;
           if (field.value) {

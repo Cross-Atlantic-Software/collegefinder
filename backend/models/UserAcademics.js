@@ -44,10 +44,42 @@ class UserAcademics {
       postmatric_obtained_marks,
       postmatric_percentage,
       stream,
-      subjects
+      subjects,
+      matric_subjects,
+      is_pursuing_12th
     } = data;
 
-    // Prepare subjects as JSONB
+    // Prepare matric_subjects as JSONB
+    let matricSubjectsJson = null;
+    if (matric_subjects) {
+      try {
+        let subjectsArray = matric_subjects;
+        if (typeof matric_subjects === 'string') {
+          subjectsArray = JSON.parse(matric_subjects);
+        }
+        
+        if (Array.isArray(subjectsArray) && subjectsArray.length > 0) {
+          const validSubjects = subjectsArray.filter(subj => 
+            subj && typeof subj === 'object' && 
+            typeof subj.name === 'string' && 
+            typeof subj.percent === 'number'
+          );
+          
+          if (validSubjects.length > 0) {
+            matricSubjectsJson = validSubjects.map(subj => ({
+              name: subj.name,
+              percent: subj.percent,
+              ...(subj.obtainedMarks !== undefined && { obtainedMarks: subj.obtainedMarks }),
+              ...(subj.totalMarks !== undefined && { totalMarks: subj.totalMarks })
+            }));
+          }
+        }
+      } catch (e) {
+        throw new Error('Invalid matric_subjects data format');
+      }
+    }
+
+    // Prepare subjects as JSONB (for post-matric)
     // Ensure we're working with a proper JavaScript array, not a string
     let subjectsJson = null;
     if (subjects) {
@@ -61,6 +93,7 @@ class UserAcademics {
         // Ensure it's an array
         if (Array.isArray(subjectsArray) && subjectsArray.length > 0) {
           // Validate subjects structure
+          // Support both old format {name, percent} and new format {name, percent, obtainedMarks, totalMarks}
           const validSubjects = subjectsArray.filter(subj => 
             subj && typeof subj === 'object' && 
             typeof subj.name === 'string' && 
@@ -69,48 +102,25 @@ class UserAcademics {
           
           if (validSubjects.length > 0) {
             // Pass as JavaScript object - pg library will convert to JSONB automatically
-            subjectsJson = validSubjects;
-            console.log('📦 Prepared subjects (as object):', JSON.stringify(subjectsJson, null, 2));
-            console.log('📦 Type check:', typeof subjectsJson, Array.isArray(subjectsJson));
+            // Include obtainedMarks and totalMarks if present
+            subjectsJson = validSubjects.map(subj => ({
+              name: subj.name,
+              percent: subj.percent,
+              ...(subj.obtainedMarks !== undefined && { obtainedMarks: subj.obtainedMarks }),
+              ...(subj.totalMarks !== undefined && { totalMarks: subj.totalMarks })
+            }));
           }
         }
       } catch (e) {
-        console.error('❌ Error preparing subjects:', e);
-        console.error('❌ Subjects value:', subjects);
-        console.error('❌ Subjects type:', typeof subjects);
         throw new Error('Invalid subjects data format');
       }
     }
 
-    console.log('📊 Upserting academics with data:', {
-      userId: userIdNum,
-      matric_board,
-      matric_school_name,
-      matric_passing_year,
-      matric_roll_number,
-      matric_total_marks,
-      matric_obtained_marks,
-      matric_percentage,
-      postmatric_board,
-      postmatric_school_name,
-      postmatric_passing_year,
-      postmatric_roll_number,
-      postmatric_total_marks,
-      postmatric_obtained_marks,
-      postmatric_percentage,
-      stream,
-      subjectsJson
-    });
-
+    // Upsert academics data
     try {
-      // Convert to JSON string once - this is what PostgreSQL expects
+      // Convert to JSON strings - this is what PostgreSQL expects
+      const matricSubjectsParam = matricSubjectsJson ? JSON.stringify(matricSubjectsJson) : null;
       const subjectsParam = subjectsJson ? JSON.stringify(subjectsJson) : null;
-      
-      console.log('📤 Sending to database:', {
-        subjectsJson,
-        subjectsParam,
-        type: typeof subjectsParam
-      });
       
       // Pass as text and let PostgreSQL convert to JSONB
       // This avoids double-stringification issues
@@ -121,9 +131,9 @@ class UserAcademics {
           matric_total_marks, matric_obtained_marks, matric_percentage,
           postmatric_board, postmatric_school_name, postmatric_passing_year, postmatric_roll_number,
           postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage,
-          stream, subjects
+          stream, subjects, matric_subjects, is_pursuing_12th
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19)
         ON CONFLICT (user_id)
         DO UPDATE SET
           matric_board = EXCLUDED.matric_board,
@@ -142,6 +152,8 @@ class UserAcademics {
           postmatric_percentage = EXCLUDED.postmatric_percentage,
           stream = EXCLUDED.stream,
           subjects = EXCLUDED.subjects::jsonb,
+          matric_subjects = EXCLUDED.matric_subjects::jsonb,
+          is_pursuing_12th = EXCLUDED.is_pursuing_12th,
           updated_at = CURRENT_TIMESTAMP
         RETURNING *`,
         [
@@ -161,17 +173,14 @@ class UserAcademics {
           postmatric_obtained_marks || null,
           postmatric_percentage || null,
           stream || null,
-          subjectsParam  // JSON string - cast to jsonb
+          subjectsParam,  // JSON string - cast to jsonb
+          matricSubjectsParam,  // JSON string - cast to jsonb
+          is_pursuing_12th !== undefined ? is_pursuing_12th : false
         ]
       );
 
-      console.log('✅ Database query successful');
       return result.rows[0];
     } catch (dbError) {
-      console.error('❌ Database error:', dbError);
-      console.error('❌ Error code:', dbError.code);
-      console.error('❌ Error detail:', dbError.detail);
-      console.error('❌ Error constraint:', dbError.constraint);
       throw dbError;
     }
   }

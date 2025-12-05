@@ -12,3 +12,4 @@ export { default as CoachingCentersTab } from "./CoachingCentersTab";
 export { default as CareerGoalsTab } from "./ProfileTabs/CareerGoals";
 export { default as AcademicsProfile } from "./ProfileTabs/AcademicsProfile";
 export { SubjectInputList } from "./SubjectInputList";
+export { ExamApplicationModal } from "./ExamApplicationModal";

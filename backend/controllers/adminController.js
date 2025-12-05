@@ -228,7 +228,7 @@ class AdminController {
       }
 
       const { id } = req.params;
-      const { type, is_active } = req.body;
+      const { email, password, type, is_active } = req.body;
 
       // Only super_admin can update other admins
       if (req.admin.type !== 'super_admin') {
@@ -247,10 +247,24 @@ class AdminController {
         });
       }
 
-      let updatedAdmin;
+      let updatedAdmin = targetAdmin;
+      
+      // Update email if provided
+      if (email !== undefined && email !== targetAdmin.email) {
+        updatedAdmin = await Admin.updateEmail(id, email);
+      }
+      
+      // Update password if provided
+      if (password !== undefined && password.trim() !== '') {
+        updatedAdmin = await Admin.updatePassword(id, password);
+      }
+      
+      // Update type if provided
       if (type !== undefined) {
         updatedAdmin = await Admin.updateType(id, type);
       }
+      
+      // Update active status if provided
       if (is_active !== undefined) {
         updatedAdmin = await Admin.updateActiveStatus(id, is_active);
       }

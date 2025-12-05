@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS user_academics (
   postmatric_obtained_marks DECIMAL(10, 2),
   postmatric_percentage DECIMAL(5, 2),
   stream VARCHAR(100), -- PCM, PCB, Commerce, Humanities/Arts, Others
-  subjects JSONB, -- Array of subjects: [{"name": "Physics", "percent": 89}, ...]
+  subjects JSONB, -- Array of subjects for 12th: [{"name": "Physics", "percent": 89}, ...]
+  matric_subjects JSONB, -- Array of subjects for 10th: [{"name": "Math", "percent": 89}, ...]
+  is_pursuing_12th BOOLEAN DEFAULT false, -- Whether user is currently pursuing 12th
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id)
@@ -45,6 +47,8 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_obtained_marks DE
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_percentage DECIMAL(5, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS subjects JSONB;
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_subjects JSONB;
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS is_pursuing_12th BOOLEAN DEFAULT false;
 
 -- Add comments
 COMMENT ON COLUMN user_academics.matric_board IS '10th standard board name';
@@ -63,6 +67,8 @@ COMMENT ON COLUMN user_academics.postmatric_obtained_marks IS '12th standard obt
 COMMENT ON COLUMN user_academics.postmatric_percentage IS '12th standard percentage';
 COMMENT ON COLUMN user_academics.stream IS '12th standard stream: PCM, PCB, Commerce, Humanities/Arts, Others';
 COMMENT ON COLUMN user_academics.subjects IS '12th standard subject breakdown: [{"name": "Physics", "percent": 89}, ...]';
+COMMENT ON COLUMN user_academics.matric_subjects IS '10th standard subject breakdown: [{"name": "Math", "percent": 89, "obtainedMarks": 89, "totalMarks": 100}, ...]';
+COMMENT ON COLUMN user_academics.is_pursuing_12th IS 'Whether the user is currently pursuing 12th standard (true) or has completed it (false)';
 
 -- Indexes for user_academics table
 CREATE INDEX IF NOT EXISTS idx_user_academics_user_id ON user_academics(user_id);

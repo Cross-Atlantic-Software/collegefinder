@@ -1,22 +1,39 @@
-'use client';
+import { redirect } from 'next/navigation';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import AdminHeader from '@/components/admin/AdminHeader';
+import SimplifiedUsersTable from '@/components/admin/SimplifiedUsersTable';
+import { getAllUsersBasicInfo } from '@/lib/server/adminData';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+export default async function AdminPage() {
+  // Check authentication - redirects to login if not authenticated
+  const { requireAdmin } = await import('@/lib/server/adminAuth');
+  await requireAdmin();
 
-export default function AdminPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace('/admin/login');
-  }, [router]);
+  // Fetch data on the server
+  let users;
+  try {
+    users = await getAllUsersBasicInfo();
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    redirect('/admin/login');
+  }
 
   return (
-    <div className="min-h-screen bg-lightGradient flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink mx-auto mb-4"></div>
-        <p className="text-gray-600">Redirecting...</p>
+    <div className="min-h-screen bg-gray-50 flex">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+        <main className="flex-1 p-4 overflow-auto">
+          <div className="mb-3">
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Site Users</h1>
+            <p className="text-sm text-gray-600">View and manage all site users.</p>
+          </div>
+
+          <SimplifiedUsersTable initialUsers={users} />
+        </main>
       </div>
     </div>
   );
 }
+
 

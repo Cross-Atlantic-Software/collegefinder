@@ -2,11 +2,11 @@ import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import UsersTableClient from '@/components/admin/UsersTableClient';
-import { requireAdmin } from '@/lib/server/adminAuth';
 import { getAllUsersBasicInfo } from '@/lib/server/adminData';
 
 export default async function BasicInfoPage() {
   // Check authentication - redirects to login if not authenticated
+  const { requireAdmin } = await import('@/lib/server/adminAuth');
   await requireAdmin();
 
   // Fetch data on the server

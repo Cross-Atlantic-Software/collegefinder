@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaChevronDown } from "react-icons/fa6";
+import { FiEdit2, FiX } from "react-icons/fi";
 import { SubjectInputList } from "../SubjectInputList";
 import { getAcademics, updateAcademics } from "@/api";
-import { Button } from "../../shared";
+import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousExamAttempt } from "@/api/exams";
+import { Button, Select, SelectOption, useToast } from "../../shared";
 
 const getBarColor = (percent: number) => {
     if (percent >= 85) return "bg-green-500";
@@ -12,25 +13,26 @@ const getBarColor = (percent: number) => {
     return "bg-red-400";
 };
 
-const streamOptions = [
-    "PCM",
-    "PCB",
-    "Commerce",
-    "Humanities/Arts",
-    "Others"
+const streamOptions: SelectOption[] = [
+    { value: "PCM", label: "PCM" },
+    { value: "PCB", label: "PCB" },
+    { value: "Commerce", label: "Commerce" },
+    { value: "Humanities/Arts", label: "Humanities/Arts" },
+    { value: "Others", label: "Others" }
 ];
 
-const boardOptions = [
-    "CBSE",
-    "ICSE",
-    "IB",
-    "State Board",
-    "Other"
+const boardOptions: SelectOption[] = [
+    { value: "CBSE", label: "CBSE" },
+    { value: "ICSE", label: "ICSE" },
+    { value: "IB", label: "IB" },
+    { value: "State Board", label: "State Board" },
+    { value: "Other", label: "Other" }
 ];
 
 const inputBase = "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
 
 export default function AcademicsProfile() {
+    const { showSuccess, showError } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,14 @@ export default function AcademicsProfile() {
         stream: "",
     });
 
-    const [subjects, setSubjects] = useState<Array<{ name: string; percent: number }>>([]);
+    const [matricSubjects, setMatricSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
+    const [subjects, setSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
+    const [showMatricSubjectInput, setShowMatricSubjectInput] = useState(false);
+    const [customStream, setCustomStream] = useState("");
+
+    // Exam preferences
+    const [examOptions, setExamOptions] = useState<SelectOption[]>([]);
+    const [previousAttempts, setPreviousAttempts] = useState<PreviousExamAttempt[]>([]);
 
     // Calculate percentage when marks change
     useEffect(() => {
@@ -118,11 +127,39 @@ export default function AcademicsProfile() {
                         stream: data.stream || "",
                     });
 
+                    // Check if stream is a custom value (not in predefined options)
+                    const predefinedStreams = streamOptions.map(opt => opt.value);
+                    if (data.stream && !predefinedStreams.includes(data.stream)) {
+                        setPostmatricData(prev => ({ ...prev, stream: "Others" }));
+                        setCustomStream(data.stream);
+                    } else {
+                        setCustomStream("");
+                    }
+
+                    setMatricSubjects(data.matric_subjects || []);
                     setSubjects(data.subjects || []);
-                    setShowSubjectInput(data.subjects && data.subjects.length > 0);
+                    // Keep inputs closed on load, even if data exists
+                    setShowMatricSubjectInput(false);
+                    setShowSubjectInput(false);
                     
-                    // Check if pursuing 12th (no passing year means still pursuing)
-                    setIsPursuing12th(!data.postmatric_passing_year);
+                    // Set is_pursuing_12th from API or fallback to checking passing year
+                    setIsPursuing12th(data.is_pursuing_12th !== undefined ? data.is_pursuing_12th : !data.postmatric_passing_year);
+                }
+
+                // Fetch exam options
+                const examsResponse = await getAllExams();
+                if (examsResponse.success && examsResponse.data) {
+                    const options = examsResponse.data.exams.map(exam => ({
+                        value: exam.id.toString(),
+                        label: exam.name
+                    }));
+                    setExamOptions(options);
+                }
+
+                // Fetch user's exam preferences
+                const examPrefsResponse = await getExamPreferences();
+                if (examPrefsResponse.success && examPrefsResponse.data) {
+                    setPreviousAttempts(examPrefsResponse.data.previous_attempts || []);
                 }
             } catch (err) {
                 console.error("Error fetching academics:", err);
@@ -134,6 +171,20 @@ export default function AcademicsProfile() {
 
         fetchData();
     }, []);
+
+    const addPreviousAttempt = () => {
+        setPreviousAttempts([...previousAttempts, { exam_id: 0, year: new Date().getFullYear(), rank: null }]);
+    };
+
+    const updatePreviousAttempt = (index: number, field: keyof PreviousExamAttempt, value: any) => {
+        const updated = [...previousAttempts];
+        updated[index] = { ...updated[index], [field]: value };
+        setPreviousAttempts(updated);
+    };
+
+    const removePreviousAttempt = (index: number) => {
+        setPreviousAttempts(previousAttempts.filter((_, i) => i !== index));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -190,18 +241,41 @@ export default function AcademicsProfile() {
             }
             
             // Stream (always include if provided)
-            if (postmatricData.stream?.trim()) payload.stream = postmatricData.stream.trim();
+            // If "Others" is selected, use the custom stream value
+            if (postmatricData.stream === "Others" && customStream?.trim()) {
+                payload.stream = customStream.trim();
+            } else if (postmatricData.stream?.trim()) {
+                payload.stream = postmatricData.stream.trim();
+            }
+            
+            // Matric Subjects (for 10th)
+            if (Array.isArray(matricSubjects)) {
+                payload.matric_subjects = matricSubjects;
+            }
             
             // Subjects (for post-matric)
             if (Array.isArray(subjects)) {
                 payload.subjects = subjects;
             }
+            
+            // Include is_pursuing_12th
+            payload.is_pursuing_12th = isPursuing12th;
 
             const response = await updateAcademics(payload);
 
             if (response.success && response.data) {
+                // Also update exam preferences (previous attempts)
+                await updateExamPreferences({
+                    previous_attempts: previousAttempts.filter(attempt => attempt.exam_id > 0 && attempt.year > 0),
+                });
+
                 setSuccess(true);
+                showSuccess("Academics updated successfully!");
                 setTimeout(() => setSuccess(false), 3000);
+                
+                // Close subject inputs after save
+                setShowMatricSubjectInput(false);
+                setShowSubjectInput(false);
             } else {
                 if (response.errors && Array.isArray(response.errors)) {
                     const errors: Record<string, string> = {};
@@ -212,12 +286,16 @@ export default function AcademicsProfile() {
                     });
                     setValidationErrors(errors);
                 } else {
-                    setError(response.message || "Failed to update academics");
+                    const errorMessage = response.message || "Failed to update academics";
+                    setError(errorMessage);
+                    showError(errorMessage);
                 }
             }
         } catch (err) {
             console.error("Error updating academics:", err);
-            setError("An error occurred while updating academics. Please try again.");
+            const errorMessage = "An error occurred while updating academics. Please try again.";
+            setError(errorMessage);
+            showError(errorMessage);
         } finally {
             setSaving(false);
         }
@@ -258,22 +336,15 @@ export default function AcademicsProfile() {
                         {/* Matric Board */}
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-300">Board</label>
-                            <div className="relative">
-                                <select
-                                    value={matricData.matric_board}
-                                    onChange={(e) => setMatricData({ ...matricData, matric_board: e.target.value })}
-                                    className={`${inputBase} appearance-none ${validationErrors.matric_board ? 'border-red-500' : ''}`}
-                                >
-                                    <option value="">Select Board</option>
-                                    {boardOptions.map(option => (
-                                        <option key={option} value={option}>{option}</option>
-                                    ))}
-                                </select>
-                                <FaChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                            </div>
-                            {validationErrors.matric_board && (
-                                <p className="mt-1 text-xs text-red-400">{validationErrors.matric_board}</p>
-                            )}
+                            <Select
+                                options={boardOptions}
+                                value={matricData.matric_board}
+                                onChange={(value) => setMatricData({ ...matricData, matric_board: value || "" })}
+                                placeholder="Select Board"
+                                error={validationErrors.matric_board}
+                                isSearchable={false}
+                                isClearable={false}
+                            />
                         </div>
 
                         {/* Matric School Name */}
@@ -371,6 +442,59 @@ export default function AcademicsProfile() {
                             </div>
                         </div>
                     )}
+
+                    {/* Matric Subject Breakdown */}
+                    <div className="mt-6">
+                        <h4 className="mb-3 text-base font-semibold text-slate-50">Subject Breakdown</h4>
+                        
+                        {/* Display existing subjects */}
+                        {matricSubjects.length > 0 && (
+                            <div className="mb-4 space-y-3">
+                                {matricSubjects.map((subj, index) => (
+                                    <div key={index} className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
+                                        <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
+                                        <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
+                                        <div className="mt-2 h-2 rounded-full bg-white/10">
+                                            <div 
+                                                className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
+                                                style={{ width: `${subj.percent}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Toggle subject input */}
+                        {!showMatricSubjectInput && (
+                            <button 
+                                type="button" 
+                                onClick={() => setShowMatricSubjectInput(true)}
+                                className="flex items-center gap-2 text-xs font-medium text-pink hover:underline"
+                            >
+                                {matricSubjects && matricSubjects.length > 0 ? (
+                                    <>
+                                        <FiEdit2 className="h-3.5 w-3.5" />
+                                        Edit Subject
+                                    </>
+                                ) : (
+                                    "+ Add subjects"
+                                )}
+                            </button>
+                        )}
+
+                        {/* Subject Input List */}
+                        {showMatricSubjectInput && (
+                            <SubjectInputList 
+                                subjects={matricSubjects}
+                                onChange={(newSubjects) => setMatricSubjects(newSubjects)}
+                            />
+                        )}
+
+                        {validationErrors.matric_subjects && (
+                            <p className="mt-1 text-xs text-red-400">{validationErrors.matric_subjects}</p>
+                        )}
+                    </div>
                 </section>
 
                 {/* Post-Matric (12th) Section */}
@@ -394,22 +518,15 @@ export default function AcademicsProfile() {
                                 {/* Post-Matric Board */}
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-slate-300">Board</label>
-                                    <div className="relative">
-                                        <select
-                                            value={postmatricData.postmatric_board}
-                                            onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_board: e.target.value })}
-                                            className={`${inputBase} appearance-none ${validationErrors.postmatric_board ? 'border-red-500' : ''}`}
-                                        >
-                                            <option value="">Select Board</option>
-                                            {boardOptions.map(option => (
-                                                <option key={option} value={option}>{option}</option>
-                                            ))}
-                                        </select>
-                                        <FaChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                                    </div>
-                                    {validationErrors.postmatric_board && (
-                                        <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_board}</p>
-                                    )}
+                                    <Select
+                                        options={boardOptions}
+                                        value={postmatricData.postmatric_board}
+                                        onChange={(value) => setPostmatricData({ ...postmatricData, postmatric_board: value || "" })}
+                                        placeholder="Select Board"
+                                        error={validationErrors.postmatric_board}
+                                        isSearchable={false}
+                                        isClearable={false}
+                                    />
                                 </div>
 
                                 {/* Post-Matric School Name */}
@@ -511,23 +628,41 @@ export default function AcademicsProfile() {
                     )}
 
                     {/* Stream (always visible) */}
-                    <div className="mt-4">
+                    <div className="mt-4 relative z-10">
                         <label className="mb-1 block text-sm font-medium text-slate-300">Stream</label>
-                        <div className="relative">
-                            <select
-                                value={postmatricData.stream}
-                                onChange={(e) => setPostmatricData({ ...postmatricData, stream: e.target.value })}
-                                className={`${inputBase} appearance-none ${validationErrors.stream ? 'border-red-500' : ''}`}
-                            >
-                                <option value="">Select Stream</option>
-                                {streamOptions.map(option => (
-                                    <option key={option} value={option}>{option}</option>
-                                ))}
-                            </select>
-                            <FaChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                        </div>
-                        {validationErrors.stream && (
-                            <p className="mt-1 text-xs text-red-400">{validationErrors.stream}</p>
+                        <Select
+                            options={streamOptions}
+                            value={postmatricData.stream}
+                            onChange={(value) => {
+                                setPostmatricData({ ...postmatricData, stream: value || "" });
+                                // Clear custom stream if not "Others"
+                                if (value !== "Others") {
+                                    setCustomStream("");
+                                }
+                            }}
+                            placeholder="Select Stream"
+                            error={validationErrors.stream}
+                            isSearchable={false}
+                            isClearable={false}
+                        />
+                        
+                        {/* Custom Stream Input (shown when "Others" is selected) */}
+                        {postmatricData.stream === "Others" && (
+                            <div className="mt-3">
+                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                    Specify Stream
+                                </label>
+                                <input
+                                    type="text"
+                                    value={customStream}
+                                    onChange={(e) => setCustomStream(e.target.value)}
+                                    placeholder="Enter your stream"
+                                    className={`${inputBase} ${validationErrors.stream ? 'border-red-500' : ''}`}
+                                />
+                                {validationErrors.stream && (
+                                    <p className="mt-1 text-xs text-red-400">{validationErrors.stream}</p>
+                                )}
+                            </div>
                         )}
                     </div>
 
@@ -559,9 +694,16 @@ export default function AcademicsProfile() {
                                 <button 
                                     type="button" 
                                     onClick={() => setShowSubjectInput(true)}
-                                    className="text-xs font-medium text-pink hover:underline"
+                                    className="flex items-center gap-2 text-xs font-medium text-pink hover:underline"
                                 >
-                                    + Add subjects
+                                    {subjects && subjects.length > 0 ? (
+                                        <>
+                                            <FiEdit2 className="h-3.5 w-3.5" />
+                                            Edit Subject
+                                        </>
+                                    ) : (
+                                        "+ Add subjects"
+                                    )}
                                 </button>
                             )}
 
@@ -579,6 +721,78 @@ export default function AcademicsProfile() {
                         </div>
                     )}
                 </section>
+            </div>
+
+            {/* Previous Exam Attempts Section */}
+            <div className="space-y-5 rounded-md bg-white/5 p-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-base font-semibold text-pink sm:text-lg">Previous Exam Attempts</h2>
+                        <p className="text-sm text-slate-300">Add your previous exam attempts (if any).</p>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="themeButton"
+                        size="sm"
+                        onClick={addPreviousAttempt}
+                    >
+                        + Add Attempt
+                    </Button>
+                </div>
+
+                {previousAttempts.length > 0 && (
+                    <div className="mt-4 space-y-4">
+                        {previousAttempts.map((attempt, index) => (
+                            <div key={index} className="rounded-md border border-white/10 bg-white/5 p-4 space-y-3">
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-300">Exam Name</label>
+                                        <Select
+                                            options={examOptions}
+                                            value={attempt.exam_id > 0 ? attempt.exam_id.toString() : null}
+                                            onChange={(value) => updatePreviousAttempt(index, 'exam_id', value ? parseInt(value) : 0)}
+                                            placeholder="Select exam"
+                                            isSearchable={true}
+                                            isClearable={false}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-300">Year</label>
+                                        <input
+                                            type="number"
+                                            value={attempt.year || ''}
+                                            onChange={(e) => updatePreviousAttempt(index, 'year', parseInt(e.target.value) || new Date().getFullYear())}
+                                            placeholder="2023"
+                                            min="2000"
+                                            max={new Date().getFullYear()}
+                                            className={inputBase}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-300">Rank (Optional)</label>
+                                        <input
+                                            type="number"
+                                            value={attempt.rank || ''}
+                                            onChange={(e) => updatePreviousAttempt(index, 'rank', e.target.value ? parseInt(e.target.value) : null)}
+                                            placeholder="Enter rank"
+                                            min="1"
+                                            className={inputBase}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => removePreviousAttempt(index)}
+                                        className="text-xs text-red-400 hover:text-red-300 transition"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Actions */}

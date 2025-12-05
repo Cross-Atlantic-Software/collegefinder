@@ -43,8 +43,10 @@ const init = async () => {
       'admin_users.sql',      // Admin users table (self-referencing)
       'email_templates.sql',  // Email templates table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
+      'exams.sql',            // Exams taxonomies table
       'user_academics.sql',   // User academics table (depends on users)
-      'user_career_goals.sql' // User career goals table (depends on users)
+      'user_career_goals.sql', // User career goals table (depends on users)
+      'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)
     ];
 
     // Execute each schema file in order
@@ -77,7 +79,6 @@ const query = async (text, params) => {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
     return res;
   } catch (error) {
     console.error('Query error', { text, error: error.message });

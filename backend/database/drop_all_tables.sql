@@ -10,3 +10,4 @@ DROP TABLE IF EXISTS users CASCADE;
 -- Note: Functions will remain, but you can drop them too if needed:
 -- DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 
+

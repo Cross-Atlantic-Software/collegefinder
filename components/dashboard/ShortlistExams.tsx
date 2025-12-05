@@ -3,10 +3,13 @@ import { useState } from "react";
 import { BiSearch } from "react-icons/bi";
 import { Button } from "../shared";
 import ExamBox from "./ExamBox";
+import { ExamApplicationModal } from "./ExamApplicationModal";
 import { IoFunnel } from "react-icons/io5";
 
 export default function ShortlistExams() {
     const [activeTab, setActiveTab] = useState("recommended");
+    const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
         <>
@@ -74,6 +77,10 @@ export default function ShortlistExams() {
                             mode="Online"
                             eligibility="12th PCM with 75%"
                             shortlisted
+                            onApply={() => {
+                                setSelectedExam({ name: "JEE Main", id: "jee-main" });
+                                setIsModalOpen(true);
+                            }}
                         />
                     </>
                 )}
@@ -93,6 +100,10 @@ export default function ShortlistExams() {
                             mode="Online"
                             eligibility="12th PCM with 75%"
                             shortlisted
+                            onApply={() => {
+                                setSelectedExam({ name: "JEE Main", id: "jee-main" });
+                                setIsModalOpen(true);
+                            }}
                         />
                     </>
                 )}
@@ -112,6 +123,10 @@ export default function ShortlistExams() {
                             applicants="12 Lakh"
                             mode="Online"
                             eligibility="12th PCM with 75%"
+                            onApply={() => {
+                                setSelectedExam({ name: "JEE Main", id: "jee-main" });
+                                setIsModalOpen(true);
+                            }}
                         />
 
                         <ExamBox
@@ -125,10 +140,31 @@ export default function ShortlistExams() {
                             applicants="20 Lakh"
                             mode="Offline"
                             eligibility="12th PCB with 50%"
+                            onApply={() => {
+                                setSelectedExam({ name: "NEET", id: "neet" });
+                                setIsModalOpen(true);
+                            }}
                         />
                     </>
                 )}
             </div>
+
+            {/* Exam Application Modal */}
+            {selectedExam && (
+                <ExamApplicationModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setSelectedExam(null);
+                    }}
+                    examName={selectedExam.name}
+                    examId={selectedExam.id}
+                    onSubmit={async (data) => {
+                        // TODO: Implement API call to save exam application with subject breakdown
+                        // This will be implemented when backend is ready
+                    }}
+                />
+            )}
         </>
     );
 }

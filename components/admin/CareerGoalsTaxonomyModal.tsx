@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FiX, FiUpload, FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import Image from 'next/image';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, CareerGoalAdmin } from '@/api';
+import { ConfirmationModal, useToast } from '@/components/shared';
 
 interface CareerGoalsTaxonomyModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface CareerGoalsTaxonomyModalProps {
 }
 
 export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoalsTaxonomyModalProps) {
+  const { showSuccess, showError } = useToast();
   const [careerGoals, setCareerGoals] = useState<CareerGoalAdmin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,9 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -52,11 +57,16 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
         setFormData({ ...formData, logo: response.data.logoUrl });
         setLogoPreview(response.data.logoUrl);
         setError(null);
+        showSuccess('Logo uploaded successfully');
       } else {
-        setError(response.message || 'Failed to upload logo');
+        const errorMsg = response.message || 'Failed to upload logo';
+        setError(errorMsg);
+        showError(errorMsg);
       }
     } catch (err) {
-      setError('An error occurred while uploading logo');
+      const errorMsg = 'An error occurred while uploading logo';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error uploading logo:', err);
     } finally {
       setUploading(false);
@@ -89,41 +99,68 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
+          showSuccess('Career goal updated successfully');
           setShowForm(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          setError(response.message || 'Failed to update career goal');
+          const errorMsg = response.message || 'Failed to update career goal';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       } else {
         const response = await createCareerGoal(formData);
         if (response.success) {
+          showSuccess('Career goal created successfully');
           setShowForm(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          setError(response.message || 'Failed to create career goal');
+          const errorMsg = response.message || 'Failed to create career goal';
+          setError(errorMsg);
+          showError(errorMsg);
         }
       }
     } catch (err) {
-      setError('An error occurred while saving career goal');
+      const errorMsg = 'An error occurred while saving career goal';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error saving career goal:', err);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this career goal taxonomy? This will remove it from all users who have selected it.')) return;
+  const handleDeleteClick = (id: number) => {
+    setDeletingId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
 
     try {
-      const response = await deleteCareerGoal(id);
+      setIsDeleting(true);
+      const response = await deleteCareerGoal(deletingId);
       if (response.success) {
+        showSuccess('Career goal deleted successfully');
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
         fetchCareerGoals();
       } else {
-        setError(response.message || 'Failed to delete career goal');
+        const errorMsg = response.message || 'Failed to delete career goal';
+        setError(errorMsg);
+        showError(errorMsg);
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
       }
     } catch (err) {
-      setError('An error occurred while deleting career goal');
+      const errorMsg = 'An error occurred while deleting career goal';
+      setError(errorMsg);
+      showError(errorMsg);
       console.error('Error deleting career goal:', err);
+      setShowDeleteConfirm(false);
+      setDeletingId(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -304,7 +341,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                             <FiEdit2 className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(cg.id)}
+                            onClick={() => handleDeleteClick(cg.id)}
                             className="p-1.5 text-red-600 hover:text-red-800 transition-colors"
                             title="Delete"
                           >
@@ -322,6 +359,22 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingId(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Career Goal Taxonomy"
+        message="Are you sure you want to delete this career goal taxonomy? This will remove it from all users who have selected it. This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
