@@ -28,7 +28,7 @@ export default function ExamsPage() {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
     const adminToken = localStorage.getItem('admin_token');
     if (!isAuthenticated || !adminToken) {
-      router.push('/admin/login');
+      router.replace('/admin/login');
       return;
     }
 
@@ -173,7 +173,7 @@ export default function ExamsPage() {
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
-            onClick={() => router.push('/admin/login')}
+            onClick={() => router.replace('/admin/login')}
             className="text-pink hover:underline"
           >
             Go to login
