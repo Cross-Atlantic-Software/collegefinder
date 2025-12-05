@@ -12,11 +12,11 @@ export default function AdminDashboardPage() {
     // Check admin authentication
     const isAuthenticated = localStorage.getItem('admin_authenticated');
     if (!isAuthenticated) {
-      router.push('/admin/login');
+      router.replace('/admin/login');
       return;
     }
     // Redirect to users page for now
-    router.push('/admin/dashboard/users');
+    router.replace('/admin/dashboard/users');
   }, [router]);
 
   return (
