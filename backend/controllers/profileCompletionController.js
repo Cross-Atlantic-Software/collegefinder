@@ -55,6 +55,7 @@ class ProfileCompletionController {
 
       // Basic Info Section
       const basicInfoFields = [
+        { key: 'name', label: 'Name', value: user.name },
         { key: 'first_name', label: 'First Name', value: user.first_name },
         { key: 'last_name', label: 'Last Name', value: user.last_name },
         { key: 'date_of_birth', label: 'Date of Birth', value: user.date_of_birth },

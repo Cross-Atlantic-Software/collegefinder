@@ -59,6 +59,7 @@ export async function getBasicInfo(): Promise<ApiResponse<{
  * Update user basic info
  */
 export async function updateBasicInfo(data: {
+  name?: string;
   first_name?: string;
   last_name?: string;
   date_of_birth?: string;

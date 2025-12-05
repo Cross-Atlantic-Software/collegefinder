@@ -38,6 +38,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
 UPDATE users SET auth_provider = 'email' WHERE auth_provider IS NULL;
 
+-- Ensure name column is VARCHAR(255) (fix truncation issues)
+DO $$
+BEGIN
+  -- Check if name column exists and alter its type if needed
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'name') THEN
+    -- Alter to ensure it's VARCHAR(255)
+    EXECUTE 'ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(255)';
+  END IF;
+END $$;
+
 -- Indexes for users table
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 

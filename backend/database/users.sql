@@ -34,6 +34,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 
+-- Ensure name column is VARCHAR(255) (fix truncation issues)
+DO $$
+BEGIN
+  -- Check if name column exists and alter its type if needed
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'name') THEN
+    -- Alter to ensure it's VARCHAR(255)
+    EXECUTE 'ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(255)';
+  END IF;
+END $$;
+
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
 UPDATE users SET auth_provider = 'email' WHERE auth_provider IS NULL;

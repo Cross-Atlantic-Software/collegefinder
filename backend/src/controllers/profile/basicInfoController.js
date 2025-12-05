@@ -62,6 +62,7 @@ class BasicInfoController {
 
       const userId = req.user.id;
       const {
+        name,
         first_name,
         last_name,
         date_of_birth,
@@ -78,6 +79,10 @@ class BasicInfoController {
       const values = [];
       let paramCount = 1;
 
+      if (name !== undefined) {
+        updates.push(`name = $${paramCount++}`);
+        values.push(name || null);
+      }
       if (first_name !== undefined) {
         updates.push(`first_name = $${paramCount++}`);
         values.push(first_name);
@@ -143,7 +148,7 @@ class BasicInfoController {
         WHERE id = $${paramCount}
         RETURNING *
       `;
-
+      
       const result = await db.query(query, values);
       const updatedUser = result.rows[0];
 

@@ -33,6 +33,7 @@ export default function BasicInfoForm() {
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   const [formData, setFormData] = useState({
+    name: "",
     first_name: "",
     last_name: "",
     date_of_birth: "",
@@ -70,15 +71,18 @@ export default function BasicInfoForm() {
             }
           }
           
-          setFormData({
-            first_name: response.data.first_name || "",
-            last_name: response.data.last_name || "",
+          const formDataToSet = {
+            name: response.data.name ?? "",
+            first_name: response.data.first_name ?? "",
+            last_name: response.data.last_name ?? "",
             date_of_birth: formattedDate,
-            gender: response.data.gender || "Male",
-            state: response.data.state || "",
-            district: response.data.district || "",
-            phone_number: response.data.phone_number || "",
-          });
+            gender: response.data.gender ?? "Male",
+            state: response.data.state ?? "",
+            district: response.data.district ?? "",
+            phone_number: response.data.phone_number ?? "",
+          };
+          
+          setFormData(formDataToSet);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
           setPhoneNumber(response.data.phone_number || "");
@@ -133,21 +137,66 @@ export default function BasicInfoForm() {
       // Get current location coordinates
       const location = await getCurrentLocation();
       
-      const response = await updateBasicInfo({
-        first_name: formData.first_name || undefined,
-        last_name: formData.last_name || undefined,
-        date_of_birth: formData.date_of_birth || undefined,
-        gender: formData.gender || undefined,
-        state: formData.state || undefined,
-        district: formData.district || undefined,
-        phone_number: formData.phone_number || undefined,
-        ...(location && {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }),
-      });
+      // Prepare update data - include name even if empty string
+      const updateData: {
+        name?: string;
+        first_name?: string;
+        last_name?: string;
+        date_of_birth?: string;
+        gender?: string;
+        state?: string;
+        district?: string;
+        phone_number?: string;
+        latitude?: number;
+        longitude?: number;
+      } = {};
+      
+      // Always include name - send it explicitly like first_name
+      if (formData.name !== undefined) {
+        updateData.name = formData.name || undefined; // Convert empty string to undefined
+      }
+      if (formData.first_name !== undefined) updateData.first_name = formData.first_name;
+      if (formData.last_name) updateData.last_name = formData.last_name;
+      if (formData.date_of_birth) updateData.date_of_birth = formData.date_of_birth;
+      if (formData.gender) updateData.gender = formData.gender;
+      if (formData.state) updateData.state = formData.state;
+      if (formData.district) updateData.district = formData.district;
+      if (formData.phone_number) updateData.phone_number = formData.phone_number;
+      
+      if (location) {
+        updateData.latitude = location.latitude;
+        updateData.longitude = location.longitude;
+      }
+      
+      const response = await updateBasicInfo(updateData);
 
-      if (response.success) {
+      if (response.success && response.data) {
+        // Update form data with the response to reflect saved values from database
+        let formattedDate = "";
+        if (response.data.date_of_birth) {
+          if (typeof response.data.date_of_birth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(response.data.date_of_birth)) {
+            formattedDate = response.data.date_of_birth.split('T')[0];
+          } else {
+            const date = new Date(response.data.date_of_birth);
+            if (!isNaN(date.getTime())) {
+              formattedDate = date.toISOString().split('T')[0];
+            }
+          }
+        }
+        
+        const updatedFormData = {
+          name: response.data.name || "",
+          first_name: response.data.first_name || "",
+          last_name: response.data.last_name || "",
+          date_of_birth: formattedDate,
+          gender: response.data.gender || "Male",
+          state: response.data.state || "",
+          district: response.data.district || "",
+          phone_number: response.data.phone_number || "",
+        };
+        
+        setFormData(updatedFormData);
+        
         setSuccess(true);
         showSuccess("Profile updated successfully!");
         setTimeout(() => setSuccess(false), 3000);
@@ -155,9 +204,9 @@ export default function BasicInfoForm() {
         // Handle validation errors from backend
         if (response.errors && Array.isArray(response.errors)) {
           const errors: Record<string, string> = {};
-          response.errors.forEach((err: any) => {
+          response.errors.forEach((err: { param?: string; msg?: string; message?: string }) => {
             if (err.param) {
-              errors[err.param] = err.msg || err.message;
+              errors[err.param] = err.msg || err.message || '';
             }
           });
           setValidationErrors(errors);
@@ -223,6 +272,23 @@ export default function BasicInfoForm() {
           )}
 
           {/* Name */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+              Name
+            </label>
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className={`${inputBase} ${validationErrors.name ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.name && (
+              <p className="text-xs text-red-400">{validationErrors.name}</p>
+            )}
+          </div>
+
+          {/* First Name & Last Name */}
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="flex items-center gap-1 text-sm font-medium text-slate-300">

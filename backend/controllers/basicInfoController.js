@@ -61,7 +61,9 @@ class BasicInfoController {
       }
 
       const userId = req.user.id;
+    
       const {
+        name,
         first_name,
         last_name,
         date_of_birth,
@@ -78,6 +80,15 @@ class BasicInfoController {
       const values = [];
       let paramCount = 1;
 
+      if (name !== undefined) {
+     
+        const nameValue = name === '' ? null : name; // Convert empty string to null, but keep actual values
+        console.log('✅ Name value to be saved:', nameValue);
+        updates.push(`name = $${paramCount++}`);
+        values.push(nameValue);
+      } else {
+        console.log('⚠️ Name is undefined, not updating');
+      }
       if (first_name !== undefined) {
         updates.push(`first_name = $${paramCount++}`);
         values.push(first_name);

@@ -140,6 +140,11 @@ const validateUpdateEmailTemplate = [
  * Validation rules for updating basic info
  */
 const validateUpdateBasicInfo = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Name must be less than 255 characters'),
   body('first_name')
     .optional()
     .trim()
