@@ -156,7 +156,7 @@ const Select: React.FC<SelectProps> = ({
         classNamePrefix="react-select"
         menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
         menuPosition="fixed"
-        menuPlacement="top"
+        menuPlacement="bottom"
         filterOption={filterOption || undefined}
         theme={(theme) => ({
           ...theme,

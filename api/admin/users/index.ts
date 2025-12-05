@@ -100,6 +100,7 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     matric_total_marks: number | null;
     matric_obtained_marks: number | null;
     matric_percentage: number | null;
+    matric_subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
     postmatric_board: string | null;
     postmatric_school_name: string | null;
     postmatric_passing_year: number | null;
@@ -108,10 +109,15 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     postmatric_obtained_marks: number | null;
     postmatric_percentage: number | null;
     stream: string | null;
-    subjects: Array<{ name: string; percent: number }>;
+    subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+    is_pursuing_12th: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
   } | null;
   careerGoals: {
     interests: string[];
+    created_at?: string | null;
+    updated_at?: string | null;
   } | null;
   examPreferences: {
     target_exams: string[];

@@ -16,6 +16,7 @@ export * from './admin';
 export { getAllCareerGoals as getAllCareerGoalsPublic } from './career-goals';
 export type { CareerGoal as CareerGoalPublic } from './career-goals';
 
-// Export exams API
-export * from './exams';
+// Export exams API (public) - use explicit exports to avoid conflicts with admin
+export { getAllExams, getExamPreferences, updateExamPreferences } from './exams';
+export type { Exam as ExamPublic, PreviousExamAttempt } from './exams';
 

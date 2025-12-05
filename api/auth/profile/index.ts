@@ -100,6 +100,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_total_marks: number | null;
   matric_obtained_marks: number | null;
   matric_percentage: number | null;
+  matric_subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   // Post-Matric (12th) fields
   postmatric_board: string | null;
   postmatric_school_name: string | null;
