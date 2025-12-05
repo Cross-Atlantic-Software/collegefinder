@@ -5,12 +5,12 @@ const AdminController = require('../controllers/adminController');
 const AdminUsersController = require('../controllers/adminUsersController');
 const CareerGoalsController = require('../controllers/careerGoalsController');
 const ExamsController = require('../controllers/examsController');
-const { authenticateAdmin, requireSuperAdmin } = require('../middleware/adminAuth');
+const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
   validateCreateAdmin,
   validateUpdateAdmin
-} = require('../middleware/validators');
+} = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
 const upload = multer({

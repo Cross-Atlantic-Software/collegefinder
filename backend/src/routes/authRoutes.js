@@ -6,7 +6,7 @@ const AcademicsController = require('../controllers/academicsController');
 const CareerGoalsController = require('../controllers/careerGoalsController');
 const ExamsController = require('../controllers/examsController');
 const ProfileCompletionController = require('../controllers/profileCompletionController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const {
   validateSendOTP,
   validateVerifyOTP,
@@ -15,7 +15,7 @@ const {
   validateUpdateBasicInfo,
   validateUpdateAcademics,
   validateUpdateCareerGoals
-} = require('../middleware/validators');
+} = require('../../middleware/validators');
 
 /**
  * @route   POST /api/auth/send-otp

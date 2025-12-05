@@ -1,7 +1,7 @@
 /**
  * Script to run database migrations
  * Usage: node scripts/runMigration.js <migration-file>
- * Example: node scripts/runMigration.js database/migrations/add_user_fields.sql
+ * Example: node scripts/runMigration.js src/database/migrations/add_user_fields.sql
  */
 
 require('dotenv').config();
@@ -54,7 +54,7 @@ const migrationFile = process.argv[2];
 if (!migrationFile) {
   console.error('❌ Please provide a migration file path');
   console.log('Usage: node scripts/runMigration.js <migration-file>');
-  console.log('Example: node scripts/runMigration.js database/migrations/add_user_fields.sql');
+  console.log('Example: node scripts/runMigration.js src/database/migrations/add_user_fields.sql');
   process.exit(1);
 }
 

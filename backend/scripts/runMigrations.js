@@ -17,7 +17,7 @@ const pool = new Pool({
 });
 
 async function runMigrations() {
-  const migrationsDir = path.join(__dirname, '../database/migrations');
+  const migrationsDir = path.join(__dirname, '../src/database/migrations');
   
   // Migration files in order
   const migrationFiles = [

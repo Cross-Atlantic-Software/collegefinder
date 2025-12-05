@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const EmailTemplate = require('../models/EmailTemplate');
+const EmailTemplate = require('../src/models/EmailTemplate');
 
 // Create transporter (configure based on your email provider)
 const createTransporter = () => {

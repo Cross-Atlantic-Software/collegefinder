@@ -33,7 +33,7 @@ pool.on('error', (err) => {
 // Initialize database tables
 const init = async () => {
   try {
-    const dbDir = path.join(__dirname, '../database');
+    const dbDir = path.join(__dirname, '../src/database');
     
     // Define schema files in execution order
     const schemaFiles = [

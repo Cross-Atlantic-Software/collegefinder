@@ -1,5 +1,5 @@
 const { verifyToken } = require('../utils/jwt');
-const User = require('../models/User');
+const User = require('../src/models/User');
 
 /**
  * Authentication middleware

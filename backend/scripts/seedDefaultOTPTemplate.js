@@ -1,28 +1,30 @@
 /**
- * Script to update existing OTP email template with new design
- * Run: node scripts/updateOTPTemplate.js
+ * Script to seed default OTP email template
+ * Run: node scripts/seedDefaultOTPTemplate.js
  */
 
 require('dotenv').config();
 const db = require('../config/database');
 const EmailTemplate = require('../src/models/EmailTemplate');
 
-async function updateOTPTemplate() {
+async function seedDefaultTemplate() {
   try {
     // Initialize database connection
     await db.init();
     console.log('✅ Database connected\n');
 
-    // Check if OTP template exists
+    // Check if OTP template already exists
     const existing = await EmailTemplate.findByType('OTP_Verification');
-    if (!existing) {
-      console.log('❌ OTP template not found. Please run seedDefaultOTPTemplate.js first');
+    if (existing) {
+      console.log('ℹ️  OTP template already exists');
+      console.log('Template ID:', existing.id);
       await db.pool.end();
-      process.exit(1);
+      process.exit(0);
     }
 
-    // New OTP template with AWS-style clean design
-    const newTemplate = {
+    // Default OTP template with AWS-style clean design
+    const defaultTemplate = {
+      type: 'OTP_Verification',
       subject: 'Verify your email address - College Finder',
       body_html: `<!DOCTYPE html>
 <html>
@@ -89,27 +91,26 @@ async function updateOTPTemplate() {
 </html>`
     };
 
-    const updated = await EmailTemplate.update(existing.id, newTemplate.subject, newTemplate.body_html);
+    const template = await EmailTemplate.create(
+      defaultTemplate.type,
+      defaultTemplate.subject,
+      defaultTemplate.body_html
+    );
 
-    console.log('✅ OTP template updated successfully!');
+    console.log('✅ Default OTP template created successfully!');
     console.log('Template details:');
-    console.log(`  ID: ${updated.id}`);
-    console.log(`  Type: ${updated.type}`);
-    console.log(`  Subject: ${updated.subject}`);
-    console.log('\n📧 The new template features:');
-    console.log('  - Pink gradient header matching website theme');
-    console.log('  - Light gradient background for OTP code box');
-    console.log('  - Modern, clean design');
-    console.log('  - Responsive email-friendly HTML');
+    console.log(`  ID: ${template.id}`);
+    console.log(`  Type: ${template.type}`);
+    console.log(`  Subject: ${template.subject}`);
 
     await db.pool.end();
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error updating OTP template:', error);
+    console.error('❌ Error seeding default template:', error);
     await db.pool.end().catch(() => {});
     process.exit(1);
   }
 }
 
-updateOTPTemplate();
+seedDefaultTemplate();
 

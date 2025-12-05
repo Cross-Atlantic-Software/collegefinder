@@ -1,8 +1,8 @@
 const User = require('../models/User');
 const Otp = require('../models/Otp');
-const { generateOTP, getOTPExpiry } = require('../utils/otpGenerator');
-const { sendOTPEmail } = require('../utils/emailService');
-const { generateToken } = require('../utils/jwt');
+const { generateOTP, getOTPExpiry } = require('../../utils/otpGenerator');
+const { sendOTPEmail } = require('../../utils/emailService');
+const { generateToken } = require('../../utils/jwt');
 const { validationResult } = require('express-validator');
 
 class AuthController {

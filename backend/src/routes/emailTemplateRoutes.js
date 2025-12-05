@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const EmailTemplateController = require('../controllers/emailTemplateController');
-const { authenticateAdmin, requireSuperAdmin } = require('../middleware/adminAuth');
+const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateCreateEmailTemplate,
   validateUpdateEmailTemplate
-} = require('../middleware/validators');
+} = require('../../middleware/validators');
 
 /**
  * @route   GET /api/admin/email-templates
