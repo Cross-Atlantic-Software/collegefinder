@@ -28,19 +28,46 @@ class UserExamPreferences {
 
     const { target_exams, previous_attempts } = data;
 
-    // Ensure arrays are properly formatted for PostgreSQL INTEGER[]
-    let targetExamsArray = [];
-    if (Array.isArray(target_exams)) {
-      targetExamsArray = target_exams.map(id => {
-        const numId = typeof id === 'string' ? parseInt(id, 10) : id;
-        return isNaN(numId) ? null : numId;
-      }).filter(id => id !== null);
+    // Get existing preferences to preserve fields that aren't being updated
+    const existing = await this.findByUserId(userIdNum);
+
+    // Prepare target_exams - use new value if provided, otherwise keep existing
+    let targetExamsArray = null;
+    if (target_exams !== undefined) {
+      // Field is explicitly provided, use it
+      if (Array.isArray(target_exams) && target_exams.length > 0) {
+        targetExamsArray = target_exams.map(id => {
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return isNaN(numId) ? null : numId;
+        }).filter(id => id !== null);
+      } else {
+        // Empty array or null means clear the field
+        targetExamsArray = null;
+      }
+    } else {
+      // Field not provided, keep existing value
+      targetExamsArray = existing?.target_exams || null;
     }
 
-    // Ensure previous_attempts is valid JSONB
+    // Prepare previous_attempts - use new value if provided, otherwise keep existing
     let previousAttemptsJson = null;
-    if (Array.isArray(previous_attempts) && previous_attempts.length > 0) {
-      previousAttemptsJson = JSON.stringify(previous_attempts);
+    if (previous_attempts !== undefined) {
+      // Field is explicitly provided, use it
+      if (Array.isArray(previous_attempts) && previous_attempts.length > 0) {
+        previousAttemptsJson = JSON.stringify(previous_attempts);
+      } else {
+        // Empty array or null means clear the field
+        previousAttemptsJson = null;
+      }
+    } else {
+      // Field not provided, keep existing value
+      if (existing?.previous_attempts) {
+        previousAttemptsJson = typeof existing.previous_attempts === 'string' 
+          ? existing.previous_attempts 
+          : JSON.stringify(existing.previous_attempts);
+      } else {
+        previousAttemptsJson = null;
+      }
     }
 
     const result = await db.query(
@@ -54,7 +81,7 @@ class UserExamPreferences {
       RETURNING *`,
       [
         userIdNum,
-        targetExamsArray.length > 0 ? targetExamsArray : null,
+        targetExamsArray,
         previousAttemptsJson
       ]
     );
