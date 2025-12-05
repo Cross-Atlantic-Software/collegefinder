@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const AuthController = require('../../controllers/auth/authController');
-const BasicInfoController = require('../../controllers/profile/basicInfoController');
-const AcademicsController = require('../../controllers/profile/academicsController');
-const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
-const ExamsController = require('../../controllers/profile/examsController');
-const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
+const AuthController = require('../controllers/authController');
+const BasicInfoController = require('../controllers/basicInfoController');
+const AcademicsController = require('../controllers/academicsController');
+const CareerGoalsController = require('../controllers/careerGoalsController');
+const ExamsController = require('../controllers/examsController');
+const ProfileCompletionController = require('../controllers/profileCompletionController');
 const { authenticate } = require('../../middleware/auth');
 const {
   validateSendOTP,

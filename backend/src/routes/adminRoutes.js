@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const AdminController = require('../../controllers/admin/adminController');
-const AdminUsersController = require('../../controllers/admin/adminUsersController');
-const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
-const ExamsController = require('../../controllers/profile/examsController');
+const AdminController = require('../controllers/adminController');
+const AdminUsersController = require('../controllers/adminUsersController');
+const CareerGoalsController = require('../controllers/careerGoalsController');
+const ExamsController = require('../controllers/examsController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,

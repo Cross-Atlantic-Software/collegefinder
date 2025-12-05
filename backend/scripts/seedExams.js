@@ -6,7 +6,7 @@
  */
 
 require('dotenv').config();
-const db = require('../config/database');
+const db = require('../src/config/database');
 const Exam = require('../src/models/taxonomy/Exam');
 
 const examsData = [

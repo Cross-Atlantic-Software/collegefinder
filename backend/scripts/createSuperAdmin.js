@@ -11,7 +11,7 @@
  */
 
 require('dotenv').config();
-const db = require('../config/database');
+const db = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 const readline = require('readline');
 

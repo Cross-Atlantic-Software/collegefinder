@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const EmailTemplateController = require('../../controllers/admin/emailTemplateController');
+const EmailTemplateController = require('../controllers/emailTemplateController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateCreateEmailTemplate,

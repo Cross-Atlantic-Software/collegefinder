@@ -9,7 +9,7 @@
  */
 
 require('dotenv').config();
-const db = require('../config/database');
+const db = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 
 async function resetAdminPassword(email, newPassword) {

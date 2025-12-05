@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const db = require('./config/database');
+const db = require('./src/config/database');
 
 const app = express();
 
@@ -24,11 +24,11 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/admin/email-templates', require('./routes/emailTemplateRoutes'));
-app.use('/api/career-goals', require('./routes/careerGoalsRoutes'));
-app.use('/api/exams', require('./routes/examsRoutes'));
+app.use('/api/auth', require('./src/routes/auth/authRoutes'));
+app.use('/api/admin', require('./src/routes/admin/adminRoutes'));
+app.use('/api/admin/email-templates', require('./src/routes/admin/emailTemplateRoutes'));
+app.use('/api/career-goals', require('./src/routes/public/careerGoalsRoutes'));
+app.use('/api/exams', require('./src/routes/public/examsRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {
