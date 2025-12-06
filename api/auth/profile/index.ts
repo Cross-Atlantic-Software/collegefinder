@@ -49,6 +49,7 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   email_verified: boolean;
   latitude: number | null;
   longitude: number | null;
+  profile_photo?: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
@@ -81,6 +82,7 @@ export async function updateBasicInfo(data: {
   phone_number: string | null;
   latitude: number | null;
   longitude: number | null;
+  profile_photo?: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'PUT',
