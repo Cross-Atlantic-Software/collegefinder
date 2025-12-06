@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS user_academics (
   postmatric_obtained_marks DECIMAL(10, 2),
   postmatric_percentage DECIMAL(5, 2),
   stream VARCHAR(100), -- PCM, PCB, Commerce, Humanities/Arts, Others
-  subjects JSONB, -- Array of subjects for 12th: [{"name": "Physics", "percent": 89}, ...]
-  matric_subjects JSONB, -- Array of subjects for 10th: [{"name": "Math", "percent": 89}, ...]
+  subjects JSONB, -- Array of subjects for 12th: [{"subject_id": 1, "name": "Physics", "percent": 89}, ...]
+  matric_subjects JSONB, -- Array of subjects for 10th: [{"subject_id": 1, "name": "Math", "percent": 89}, ...]
   is_pursuing_12th BOOLEAN DEFAULT false, -- Whether user is currently pursuing 12th
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

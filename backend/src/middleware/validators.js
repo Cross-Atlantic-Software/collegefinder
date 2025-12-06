@@ -140,6 +140,11 @@ const validateUpdateEmailTemplate = [
  * Validation rules for updating basic info
  */
 const validateUpdateBasicInfo = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Name must be less than 255 characters'),
   body('first_name')
     .optional()
     .trim()
@@ -278,6 +283,134 @@ const validateUpdateCareerGoals = [
     .withMessage('Invalid interest value')
 ];
 
+/**
+ * Validation rules for creating blog
+ */
+const validateCreateBlog = [
+  body('slug')
+    .notEmpty()
+    .withMessage('Slug is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Slug must be between 1 and 255 characters')
+    .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .withMessage('Slug must be lowercase alphanumeric with hyphens (e.g., my-blog-post)'),
+  body('title')
+    .notEmpty()
+    .withMessage('Title is required')
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Title must be between 1 and 500 characters'),
+  body('content_type')
+    .notEmpty()
+    .withMessage('Content type is required')
+    .isIn(['TEXT', 'VIDEO'])
+    .withMessage('Content type must be either TEXT or VIDEO'),
+  body('is_featured')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      if (value === 'true' || value === true) return true;
+      if (value === 'false' || value === false) return true;
+      return false;
+    })
+    .withMessage('is_featured must be a boolean'),
+  body('teaser')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Teaser must be less than 1000 characters'),
+  body('summary')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Summary must be less than 2000 characters'),
+  body('first_part')
+    .optional({ checkFalsy: true })
+    .trim(),
+  body('second_part')
+    .optional({ checkFalsy: true })
+    .trim()
+];
+
+/**
+ * Validation rules for updating blog
+ */
+const validateUpdateBlog = [
+  body('slug')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Slug must be between 1 and 255 characters')
+    .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .withMessage('Slug must be lowercase alphanumeric with hyphens (e.g., my-blog-post)'),
+  body('title')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Title must be between 1 and 500 characters'),
+  body('content_type')
+    .optional({ checkFalsy: true })
+    .isIn(['TEXT', 'VIDEO'])
+    .withMessage('Content type must be either TEXT or VIDEO'),
+  body('is_featured')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      if (value === 'true' || value === true) return true;
+      if (value === 'false' || value === false) return true;
+      return false;
+    })
+    .withMessage('is_featured must be a boolean'),
+  body('teaser')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Teaser must be less than 1000 characters'),
+  body('summary')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Summary must be less than 2000 characters'),
+  body('first_part')
+    .optional({ checkFalsy: true })
+    .trim(),
+  body('second_part')
+    .optional({ checkFalsy: true })
+    .trim()
+];
+
+/**
+ * Validation rules for creating subject
+ */
+const validateCreateSubject = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating subject
+ */
+const validateUpdateSubject = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -290,6 +423,10 @@ module.exports = {
   validateUpdateEmailTemplate,
   validateUpdateBasicInfo,
   validateUpdateAcademics,
-  validateUpdateCareerGoals
+  validateUpdateCareerGoals,
+  validateCreateBlog,
+  validateUpdateBlog,
+  validateCreateSubject,
+  validateUpdateSubject
 };
 

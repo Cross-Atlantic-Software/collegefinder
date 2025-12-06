@@ -15,6 +15,7 @@ export { getAllUsersBasicInfo, getAllUsersAcademics, getAllUsersCareerGoals } fr
 
 // Export email templates management APIs
 export * from './email-templates';
+export * from './blogs';
 
 // Export career goals taxonomy management APIs - use explicit exports to avoid conflicts
 export {
@@ -36,3 +37,13 @@ export {
   deleteExam,
 } from './exams';
 export type { Exam } from './exams';
+
+// Export subjects taxonomy management APIs
+export {
+  getAllSubjects,
+  getSubjectById,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+} from './subjects';
+export type { Subject } from './subjects';

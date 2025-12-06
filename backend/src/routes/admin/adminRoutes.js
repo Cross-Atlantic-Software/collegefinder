@@ -5,11 +5,14 @@ const AdminController = require('../../controllers/admin/adminController');
 const AdminUsersController = require('../../controllers/admin/adminUsersController');
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
+const SubjectController = require('../../controllers/admin/subjectController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
   validateCreateAdmin,
-  validateUpdateAdmin
+  validateUpdateAdmin,
+  validateCreateSubject,
+  validateUpdateSubject
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -156,6 +159,45 @@ router.put('/career-goals/:id', authenticateAdmin, CareerGoalsController.update)
  * @access  Private (Admin)
  */
 router.delete('/career-goals/:id', authenticateAdmin, CareerGoalsController.delete);
+
+/**
+ * Subjects Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/subjects
+ * @desc    Get all subjects (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/subjects', authenticateAdmin, SubjectController.getAllSubjects);
+
+/**
+ * @route   GET /api/admin/subjects/:id
+ * @desc    Get subject by ID
+ * @access  Private (Admin)
+ */
+router.get('/subjects/:id', authenticateAdmin, SubjectController.getSubjectById);
+
+/**
+ * @route   POST /api/admin/subjects
+ * @desc    Create new subject
+ * @access  Private (Admin)
+ */
+router.post('/subjects', authenticateAdmin, validateCreateSubject, SubjectController.createSubject);
+
+/**
+ * @route   PUT /api/admin/subjects/:id
+ * @desc    Update subject
+ * @access  Private (Admin)
+ */
+router.put('/subjects/:id', authenticateAdmin, validateUpdateSubject, SubjectController.updateSubject);
+
+/**
+ * @route   DELETE /api/admin/subjects/:id
+ * @desc    Delete subject
+ * @access  Private (Admin)
+ */
+router.delete('/subjects/:id', authenticateAdmin, SubjectController.deleteSubject);
 
 /**
  * Exams Taxonomy Routes
