@@ -10,9 +10,10 @@ import { FaUser } from "react-icons/fa6";
 
 import { Button, DateOfBirthPicker, PhoneInput, Select, SelectOption, Notification } from "../../shared";
 import { useToast } from "../../shared";
-import { getBasicInfo, updateBasicInfo } from "@/api";
+import { getBasicInfo, updateBasicInfo, uploadProfilePhoto, deleteProfilePhoto } from "@/api";
 import { EmailVerificationModal } from "./EmailVerificationModal";
 import { indianStatesDistricts, getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
+import { useAuth } from "@/contexts/AuthContext";
 
 const genderOptions = [
   { label: "Male", icon: "/icons/male.png" },
@@ -25,6 +26,7 @@ const inputBase =
 
 export default function BasicInfoForm() {
   const { showSuccess, showError } = useToast();
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export default function BasicInfoForm() {
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   const [formData, setFormData] = useState({
+    name: "",
     first_name: "",
     last_name: "",
     date_of_birth: "",
@@ -40,7 +43,11 @@ export default function BasicInfoForm() {
     state: "",
     district: "",
     phone_number: "",
+    profile_photo: "",
   });
+  
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
@@ -70,15 +77,20 @@ export default function BasicInfoForm() {
             }
           }
           
-          setFormData({
-            first_name: response.data.first_name || "",
-            last_name: response.data.last_name || "",
+          const formDataToSet = {
+            name: response.data.name ?? "",
+            first_name: response.data.first_name ?? "",
+            last_name: response.data.last_name ?? "",
             date_of_birth: formattedDate,
-            gender: response.data.gender || "Male",
-            state: response.data.state || "",
-            district: response.data.district || "",
-            phone_number: response.data.phone_number || "",
-          });
+            gender: response.data.gender ?? "Male",
+            state: response.data.state ?? "",
+            district: response.data.district ?? "",
+            phone_number: response.data.phone_number ?? "",
+            profile_photo: response.data.profile_photo ?? "",
+          };
+          
+          setFormData(formDataToSet);
+          setProfilePhotoPreview(response.data.profile_photo || null);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
           setPhoneNumber(response.data.phone_number || "");
@@ -133,21 +145,68 @@ export default function BasicInfoForm() {
       // Get current location coordinates
       const location = await getCurrentLocation();
       
-      const response = await updateBasicInfo({
-        first_name: formData.first_name || undefined,
-        last_name: formData.last_name || undefined,
-        date_of_birth: formData.date_of_birth || undefined,
-        gender: formData.gender || undefined,
-        state: formData.state || undefined,
-        district: formData.district || undefined,
-        phone_number: formData.phone_number || undefined,
-        ...(location && {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }),
-      });
+      // Prepare update data - include name even if empty string
+      const updateData: {
+        name?: string;
+        first_name?: string;
+        last_name?: string;
+        date_of_birth?: string;
+        gender?: string;
+        state?: string;
+        district?: string;
+        phone_number?: string;
+        latitude?: number;
+        longitude?: number;
+      } = {};
+      
+      // Always include name - send it explicitly like first_name
+      if (formData.name !== undefined) {
+        updateData.name = formData.name || undefined; // Convert empty string to undefined
+      }
+      if (formData.first_name !== undefined) updateData.first_name = formData.first_name;
+      if (formData.last_name) updateData.last_name = formData.last_name;
+      if (formData.date_of_birth) updateData.date_of_birth = formData.date_of_birth;
+      if (formData.gender) updateData.gender = formData.gender;
+      if (formData.state) updateData.state = formData.state;
+      if (formData.district) updateData.district = formData.district;
+      if (formData.phone_number) updateData.phone_number = formData.phone_number;
+      
+      if (location) {
+        updateData.latitude = location.latitude;
+        updateData.longitude = location.longitude;
+      }
+      
+      const response = await updateBasicInfo(updateData);
 
-      if (response.success) {
+      if (response.success && response.data) {
+        // Update form data with the response to reflect saved values from database
+        let formattedDate = "";
+        if (response.data.date_of_birth) {
+          if (typeof response.data.date_of_birth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(response.data.date_of_birth)) {
+            formattedDate = response.data.date_of_birth.split('T')[0];
+          } else {
+            const date = new Date(response.data.date_of_birth);
+            if (!isNaN(date.getTime())) {
+              formattedDate = date.toISOString().split('T')[0];
+            }
+          }
+        }
+        
+        const updatedFormData = {
+          name: response.data.name || "",
+          first_name: response.data.first_name || "",
+          last_name: response.data.last_name || "",
+          date_of_birth: formattedDate,
+          gender: response.data.gender || "Male",
+          state: response.data.state || "",
+          district: response.data.district || "",
+          phone_number: response.data.phone_number || "",
+          profile_photo: response.data.profile_photo || "",
+        };
+        
+        setFormData(updatedFormData);
+        setProfilePhotoPreview(response.data.profile_photo || null);
+        
         setSuccess(true);
         showSuccess("Profile updated successfully!");
         setTimeout(() => setSuccess(false), 3000);
@@ -155,9 +214,9 @@ export default function BasicInfoForm() {
         // Handle validation errors from backend
         if (response.errors && Array.isArray(response.errors)) {
           const errors: Record<string, string> = {};
-          response.errors.forEach((err: any) => {
+          response.errors.forEach((err: { param?: string; msg?: string; message?: string }) => {
             if (err.param) {
-              errors[err.param] = err.msg || err.message;
+              errors[err.param] = err.msg || err.message || '';
             }
           });
           setValidationErrors(errors);
@@ -222,7 +281,105 @@ export default function BasicInfoForm() {
             />
           )}
 
+          {/* Profile Photo */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+              Profile Photo
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-white/20">
+                {profilePhotoPreview ? (
+                  <Image
+                    src={profilePhotoPreview}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-white/5">
+                    <FaUser className="h-8 w-8 text-slate-400" />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          setUploadingPhoto(true);
+                          const response = await uploadProfilePhoto(file);
+                          if (response.success && response.data) {
+                            setProfilePhotoPreview(response.data.profile_photo);
+                            setFormData({ ...formData, profile_photo: response.data.profile_photo });
+                            await refreshUser(); // Refresh user context to update Header and Sidebar
+                            showSuccess("Profile photo uploaded successfully!");
+                          }
+                        } catch (err: any) {
+                          showError(err.message || "Failed to upload profile photo");
+                        } finally {
+                          setUploadingPhoto(false);
+                        }
+                      }
+                    }}
+                    disabled={uploadingPhoto}
+                  />
+                  <span className="inline-block rounded-md bg-pink px-4 py-2 text-sm font-medium text-white transition hover:bg-pink/90">
+                    {uploadingPhoto ? "Uploading..." : profilePhotoPreview ? "Change Photo" : "Upload Photo"}
+                  </span>
+                </label>
+                {profilePhotoPreview && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setUploadingPhoto(true);
+                        const response = await deleteProfilePhoto();
+                        if (response.success) {
+                          setProfilePhotoPreview(null);
+                          setFormData({ ...formData, profile_photo: "" });
+                          await refreshUser(); // Refresh user context to update Header and Sidebar
+                          showSuccess("Profile photo removed successfully!");
+                        }
+                      } catch (err: any) {
+                        showError(err.message || "Failed to remove profile photo");
+                      } finally {
+                        setUploadingPhoto(false);
+                      }
+                    }}
+                    disabled={uploadingPhoto}
+                    className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                  >
+                    {uploadingPhoto ? "Removing..." : "Remove Photo"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Name */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+              Name
+            </label>
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className={`${inputBase} ${validationErrors.name ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.name && (
+              <p className="text-xs text-red-400">{validationErrors.name}</p>
+            )}
+          </div>
+
+          {/* First Name & Last Name */}
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
@@ -258,20 +415,21 @@ export default function BasicInfoForm() {
             </div>
           </div>
 
-          {/* DOB & Location */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                Date of Birth
-              </label>
-              <DateOfBirthPicker
-                value={formData.date_of_birth}
-                onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
-                error={validationErrors.date_of_birth}
-                maxYear={new Date().getFullYear()}
-              />
-            </div>
+          {/* Date of Birth */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+              Date of Birth
+            </label>
+            <DateOfBirthPicker
+              value={formData.date_of_birth}
+              onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
+              error={validationErrors.date_of_birth}
+              maxYear={new Date().getFullYear()}
+            />
+          </div>
 
+          {/* Domicile State & District */}
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
                 Domicile State <IoLocationSharp className="h-4 w-4 text-pink" />
@@ -295,30 +453,29 @@ export default function BasicInfoForm() {
                 isClearable={true}
               />
             </div>
-          </div>
 
-          {/* District */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-              District <IoLocationSharp className="h-4 w-4 text-pink" />
-            </label>
-            <Select
-              options={
-                formData.state
-                  ? getDistrictsForState(formData.state).map((district) => ({
-                      value: district,
-                      label: district,
-                    }))
-                  : []
-              }
-              value={formData.district}
-              onChange={(value) => setFormData({ ...formData, district: value || "" })}
-              placeholder={formData.state ? "Select District" : "Select State first"}
-              error={validationErrors.district}
-              disabled={!formData.state}
-              isSearchable={true}
-              isClearable={true}
-            />
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                District <IoLocationSharp className="h-4 w-4 text-pink" />
+              </label>
+              <Select
+                options={
+                  formData.state
+                    ? getDistrictsForState(formData.state).map((district) => ({
+                        value: district,
+                        label: district,
+                      }))
+                    : []
+                }
+                value={formData.district}
+                onChange={(value) => setFormData({ ...formData, district: value || "" })}
+                placeholder={formData.state ? "Select District" : "Select State first"}
+                error={validationErrors.district}
+                disabled={!formData.state}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
           </div>
 
           {/* Email */}

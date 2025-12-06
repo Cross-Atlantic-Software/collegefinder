@@ -1,4 +1,5 @@
 const UserAcademics = require('../../models/user/UserAcademics');
+const Subject = require('../../models/taxonomy/Subject');
 const { validationResult } = require('express-validator');
 
 class AcademicsController {
@@ -18,26 +19,46 @@ class AcademicsController {
         });
       }
 
-      // Parse matric_subjects JSONB if it exists
+      // Parse matric_subjects JSONB if it exists and enrich with subject names
       let matricSubjects = [];
       if (academics.matric_subjects) {
         try {
           matricSubjects = typeof academics.matric_subjects === 'string' 
             ? JSON.parse(academics.matric_subjects) 
             : academics.matric_subjects;
+          
+          // Enrich with subject names from database if subject_id exists
+          for (let i = 0; i < matricSubjects.length; i++) {
+            if (matricSubjects[i].subject_id && !matricSubjects[i].name) {
+              const subject = await Subject.findById(matricSubjects[i].subject_id);
+              if (subject) {
+                matricSubjects[i].name = subject.name;
+              }
+            }
+          }
         } catch (e) {
           console.error('Error parsing matric_subjects:', e);
           matricSubjects = [];
         }
       }
 
-      // Parse subjects JSONB if it exists
+      // Parse subjects JSONB if it exists and enrich with subject names
       let subjects = [];
       if (academics.subjects) {
         try {
           subjects = typeof academics.subjects === 'string' 
             ? JSON.parse(academics.subjects) 
             : academics.subjects;
+          
+          // Enrich with subject names from database if subject_id exists
+          for (let i = 0; i < subjects.length; i++) {
+            if (subjects[i].subject_id && !subjects[i].name) {
+              const subject = await Subject.findById(subjects[i].subject_id);
+              if (subject) {
+                subjects[i].name = subject.name;
+              }
+            }
+          }
         } catch (e) {
           console.error('Error parsing subjects:', e);
           subjects = [];
@@ -96,26 +117,46 @@ class AcademicsController {
       const userId = req.user.id;
       const academics = await UserAcademics.upsert(userId, req.body);
 
-      // Parse matric_subjects JSONB if it exists
+      // Parse matric_subjects JSONB if it exists and enrich with subject names
       let matricSubjects = [];
       if (academics.matric_subjects) {
         try {
           matricSubjects = typeof academics.matric_subjects === 'string' 
             ? JSON.parse(academics.matric_subjects) 
             : academics.matric_subjects;
+          
+          // Enrich with subject names from database if subject_id exists
+          for (let i = 0; i < matricSubjects.length; i++) {
+            if (matricSubjects[i].subject_id && !matricSubjects[i].name) {
+              const subject = await Subject.findById(matricSubjects[i].subject_id);
+              if (subject) {
+                matricSubjects[i].name = subject.name;
+              }
+            }
+          }
         } catch (e) {
           console.error('Error parsing matric_subjects:', e);
           matricSubjects = [];
         }
       }
 
-      // Parse subjects JSONB if it exists
+      // Parse subjects JSONB if it exists and enrich with subject names
       let subjects = [];
       if (academics.subjects) {
         try {
           subjects = typeof academics.subjects === 'string' 
             ? JSON.parse(academics.subjects) 
             : academics.subjects;
+          
+          // Enrich with subject names from database if subject_id exists
+          for (let i = 0; i < subjects.length; i++) {
+            if (subjects[i].subject_id && !subjects[i].name) {
+              const subject = await Subject.findById(subjects[i].subject_id);
+              if (subject) {
+                subjects[i].name = subject.name;
+              }
+            }
+          }
         } catch (e) {
           console.error('Error parsing subjects:', e);
           subjects = [];

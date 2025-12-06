@@ -46,6 +46,7 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   phone_number: string | null;
   state: string | null;
   district: string | null;
+  profile_photo: string | null;
   email_verified: boolean;
   latitude: number | null;
   longitude: number | null;
@@ -60,6 +61,7 @@ export async function getBasicInfo(): Promise<ApiResponse<{
  * Update user basic info
  */
 export async function updateBasicInfo(data: {
+  name?: string;
   first_name?: string;
   last_name?: string;
   date_of_birth?: string;
@@ -102,7 +104,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_total_marks: number | null;
   matric_obtained_marks: number | null;
   matric_percentage: number | null;
-  matric_subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   // Post-Matric (12th) fields
   postmatric_board: string | null;
   postmatric_school_name: string | null;
@@ -112,7 +114,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
 } | null>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
@@ -141,7 +143,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks?: number;
   postmatric_percentage?: number;
   stream?: string;
-  subjects?: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th?: boolean;
 }): Promise<ApiResponse<{
   // Matric (10th) fields
@@ -161,7 +164,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
@@ -206,6 +210,49 @@ export async function getProfileCompletion(): Promise<ApiResponse<{
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_COMPLETION, {
     method: 'GET',
+  });
+}
+
+/**
+ * Upload profile photo
+ */
+export async function uploadProfilePhoto(
+  file: File
+): Promise<ApiResponse<{ profile_photo: string }>> {
+  const formData = new FormData();
+  formData.append('photo', file);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${apiUrl}/auth/profile/upload-photo`;
+  
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to upload profile photo');
+  }
+
+  return data;
+}
+
+/**
+ * Delete profile photo
+ */
+export async function deleteProfilePhoto(): Promise<ApiResponse<{ profile_photo: null }>> {
+  return apiRequest<{ profile_photo: null }>(API_ENDPOINTS.AUTH.PROFILE_UPLOAD_PHOTO, {
+    method: 'DELETE',
   });
 }
 

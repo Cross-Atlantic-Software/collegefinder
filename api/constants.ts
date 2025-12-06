@@ -15,6 +15,12 @@ export const API_ENDPOINTS = {
     PROFILE_ACADEMICS: '/auth/profile/academics',
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
     PROFILE_COMPLETION: '/auth/profile/completion',
+    PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
+  },
+  
+  // Public endpoints
+  PUBLIC: {
+    SUBJECTS: '/subjects',
   },
   
   // Admin endpoints
@@ -27,8 +33,10 @@ export const API_ENDPOINTS = {
     USERS_ACADEMICS: '/admin/users/academics',
     USERS_CAREER_GOALS: '/admin/users/career-goals',
     EMAIL_TEMPLATES: '/admin/email-templates',
+    BLOGS: '/admin/blogs',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
+    SUBJECTS: '/admin/subjects',
   },
 } as const;
 

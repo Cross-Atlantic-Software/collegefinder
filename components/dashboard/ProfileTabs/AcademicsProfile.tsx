@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiEdit2, FiX } from "react-icons/fi";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { SubjectInputList } from "../SubjectInputList";
 import { getAcademics, updateAcademics } from "@/api";
 import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousExamAttempt } from "@/api/exams";
@@ -176,7 +176,7 @@ export default function AcademicsProfile() {
         setPreviousAttempts([...previousAttempts, { exam_id: 0, year: new Date().getFullYear(), rank: null }]);
     };
 
-    const updatePreviousAttempt = (index: number, field: keyof PreviousExamAttempt, value: any) => {
+    const updatePreviousAttempt = (index: number, field: keyof PreviousExamAttempt, value: string | number | null) => {
         const updated = [...previousAttempts];
         updated[index] = { ...updated[index], [field]: value };
         setPreviousAttempts(updated);
@@ -194,7 +194,7 @@ export default function AcademicsProfile() {
         setSuccess(false);
 
         try {
-            const payload: any = {};
+            const payload: Record<string, unknown> = {};
             
             // Matric fields
             if (matricData.matric_board?.trim()) payload.matric_board = matricData.matric_board.trim();
@@ -452,13 +452,42 @@ export default function AcademicsProfile() {
                             <div className="mb-4 space-y-3">
                                 {matricSubjects.map((subj, index) => (
                                     <div key={index} className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
-                                        <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
-                                        <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
-                                        <div className="mt-2 h-2 rounded-full bg-white/10">
-                                            <div 
-                                                className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
-                                                style={{ width: `${subj.percent}%` }} 
-                                            />
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex-1">
+                                                <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
+                                                <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
+                                                <div className="mt-2 h-2 rounded-full bg-white/10">
+                                                    <div 
+                                                        className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
+                                                        style={{ width: `${subj.percent}%` }} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowMatricSubjectInput(true);
+                                                        // Pre-select this subject for editing in the input list
+                                                        // The SubjectInputList will handle the editing
+                                                    }}
+                                                    className="p-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                                                    title="Edit subject"
+                                                >
+                                                    <FiEdit2 className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = matricSubjects.filter((_, i) => i !== index);
+                                                        setMatricSubjects(updated);
+                                                    }}
+                                                    className="p-1.5 text-red-400 hover:text-red-300 transition-colors"
+                                                    title="Delete subject"
+                                                >
+                                                    <FiTrash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -676,13 +705,42 @@ export default function AcademicsProfile() {
                                 <div className="mb-4 space-y-3">
                                     {subjects.map((subj, index) => (
                                         <div key={index} className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
-                                            <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
-                                            <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
-                                            <div className="mt-2 h-2 rounded-full bg-white/10">
-                                                <div 
-                                                    className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
-                                                    style={{ width: `${subj.percent}%` }} 
-                                                />
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
+                                                    <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
+                                                    <div className="mt-2 h-2 rounded-full bg-white/10">
+                                                        <div 
+                                                            className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
+                                                            style={{ width: `${subj.percent}%` }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShowSubjectInput(true);
+                                                            // Pre-select this subject for editing in the input list
+                                                            // The SubjectInputList will handle the editing
+                                                        }}
+                                                        className="p-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                                                        title="Edit subject"
+                                                    >
+                                                        <FiEdit2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = subjects.filter((_, i) => i !== index);
+                                                            setSubjects(updated);
+                                                        }}
+                                                        className="p-1.5 text-red-400 hover:text-red-300 transition-colors"
+                                                        title="Delete subject"
+                                                    >
+                                                        <FiTrash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import {
     FiBell,
     FiMessageCircle,
@@ -78,7 +79,19 @@ export default function Header() {
                                         onClick={handleProfileClick}
                                         className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-6 py-3 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
                                     >
-                                        <FiUser className="text-[18px]" />
+                                        {user?.profile_photo ? (
+                                            <div className="relative h-6 w-6 overflow-hidden rounded-full">
+                                                <Image
+                                                    src={user.profile_photo}
+                                                    alt="Profile"
+                                                    fill
+                                                    className="object-cover"
+                                                    unoptimized
+                                                />
+                                            </div>
+                                        ) : (
+                                            <FiUser className="text-[18px]" />
+                                        )}
                                         {user?.name && <span>{user.name}</span>}
                                     </button>
                                     <button
@@ -122,7 +135,19 @@ export default function Header() {
                                         onClick={handleProfileClick}
                                         className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-4 py-2 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
                                     >
-                                        <FiUser className="text-[16px]" />
+                                        {user?.profile_photo ? (
+                                            <div className="relative h-5 w-5 overflow-hidden rounded-full">
+                                                <Image
+                                                    src={user.profile_photo}
+                                                    alt="Profile"
+                                                    fill
+                                                    className="object-cover"
+                                                    unoptimized
+                                                />
+                                            </div>
+                                        ) : (
+                                            <FiUser className="text-[16px]" />
+                                        )}
                                         {user?.name && <span className="hidden sm:inline">{user.name}</span>}
                                     </button>
                                     <button
