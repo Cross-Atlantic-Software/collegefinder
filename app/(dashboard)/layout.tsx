@@ -25,9 +25,9 @@ export default function DashboardLayout({
     }
   }, [isLoading, user]);
 
-  // Redirect to onboarding if user doesn't have a name (hasn't completed onboarding)
+  // Redirect to onboarding if user hasn't completed onboarding
   useEffect(() => {
-    if (!isLoading && user && !user.name) {
+    if (!isLoading && user && !user.onboarding_completed) {
       setIsRedirecting(true);
       // Prefetch step-1 for faster loading
       router.prefetch("/step-1");
@@ -41,7 +41,7 @@ export default function DashboardLayout({
   }, [user, isLoading, router]);
 
   // Show smooth loader while checking auth and onboarding status
-  if (isLoading || isInitialLoad || (user && !user.name) || isRedirecting) {
+  if (isLoading || isInitialLoad || (user && !user.onboarding_completed) || isRedirecting) {
     return <OnboardingLoader message={isRedirecting ? "Redirecting to onboarding..." : "Loading dashboard..."} />;
   }
 

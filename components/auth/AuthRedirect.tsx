@@ -26,8 +26,8 @@ export function AuthRedirect({
   // Check if current route is an onboarding step
   const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-3)/.test(pathname || '');
   
-  // Check if user has completed onboarding (has a name)
-  const hasCompletedOnboarding = user?.name;
+  // Check if user has completed onboarding
+  const hasCompletedOnboarding = user?.onboarding_completed;
 
   useEffect(() => {
     if (!isLoading) {

@@ -16,11 +16,11 @@ export default function StepTwo() {
   const router = useRouter();
   const { user, refreshUser, isLoading } = useAuth();
 
-  // Redirect to dashboard if user already has a name (completed onboarding)
+  // Redirect to dashboard if user has completed onboarding
   // But NEVER redirect if we're saving or navigating to step-3
   useEffect(() => {
     // Only redirect if we're not in the middle of saving or navigating to step-3
-    if (!isLoading && user?.name && !isNavigatingToStep3 && !saving) {
+    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
       setIsRedirecting(true);
       // Prefetch dashboard for faster loading
       router.prefetch('/dashboard');
@@ -37,8 +37,8 @@ export default function StepTwo() {
     return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
 
-  // Don't render if user has name and we're not saving/navigating to step-3
-  if (user?.name && !saving && !isNavigatingToStep3) {
+  // Don't render if user has completed onboarding and we're not saving/navigating to step-3
+  if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
     return <OnboardingLoader message="Taking you to dashboard..." />;
   }
 

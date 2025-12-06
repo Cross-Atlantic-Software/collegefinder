@@ -57,6 +57,20 @@ router.post('/verify-otp', validateVerifyOTP, AuthController.verifyOTP);
 router.post('/resend-otp', validateResendOTP, AuthController.resendOTP);
 
 /**
+ * @route   GET /api/auth/google
+ * @desc    Initiate Google OAuth (redirects to Google)
+ * @access  Public
+ */
+router.get('/google', AuthController.googleAuth);
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Handle Google OAuth callback (redirect from Google)
+ * @access  Public
+ */
+router.get('/google/callback', AuthController.googleCallback);
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get current authenticated user
  * @access  Private

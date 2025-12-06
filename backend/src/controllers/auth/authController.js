@@ -4,6 +4,7 @@ const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator'
 const { sendOTPEmail } = require('../../../utils/email/emailService');
 const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
+const { OAuth2Client } = require('google-auth-library');
 
 class AuthController {
   /**
@@ -201,6 +202,7 @@ class AuthController {
             email: user.email,
             name: user.name,
             profile_photo: user.profile_photo,
+            onboarding_completed: user.onboarding_completed || false,
             createdAt: user.created_at,
             lastLogin: user.last_login
           }
@@ -253,6 +255,157 @@ class AuthController {
         success: false,
         message: 'Failed to update profile'
       });
+    }
+  }
+
+  /**
+   * Initiate Google OAuth (redirect to Google)
+   * GET /api/auth/google
+   */
+  static async googleAuth(req, res) {
+    try {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+      if (!clientId || !clientSecret || !redirectUri) {
+        return res.status(500).json({
+          success: false,
+          message: 'Google OAuth not configured'
+        });
+      }
+
+      const client = new OAuth2Client(clientId, clientSecret, redirectUri);
+
+      // Generate the authorization URL
+      const authUrl = client.generateAuthUrl({
+        access_type: 'offline',
+        scope: [
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'openid'
+        ],
+        prompt: 'consent'
+      });
+
+      // Redirect to Google
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error('Error initiating Google OAuth:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to initiate Google authentication'
+      });
+    }
+  }
+
+  /**
+   * Google OAuth callback (handles redirect from Google)
+   * GET /api/auth/google/callback
+   */
+  static async googleCallback(req, res) {
+    try {
+      const { code } = req.query;
+
+      if (!code) {
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+      }
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      if (!clientId || !clientSecret || !redirectUri) {
+        return res.redirect(`${frontendUrl}/login?error=oauth_not_configured`);
+      }
+
+      const client = new OAuth2Client(clientId, clientSecret, redirectUri);
+
+      // Exchange authorization code for tokens
+      const { tokens } = await client.getToken(code);
+      client.setCredentials(tokens);
+
+      // Get user info from Google
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: clientId,
+      });
+
+      const payload = ticket.getPayload();
+      const { 
+        sub: googleId, 
+        email, 
+        name, 
+        picture,
+        given_name: firstName,
+        family_name: lastName,
+        email_verified: emailVerified
+      } = payload;
+
+      if (!email) {
+        return res.redirect(`${frontendUrl}/login?error=no_email`);
+      }
+
+      // Check if user exists by Google ID
+      let user = await User.findByGoogleId(googleId);
+
+      if (!user) {
+        // Check if user exists by email (might have signed up with email before)
+        user = await User.findByEmail(email);
+        
+        if (user) {
+          // Link Google account to existing user and update profile data
+          await User.linkGoogleAccount(user.id, googleId);
+          // Update profile with Google data if fields are empty
+          await User.updateFromGoogle(user.id, {
+            firstName: firstName || null,
+            lastName: lastName || null,
+            name: name || null,
+            profilePhoto: picture || null,
+            emailVerified: emailVerified || false
+          });
+          user = await User.findById(user.id);
+        } else {
+          // Create new user with Google OAuth
+          user = await User.createWithGoogle({
+            email,
+            name: name || null,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            googleId,
+            profilePhoto: picture || null,
+            emailVerified: emailVerified || false
+          });
+        }
+      } else {
+        // Update existing Google user's profile if data changed
+        await User.updateFromGoogle(user.id, {
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: name || null,
+          profilePhoto: picture || null,
+          emailVerified: emailVerified || false
+        });
+        user = await User.findById(user.id);
+      }
+
+      // Update last login
+      await User.updateLastLogin(user.id);
+
+      // Generate JWT token
+      const tokenPayload = {
+        userId: user.id,
+        email: user.email
+      };
+      const token = generateToken(tokenPayload);
+
+      // Redirect to frontend with token
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&success=true`);
+    } catch (error) {
+      console.error('Error in Google OAuth callback:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
     }
   }
 }

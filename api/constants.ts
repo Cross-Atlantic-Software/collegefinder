@@ -9,6 +9,8 @@ export const API_ENDPOINTS = {
     SEND_OTP: '/auth/send-otp',
     VERIFY_OTP: '/auth/verify-otp',
     RESEND_OTP: '/auth/resend-otp',
+    GOOGLE_AUTH: '/auth/google',
+    GOOGLE_CALLBACK: '/auth/google/callback',
     ME: '/auth/me',
     PROFILE: '/auth/profile',
     PROFILE_BASIC: '/auth/profile/basic',

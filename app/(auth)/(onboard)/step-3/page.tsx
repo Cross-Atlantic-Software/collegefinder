@@ -25,10 +25,10 @@ export default function StepThree() {
     }
   }, [isLoading, hasLoadedUser, refreshUser]);
 
-  // Only redirect if user doesn't have a name after loading (shouldn't be here - they need to complete step-2 first)
+  // Only redirect if user hasn't completed onboarding (shouldn't be here - they need to complete step-2 first)
   useEffect(() => {
-    if (!isLoading && hasLoadedUser && !user?.name) {
-      // User doesn't have a name, redirect to step-2 to complete onboarding
+    if (!isLoading && hasLoadedUser && !user?.onboarding_completed) {
+      // User hasn't completed onboarding, redirect to step-2
       setIsRedirecting(true);
       router.replace('/step-2');
     }
@@ -39,8 +39,8 @@ export default function StepThree() {
     return <OnboardingLoader message="Loading..." />;
   }
 
-  // If user doesn't have a name after loading, show loader while redirecting to step-2
-  if (!user?.name) {
+  // If user hasn't completed onboarding after loading, show loader while redirecting to step-2
+  if (!user?.onboarding_completed) {
     return <OnboardingLoader message="Redirecting to complete onboarding..." />;
   }
 
