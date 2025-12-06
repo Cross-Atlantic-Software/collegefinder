@@ -18,6 +18,11 @@ export const API_ENDPOINTS = {
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
   },
   
+  // Public endpoints
+  PUBLIC: {
+    SUBJECTS: '/subjects',
+  },
+  
   // Admin endpoints
   ADMIN: {
     LOGIN: '/admin/login',
@@ -31,6 +36,7 @@ export const API_ENDPOINTS = {
     BLOGS: '/admin/blogs',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
+    SUBJECTS: '/admin/subjects',
   },
 } as const;
 

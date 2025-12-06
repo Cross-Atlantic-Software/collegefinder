@@ -56,6 +56,11 @@ const navItems: NavItem[] = [
     icon: <FiTarget className="h-4 w-4" />,
   },
   {
+    label: 'Subjects',
+    href: '/admin/subjects',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
     label: 'Exams',
     href: '/admin/exams',
     icon: <FiBook className="h-4 w-4" />,

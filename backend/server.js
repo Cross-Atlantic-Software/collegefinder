@@ -30,6 +30,7 @@ app.use('/api/admin/email-templates', require('./src/routes/admin/emailTemplateR
 app.use('/api/admin/blogs', require('./src/routes/admin/blogRoutes'));
 app.use('/api/career-goals', require('./src/routes/public/careerGoalsRoutes'));
 app.use('/api/exams', require('./src/routes/public/examsRoutes'));
+app.use('/api/subjects', require('./src/routes/public/subjectsRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

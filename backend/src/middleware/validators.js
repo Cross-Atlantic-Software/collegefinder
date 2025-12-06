@@ -380,6 +380,37 @@ const validateUpdateBlog = [
     .trim()
 ];
 
+/**
+ * Validation rules for creating subject
+ */
+const validateCreateSubject = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating subject
+ */
+const validateUpdateSubject = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -394,6 +425,8 @@ module.exports = {
   validateUpdateAcademics,
   validateUpdateCareerGoals,
   validateCreateBlog,
-  validateUpdateBlog
+  validateUpdateBlog,
+  validateCreateSubject,
+  validateUpdateSubject
 };
 

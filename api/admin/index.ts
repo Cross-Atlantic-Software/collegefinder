@@ -37,3 +37,13 @@ export {
   deleteExam,
 } from './exams';
 export type { Exam } from './exams';
+
+// Export subjects taxonomy management APIs
+export {
+  getAllSubjects,
+  getSubjectById,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+} from './subjects';
+export type { Subject } from './subjects';

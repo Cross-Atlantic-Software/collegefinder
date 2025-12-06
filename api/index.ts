@@ -20,3 +20,7 @@ export type { CareerGoal as CareerGoalPublic } from './career-goals';
 export { getAllExams, getExamPreferences, updateExamPreferences } from './exams';
 export type { Exam as ExamPublic, PreviousExamAttempt } from './exams';
 
+// Export subjects API (public) - use explicit exports to avoid conflicts with admin
+export { getAllSubjects as getAllSubjectsPublic } from './subjects';
+export type { Subject as SubjectPublic } from './subjects';
+

@@ -102,7 +102,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_total_marks: number | null;
   matric_obtained_marks: number | null;
   matric_percentage: number | null;
-  matric_subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   // Post-Matric (12th) fields
   postmatric_board: string | null;
   postmatric_school_name: string | null;
@@ -112,7 +112,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
 } | null>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
@@ -141,7 +141,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks?: number;
   postmatric_percentage?: number;
   stream?: string;
-  subjects?: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th?: boolean;
 }): Promise<ApiResponse<{
   // Matric (10th) fields
@@ -161,7 +162,8 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
   stream: string | null;
-  subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
+  matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {

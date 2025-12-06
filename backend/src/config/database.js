@@ -45,6 +45,7 @@ const init = async () => {
       'blogs.sql',            // Blogs table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
       'exams.sql',            // Exams taxonomies table
+      'subjects.sql',         // Subjects taxonomies table
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)
