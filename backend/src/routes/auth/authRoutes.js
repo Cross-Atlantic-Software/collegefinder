@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const AuthController = require('../../controllers/auth/authController');
 const BasicInfoController = require('../../controllers/profile/basicInfoController');
 const AcademicsController = require('../../controllers/profile/academicsController');
@@ -7,6 +8,23 @@ const CareerGoalsController = require('../../controllers/profile/careerGoalsCont
 const ExamsController = require('../../controllers/profile/examsController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
 const { authenticate } = require('../../middleware/auth');
+
+// Configure multer for memory storage (for S3 upload)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  },
+});
+
 const {
   validateSendOTP,
   validateVerifyOTP,
@@ -65,6 +83,20 @@ router.get('/profile/basic', authenticate, BasicInfoController.getBasicInfo);
  * @access  Private
  */
 router.put('/profile/basic', authenticate, validateUpdateBasicInfo, BasicInfoController.updateBasicInfo);
+
+/**
+ * @route   DELETE /api/auth/profile/upload-photo
+ * @desc    Delete profile photo
+ * @access  Private
+ */
+router.delete('/profile/upload-photo', authenticate, BasicInfoController.deleteProfilePhoto);
+
+/**
+ * @route   POST /api/auth/profile/upload-photo
+ * @desc    Upload profile photo
+ * @access  Private
+ */
+router.post('/profile/upload-photo', authenticate, upload.single('photo'), BasicInfoController.uploadProfilePhoto);
 
 /**
  * @route   GET /api/auth/profile/academics

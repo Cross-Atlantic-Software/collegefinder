@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
     PROFILE_ACADEMICS: '/auth/profile/academics',
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
     PROFILE_COMPLETION: '/auth/profile/completion',
+    PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
   },
   
   // Admin endpoints

@@ -10,9 +10,10 @@ import { FaUser } from "react-icons/fa6";
 
 import { Button, DateOfBirthPicker, PhoneInput, Select, SelectOption, Notification } from "../../shared";
 import { useToast } from "../../shared";
-import { getBasicInfo, updateBasicInfo } from "@/api";
+import { getBasicInfo, updateBasicInfo, uploadProfilePhoto, deleteProfilePhoto } from "@/api";
 import { EmailVerificationModal } from "./EmailVerificationModal";
 import { indianStatesDistricts, getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
+import { useAuth } from "@/contexts/AuthContext";
 
 const genderOptions = [
   { label: "Male", icon: "/icons/male.png" },
@@ -25,6 +26,7 @@ const inputBase =
 
 export default function BasicInfoForm() {
   const { showSuccess, showError } = useToast();
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,11 @@ export default function BasicInfoForm() {
     state: "",
     district: "",
     phone_number: "",
+    profile_photo: "",
   });
+  
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
@@ -80,9 +86,11 @@ export default function BasicInfoForm() {
             state: response.data.state ?? "",
             district: response.data.district ?? "",
             phone_number: response.data.phone_number ?? "",
+            profile_photo: response.data.profile_photo ?? "",
           };
           
           setFormData(formDataToSet);
+          setProfilePhotoPreview(response.data.profile_photo || null);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
           setPhoneNumber(response.data.phone_number || "");
@@ -193,9 +201,11 @@ export default function BasicInfoForm() {
           state: response.data.state || "",
           district: response.data.district || "",
           phone_number: response.data.phone_number || "",
+          profile_photo: response.data.profile_photo || "",
         };
         
         setFormData(updatedFormData);
+        setProfilePhotoPreview(response.data.profile_photo || null);
         
         setSuccess(true);
         showSuccess("Profile updated successfully!");
@@ -270,6 +280,87 @@ export default function BasicInfoForm() {
               duration={3000}
             />
           )}
+
+          {/* Profile Photo */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+              Profile Photo
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-white/20">
+                {profilePhotoPreview ? (
+                  <Image
+                    src={profilePhotoPreview}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-white/5">
+                    <FaUser className="h-8 w-8 text-slate-400" />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          setUploadingPhoto(true);
+                          const response = await uploadProfilePhoto(file);
+                          if (response.success && response.data) {
+                            setProfilePhotoPreview(response.data.profile_photo);
+                            setFormData({ ...formData, profile_photo: response.data.profile_photo });
+                            await refreshUser(); // Refresh user context to update Header and Sidebar
+                            showSuccess("Profile photo uploaded successfully!");
+                          }
+                        } catch (err: any) {
+                          showError(err.message || "Failed to upload profile photo");
+                        } finally {
+                          setUploadingPhoto(false);
+                        }
+                      }
+                    }}
+                    disabled={uploadingPhoto}
+                  />
+                  <span className="inline-block rounded-md bg-pink px-4 py-2 text-sm font-medium text-white transition hover:bg-pink/90">
+                    {uploadingPhoto ? "Uploading..." : profilePhotoPreview ? "Change Photo" : "Upload Photo"}
+                  </span>
+                </label>
+                {profilePhotoPreview && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setUploadingPhoto(true);
+                        const response = await deleteProfilePhoto();
+                        if (response.success) {
+                          setProfilePhotoPreview(null);
+                          setFormData({ ...formData, profile_photo: "" });
+                          await refreshUser(); // Refresh user context to update Header and Sidebar
+                          showSuccess("Profile photo removed successfully!");
+                        }
+                      } catch (err: any) {
+                        showError(err.message || "Failed to remove profile photo");
+                      } finally {
+                        setUploadingPhoto(false);
+                      }
+                    }}
+                    disabled={uploadingPhoto}
+                    className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                  >
+                    {uploadingPhoto ? "Removing..." : "Remove Photo"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Name */}
           <div className="space-y-2">

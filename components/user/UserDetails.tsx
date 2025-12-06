@@ -7,7 +7,7 @@ import {
   PiTargetBold,
   PiLightningFill,
 } from "react-icons/pi";
-import { FaChartBar } from "react-icons/fa";
+import { FaChartBar, FaUserCircle } from "react-icons/fa";
 import { Button } from "../shared";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProfileCompletion } from "@/api";
@@ -50,13 +50,18 @@ export default function UserDetails() {
           {/* LEFT: Avatar + greeting */}
           <div className="flex-1">
             <div className="flex items-center gap-4">
-              <div className="relative h-24 w-24 overflow-hidden rounded-lg border-pink-500 border-2">
-                <Image
-                  src="/avatar-placeholder.jpg"
-                  alt="User avatar"
-                  fill
-                  className="object-cover"
-                />
+              <div className="relative h-24 w-24 overflow-hidden rounded-lg border-pink-500 border-2 bg-white/10 flex items-center justify-center">
+                {user?.profile_photo ? (
+                  <Image
+                    src={user.profile_photo}
+                    alt="User avatar"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <FaUserCircle className="h-16 w-16 text-slate-300" />
+                )}
               </div>
 
               <div className="space-y-1">

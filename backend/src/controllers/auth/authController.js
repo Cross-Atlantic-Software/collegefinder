@@ -200,6 +200,7 @@ class AuthController {
             id: user.id,
             email: user.email,
             name: user.name,
+            profile_photo: user.profile_photo,
             createdAt: user.created_at,
             lastLogin: user.last_login
           }

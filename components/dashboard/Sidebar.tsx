@@ -148,13 +148,19 @@ export default function Sidebar({
       {/* User card */}
       <div className="mx-3 mb-4 rounded-md bg-lightGradient p-3 text-xs text-slate-700 shadow-lg">
         <div className="flex items-center gap-3">
-          <Image
-            src="/avatar-placeholder.jpg"
-            width={40}
-            height={40}
-            alt="Avatar"
-            className="rounded-full object-contain"
-          />
+          <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
+            {user?.profile_photo ? (
+              <Image
+                src={user.profile_photo}
+                alt="Profile"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <FaUserCircle className="h-8 w-8 text-slate-400" />
+            )}
+          </div>
 
           <div
             className={`${sidebarOpen ? "flex" : "hidden md:flex"} flex-1 flex-col`}
