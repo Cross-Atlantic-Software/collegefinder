@@ -44,3 +44,11 @@ export async function resendOTP(email: string): Promise<ApiResponse<SendOTPRespo
   });
 }
 
+/**
+ * Initiate Google OAuth (redirects to Google)
+ */
+export function initiateGoogleAuth() {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  window.location.href = `${backendUrl}${API_ENDPOINTS.AUTH.GOOGLE_AUTH}`;
+}
+

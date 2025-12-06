@@ -17,6 +17,7 @@ export interface User {
   email: string;
   name?: string;
   profile_photo?: string | null;
+  onboarding_completed?: boolean;
   createdAt: string;
   lastLogin?: string;
 }

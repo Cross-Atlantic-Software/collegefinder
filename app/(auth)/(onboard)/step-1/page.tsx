@@ -11,9 +11,9 @@ export default function StepOne() {
   const { user, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect to dashboard if user already has a name (completed onboarding)
+  // Redirect to dashboard if user has completed onboarding
   useEffect(() => {
-    if (!isLoading && user?.name) {
+    if (!isLoading && user?.onboarding_completed) {
       setIsRedirecting(true);
       // Prefetch dashboard for faster loading
       router.prefetch('/dashboard');
@@ -30,14 +30,14 @@ export default function StepOne() {
     return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
 
-  // Don't render if user has name (will redirect)
-  if (user?.name) {
+  // Don't render if user has completed onboarding (will redirect)
+  if (user?.onboarding_completed) {
     return <OnboardingLoader message="Taking you to dashboard..." />;
   }
 
   return (
     <div
-      className="h-screen w-full flex flex-col"   // <-- h-screen + flex
+      className="h-screen w-full flex flex-col"
       style={{
         background:
           "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
