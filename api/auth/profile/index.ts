@@ -46,11 +46,10 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   phone_number: string | null;
   state: string | null;
   district: string | null;
-  profile_photo: string | null;
   email_verified: boolean;
   latitude: number | null;
-  longitude: number | null;
   profile_photo?: string | null;
+  longitude: number | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
