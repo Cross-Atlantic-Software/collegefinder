@@ -35,10 +35,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo VARCHAR(500);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
 UPDATE users SET auth_provider = 'email' WHERE auth_provider IS NULL;
+-- Set existing users with name to have completed onboarding
+UPDATE users SET onboarding_completed = TRUE WHERE name IS NOT NULL AND name != '' AND (onboarding_completed IS NULL OR onboarding_completed = FALSE);
 
 -- Ensure name column is VARCHAR(255) (fix truncation issues)
 DO $$
@@ -52,6 +56,7 @@ END $$;
 
 -- Indexes for users table
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 
 -- Trigger to automatically update updated_at for users
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
