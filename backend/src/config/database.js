@@ -42,6 +42,7 @@ const init = async () => {
       'otps.sql',             // OTP table (depends on users)
       'admin_users.sql',      // Admin users table (self-referencing)
       'email_templates.sql',  // Email templates table
+      'blogs.sql',            // Blogs table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
       'exams.sql',            // Exams taxonomies table
       'user_academics.sql',   // User academics table (depends on users)

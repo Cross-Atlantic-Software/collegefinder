@@ -50,6 +50,7 @@ export interface SiteUser {
   phone_number?: string | null;
   state?: string | null;
   district?: string | null;
+  profile_photo?: string | null;
   email_verified: boolean;
   auth_provider: string;
   created_at: string;

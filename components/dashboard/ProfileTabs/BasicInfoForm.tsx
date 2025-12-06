@@ -415,20 +415,21 @@ export default function BasicInfoForm() {
             </div>
           </div>
 
-          {/* DOB & Location */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                Date of Birth
-              </label>
-              <DateOfBirthPicker
-                value={formData.date_of_birth}
-                onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
-                error={validationErrors.date_of_birth}
-                maxYear={new Date().getFullYear()}
-              />
-            </div>
+          {/* Date of Birth */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+              Date of Birth
+            </label>
+            <DateOfBirthPicker
+              value={formData.date_of_birth}
+              onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
+              error={validationErrors.date_of_birth}
+              maxYear={new Date().getFullYear()}
+            />
+          </div>
 
+          {/* Domicile State & District */}
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
                 Domicile State <IoLocationSharp className="h-4 w-4 text-pink" />
@@ -452,30 +453,29 @@ export default function BasicInfoForm() {
                 isClearable={true}
               />
             </div>
-          </div>
 
-          {/* District */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-              District <IoLocationSharp className="h-4 w-4 text-pink" />
-            </label>
-            <Select
-              options={
-                formData.state
-                  ? getDistrictsForState(formData.state).map((district) => ({
-                      value: district,
-                      label: district,
-                    }))
-                  : []
-              }
-              value={formData.district}
-              onChange={(value) => setFormData({ ...formData, district: value || "" })}
-              placeholder={formData.state ? "Select District" : "Select State first"}
-              error={validationErrors.district}
-              disabled={!formData.state}
-              isSearchable={true}
-              isClearable={true}
-            />
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                District <IoLocationSharp className="h-4 w-4 text-pink" />
+              </label>
+              <Select
+                options={
+                  formData.state
+                    ? getDistrictsForState(formData.state).map((district) => ({
+                        value: district,
+                        label: district,
+                      }))
+                    : []
+                }
+                value={formData.district}
+                onChange={(value) => setFormData({ ...formData, district: value || "" })}
+                placeholder={formData.state ? "Select District" : "Select State first"}
+                error={validationErrors.district}
+                disabled={!formData.state}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
           </div>
 
           {/* Email */}

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { X, User, BookOpen, Target, Loader2, GraduationCap } from 'lucide-react';
+import { FaUserCircle } from 'react-icons/fa';
 import { getUserDetails } from '@/api/admin/users';
 import type { SiteUser } from '@/api/types';
 import ExpandableSection from './UserDetailsModal/ExpandableSection';
@@ -142,6 +144,32 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   <User className="h-4 w-4 text-pink" />
                   Basic Information
                 </h3>
+                
+                {/* Profile Photo */}
+                <div className="mb-4 flex items-center gap-4 pb-4 border-b border-gray-200">
+                  <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-pink-500 bg-white/10 flex items-center justify-center">
+                    {details.user.profile_photo ? (
+                      <Image
+                        src={details.user.profile_photo}
+                        alt="Profile"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <FaUserCircle className="h-12 w-12 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {details.user.first_name && details.user.last_name
+                        ? `${details.user.first_name} ${details.user.last_name}`
+                        : details.user.name || details.user.email}
+                    </p>
+                    <p className="text-xs text-gray-600">{details.user.email}</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
                     <span className="text-xs font-medium text-gray-600">Email:</span>
@@ -254,11 +282,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     </div>
                   )}
                   {(details.user.latitude !== null && details.user.latitude !== undefined && 
-                    details.user.longitude !== null && details.user.longitude !== undefined) && (
+                    details.user.longitude !== null && details.user.longitude !== undefined &&
+                    !isNaN(Number(details.user.latitude)) && !isNaN(Number(details.user.longitude))) && (
                     <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
                       <span className="text-xs font-medium text-gray-600">Location:</span>
                       <p className="text-sm text-gray-900 font-medium">
-                        {details.user.latitude.toFixed(6)}, {details.user.longitude.toFixed(6)}
+                        {Number(details.user.latitude).toFixed(6)}, {Number(details.user.longitude).toFixed(6)}
                       </p>
                     </div>
                   )}

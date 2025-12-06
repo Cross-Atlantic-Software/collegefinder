@@ -15,6 +15,7 @@ export { getAllUsersBasicInfo, getAllUsersAcademics, getAllUsersCareerGoals } fr
 
 // Export email templates management APIs
 export * from './email-templates';
+export * from './blogs';
 
 // Export career goals taxonomy management APIs - use explicit exports to avoid conflicts
 export {

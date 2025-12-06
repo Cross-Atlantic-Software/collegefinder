@@ -13,7 +13,8 @@ import {
   FiTarget,
   FiBook,
   FiUser,
-  FiShield
+  FiShield,
+  FiFileText
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -63,6 +64,11 @@ const navItems: NavItem[] = [
     label: 'Email Templates',
     href: '/admin/email-templates',
     icon: <FiMail className="h-4 w-4" />,
+  },
+  {
+    label: 'Blogs',
+    href: '/admin/blogs',
+    icon: <FiFileText className="h-4 w-4" />,
   },
 ];
 
