@@ -98,3 +98,4 @@ if (!email || !newPassword) {
 // Run the script
 resetAdminPassword(email, newPassword);
 
+
