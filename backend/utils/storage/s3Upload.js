@@ -1,5 +1,7 @@
 const AWS = require('aws-sdk');
 const path = require('path');
+const https = require('https');
+const http = require('http');
 
 // Support both AWS_S3_BUCKET_NAME and S3_BUCKET variable names
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET;
@@ -129,8 +131,80 @@ const getContentType = (fileName) => {
   return contentTypes[ext] || 'application/octet-stream';
 };
 
+/**
+ * Download image from URL and upload to S3
+ * @param {string} imageUrl - URL of the image to download
+ * @param {string} fileName - File name for the uploaded image
+ * @param {string} folder - Folder path in S3 (e.g., 'profile-photos')
+ * @returns {Promise<string>} S3 URL of uploaded file
+ */
+const downloadAndUploadToS3 = async (imageUrl, fileName, folder = 'profile-photos') => {
+  try {
+    return new Promise((resolve, reject) => {
+      // Determine protocol (http or https)
+      const protocol = imageUrl.startsWith('https') ? https : http;
+      
+      protocol.get(imageUrl, (response) => {
+        // Check if response is successful
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to download image: ${response.statusCode} ${response.statusMessage}`));
+          return;
+        }
+
+        // Check content type
+        const contentType = response.headers['content-type'];
+        if (!contentType || !contentType.startsWith('image/')) {
+          reject(new Error('URL does not point to an image'));
+          return;
+        }
+
+        // Collect image data
+        const chunks = [];
+        response.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+
+        response.on('end', async () => {
+          try {
+            const imageBuffer = Buffer.concat(chunks);
+            // Determine file extension from content type
+            let ext = '.jpg'; // default
+            if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+              ext = '.jpg';
+            } else if (contentType.includes('png')) {
+              ext = '.png';
+            } else if (contentType.includes('gif')) {
+              ext = '.gif';
+            } else if (contentType.includes('webp')) {
+              ext = '.webp';
+            }
+            
+            // Ensure fileName has the correct extension
+            const baseFileName = fileName.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
+            const fullFileName = `${baseFileName}${ext}`;
+            const s3Url = await uploadToS3(imageBuffer, fullFileName, folder);
+            resolve(s3Url);
+          } catch (error) {
+            reject(error);
+          }
+        });
+
+        response.on('error', (error) => {
+          reject(new Error(`Error downloading image: ${error.message}`));
+        });
+      }).on('error', (error) => {
+        reject(new Error(`Error downloading image: ${error.message}`));
+      });
+    });
+  } catch (error) {
+    console.error('Error in downloadAndUploadToS3:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   uploadToS3,
   deleteFromS3,
+  downloadAndUploadToS3,
 };
 
