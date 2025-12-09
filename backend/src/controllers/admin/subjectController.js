@@ -66,7 +66,7 @@ class SubjectController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name, streams, status } = req.body;
 
       // Check if name already exists
       const existing = await Subject.findByName(name);
@@ -77,8 +77,22 @@ class SubjectController {
         });
       }
 
+      // Parse streams array if provided
+      let streamsArray = [];
+      if (streams !== undefined) {
+        try {
+          streamsArray = typeof streams === 'string' ? JSON.parse(streams) : streams;
+          if (!Array.isArray(streamsArray)) streamsArray = [];
+          // Ensure all are numbers
+          streamsArray = streamsArray.map(s => Number(s)).filter(n => !isNaN(n));
+        } catch (e) {
+          streamsArray = [];
+        }
+      }
+
       const subject = await Subject.create({ 
-        name, 
+        name,
+        streams: streamsArray,
         status: status !== undefined ? status : true 
       });
 
@@ -121,7 +135,7 @@ class SubjectController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name, streams, status } = req.body;
 
       // Check if name is being changed and if it already exists
       if (name && name !== existingSubject.name) {
@@ -134,7 +148,20 @@ class SubjectController {
         }
       }
 
-      const subject = await Subject.update(parseInt(id), { name, status });
+      // Parse streams array if provided
+      let streamsArray = undefined;
+      if (streams !== undefined) {
+        try {
+          streamsArray = typeof streams === 'string' ? JSON.parse(streams) : streams;
+          if (!Array.isArray(streamsArray)) streamsArray = [];
+          // Ensure all are numbers
+          streamsArray = streamsArray.map(s => Number(s)).filter(n => !isNaN(n));
+        } catch (e) {
+          streamsArray = [];
+        }
+      }
+
+      const subject = await Subject.update(parseInt(id), { name, streams: streamsArray, status });
 
       res.json({
         success: true,

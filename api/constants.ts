@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
   // Public endpoints
   PUBLIC: {
     SUBJECTS: '/subjects',
+    STREAMS: '/streams',
+    CAREERS: '/careers',
   },
   
   // Admin endpoints
@@ -39,6 +41,8 @@ export const API_ENDPOINTS = {
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
     SUBJECTS: '/admin/subjects',
+    STREAMS: '/admin/streams',
+    CAREERS: '/admin/careers',
   },
 } as const;
 

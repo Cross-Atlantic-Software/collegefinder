@@ -6,13 +6,19 @@ const AdminUsersController = require('../../controllers/admin/adminUsersControll
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
 const SubjectController = require('../../controllers/admin/subjectController');
+const StreamController = require('../../controllers/admin/streamController');
+const CareerController = require('../../controllers/admin/careerController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
   validateCreateAdmin,
   validateUpdateAdmin,
   validateCreateSubject,
-  validateUpdateSubject
+  validateUpdateSubject,
+  validateCreateStream,
+  validateUpdateStream,
+  validateCreateCareer,
+  validateUpdateCareer
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -198,6 +204,84 @@ router.put('/subjects/:id', authenticateAdmin, validateUpdateSubject, SubjectCon
  * @access  Private (Admin)
  */
 router.delete('/subjects/:id', authenticateAdmin, SubjectController.deleteSubject);
+
+/**
+ * Streams Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/streams
+ * @desc    Get all streams (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/streams', authenticateAdmin, StreamController.getAllStreams);
+
+/**
+ * @route   GET /api/admin/streams/:id
+ * @desc    Get stream by ID
+ * @access  Private (Admin)
+ */
+router.get('/streams/:id', authenticateAdmin, StreamController.getStreamById);
+
+/**
+ * @route   POST /api/admin/streams
+ * @desc    Create new stream
+ * @access  Private (Admin)
+ */
+router.post('/streams', authenticateAdmin, validateCreateStream, StreamController.createStream);
+
+/**
+ * @route   PUT /api/admin/streams/:id
+ * @desc    Update stream
+ * @access  Private (Admin)
+ */
+router.put('/streams/:id', authenticateAdmin, validateUpdateStream, StreamController.updateStream);
+
+/**
+ * @route   DELETE /api/admin/streams/:id
+ * @desc    Delete stream
+ * @access  Private (Admin)
+ */
+router.delete('/streams/:id', authenticateAdmin, StreamController.deleteStream);
+
+/**
+ * Careers Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/careers
+ * @desc    Get all careers (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/careers', authenticateAdmin, CareerController.getAllCareers);
+
+/**
+ * @route   GET /api/admin/careers/:id
+ * @desc    Get career by ID
+ * @access  Private (Admin)
+ */
+router.get('/careers/:id', authenticateAdmin, CareerController.getCareerById);
+
+/**
+ * @route   POST /api/admin/careers
+ * @desc    Create new career
+ * @access  Private (Admin)
+ */
+router.post('/careers', authenticateAdmin, validateCreateCareer, CareerController.createCareer);
+
+/**
+ * @route   PUT /api/admin/careers/:id
+ * @desc    Update career
+ * @access  Private (Admin)
+ */
+router.put('/careers/:id', authenticateAdmin, validateUpdateCareer, CareerController.updateCareer);
+
+/**
+ * @route   DELETE /api/admin/careers/:id
+ * @desc    Delete career
+ * @access  Private (Admin)
+ */
+router.delete('/careers/:id', authenticateAdmin, CareerController.deleteCareer);
 
 /**
  * Exams Taxonomy Routes

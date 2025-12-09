@@ -14,11 +14,13 @@ const pool = new Pool({
 });
 
 // Configure JSONB type handling
-const types = require('pg').types;
-// JSONB type code is 3802
-types.setTypeParser(3802, (val) => {
-  return val; // Return as-is, pg will handle JSONB conversion
-});
+// Note: pg library automatically parses JSONB to JavaScript objects/arrays
+// We don't need to override the default parser, but we handle parsing in controllers/models
+// If you need custom parsing, uncomment below:
+// const types = require('pg').types;
+// types.setTypeParser(3802, (val) => {
+//   return val ? JSON.parse(val) : null;
+// });
 
 // Test connection
 pool.on('connect', () => {
@@ -46,6 +48,8 @@ const init = async () => {
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
       'exams.sql',            // Exams taxonomies table
       'subjects.sql',         // Subjects taxonomies table
+      'streams.sql',          // Streams taxonomies table
+      'careers.sql',          // Careers taxonomies table
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)

@@ -84,6 +84,18 @@ router.put(
  */
 router.delete('/:id', authenticateAdmin, BlogController.deleteBlog);
 
+/**
+ * @route   POST /api/admin/blogs/upload-image
+ * @desc    Upload image for rich text editor
+ * @access  Private (Admin)
+ */
+router.post(
+  '/upload-image',
+  authenticateAdmin,
+  upload.single('blog_image'),
+  BlogController.uploadImage
+);
+
 module.exports = router;
 
 

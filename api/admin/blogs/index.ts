@@ -18,6 +18,8 @@ export interface Blog {
   first_part: string | null;
   second_part: string | null;
   video_file: string | null;
+  streams: number[] | null;
+  careers: number[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +61,8 @@ export async function createBlog(data: {
   first_part?: string;
   second_part?: string;
   video_file?: File;
+  streams?: number[];
+  careers?: number[];
 }): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
   
@@ -86,6 +90,12 @@ export async function createBlog(data: {
   }
   if (data.video_file) {
     formData.append('video_file', data.video_file);
+  }
+  if (data.streams && Array.isArray(data.streams)) {
+    formData.append('streams', JSON.stringify(data.streams));
+  }
+  if (data.careers && Array.isArray(data.careers)) {
+    formData.append('careers', JSON.stringify(data.careers));
   }
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
@@ -129,6 +139,8 @@ export async function updateBlog(
     first_part?: string;
     second_part?: string;
     video_file?: File | null;
+    streams?: number[];
+    careers?: number[];
   }
 ): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
@@ -162,6 +174,12 @@ export async function updateBlog(
   }
   if (data.video_file !== undefined && data.video_file !== null) {
     formData.append('video_file', data.video_file);
+  }
+  if (data.streams !== undefined) {
+    formData.append('streams', JSON.stringify(Array.isArray(data.streams) ? data.streams : []));
+  }
+  if (data.careers !== undefined) {
+    formData.append('careers', JSON.stringify(Array.isArray(data.careers) ? data.careers : []));
   }
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS college_finder_blogs (
   first_part TEXT,
   second_part TEXT,
   video_file VARCHAR(500),
+  streams JSONB DEFAULT '[]'::jsonb, -- Array of stream IDs
+  careers JSONB DEFAULT '[]'::jsonb, -- Array of career IDs
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,6 +34,8 @@ BEGIN
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS first_part TEXT;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS second_part TEXT;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS video_file VARCHAR(500);
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS streams JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS careers JSONB DEFAULT '[]'::jsonb;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   END IF;

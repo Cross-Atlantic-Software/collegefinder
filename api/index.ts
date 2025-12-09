@@ -24,3 +24,11 @@ export type { Exam as ExamPublic, PreviousExamAttempt } from './exams';
 export { getAllSubjects as getAllSubjectsPublic } from './subjects';
 export type { Subject as SubjectPublic } from './subjects';
 
+// Export streams API (public)
+export { getAllStreamsPublic } from './streams';
+export type { StreamPublic } from './streams';
+
+// Export careers API (public)
+export { getAllCareersPublic } from './careers';
+export type { CareerPublic } from './careers';
+

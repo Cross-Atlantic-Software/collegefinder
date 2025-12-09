@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllSubjects, createSubject, updateSubject, deleteSubject, Subject } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { getAllStreamsPublic } from '@/api';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { ConfirmationModal, useToast, MultiSelect, SelectOption } from '@/components/shared';
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -18,10 +19,14 @@ export default function SubjectsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState({ name: '', streams: [] as number[], status: true });
+  const [availableStreams, setAvailableStreams] = useState<SelectOption[]>([]);
+  const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewingSubject, setViewingSubject] = useState<Subject | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -32,7 +37,24 @@ export default function SubjectsPage() {
     }
 
     fetchSubjects();
+    fetchStreams();
   }, [router]);
+
+  const fetchStreams = async () => {
+    try {
+      const response = await getAllStreamsPublic();
+      if (response.success && response.data) {
+        setAvailableStreams(
+          response.data.streams.map((s) => ({
+            value: String(s.id),
+            label: s.name,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching streams:', err);
+    }
+  };
 
   useEffect(() => {
     if (allSubjects.length === 0) {
@@ -83,8 +105,13 @@ export default function SubjectsPage() {
     }
 
     try {
+      const submitData = {
+        ...formData,
+        streams: selectedStreams.map((s) => Number(s)),
+      };
+
       if (editingSubject) {
-        const response = await updateSubject(editingSubject.id, formData);
+        const response = await updateSubject(editingSubject.id, submitData);
         if (response.success) {
           showSuccess('Subject updated successfully');
           setShowModal(false);
@@ -96,7 +123,7 @@ export default function SubjectsPage() {
           showError(errorMsg);
         }
       } else {
-        const response = await createSubject(formData);
+        const response = await createSubject(submitData);
         if (response.success) {
           showSuccess('Subject created successfully');
           setShowModal(false);
@@ -114,6 +141,11 @@ export default function SubjectsPage() {
       showError(errorMsg);
       console.error('Error saving subject:', err);
     }
+  };
+
+  const handleView = (subject: Subject) => {
+    setViewingSubject(subject);
+    setShowViewModal(true);
   };
 
   const handleDeleteClick = (id: number) => {
@@ -153,7 +185,9 @@ export default function SubjectsPage() {
 
   const handleEdit = (subject: Subject) => {
     setEditingSubject(subject);
-    setFormData({ name: subject.name, status: subject.status });
+    const streams = Array.isArray(subject.streams) ? subject.streams : [];
+    setFormData({ name: subject.name, streams, status: subject.status });
+    setSelectedStreams(streams.map((id) => String(id)));
     setShowModal(true);
   };
 
@@ -164,7 +198,8 @@ export default function SubjectsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true });
+    setFormData({ name: '', streams: [], status: true });
+    setSelectedStreams([]);
     setError(null);
   };
 
@@ -250,6 +285,9 @@ export default function SubjectsPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        STREAMS
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -266,27 +304,51 @@ export default function SubjectsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {subjects.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
                           {subjects.length < allSubjects.length ? 'No subjects found matching your search' : 'No subjects found'}
                         </td>
                       </tr>
                     ) : (
-                      subjects.map((subject) => (
-                        <tr key={subject.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{subject.name}</span>
-                          </td>
-                          <td className="px-4 py-2">
-                            {subject.status ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Active
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Inactive
-                              </span>
-                            )}
-                          </td>
+                      subjects.map((subject) => {
+                        const streams = Array.isArray(subject.streams) ? subject.streams : [];
+                        return (
+                          <tr key={subject.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-2">
+                              <span className="text-sm font-medium text-gray-900">{subject.name}</span>
+                            </td>
+                            <td className="px-4 py-2">
+                              {streams.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {streams.slice(0, 2).map((streamId) => {
+                                    const stream = availableStreams.find((s) => s.value === String(streamId));
+                                    return (
+                                      <span
+                                        key={streamId}
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800"
+                                      >
+                                        {stream?.label || `Stream ${streamId}`}
+                                      </span>
+                                    );
+                                  })}
+                                  {streams.length > 2 && (
+                                    <span className="text-xs text-gray-500">+{streams.length - 2}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {subject.status ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Inactive
+                                </span>
+                              )}
+                            </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(subject.created_at).toLocaleDateString('en-US', {
                               month: 'short',
@@ -304,21 +366,31 @@ export default function SubjectsPage() {
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <button
+                                onClick={() => handleView(subject)}
+                                className="p-2 text-green-600 hover:text-green-800 transition-colors"
+                                title="View"
+                              >
+                                <FiEye className="h-4 w-4" />
+                              </button>
+                              <button
                                 onClick={() => handleEdit(subject)}
                                 className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Edit"
                               >
                                 <FiEdit2 className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(subject.id)}
                                 className="p-2 text-red-600 hover:text-red-800 transition-colors"
+                                title="Delete"
                               >
                                 <FiTrash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -364,6 +436,19 @@ export default function SubjectsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Streams
+                  </label>
+                  <MultiSelect
+                    options={availableStreams}
+                    value={selectedStreams}
+                    onChange={setSelectedStreams}
+                    placeholder="Select streams"
+                    isSearchable
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Status
                   </label>
                   <div className="flex items-center gap-4">
@@ -400,7 +485,7 @@ export default function SubjectsPage() {
             </form>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+            <div className="border-t border-gray-200 px-4 py-3 flex justify-end relative z-10">
               <button
                 type="button"
                 onClick={handleModalClose}
@@ -436,6 +521,116 @@ export default function SubjectsPage() {
         confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
+
+      {/* View Subject Modal */}
+      {showViewModal && viewingSubject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">View Subject</h2>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingSubject(null);
+                }}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <FiX className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-6 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Name</label>
+                <p className="text-lg font-bold text-gray-900">{viewingSubject.name}</p>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  viewingSubject.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {viewingSubject.status ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              {/* Streams */}
+              {viewingSubject.streams && viewingSubject.streams.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Streams</label>
+                  <div className="flex flex-wrap gap-1">
+                    {viewingSubject.streams.map((streamId) => {
+                      const stream = availableStreams.find((s) => Number(s.value) === streamId);
+                      return (
+                        <span
+                          key={streamId}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800"
+                        >
+                          {stream?.label || `Stream ${streamId}`}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Created At */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Created At</label>
+                <p className="text-sm text-gray-700">
+                  {new Date(viewingSubject.created_at).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+
+              {/* Updated At */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated At</label>
+                <p className="text-sm text-gray-700">
+                  {new Date(viewingSubject.updated_at).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingSubject(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  handleEdit(viewingSubject);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

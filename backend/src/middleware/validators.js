@@ -411,6 +411,68 @@ const validateUpdateSubject = [
     .withMessage('Status must be a boolean')
 ];
 
+/**
+ * Validation rules for creating stream
+ */
+const validateCreateStream = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating stream
+ */
+const validateUpdateStream = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for creating career
+ */
+const validateCreateCareer = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating career
+ */
+const validateUpdateCareer = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -427,6 +489,10 @@ module.exports = {
   validateCreateBlog,
   validateUpdateBlog,
   validateCreateSubject,
-  validateUpdateSubject
+  validateUpdateSubject,
+  validateCreateStream,
+  validateUpdateStream,
+  validateCreateCareer,
+  validateUpdateCareer
 };
 

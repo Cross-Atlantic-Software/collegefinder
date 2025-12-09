@@ -11,20 +11,86 @@ class BlogController {
     try {
       const blogs = await Blog.findAll();
       
+      // Ensure streams and careers are arrays (parse if needed)
+      const parsedBlogs = blogs.map(blog => {
+        try {
+          return {
+            ...blog,
+            streams: BlogController.parseJsonbArray(blog.streams),
+            careers: BlogController.parseJsonbArray(blog.careers),
+          };
+        } catch (parseError) {
+          console.error('Error parsing blog JSONB fields:', parseError, blog);
+          // Return blog with empty arrays if parsing fails
+          return {
+            ...blog,
+            streams: [],
+            careers: [],
+          };
+        }
+      });
+      
       res.json({
         success: true,
         data: {
-          blogs,
-          total: blogs.length
+          blogs: parsedBlogs,
+          total: parsedBlogs.length
         }
       });
     } catch (error) {
       console.error('Error fetching blogs:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch blogs'
+        message: 'Failed to fetch blogs',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  }
+
+  /**
+   * Helper function to parse JSONB array fields
+   */
+  static parseJsonbArray(field) {
+    // Handle null or undefined
+    if (field === null || field === undefined) return [];
+    
+    // If already an array, return it (might already be parsed by pg JSONB parser)
+    if (Array.isArray(field)) {
+      // Ensure all elements are numbers (stream/career IDs)
+      return field.map(item => {
+        const num = typeof item === 'number' ? item : Number(item);
+        return isNaN(num) ? null : num;
+      }).filter(item => item !== null);
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof field === 'string') {
+      try {
+        const parsed = JSON.parse(field);
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => {
+            const num = typeof item === 'number' ? item : Number(item);
+            return isNaN(num) ? null : num;
+          }).filter(item => item !== null);
+        }
+        return [];
+      } catch (e) {
+        console.warn('Failed to parse JSONB string:', field, e);
+        return [];
+      }
+    }
+    
+    // If it's an object (shouldn't happen for arrays, but handle it)
+    if (typeof field === 'object') {
+      // If it has an array-like structure, try to extract it
+      if (Array.isArray(field)) {
+        return field;
+      }
+      return [];
+    }
+    
+    return [];
   }
 
   /**
@@ -43,9 +109,16 @@ class BlogController {
         });
       }
 
+      // Ensure streams and careers are arrays (parse if needed)
+      const parsedBlog = {
+        ...blog,
+        streams: BlogController.parseJsonbArray(blog.streams),
+        careers: BlogController.parseJsonbArray(blog.careers),
+      };
+
       res.json({
         success: true,
-        data: { blog }
+        data: { blog: parsedBlog }
       });
     } catch (error) {
       console.error('Error fetching blog:', error);
@@ -79,7 +152,9 @@ class BlogController {
         summary,
         content_type,
         first_part,
-        second_part
+        second_part,
+        streams,
+        careers
       } = req.body;
 
       // Check if slug already exists
@@ -127,6 +202,27 @@ class BlogController {
       // Convert is_featured to boolean (FormData sends as string)
       const isFeaturedBool = is_featured === true || is_featured === 'true' || is_featured === '1';
 
+      // Parse streams and careers (can be JSON strings or arrays)
+      let streamsArray = [];
+      if (streams !== undefined && streams !== null) {
+        try {
+          streamsArray = typeof streams === 'string' ? JSON.parse(streams) : streams;
+          if (!Array.isArray(streamsArray)) streamsArray = [];
+        } catch (e) {
+          streamsArray = [];
+        }
+      }
+
+      let careersArray = [];
+      if (careers !== undefined && careers !== null) {
+        try {
+          careersArray = typeof careers === 'string' ? JSON.parse(careers) : careers;
+          if (!Array.isArray(careersArray)) careersArray = [];
+        } catch (e) {
+          careersArray = [];
+        }
+      }
+
       const blogData = {
         slug,
         is_featured: isFeaturedBool,
@@ -137,7 +233,9 @@ class BlogController {
         content_type,
         first_part: content_type === 'TEXT' ? first_part : null,
         second_part: content_type === 'TEXT' ? second_part : null,
-        video_file: content_type === 'VIDEO' ? video_file : null
+        video_file: content_type === 'VIDEO' ? video_file : null,
+        streams: streamsArray,
+        careers: careersArray
       };
 
       const blog = await Blog.create(blogData);
@@ -189,8 +287,31 @@ class BlogController {
         summary,
         content_type,
         first_part,
-        second_part
+        second_part,
+        streams,
+        careers
       } = req.body;
+
+      // Parse streams and careers (can be JSON strings or arrays)
+      let streamsArray = undefined;
+      if (streams !== undefined) {
+        try {
+          streamsArray = typeof streams === 'string' ? JSON.parse(streams) : streams;
+          if (!Array.isArray(streamsArray)) streamsArray = [];
+        } catch (e) {
+          streamsArray = [];
+        }
+      }
+
+      let careersArray = undefined;
+      if (careers !== undefined) {
+        try {
+          careersArray = typeof careers === 'string' ? JSON.parse(careers) : careers;
+          if (!Array.isArray(careersArray)) careersArray = [];
+        } catch (e) {
+          careersArray = [];
+        }
+      }
 
       // Check if slug is being changed and if it already exists
       if (slug && slug !== existingBlog.slug) {
@@ -275,6 +396,8 @@ class BlogController {
       if (first_part !== undefined) updateData.first_part = content_type === 'TEXT' ? final_first_part : null;
       if (second_part !== undefined) updateData.second_part = content_type === 'TEXT' ? final_second_part : null;
       if (video_file !== undefined) updateData.video_file = content_type === 'VIDEO' ? video_file : null;
+      if (streamsArray !== undefined) updateData.streams = streamsArray;
+      if (careersArray !== undefined) updateData.careers = careersArray;
 
       const blog = await Blog.update(id, updateData);
 
@@ -330,6 +453,36 @@ class BlogController {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to delete blog'
+      });
+    }
+  }
+
+  /**
+   * Upload image for rich text editor
+   * POST /api/admin/blogs/upload-image
+   */
+  static async uploadImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file provided'
+        });
+      }
+
+      const fileBuffer = req.file.buffer;
+      const fileName = req.file.originalname;
+      const s3Url = await uploadToS3(fileBuffer, fileName, 'blog_images');
+
+      res.json({
+        success: true,
+        data: { imageUrl: s3Url }
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload image'
       });
     }
   }

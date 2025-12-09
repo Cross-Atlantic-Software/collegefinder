@@ -30,12 +30,8 @@ export function SubjectInputList({ subjects = [], onChange }: SubjectInputListPr
             try {
                 setLoadingSubjects(true);
                 const response = await getAllSubjectsPublic();
-                console.log('Subjects API response:', response);
                 if (response.success && response.data) {
-                    console.log('Subjects data:', response.data.subjects);
                     setAvailableSubjects(response.data.subjects || []);
-                } else {
-                    console.error('Subjects API error:', response.message);
                 }
             } catch (error) {
                 console.error('Error fetching subjects:', error);
@@ -275,7 +271,6 @@ export function SubjectInputList({ subjects = [], onChange }: SubjectInputListPr
                                         }))}
                                         value={row.subject_id ? String(row.subject_id) : ""}
                                         onChange={(value) => {
-                                            console.log('Subject selected:', value);
                                             handleChange(row.id, "subject_id", value ? Number(value) : null);
                                         }}
                                         placeholder="Select subject"
