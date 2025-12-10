@@ -98,41 +98,44 @@ export default function AcademicsProfile() {
             try {
                 setLoading(true);
                 const response = await getAcademics();
-                if (response.success && response.data) {
-                    const data = response.data;
-                    
-                    // Set matric data
-                    setMatricData({
-                        matric_board: data.matric_board || "",
-                        matric_school_name: data.matric_school_name || "",
-                        matric_passing_year: data.matric_passing_year?.toString() || "",
-                        matric_roll_number: data.matric_roll_number || "",
-                        matric_total_marks: data.matric_total_marks?.toString() || "",
-                        matric_obtained_marks: data.matric_obtained_marks?.toString() || "",
-                        matric_percentage: data.matric_percentage?.toString() || "",
-                    });
+                if (response.success) {
+                    if (response.data) {
+                        const data = response.data;
+                        
+                        // Set matric data
+                        setMatricData({
+                            matric_board: data.matric_board || "",
+                            matric_school_name: data.matric_school_name || "",
+                            matric_passing_year: data.matric_passing_year?.toString() || "",
+                            matric_roll_number: data.matric_roll_number || "",
+                            matric_total_marks: data.matric_total_marks?.toString() || "",
+                            matric_obtained_marks: data.matric_obtained_marks?.toString() || "",
+                            matric_percentage: data.matric_percentage?.toString() || "",
+                        });
 
-                    // Set post-matric data
-                    // Use stream_id if available, otherwise fallback to stream name for backward compatibility
-                    setPostmatricData({
-                        postmatric_board: data.postmatric_board || "",
-                        postmatric_school_name: data.postmatric_school_name || "",
-                        postmatric_passing_year: data.postmatric_passing_year?.toString() || "",
-                        postmatric_roll_number: data.postmatric_roll_number || "",
-                        postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
-                        postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
-                        postmatric_percentage: data.postmatric_percentage?.toString() || "",
-                        stream: data.stream_id ? data.stream_id.toString() : (data.stream || ""),
-                    });
+                        // Set post-matric data
+                        // Use stream_id if available, otherwise fallback to stream name for backward compatibility
+                        setPostmatricData({
+                            postmatric_board: data.postmatric_board || "",
+                            postmatric_school_name: data.postmatric_school_name || "",
+                            postmatric_passing_year: data.postmatric_passing_year?.toString() || "",
+                            postmatric_roll_number: data.postmatric_roll_number || "",
+                            postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
+                            postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
+                            postmatric_percentage: data.postmatric_percentage?.toString() || "",
+                            stream: data.stream_id ? data.stream_id.toString() : (data.stream || ""),
+                        });
 
-                    setMatricSubjects(data.matric_subjects || []);
-                    setSubjects(data.subjects || []);
-                    // Keep inputs closed on load, even if data exists
-                    setShowMatricSubjectInput(false);
-                    setShowSubjectInput(false);
-                    
-                    // Set is_pursuing_12th from API or fallback to checking passing year
-                    setIsPursuing12th(data.is_pursuing_12th !== undefined ? data.is_pursuing_12th : !data.postmatric_passing_year);
+                        setMatricSubjects(data.matric_subjects || []);
+                        setSubjects(data.subjects || []);
+                        // Keep inputs closed on load, even if data exists
+                        setShowMatricSubjectInput(false);
+                        setShowSubjectInput(false);
+                        
+                        // Set is_pursuing_12th from API or fallback to checking passing year
+                        setIsPursuing12th(data.is_pursuing_12th !== undefined ? data.is_pursuing_12th : !data.postmatric_passing_year);
+                    }
+                    // If response.data is null, form fields remain empty (default state)
                 }
 
                 // Fetch stream options
@@ -164,6 +167,7 @@ export default function AcademicsProfile() {
                 console.error("Error fetching academics:", err);
                 setError("Failed to load academic data");
             } finally {
+                setLoading(false);
                 setLoadingStreams(false);
             }
         };

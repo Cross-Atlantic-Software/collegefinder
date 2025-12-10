@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
     PROFILE: '/auth/profile',
     PROFILE_BASIC: '/auth/profile/basic',
     PROFILE_ACADEMICS: '/auth/profile/academics',
+    PROFILE_SUBJECTS: '/auth/profile/subjects',
+    PROFILE_TOPICS: '/auth/profile/topics',
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
     PROFILE_COMPLETION: '/auth/profile/completion',
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',

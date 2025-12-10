@@ -105,6 +105,37 @@ class Subject {
   }
 
   /**
+   * Find active subjects by stream_id
+   * Returns subjects where the streams JSONB array contains the given stream_id
+   * This checks if ANY of the stream IDs in the subject's streams array matches the user's stream_id
+   * Works with subjects that have single or multiple streams
+   */
+  static async findByStreamId(streamId) {
+    const streamIdNum = typeof streamId === 'string' ? parseInt(streamId, 10) : streamId;
+    if (isNaN(streamIdNum)) {
+      return [];
+    }
+    
+    // Use jsonb_array_elements to expand the array and check each element
+    // This handles both numeric and string representations in the JSONB array
+    // Works regardless of how many streams are in the array (1, 2, 3, etc.)
+    const result = await db.query(
+      `SELECT DISTINCT s.* 
+       FROM subjects s
+       CROSS JOIN LATERAL jsonb_array_elements(s.streams) AS stream_elem
+       WHERE s.status = true 
+       AND (stream_elem::text::integer = $1 OR stream_elem::text = $2)
+       ORDER BY s.name ASC`,
+      [streamIdNum, streamIdNum.toString()]
+    );
+    // Parse JSONB streams field
+    return result.rows.map(row => ({
+      ...row,
+      streams: Subject.parseJsonbArray(row.streams)
+    }));
+  }
+
+  /**
    * Create a new subject
    */
   static async create(data) {

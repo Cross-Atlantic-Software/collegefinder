@@ -65,6 +65,32 @@ class Lecture {
   }
 
   /**
+   * Find lectures by subtopic ID with purposes
+   */
+  static async findBySubtopicIdWithPurposes(subtopicId) {
+    const result = await db.query(
+      `SELECT l.*, 
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
+         FILTER (WHERE p.id IS NOT NULL),
+         '[]'
+       ) as purposes
+       FROM lectures l
+       LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
+       LEFT JOIN purposes p ON lp.purpose_id = p.id
+       WHERE l.subtopic_id = $1 AND l.status = true
+       GROUP BY l.id
+       ORDER BY l.sort_order ASC, l.name ASC`,
+      [subtopicId]
+    );
+    // Parse purposes JSON
+    return result.rows.map(row => ({
+      ...row,
+      purposes: row.purposes && row.purposes.length > 0 && row.purposes[0].id ? row.purposes : []
+    }));
+  }
+
+  /**
    * Find active lectures
    */
   static async findActive() {

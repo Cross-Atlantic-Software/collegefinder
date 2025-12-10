@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/shared";
 import { MdOutlineReplay, MdOutlineHistory, MdSchool } from "react-icons/md";
 import { IoPlayCircleOutline } from "react-icons/io5";
-import { getSubjectsByStream } from "@/api/auth/profile";
 import { FiAlertCircle } from "react-icons/fi";
 
 import SelfStudyTab from "./SelfStudyTab";
@@ -29,50 +28,20 @@ type SubjectSection = {
   allTopics: Topic[];
 };
 
-export default function ExamPreparation() {
+type Props = {
+  subjects: SubjectSection[];
+  requiresStreamSelection: boolean;
+  error?: string | null;
+};
+
+export default function ExamPreparationServer({
+  subjects: initialSubjects,
+  requiresStreamSelection: initialRequiresStreamSelection,
+  error: initialError,
+}: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<PrepMode>("self");
   const [query, setQuery] = useState("");
-  const [subjects, setSubjects] = useState<SubjectSection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        setLoading(true);
-        // Client-side API call, but filtering happens SERVER-SIDE in the backend
-        // Backend only returns subjects matching user's stream_id - no client-side filtering
-        const response = await getSubjectsByStream();
-        if (response.success && response.data) {
-          if (response.data.requiresStreamSelection) {
-            setRequiresStreamSelection(true);
-            setSubjects([]);
-          } else {
-            setRequiresStreamSelection(false);
-            // Map API response to component format
-            const mappedSubjects: SubjectSection[] = (response.data.subjects || []).map((subj: { id: string; name: string; topics: Topic[]; allTopics: Topic[] }) => ({
-              id: String(subj.id),
-              name: subj.name,
-              topics: subj.topics || [],
-              allTopics: subj.allTopics || []
-            }));
-            setSubjects(mappedSubjects);
-          }
-        } else {
-          setError(response.message || 'Failed to load subjects');
-        }
-      } catch (err) {
-        console.error('Error fetching subjects:', err);
-        setError('Failed to load subjects');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSubjects();
-  }, []);
 
   return (
     <div className="w-full space-y-5">
@@ -139,7 +108,7 @@ export default function ExamPreparation() {
       </div>
 
       {/* Stream Selection Required Message */}
-      {requiresStreamSelection && (
+      {initialRequiresStreamSelection && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
           <div className="flex flex-col items-center gap-3">
             <FiAlertCircle className="h-8 w-8 text-amber-600" />
@@ -163,25 +132,18 @@ export default function ExamPreparation() {
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && !requiresStreamSelection && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-slate-400">Loading subjects...</div>
-        </div>
-      )}
-
       {/* Error State */}
-      {error && !loading && !requiresStreamSelection && (
+      {initialError && !initialRequiresStreamSelection && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-center">
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700">{initialError}</p>
         </div>
       )}
 
       {/* TAB CONTENT */}
-      {!loading && !requiresStreamSelection && !error && (
+      {!initialRequiresStreamSelection && !initialError && (
         mode === "self" ? (
           <SelfStudyTab
-            subjects={subjects}
+            subjects={initialSubjects}
             query={query}
             onQueryChange={setQuery}
             sortBy="latest"
@@ -194,3 +156,4 @@ export default function ExamPreparation() {
     </div>
   );
 }
+

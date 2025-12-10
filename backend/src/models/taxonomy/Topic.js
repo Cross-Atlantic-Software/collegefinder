@@ -31,6 +31,39 @@ class Topic {
   }
 
   /**
+   * Find topics by subject ID with home_display filter
+   */
+  static async findBySubjectIdWithHomeDisplay(subjectId, homeDisplayOnly = false, limit = null) {
+    let query = 'SELECT * FROM topics WHERE sub_id = $1 AND status = true';
+    const params = [subjectId];
+    
+    if (homeDisplayOnly) {
+      query += ' AND home_display = true';
+    }
+    
+    query += ' ORDER BY sort_order ASC, name ASC';
+    
+    if (limit) {
+      query += ` LIMIT $${params.length + 1}`;
+      params.push(limit);
+    }
+    
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  /**
+   * Find topic by name (for dynamic routing)
+   */
+  static async findByName(name) {
+    const result = await db.query(
+      'SELECT * FROM topics WHERE LOWER(name) = LOWER($1) AND status = true',
+      [name]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Find active topics
    */
   static async findActive() {
