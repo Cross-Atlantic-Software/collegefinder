@@ -123,7 +123,7 @@ export default function AcademicsProfile() {
                             postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
                             postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
                             postmatric_percentage: data.postmatric_percentage?.toString() || "",
-                            stream: data.stream_id ? data.stream_id.toString() : (data.stream || ""),
+                            stream: data.stream || "",
                         });
 
                         setMatricSubjects(data.matric_subjects || []);
