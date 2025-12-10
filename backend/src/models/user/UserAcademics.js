@@ -44,6 +44,7 @@ class UserAcademics {
       postmatric_obtained_marks,
       postmatric_percentage,
       stream,
+      stream_id,
       subjects,
       matric_subjects,
       is_pursuing_12th
@@ -131,9 +132,9 @@ class UserAcademics {
           matric_total_marks, matric_obtained_marks, matric_percentage,
           postmatric_board, postmatric_school_name, postmatric_passing_year, postmatric_roll_number,
           postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage,
-          stream, subjects, matric_subjects, is_pursuing_12th
+          stream, stream_id, subjects, matric_subjects, is_pursuing_12th
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20)
         ON CONFLICT (user_id)
         DO UPDATE SET
           matric_board = EXCLUDED.matric_board,
@@ -151,6 +152,7 @@ class UserAcademics {
           postmatric_obtained_marks = EXCLUDED.postmatric_obtained_marks,
           postmatric_percentage = EXCLUDED.postmatric_percentage,
           stream = EXCLUDED.stream,
+          stream_id = EXCLUDED.stream_id,
           subjects = EXCLUDED.subjects::jsonb,
           matric_subjects = EXCLUDED.matric_subjects::jsonb,
           is_pursuing_12th = EXCLUDED.is_pursuing_12th,
@@ -173,6 +175,7 @@ class UserAcademics {
           postmatric_obtained_marks || null,
           postmatric_percentage || null,
           stream || null,
+          stream_id || null,
           subjectsParam,  // JSON string - cast to jsonb
           matricSubjectsParam,  // JSON string - cast to jsonb
           is_pursuing_12th !== undefined ? is_pursuing_12th : false

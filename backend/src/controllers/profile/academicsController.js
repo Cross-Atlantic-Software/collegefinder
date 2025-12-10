@@ -1,5 +1,6 @@
 const UserAcademics = require('../../models/user/UserAcademics');
 const Subject = require('../../models/taxonomy/Subject');
+const Stream = require('../../models/taxonomy/Stream');
 const { validationResult } = require('express-validator');
 
 class AcademicsController {
@@ -85,6 +86,7 @@ class AcademicsController {
           postmatric_obtained_marks: academics.postmatric_obtained_marks,
           postmatric_percentage: academics.postmatric_percentage,
           stream: academics.stream,
+          stream_id: academics.stream_id,
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false
@@ -184,6 +186,7 @@ class AcademicsController {
           postmatric_obtained_marks: academics.postmatric_obtained_marks,
           postmatric_percentage: academics.postmatric_percentage,
           stream: academics.stream,
+          stream_id: academics.stream_id,
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false

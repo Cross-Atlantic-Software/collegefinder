@@ -252,8 +252,13 @@ const validateUpdateAcademics = [
     .withMessage('Post-matric percentage must be between 0 and 100'),
   body('stream')
     .optional()
-    .isIn(['PCM', 'PCB', 'Commerce', 'Humanities/Arts', 'Others'])
-    .withMessage('Stream must be PCM, PCB, Commerce, Humanities/Arts, or Others'),
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Stream must be less than 100 characters'),
+  body('stream_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Stream ID must be a positive integer'),
   body('subjects')
     .optional()
     .isArray()
@@ -411,6 +416,268 @@ const validateUpdateSubject = [
     .withMessage('Status must be a boolean')
 ];
 
+/**
+ * Validation rules for creating stream
+ */
+const validateCreateStream = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating stream
+ */
+const validateUpdateStream = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for creating career
+ */
+const validateCreateCareer = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating career
+ */
+const validateUpdateCareer = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for creating topic
+ */
+const validateCreateTopic = [
+  body('sub_id')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer'),
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('home_display')
+    .optional()
+    .isBoolean()
+    .withMessage('Home display must be a boolean'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for updating topic
+ */
+const validateUpdateTopic = [
+  body('sub_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer'),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('home_display')
+    .optional()
+    .isBoolean()
+    .withMessage('Home display must be a boolean'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for creating subtopic
+ */
+const validateCreateSubtopic = [
+  body('topic_id')
+    .notEmpty()
+    .withMessage('Topic ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Topic ID must be a positive integer'),
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for updating subtopic
+ */
+const validateUpdateSubtopic = [
+  body('topic_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Topic ID must be a positive integer'),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for creating lecture
+ */
+const validateCreateLecture = [
+  body('subtopic_id')
+    .notEmpty()
+    .withMessage('Subtopic ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Subtopic ID must be a positive integer'),
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('content_type')
+    .optional()
+    .isIn(['VIDEO', 'ARTICLE'])
+    .withMessage('Content type must be VIDEO or ARTICLE'),
+  body('article_content')
+    .optional()
+    .isString()
+    .withMessage('Article content must be a string')
+    .trim(),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for updating lecture
+ */
+const validateUpdateLecture = [
+  body('subtopic_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Subtopic ID must be a positive integer'),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('content_type')
+    .optional()
+    .isIn(['VIDEO', 'ARTICLE'])
+    .withMessage('Content type must be VIDEO or ARTICLE'),
+  body('article_content')
+    .optional()
+    .isString()
+    .withMessage('Article content must be a string')
+    .trim(),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -427,6 +694,78 @@ module.exports = {
   validateCreateBlog,
   validateUpdateBlog,
   validateCreateSubject,
-  validateUpdateSubject
+  validateUpdateSubject,
+  validateCreateStream,
+  validateUpdateStream,
+  validateCreateCareer,
+  validateUpdateCareer,
+  validateCreateTopic,
+  validateUpdateTopic,
+  validateCreateSubtopic,
+  validateUpdateSubtopic,
+  validateCreateLecture,
+  validateUpdateLecture
+};
+
+/**
+ * Validation rules for creating purpose
+ */
+const validateCreatePurpose = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating purpose
+ */
+const validateUpdatePurpose = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+module.exports = {
+  validateSendOTP,
+  validateVerifyOTP,
+  validateResendOTP,
+  validateUpdateProfile,
+  validateAdminLogin,
+  validateCreateAdmin,
+  validateUpdateAdmin,
+  validateCreateEmailTemplate,
+  validateUpdateEmailTemplate,
+  validateUpdateBasicInfo,
+  validateUpdateAcademics,
+  validateUpdateCareerGoals,
+  validateCreateBlog,
+  validateUpdateBlog,
+  validateCreateSubject,
+  validateUpdateSubject,
+  validateCreateStream,
+  validateUpdateStream,
+  validateCreateCareer,
+  validateUpdateCareer,
+  validateCreateTopic,
+  validateUpdateTopic,
+  validateCreateSubtopic,
+  validateUpdateSubtopic,
+  validateCreateLecture,
+  validateUpdateLecture,
+  validateCreatePurpose,
+  validateUpdatePurpose
 };
 

@@ -7,6 +7,8 @@ const AcademicsController = require('../../controllers/profile/academicsControll
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
+const SubjectsController = require('../../controllers/profile/subjectsController');
+const TopicsController = require('../../controllers/profile/topicsController');
 const { authenticate } = require('../../middleware/auth');
 
 // Configure multer for memory storage (for S3 upload)
@@ -125,6 +127,27 @@ router.get('/profile/academics', authenticate, AcademicsController.getAcademics)
  * @access  Private
  */
 router.put('/profile/academics', authenticate, validateUpdateAcademics, AcademicsController.updateAcademics);
+
+/**
+ * @route   GET /api/auth/profile/subjects
+ * @desc    Get subjects filtered by user's stream_id
+ * @access  Private
+ */
+router.get('/profile/subjects', authenticate, SubjectsController.getByUserStream);
+
+/**
+ * @route   GET /api/auth/profile/topics/:topicName
+ * @desc    Get topic by name with subtopics and lectures
+ * @access  Private
+ */
+router.get('/profile/topics/:topicName', authenticate, TopicsController.getTopicByName);
+
+/**
+ * @route   GET /api/auth/profile/topics/subject/:subjectId
+ * @desc    Get topics by subject ID
+ * @access  Private
+ */
+router.get('/profile/topics/subject/:subjectId', authenticate, TopicsController.getTopicsBySubjectId);
 
 /**
  * @route   GET /api/auth/profile/career-goals

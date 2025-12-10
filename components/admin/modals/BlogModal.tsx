@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiX, FiImage, FiVideo, FiFileText } from 'react-icons/fi';
 import { createBlog, updateBlog, type Blog } from '@/api/admin/blogs';
-import { useToast } from '@/components/shared';
+import { useToast, MultiSelect, RichTextEditor, type MultiSelectOption } from '@/components/shared';
+import { getAllStreamsPublic, getAllCareersPublic } from '@/api';
 import Image from 'next/image';
 
 interface BlogModalProps {
@@ -21,6 +22,10 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
   const [firstPart, setFirstPart] = useState(blog?.first_part || '');
   const [secondPart, setSecondPart] = useState(blog?.second_part || '');
   const [isFeatured, setIsFeatured] = useState(blog?.is_featured || false);
+  const [selectedStreams, setSelectedStreams] = useState<string[]>(blog?.streams?.map(s => String(s)) || []);
+  const [selectedCareers, setSelectedCareers] = useState<string[]>(blog?.careers?.map(c => String(c)) || []);
+  const [streamOptions, setStreamOptions] = useState<MultiSelectOption[]>([]);
+  const [careerOptions, setCareerOptions] = useState<MultiSelectOption[]>([]);
   const [blogImage, setBlogImage] = useState<File | null>(null);
   const [blogImagePreview, setBlogImagePreview] = useState<string | null>(blog?.blog_image || null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -28,6 +33,55 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
   const [error, setError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch streams and careers on mount
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [streamsRes, careersRes] = await Promise.all([
+          getAllStreamsPublic(),
+          getAllCareersPublic(),
+        ]);
+
+        if (streamsRes.success && streamsRes.data) {
+          setStreamOptions(
+            streamsRes.data.streams.map((s) => ({
+              value: String(s.id),
+              label: s.name,
+            }))
+          );
+        }
+
+        if (careersRes.success && careersRes.data) {
+          setCareerOptions(
+            careersRes.data.careers.map((c) => ({
+              value: String(c.id),
+              label: c.name,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Error fetching streams/careers:', err);
+      }
+    };
+
+    fetchOptions();
+  }, []);
+
+  // Helper function to parse JSONB array fields
+  const parseJsonbArray = (field: any): number[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+      try {
+        const parsed = JSON.parse(field);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
 
   // Update form fields when blog prop changes
   useEffect(() => {
@@ -41,6 +95,12 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setSecondPart(blog.second_part || '');
       setIsFeatured(blog.is_featured || false);
       setBlogImagePreview(blog.blog_image || null);
+      
+      // Parse and set streams and careers
+      const parsedStreams = parseJsonbArray(blog.streams);
+      const parsedCareers = parseJsonbArray(blog.careers);
+      setSelectedStreams(parsedStreams.map(s => String(s)));
+      setSelectedCareers(parsedCareers.map(c => String(c)));
     } else {
       // Reset form for new blog
       setSlug('');
@@ -54,6 +114,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setBlogImage(null);
       setBlogImagePreview(null);
       setVideoFile(null);
+      setSelectedStreams([]);
+      setSelectedCareers([]);
     }
   }, [blog]);
 
@@ -132,6 +194,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
         summary: summary || undefined,
         content_type: contentType,
         is_featured: isFeatured,
+        streams: selectedStreams.map(s => parseInt(s)),
+        careers: selectedCareers.map(c => parseInt(c)),
       };
 
       if (contentType === 'TEXT') {
@@ -287,6 +351,34 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
               </div>
             </div>
 
+            {/* Streams and Careers */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Streams
+                </label>
+                <MultiSelect
+                  options={streamOptions}
+                  value={selectedStreams}
+                  onChange={setSelectedStreams}
+                  placeholder="Select streams..."
+                  isSearchable={true}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Careers
+                </label>
+                <MultiSelect
+                  options={careerOptions}
+                  value={selectedCareers}
+                  onChange={setSelectedCareers}
+                  placeholder="Select careers..."
+                  isSearchable={true}
+                />
+              </div>
+            </div>
+
             {/* Blog Image */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -344,12 +436,9 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     First Part <span className="text-pink">*</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={firstPart}
-                    onChange={(e) => setFirstPart(e.target.value)}
-                    required
-                    rows={6}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    onChange={setFirstPart}
                     placeholder="First part of the blog content..."
                   />
                 </div>
@@ -357,12 +446,9 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Second Part <span className="text-pink">*</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={secondPart}
-                    onChange={(e) => setSecondPart(e.target.value)}
-                    required
-                    rows={6}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    onChange={setSecondPart}
                     placeholder="Second part of the blog content..."
                   />
                 </div>

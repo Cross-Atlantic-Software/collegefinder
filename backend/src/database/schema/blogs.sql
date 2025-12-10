@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS college_finder_blogs (
   first_part TEXT,
   second_part TEXT,
   video_file VARCHAR(500),
+  streams JSONB DEFAULT '[]'::jsonb, -- Array of stream IDs
+  careers JSONB DEFAULT '[]'::jsonb, -- Array of career IDs
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,6 +34,8 @@ BEGIN
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS first_part TEXT;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS second_part TEXT;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS video_file VARCHAR(500);
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS streams JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS careers JSONB DEFAULT '[]'::jsonb;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   END IF;
@@ -44,6 +48,16 @@ BEGIN
     SELECT 1 FROM pg_constraint WHERE conname = 'college_finder_blogs_slug_key'
   ) THEN
     ALTER TABLE college_finder_blogs ADD CONSTRAINT college_finder_blogs_slug_key UNIQUE (slug);
+  END IF;
+END $$;
+
+-- Add unique constraint for title if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'college_finder_blogs_title_key'
+  ) THEN
+    ALTER TABLE college_finder_blogs ADD CONSTRAINT college_finder_blogs_title_key UNIQUE (title);
   END IF;
 END $$;
 
@@ -60,6 +74,7 @@ END $$;
 
 -- Indexes for blogs table
 CREATE INDEX IF NOT EXISTS idx_blogs_slug ON college_finder_blogs(slug);
+CREATE INDEX IF NOT EXISTS idx_blogs_title ON college_finder_blogs(title);
 CREATE INDEX IF NOT EXISTS idx_blogs_is_featured ON college_finder_blogs(is_featured);
 CREATE INDEX IF NOT EXISTS idx_blogs_content_type ON college_finder_blogs(content_type);
 CREATE INDEX IF NOT EXISTS idx_blogs_created_at ON college_finder_blogs(created_at DESC);

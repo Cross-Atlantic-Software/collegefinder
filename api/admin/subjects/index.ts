@@ -5,6 +5,7 @@ import { ApiResponse } from '../../types';
 export interface Subject {
   id: number;
   name: string;
+  streams: number[]; // Array of stream IDs
   status: boolean;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ export async function getSubjectById(id: number): Promise<ApiResponse<{
  */
 export async function createSubject(data: {
   name: string;
+  streams?: number[];
   status?: boolean;
 }): Promise<ApiResponse<{
   subject: Subject;
@@ -54,6 +56,7 @@ export async function updateSubject(
   id: number,
   data: {
     name?: string;
+    streams?: number[];
     status?: boolean;
   }
 ): Promise<ApiResponse<{

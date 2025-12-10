@@ -1,21 +1,26 @@
 // src/components/exams/SelfStudyTab.tsx
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BiSearch } from "react-icons/bi";
-import { IoSwapVertical } from "react-icons/io5";
+import { IoChevronDown, IoChevronUp } from "react-icons/io5";
+import Image from "next/image";
 
-type Playlist = {
-  id: string;
-  title: string;
-  subject: string;
-  thumb?: string;
+type Topic = {
+  id: number;
+  name: string;
+  thumbnail: string | null;
+  description: string | null;
+  home_display: boolean;
+  sort_order: number;
 };
 
 type SubjectSection = {
   id: string;
   name: string;
-  playlists: Playlist[];
+  topics: Topic[];
+  allTopics: Topic[];
 };
 
 type Props = {
@@ -33,6 +38,9 @@ export default function SelfStudyTab({
   sortBy,
   onToggleSort,
 }: Props) {
+  const router = useRouter();
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+
   const filteredSubjects = useMemo(() => {
     const q = query.toLowerCase().trim();
     if (!q) return subjects;
@@ -40,18 +48,34 @@ export default function SelfStudyTab({
     return subjects
       .map((s) => ({
         ...s,
-        playlists: s.playlists.filter(
-          (p) =>
-            p.title.toLowerCase().includes(q) ||
-            p.subject.toLowerCase().includes(q)
+        topics: s.topics.filter(
+          (t) =>
+            t.name.toLowerCase().includes(q) ||
+            s.name.toLowerCase().includes(q)
+        ),
+        allTopics: s.allTopics.filter(
+          (t) =>
+            t.name.toLowerCase().includes(q) ||
+            s.name.toLowerCase().includes(q)
         ),
       }))
-      .filter((s) => s.playlists.length > 0);
+      .filter((s) => s.topics.length > 0 || s.allTopics.length > 0);
   }, [query, subjects]);
 
-  const sortedPlaylists = (playlists: Playlist[]) => {
-    if (sortBy === "popular") return playlists; // hook later
-    return playlists; // hook later
+  const toggleSubjectExpansion = (subjectId: string) => {
+    setExpandedSubjects((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(subjectId)) {
+        newSet.delete(subjectId);
+      } else {
+        newSet.add(subjectId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleTopicClick = (topicName: string) => {
+    router.push(`/dashboard/self-study/${encodeURIComponent(topicName)}`);
   };
 
   return (
@@ -71,53 +95,78 @@ export default function SelfStudyTab({
       <div>
         {filteredSubjects.length === 0 ? (
           <div className="flex min-h-[180px] items-center justify-center text-sm text-slate-400">
-            No playlists found.
+            No topics found.
           </div>
         ) : (
           <div className="space-y-8 w-full">
-            {filteredSubjects.map((subject) => (
-              <section key={subject.id} className="space-y-3">
-                {/* Subject header + sort */}
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-50">
-                    {subject.name}
-                  </h3>
+            {filteredSubjects.map((subject) => {
+              const isExpanded = expandedSubjects.has(subject.id);
+              const displayTopics = isExpanded ? subject.allTopics : subject.topics;
+              const hasMoreTopics = subject.allTopics.length > subject.topics.length;
 
-                  <button
-                    onClick={onToggleSort}
-                    className="flex items-center gap-2 text-xs font-semibold text-slate-200 hover:text-white"
-                  >
-                    <IoSwapVertical className="text-base" />
-                    SORT BY{" "}
-                    <span className="opacity-80">
-                      {sortBy === "latest" ? "Latest" : "Popular"}
-                    </span>
-                  </button>
-                </div>
+              return (
+                <section key={subject.id} className="space-y-3">
+                  {/* Subject header + view more */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-50">
+                      {subject.name}
+                    </h3>
 
-                {/* Playlists grid (fluid, no fixed width) */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                  {sortedPlaylists(subject.playlists).map((pl) => (
-                    <div
-                      key={pl.id}
-                      className="w-full rounded-lg bg-black/20 p-3 shadow-sm"
-                    >
-                      <div className="h-[130px] w-full rounded-md bg-white/20" />
+                    {hasMoreTopics && (
+                      <button
+                        onClick={() => toggleSubjectExpansion(subject.id)}
+                        className="flex items-center gap-2 text-xs font-semibold text-amber-300 hover:text-amber-200 transition"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <IoChevronUp className="text-base" />
+                            VIEW LESS
+                          </>
+                        ) : (
+                          <>
+                            <IoChevronDown className="text-base" />
+                            VIEW MORE
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
 
-                      <div className="mt-3 space-y-1.5">
-                        <p className="text-xs font-medium text-slate-100 line-clamp-2">
-                          {pl.title}
-                        </p>
+                  {/* Topics grid */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {displayTopics.map((topic) => (
+                      <div
+                        key={topic.id}
+                        onClick={() => handleTopicClick(topic.name)}
+                        className="w-full rounded-lg bg-black/20 p-3 shadow-sm cursor-pointer hover:bg-black/30 transition group"
+                      >
+                        <div className="h-[130px] w-full rounded-md bg-white/20 overflow-hidden relative">
+                          {topic.thumbnail ? (
+                            <Image
+                              src={topic.thumbnail}
+                              alt={topic.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-400">
+                              No Image
+                            </div>
+                          )}
+                        </div>
 
-                        <button className="text-[11px] font-semibold text-amber-300 hover:text-amber-200">
-                          VIEW PLAYLIST
-                        </button>
+                        <div className="mt-3 space-y-1.5">
+                          <p className="text-xs font-medium text-slate-100 line-clamp-2">
+                            {topic.name}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )}
       </div>

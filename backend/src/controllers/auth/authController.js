@@ -5,6 +5,7 @@ const { sendOTPEmail } = require('../../../utils/email/emailService');
 const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
+const { downloadAndUploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class AuthController {
   /**
@@ -347,6 +348,20 @@ class AuthController {
         return res.redirect(`${frontendUrl}/login?error=no_email`);
       }
 
+      // Download and upload Google profile picture to S3 (if provided)
+      let profilePhotoUrl = null;
+      if (picture) {
+        try {
+          // Generate unique filename
+          const fileName = `google-profile-${googleId}-${Date.now()}`;
+          profilePhotoUrl = await downloadAndUploadToS3(picture, fileName, 'profile-photos');
+        } catch (error) {
+          console.error('Error downloading/uploading Google profile picture:', error);
+          // Continue without profile photo if download fails
+          profilePhotoUrl = null;
+        }
+      }
+
       // Check if user exists by Google ID
       let user = await User.findByGoogleId(googleId);
 
@@ -355,6 +370,15 @@ class AuthController {
         user = await User.findByEmail(email);
         
         if (user) {
+          // Delete old profile photo from S3 if exists and we're updating with new one
+          if (user.profile_photo && profilePhotoUrl) {
+            try {
+              await deleteFromS3(user.profile_photo);
+            } catch (error) {
+              console.error('Error deleting old profile photo:', error);
+            }
+          }
+          
           // Link Google account to existing user and update profile data
           await User.linkGoogleAccount(user.id, googleId);
           // Update profile with Google data if fields are empty
@@ -362,7 +386,7 @@ class AuthController {
             firstName: firstName || null,
             lastName: lastName || null,
             name: name || null,
-            profilePhoto: picture || null,
+            profilePhoto: profilePhotoUrl || null,
             emailVerified: emailVerified || false
           });
           user = await User.findById(user.id);
@@ -374,17 +398,26 @@ class AuthController {
             firstName: firstName || null,
             lastName: lastName || null,
             googleId,
-            profilePhoto: picture || null,
+            profilePhoto: profilePhotoUrl || null,
             emailVerified: emailVerified || false
           });
         }
       } else {
+        // Delete old profile photo from S3 if exists and we're updating with new one
+        if (user.profile_photo && profilePhotoUrl) {
+          try {
+            await deleteFromS3(user.profile_photo);
+          } catch (error) {
+            console.error('Error deleting old profile photo:', error);
+          }
+        }
+        
         // Update existing Google user's profile if data changed
         await User.updateFromGoogle(user.id, {
           firstName: firstName || null,
           lastName: lastName || null,
           name: name || null,
-          profilePhoto: picture || null,
+          profilePhoto: profilePhotoUrl || null,
           emailVerified: emailVerified || false
         });
         user = await User.findById(user.id);

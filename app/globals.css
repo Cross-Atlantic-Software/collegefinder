@@ -28,6 +28,15 @@ button {
   .bg-lightGradient {
     background-image: linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%);
   }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 
   .bg-darkGradient {
     background-image: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%);

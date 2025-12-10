@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { SubjectInputList } from "../SubjectInputList";
-import { getAcademics, updateAcademics } from "@/api";
+import { getAcademics, updateAcademics, getAllStreamsPublic, type StreamPublic } from "@/api";
 import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousExamAttempt } from "@/api/exams";
 import { Button, Select, SelectOption, useToast } from "../../shared";
 
@@ -13,13 +13,7 @@ const getBarColor = (percent: number) => {
     return "bg-red-400";
 };
 
-const streamOptions: SelectOption[] = [
-    { value: "PCM", label: "PCM" },
-    { value: "PCB", label: "PCB" },
-    { value: "Commerce", label: "Commerce" },
-    { value: "Humanities/Arts", label: "Humanities/Arts" },
-    { value: "Others", label: "Others" }
-];
+// Stream options will be fetched from API
 
 const boardOptions: SelectOption[] = [
     { value: "CBSE", label: "CBSE" },
@@ -67,7 +61,10 @@ export default function AcademicsProfile() {
     const [matricSubjects, setMatricSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
     const [subjects, setSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
     const [showMatricSubjectInput, setShowMatricSubjectInput] = useState(false);
-    const [customStream, setCustomStream] = useState("");
+    
+    // Stream options from API
+    const [streamOptions, setStreamOptions] = useState<SelectOption[]>([]);
+    const [loadingStreams, setLoadingStreams] = useState(true);
 
     // Exam preferences
     const [examOptions, setExamOptions] = useState<SelectOption[]>([]);
@@ -101,49 +98,54 @@ export default function AcademicsProfile() {
             try {
                 setLoading(true);
                 const response = await getAcademics();
-                if (response.success && response.data) {
-                    const data = response.data;
-                    
-                    // Set matric data
-                    setMatricData({
-                        matric_board: data.matric_board || "",
-                        matric_school_name: data.matric_school_name || "",
-                        matric_passing_year: data.matric_passing_year?.toString() || "",
-                        matric_roll_number: data.matric_roll_number || "",
-                        matric_total_marks: data.matric_total_marks?.toString() || "",
-                        matric_obtained_marks: data.matric_obtained_marks?.toString() || "",
-                        matric_percentage: data.matric_percentage?.toString() || "",
-                    });
+                if (response.success) {
+                    if (response.data) {
+                        const data = response.data;
+                        
+                        // Set matric data
+                        setMatricData({
+                            matric_board: data.matric_board || "",
+                            matric_school_name: data.matric_school_name || "",
+                            matric_passing_year: data.matric_passing_year?.toString() || "",
+                            matric_roll_number: data.matric_roll_number || "",
+                            matric_total_marks: data.matric_total_marks?.toString() || "",
+                            matric_obtained_marks: data.matric_obtained_marks?.toString() || "",
+                            matric_percentage: data.matric_percentage?.toString() || "",
+                        });
 
-                    // Set post-matric data
-                    setPostmatricData({
-                        postmatric_board: data.postmatric_board || "",
-                        postmatric_school_name: data.postmatric_school_name || "",
-                        postmatric_passing_year: data.postmatric_passing_year?.toString() || "",
-                        postmatric_roll_number: data.postmatric_roll_number || "",
-                        postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
-                        postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
-                        postmatric_percentage: data.postmatric_percentage?.toString() || "",
-                        stream: data.stream || "",
-                    });
+                        // Set post-matric data
+                        // Use stream_id if available, otherwise fallback to stream name for backward compatibility
+                        setPostmatricData({
+                            postmatric_board: data.postmatric_board || "",
+                            postmatric_school_name: data.postmatric_school_name || "",
+                            postmatric_passing_year: data.postmatric_passing_year?.toString() || "",
+                            postmatric_roll_number: data.postmatric_roll_number || "",
+                            postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
+                            postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
+                            postmatric_percentage: data.postmatric_percentage?.toString() || "",
+                            stream: data.stream_id ? data.stream_id.toString() : (data.stream || ""),
+                        });
 
-                    // Check if stream is a custom value (not in predefined options)
-                    const predefinedStreams = streamOptions.map(opt => opt.value);
-                    if (data.stream && !predefinedStreams.includes(data.stream)) {
-                        setPostmatricData(prev => ({ ...prev, stream: "Others" }));
-                        setCustomStream(data.stream);
-                    } else {
-                        setCustomStream("");
+                        setMatricSubjects(data.matric_subjects || []);
+                        setSubjects(data.subjects || []);
+                        // Keep inputs closed on load, even if data exists
+                        setShowMatricSubjectInput(false);
+                        setShowSubjectInput(false);
+                        
+                        // Set is_pursuing_12th from API or fallback to checking passing year
+                        setIsPursuing12th(data.is_pursuing_12th !== undefined ? data.is_pursuing_12th : !data.postmatric_passing_year);
                     }
+                    // If response.data is null, form fields remain empty (default state)
+                }
 
-                    setMatricSubjects(data.matric_subjects || []);
-                    setSubjects(data.subjects || []);
-                    // Keep inputs closed on load, even if data exists
-                    setShowMatricSubjectInput(false);
-                    setShowSubjectInput(false);
-                    
-                    // Set is_pursuing_12th from API or fallback to checking passing year
-                    setIsPursuing12th(data.is_pursuing_12th !== undefined ? data.is_pursuing_12th : !data.postmatric_passing_year);
+                // Fetch stream options
+                const streamsResponse = await getAllStreamsPublic();
+                if (streamsResponse.success && streamsResponse.data) {
+                    const options = streamsResponse.data.streams.map(stream => ({
+                        value: stream.id.toString(),
+                        label: stream.name
+                    }));
+                    setStreamOptions(options);
                 }
 
                 // Fetch exam options
@@ -166,6 +168,7 @@ export default function AcademicsProfile() {
                 setError("Failed to load academic data");
             } finally {
                 setLoading(false);
+                setLoadingStreams(false);
             }
         };
 
@@ -240,12 +243,15 @@ export default function AcademicsProfile() {
                 }
             }
             
-            // Stream (always include if provided)
-            // If "Others" is selected, use the custom stream value
-            if (postmatricData.stream === "Others" && customStream?.trim()) {
-                payload.stream = customStream.trim();
-            } else if (postmatricData.stream?.trim()) {
-                payload.stream = postmatricData.stream.trim();
+            // Stream (use stream_id if available, otherwise fallback to stream name for backward compatibility)
+            if (postmatricData.stream?.trim()) {
+                const streamId = parseInt(postmatricData.stream);
+                if (!isNaN(streamId) && streamId > 0) {
+                    payload.stream_id = streamId;
+                } else {
+                    // Fallback to stream name for backward compatibility
+                    payload.stream = postmatricData.stream.trim();
+                }
             }
             
             // Matric Subjects (for 10th)
@@ -301,7 +307,7 @@ export default function AcademicsProfile() {
         }
     };
 
-    if (loading) {
+    if (loading || loadingStreams) {
         return (
             <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
                 <div className="flex items-center justify-center py-12">
@@ -659,39 +665,29 @@ export default function AcademicsProfile() {
                     {/* Stream (always visible) */}
                     <div className="mt-4 relative z-10">
                         <label className="mb-1 block text-sm font-medium text-slate-300">Stream</label>
-                        <Select
-                            options={streamOptions}
-                            value={postmatricData.stream}
-                            onChange={(value) => {
-                                setPostmatricData({ ...postmatricData, stream: value || "" });
-                                // Clear custom stream if not "Others"
-                                if (value !== "Others") {
-                                    setCustomStream("");
-                                }
-                            }}
-                            placeholder="Select Stream"
-                            error={validationErrors.stream}
-                            isSearchable={false}
-                            isClearable={false}
-                        />
-                        
-                        {/* Custom Stream Input (shown when "Others" is selected) */}
-                        {postmatricData.stream === "Others" && (
-                            <div className="mt-3">
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    Specify Stream
-                                </label>
-                                <input
-                                    type="text"
-                                    value={customStream}
-                                    onChange={(e) => setCustomStream(e.target.value)}
-                                    placeholder="Enter your stream"
-                                    className={`${inputBase} ${validationErrors.stream ? 'border-red-500' : ''}`}
-                                />
-                                {validationErrors.stream && (
-                                    <p className="mt-1 text-xs text-red-400">{validationErrors.stream}</p>
-                                )}
+                        {loadingStreams ? (
+                            <div className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-400">
+                                Loading streams...
                             </div>
+                        ) : streamOptions.length === 0 ? (
+                            <div className="w-full rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-3 text-sm text-yellow-400">
+                                No active streams found. Please add streams in the admin panel.
+                            </div>
+                        ) : (
+                            <Select
+                                options={streamOptions}
+                                value={postmatricData.stream}
+                                onChange={(value) => {
+                                    setPostmatricData({ ...postmatricData, stream: value || "" });
+                                }}
+                                placeholder="Select Stream"
+                                error={validationErrors.stream || validationErrors.stream_id}
+                                isSearchable={true}
+                                isClearable={true}
+                            />
+                        )}
+                        {(validationErrors.stream || validationErrors.stream_id) && (
+                            <p className="mt-1 text-xs text-red-400">{validationErrors.stream || validationErrors.stream_id}</p>
                         )}
                     </div>
 

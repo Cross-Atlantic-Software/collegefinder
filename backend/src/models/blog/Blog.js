@@ -34,6 +34,17 @@ class Blog {
   }
 
   /**
+   * Find blog by title
+   */
+  static async findByTitle(title) {
+    const result = await db.query(
+      'SELECT * FROM college_finder_blogs WHERE title = $1',
+      [title]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Find featured blogs
    */
   static async findFeatured() {
@@ -57,13 +68,15 @@ class Blog {
       content_type,
       first_part,
       second_part,
-      video_file
+      video_file,
+      streams,
+      careers
     } = data;
 
     const result = await db.query(
       `INSERT INTO college_finder_blogs 
-       (slug, is_featured, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+       (slug, is_featured, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file, streams, careers)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
        RETURNING *`,
       [
         slug,
@@ -75,7 +88,9 @@ class Blog {
         content_type,
         first_part || null,
         second_part || null,
-        video_file || null
+        video_file || null,
+        streams ? JSON.stringify(streams) : '[]',
+        careers ? JSON.stringify(careers) : '[]'
       ]
     );
     return result.rows[0];
@@ -95,7 +110,9 @@ class Blog {
       content_type,
       first_part,
       second_part,
-      video_file
+      video_file,
+      streams,
+      careers
     } = data;
 
     const updates = [];
@@ -141,6 +158,14 @@ class Blog {
     if (video_file !== undefined) {
       updates.push(`video_file = $${paramCount++}`);
       values.push(video_file || null);
+    }
+    if (streams !== undefined) {
+      updates.push(`streams = $${paramCount++}`);
+      values.push(Array.isArray(streams) ? JSON.stringify(streams) : streams);
+    }
+    if (careers !== undefined) {
+      updates.push(`careers = $${paramCount++}`);
+      values.push(Array.isArray(careers) ? JSON.stringify(careers) : careers);
     }
 
     if (updates.length === 0) {

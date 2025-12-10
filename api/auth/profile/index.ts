@@ -122,6 +122,73 @@ export async function getAcademics(): Promise<ApiResponse<{
 }
 
 /**
+ * Get subjects filtered by user's stream_id with topics
+ */
+export async function getSubjectsByStream(): Promise<ApiResponse<{
+  subjects: Array<{
+    id: string;
+    name: string;
+    topics: Array<{
+      id: number;
+      name: string;
+      thumbnail: string | null;
+      description: string | null;
+      home_display: boolean;
+      sort_order: number;
+    }>;
+    allTopics: Array<{
+      id: number;
+      name: string;
+      thumbnail: string | null;
+      description: string | null;
+      home_display: boolean;
+      sort_order: number;
+    }>;
+  }>;
+  requiresStreamSelection: boolean;
+  message?: string;
+  stream_id?: number;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_SUBJECTS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Get topic by name with subtopics and lectures
+ */
+export async function getTopicByName(topicName: string): Promise<ApiResponse<{
+  topic: {
+    id: number;
+    name: string;
+    thumbnail: string | null;
+    description: string | null;
+    sub_id: number;
+  };
+  subtopics: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    sort_order: number;
+    lectures: Array<{
+      id: number;
+      name: string;
+      content_type: 'VIDEO' | 'ARTICLE';
+      video_file: string | null;
+      article_content: string | null;
+      thumbnail: string | null;
+      description: string | null;
+      purposes: Array<{ id: number; name: string; status: boolean }>;
+      sort_order: number;
+    }>;
+  }>;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.AUTH.PROFILE_TOPICS}/${encodeURIComponent(topicName)}`, {
+    method: 'GET',
+  });
+}
+
+/**
  * Update user academics
  */
 export async function updateAcademics(data: {

@@ -61,6 +61,16 @@ const navItems: NavItem[] = [
     icon: <FiBook className="h-4 w-4" />,
   },
   {
+    label: 'Streams',
+    href: '/admin/streams',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
+    label: 'Careers',
+    href: '/admin/careers',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
     label: 'Exams',
     href: '/admin/exams',
     icon: <FiBook className="h-4 w-4" />,
@@ -73,6 +83,21 @@ const navItems: NavItem[] = [
   {
     label: 'Blogs',
     href: '/admin/blogs',
+    icon: <FiFileText className="h-4 w-4" />,
+  },
+  {
+    label: 'Topics',
+    href: '/admin/topics',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
+    label: 'Subtopics',
+    href: '/admin/subtopics',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
+    label: 'Lectures',
+    href: '/admin/lectures',
     icon: <FiFileText className="h-4 w-4" />,
   },
 ];
