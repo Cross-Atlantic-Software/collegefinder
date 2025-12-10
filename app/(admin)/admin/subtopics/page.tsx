@@ -531,8 +531,8 @@ export default function SubtopicsPage() {
         message="Are you sure you want to delete this subtopic? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        isDeleting={isDeleting}
-        variant="danger"
+        isLoading={isDeleting}
+        confirmButtonStyle="danger"
       />
     </div>
   );
