@@ -623,8 +623,8 @@ export default function TopicsPage() {
         message="Are you sure you want to delete this topic? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        isDeleting={isDeleting}
-        variant="danger"
+        isLoading={isDeleting}
+        confirmButtonStyle="danger"
       />
     </div>
   );
