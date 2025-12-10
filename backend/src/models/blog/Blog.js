@@ -34,6 +34,17 @@ class Blog {
   }
 
   /**
+   * Find blog by title
+   */
+  static async findByTitle(title) {
+    const result = await db.query(
+      'SELECT * FROM college_finder_blogs WHERE title = $1',
+      [title]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Find featured blogs
    */
   static async findFeatured() {

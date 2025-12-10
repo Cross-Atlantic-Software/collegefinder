@@ -43,6 +43,10 @@ export const API_ENDPOINTS = {
     SUBJECTS: '/admin/subjects',
     STREAMS: '/admin/streams',
     CAREERS: '/admin/careers',
+    TOPICS: '/admin/topics',
+    SUBTOPICS: '/admin/subtopics',
+    LECTURES: '/admin/lectures',
+    PURPOSES: '/admin/purposes',
   },
 } as const;
 

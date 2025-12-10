@@ -166,6 +166,15 @@ class BlogController {
         });
       }
 
+      // Check if title already exists
+      const existingBlogByTitle = await Blog.findByTitle(title);
+      if (existingBlogByTitle) {
+        return res.status(400).json({
+          success: false,
+          message: 'Blog with this title already exists'
+        });
+      }
+
       // Handle blog image upload
       let blog_image = null;
       if (req.files && req.files['blog_image']) {
@@ -320,6 +329,17 @@ class BlogController {
           return res.status(400).json({
             success: false,
             message: 'Blog with this slug already exists'
+          });
+        }
+      }
+
+      // Check if title is being changed and if it already exists
+      if (title && title !== existingBlog.title) {
+        const titleExists = await Blog.findByTitle(title);
+        if (titleExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Blog with this title already exists'
           });
         }
       }

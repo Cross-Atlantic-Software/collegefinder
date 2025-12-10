@@ -47,3 +47,68 @@ export {
   deleteSubject,
 } from './subjects';
 export type { Subject } from './subjects';
+
+// Export streams taxonomy management APIs
+export {
+  getAllStreams,
+  getStreamById,
+  createStream,
+  updateStream,
+  deleteStream,
+} from './streams';
+export type { Stream } from './streams';
+
+// Export careers taxonomy management APIs
+export {
+  getAllCareers,
+  getCareerById,
+  createCareer,
+  updateCareer,
+  deleteCareer,
+} from './careers';
+export type { Career } from './careers';
+
+// Export topics taxonomy management APIs
+export {
+  getAllTopics,
+  getTopicById,
+  createTopic,
+  updateTopic,
+  deleteTopic,
+  uploadTopicThumbnail,
+} from './topics';
+export type { Topic } from './topics';
+
+// Export subtopics taxonomy management APIs
+export {
+  getAllSubtopics,
+  getSubtopicsByTopicId,
+  getSubtopicById,
+  createSubtopic,
+  updateSubtopic,
+  deleteSubtopic,
+} from './subtopics';
+export type { Subtopic } from './subtopics';
+
+// Export lectures taxonomy management APIs
+export {
+  getAllLectures,
+  getLecturesBySubtopicId,
+  getLectureById,
+  createLecture,
+  updateLecture,
+  deleteLecture,
+  uploadLectureVideo,
+  uploadLectureThumbnail,
+} from './lectures';
+export type { Lecture } from './lectures';
+
+// Export purposes taxonomy management APIs
+export {
+  getAllPurposes,
+  getPurposeById,
+  createPurpose,
+  updatePurpose,
+  deletePurpose,
+} from './purposes';
+export type { Purpose } from './purposes';

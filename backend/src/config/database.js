@@ -50,6 +50,10 @@ const init = async () => {
       'subjects.sql',         // Subjects taxonomies table
       'streams.sql',          // Streams taxonomies table
       'careers.sql',          // Careers taxonomies table
+      'topics.sql',           // Topics table (depends on subjects)
+      'subtopics.sql',        // Subtopics table (depends on topics)
+      'lectures.sql',         // Lectures table (depends on subtopics)
+      'purposes.sql',         // Purposes table and lecture_purposes junction table
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)

@@ -534,7 +534,7 @@ export default function BlogsPage() {
             <div className="flex-1 overflow-auto p-6 space-y-4">
               {/* Blog Image */}
               {viewingBlog.blog_image && (
-                <div className="relative w-full h-64 rounded-lg overflow-hidden">
+                <div className="relative w-48 h-32 rounded-lg overflow-hidden border border-gray-200">
                   <Image
                     src={viewingBlog.blog_image}
                     alt={viewingBlog.title}

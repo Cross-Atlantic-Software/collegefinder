@@ -8,6 +8,10 @@ const ExamsController = require('../../controllers/profile/examsController');
 const SubjectController = require('../../controllers/admin/subjectController');
 const StreamController = require('../../controllers/admin/streamController');
 const CareerController = require('../../controllers/admin/careerController');
+const TopicController = require('../../controllers/admin/topicController');
+const SubtopicController = require('../../controllers/admin/subtopicController');
+const LectureController = require('../../controllers/admin/lectureController');
+const PurposeController = require('../../controllers/admin/purposeController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -18,7 +22,15 @@ const {
   validateCreateStream,
   validateUpdateStream,
   validateCreateCareer,
-  validateUpdateCareer
+  validateUpdateCareer,
+  validateCreateTopic,
+  validateUpdateTopic,
+  validateCreateSubtopic,
+  validateUpdateSubtopic,
+  validateCreateLecture,
+  validateUpdateLecture,
+  validateCreatePurpose,
+  validateUpdatePurpose
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -321,6 +333,210 @@ router.put('/exams/:id', authenticateAdmin, ExamsController.update);
  * @access  Private (Admin)
  */
 router.delete('/exams/:id', authenticateAdmin, ExamsController.delete);
+
+/**
+ * Topics Routes
+ */
+
+/**
+ * @route   GET /api/admin/topics
+ * @desc    Get all topics
+ * @access  Private (Admin)
+ */
+router.get('/topics', authenticateAdmin, TopicController.getAllTopics);
+
+/**
+ * @route   GET /api/admin/topics/:id
+ * @desc    Get topic by ID
+ * @access  Private (Admin)
+ */
+router.get('/topics/:id', authenticateAdmin, TopicController.getTopicById);
+
+/**
+ * @route   POST /api/admin/topics
+ * @desc    Create new topic
+ * @access  Private (Admin)
+ */
+router.post('/topics', authenticateAdmin, TopicController.upload.single('thumbnail'), validateCreateTopic, TopicController.createTopic);
+
+/**
+ * @route   PUT /api/admin/topics/:id
+ * @desc    Update topic
+ * @access  Private (Admin)
+ */
+router.put('/topics/:id', authenticateAdmin, TopicController.upload.single('thumbnail'), validateUpdateTopic, TopicController.updateTopic);
+
+/**
+ * @route   DELETE /api/admin/topics/:id
+ * @desc    Delete topic
+ * @access  Private (Admin)
+ */
+router.delete('/topics/:id', authenticateAdmin, TopicController.deleteTopic);
+
+/**
+ * @route   POST /api/admin/topics/upload-thumbnail
+ * @desc    Upload topic thumbnail
+ * @access  Private (Admin)
+ */
+router.post('/topics/upload-thumbnail', authenticateAdmin, TopicController.upload.single('thumbnail'), TopicController.uploadThumbnail);
+
+/**
+ * Subtopics Routes
+ */
+
+/**
+ * @route   GET /api/admin/subtopics
+ * @desc    Get all subtopics
+ * @access  Private (Admin)
+ */
+router.get('/subtopics', authenticateAdmin, SubtopicController.getAllSubtopics);
+
+/**
+ * @route   GET /api/admin/subtopics/topic/:topicId
+ * @desc    Get subtopics by topic ID
+ * @access  Private (Admin)
+ */
+router.get('/subtopics/topic/:topicId', authenticateAdmin, SubtopicController.getSubtopicsByTopicId);
+
+/**
+ * @route   GET /api/admin/subtopics/:id
+ * @desc    Get subtopic by ID
+ * @access  Private (Admin)
+ */
+router.get('/subtopics/:id', authenticateAdmin, SubtopicController.getSubtopicById);
+
+/**
+ * @route   POST /api/admin/subtopics
+ * @desc    Create new subtopic
+ * @access  Private (Admin)
+ */
+router.post('/subtopics', authenticateAdmin, validateCreateSubtopic, SubtopicController.createSubtopic);
+
+/**
+ * @route   PUT /api/admin/subtopics/:id
+ * @desc    Update subtopic
+ * @access  Private (Admin)
+ */
+router.put('/subtopics/:id', authenticateAdmin, validateUpdateSubtopic, SubtopicController.updateSubtopic);
+
+/**
+ * @route   DELETE /api/admin/subtopics/:id
+ * @desc    Delete subtopic
+ * @access  Private (Admin)
+ */
+router.delete('/subtopics/:id', authenticateAdmin, SubtopicController.deleteSubtopic);
+
+/**
+ * Lectures Routes
+ */
+
+/**
+ * @route   GET /api/admin/lectures
+ * @desc    Get all lectures
+ * @access  Private (Admin)
+ */
+router.get('/lectures', authenticateAdmin, LectureController.getAllLectures);
+
+/**
+ * @route   GET /api/admin/lectures/subtopic/:subtopicId
+ * @desc    Get lectures by subtopic ID
+ * @access  Private (Admin)
+ */
+router.get('/lectures/subtopic/:subtopicId', authenticateAdmin, LectureController.getLecturesBySubtopicId);
+
+/**
+ * @route   GET /api/admin/lectures/:id
+ * @desc    Get lecture by ID
+ * @access  Private (Admin)
+ */
+router.get('/lectures/:id', authenticateAdmin, LectureController.getLectureById);
+
+/**
+ * @route   POST /api/admin/lectures
+ * @desc    Create new lecture
+ * @access  Private (Admin)
+ */
+router.post('/lectures', authenticateAdmin, LectureController.upload.fields([
+  { name: 'video_file', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), validateCreateLecture, LectureController.createLecture);
+
+/**
+ * @route   PUT /api/admin/lectures/:id
+ * @desc    Update lecture
+ * @access  Private (Admin)
+ */
+router.put('/lectures/:id', authenticateAdmin, LectureController.upload.fields([
+  { name: 'video_file', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), validateUpdateLecture, LectureController.updateLecture);
+
+/**
+ * @route   DELETE /api/admin/lectures/:id
+ * @desc    Delete lecture
+ * @access  Private (Admin)
+ */
+router.delete('/lectures/:id', authenticateAdmin, LectureController.deleteLecture);
+
+/**
+ * Purposes Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/purposes
+ * @desc    Get all purposes (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/purposes', authenticateAdmin, PurposeController.getAllPurposes);
+
+/**
+ * @route   GET /api/admin/purposes/:id
+ * @desc    Get purpose by ID
+ * @access  Private (Admin)
+ */
+router.get('/purposes/:id', authenticateAdmin, PurposeController.getPurposeById);
+
+/**
+ * @route   POST /api/admin/purposes
+ * @desc    Create new purpose
+ * @access  Private (Admin)
+ */
+router.post('/purposes', authenticateAdmin, validateCreatePurpose, PurposeController.createPurpose);
+
+/**
+ * @route   PUT /api/admin/purposes/:id
+ * @desc    Update purpose
+ * @access  Private (Admin)
+ */
+router.put('/purposes/:id', authenticateAdmin, validateUpdatePurpose, PurposeController.updatePurpose);
+
+/**
+ * @route   DELETE /api/admin/purposes/:id
+ * @desc    Delete purpose
+ * @access  Private (Admin)
+ */
+router.delete('/purposes/:id', authenticateAdmin, PurposeController.deletePurpose);
+
+/**
+ * @route   POST /api/admin/lectures/upload-video
+ * @desc    Upload lecture video
+ * @access  Private (Admin)
+ */
+router.post('/lectures/upload-video', authenticateAdmin, LectureController.upload.single('video_file'), LectureController.uploadVideo);
+
+/**
+ * @route   POST /api/admin/lectures/upload-thumbnail
+ * @desc    Upload lecture thumbnail
+ * @access  Private (Admin)
+ */
+router.post('/lectures/upload-thumbnail', authenticateAdmin, LectureController.upload.single('thumbnail'), LectureController.uploadThumbnail);
+
+/**
+ * @route   POST /api/admin/lectures/upload-image
+ * @desc    Upload image for rich text editor (article content)
+ * @access  Private (Admin)
+ */
+router.post('/lectures/upload-image', authenticateAdmin, LectureController.upload.single('lecture_image'), LectureController.uploadImage);
 
 module.exports = router;
 

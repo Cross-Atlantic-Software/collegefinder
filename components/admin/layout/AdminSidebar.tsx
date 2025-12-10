@@ -85,6 +85,21 @@ const navItems: NavItem[] = [
     href: '/admin/blogs',
     icon: <FiFileText className="h-4 w-4" />,
   },
+  {
+    label: 'Topics',
+    href: '/admin/topics',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
+    label: 'Subtopics',
+    href: '/admin/subtopics',
+    icon: <FiBook className="h-4 w-4" />,
+  },
+  {
+    label: 'Lectures',
+    href: '/admin/lectures',
+    icon: <FiFileText className="h-4 w-4" />,
+  },
 ];
 
 export default function AdminSidebar() {

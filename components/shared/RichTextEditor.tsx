@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
 import { useCallback, useEffect } from 'react';
@@ -15,6 +15,8 @@ interface RichTextEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  imageUploadEndpoint?: string; // Optional custom endpoint for image uploads
+  imageFormFieldName?: string; // Optional custom form field name for image uploads
 }
 
 export default function RichTextEditor({
@@ -22,6 +24,8 @@ export default function RichTextEditor({
   onChange,
   placeholder = 'Start writing...',
   className = '',
+  imageUploadEndpoint = '/admin/blogs/upload-image',
+  imageFormFieldName = 'blog_image',
 }: RichTextEditorProps) {
   // Custom image upload handler
   const handleImageUpload = useCallback(async (file: File) => {
@@ -40,12 +44,12 @@ export default function RichTextEditor({
     try {
       // Upload to S3 via API
       const formData = new FormData();
-      formData.append('blog_image', file);
+      formData.append(imageFormFieldName, file);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
       const adminToken = localStorage.getItem('admin_token');
 
-      const response = await fetch(`${apiUrl}/admin/blogs/upload-image`, {
+      const response = await fetch(`${apiUrl}${imageUploadEndpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -69,7 +73,7 @@ export default function RichTextEditor({
       alert('Failed to upload image. Please try again.');
       return null;
     }
-  }, []);
+  }, [imageUploadEndpoint, imageFormFieldName]);
 
   const editor = useEditor({
     immediatelyRender: false, // Prevent SSR hydration mismatches
@@ -124,7 +128,7 @@ export default function RichTextEditor({
   // Update editor content when value prop changes
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 

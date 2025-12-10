@@ -57,17 +57,34 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const key = `${folder}/${timestamp}-${sanitizedFileName}`;
 
-    const params = {
+    // Try to upload with public-read ACL first
+    let params = {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
       ContentType: getContentType(fileName),
-      // Note: ACLs are disabled on modern S3 buckets by default
-      // Public access should be handled via bucket policy instead (see AWS_S3_SETUP.md)
-      // Removed ACL parameter to avoid "The bucket does not allow ACLs" error
+      ACL: 'public-read',
     };
 
-    const result = await s3.upload(params).promise();
+    let result;
+    try {
+      result = await s3.upload(params).promise();
+    } catch (aclError) {
+      // If ACL fails (bucket has ACLs disabled), try without ACL
+      // Bucket policy should handle public access instead
+      if (aclError.code === 'InvalidRequest' || aclError.message?.includes('ACL')) {
+        console.warn('⚠️  ACL not allowed, uploading without ACL. Ensure bucket policy allows public read access.');
+        params = {
+          Bucket: BUCKET_NAME,
+          Key: key,
+          Body: fileBuffer,
+          ContentType: getContentType(fileName),
+        };
+        result = await s3.upload(params).promise();
+      } else {
+        throw aclError;
+      }
+    }
     console.log(`✅ Successfully uploaded to S3: ${result.Location}`);
     return result.Location;
   } catch (error) {
@@ -127,6 +144,10 @@ const getContentType = (fileName) => {
     '.gif': 'image/gif',
     '.webp': 'image/webp',
     '.svg': 'image/svg+xml',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
   };
   return contentTypes[ext] || 'application/octet-stream';
 };
