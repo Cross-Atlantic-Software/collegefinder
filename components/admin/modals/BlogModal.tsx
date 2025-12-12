@@ -29,6 +29,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
   const [blogImage, setBlogImage] = useState<File | null>(null);
   const [blogImagePreview, setBlogImagePreview] = useState<string | null>(blog?.blog_image || null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [url, setUrl] = useState(blog?.url || '');
+  const [sourceName, setSourceName] = useState(blog?.source_name || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +97,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setSecondPart(blog.second_part || '');
       setIsFeatured(blog.is_featured || false);
       setBlogImagePreview(blog.blog_image || null);
+      setUrl(blog.url || '');
+      setSourceName(blog.source_name || '');
       
       // Parse and set streams and careers
       const parsedStreams = parseJsonbArray(blog.streams);
@@ -116,6 +120,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setVideoFile(null);
       setSelectedStreams([]);
       setSelectedCareers([]);
+      setUrl('');
+      setSourceName('');
     }
   }, [blog]);
 
@@ -210,6 +216,10 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       if (contentType === 'VIDEO' && videoFile) {
         blogData.video_file = videoFile;
       }
+
+      // Add URL and source name (always include, even if empty, so they can be cleared)
+      blogData.url = url || undefined;
+      blogData.source_name = sourceName || undefined;
 
       if (blog) {
         // Update existing blog
@@ -375,6 +385,37 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   onChange={setSelectedCareers}
                   placeholder="Select careers..."
                   isSearchable={true}
+                />
+              </div>
+            </div>
+
+            {/* URL and Source Name */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  URL (Third-party link)
+                </label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/article"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  If provided, blog will open in a new window
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Source Name
+                </label>
+                <input
+                  type="text"
+                  value={sourceName}
+                  onChange={(e) => setSourceName(e.target.value)}
+                  placeholder="Source name"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                 />
               </div>
             </div>

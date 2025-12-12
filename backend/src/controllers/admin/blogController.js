@@ -2,6 +2,11 @@ const Blog = require('../../models/blog/Blog');
 const { validationResult } = require('express-validator');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
+// Ensure database columns exist on module load
+Blog.ensureColumnsExist().catch(err => {
+  console.error('Failed to ensure blog columns exist:', err);
+});
+
 class BlogController {
   /**
    * Get all blogs
@@ -12,12 +17,16 @@ class BlogController {
       const blogs = await Blog.findAll();
       
       // Ensure streams and careers are arrays (parse if needed)
+      // Also ensure url and source_name exist (for backward compatibility)
       const parsedBlogs = blogs.map(blog => {
         try {
           return {
             ...blog,
             streams: BlogController.parseJsonbArray(blog.streams),
             careers: BlogController.parseJsonbArray(blog.careers),
+            // Ensure new fields exist (for backward compatibility with existing blogs)
+            url: blog.url || null,
+            source_name: blog.source_name || null,
           };
         } catch (parseError) {
           console.error('Error parsing blog JSONB fields:', parseError, blog);
@@ -26,6 +35,8 @@ class BlogController {
             ...blog,
             streams: [],
             careers: [],
+            url: blog.url || null,
+            source_name: blog.source_name || null,
           };
         }
       });
@@ -110,10 +121,13 @@ class BlogController {
       }
 
       // Ensure streams and careers are arrays (parse if needed)
+      // Also ensure url and source_name exist (for backward compatibility)
       const parsedBlog = {
         ...blog,
         streams: BlogController.parseJsonbArray(blog.streams),
         careers: BlogController.parseJsonbArray(blog.careers),
+        url: blog.url || null,
+        source_name: blog.source_name || null,
       };
 
       res.json({
@@ -154,7 +168,9 @@ class BlogController {
         first_part,
         second_part,
         streams,
-        careers
+        careers,
+        url,
+        source_name
       } = req.body;
 
       // Check if slug already exists
@@ -244,7 +260,9 @@ class BlogController {
         second_part: content_type === 'TEXT' ? second_part : null,
         video_file: content_type === 'VIDEO' ? video_file : null,
         streams: streamsArray,
-        careers: careersArray
+        careers: careersArray,
+        url: url || null,
+        source_name: source_name || null
       };
 
       const blog = await Blog.create(blogData);
@@ -298,7 +316,9 @@ class BlogController {
         first_part,
         second_part,
         streams,
-        careers
+        careers,
+        url,
+        source_name
       } = req.body;
 
       // Parse streams and careers (can be JSON strings or arrays)
@@ -418,6 +438,8 @@ class BlogController {
       if (video_file !== undefined) updateData.video_file = content_type === 'VIDEO' ? video_file : null;
       if (streamsArray !== undefined) updateData.streams = streamsArray;
       if (careersArray !== undefined) updateData.careers = careersArray;
+      if (url !== undefined) updateData.url = url || null;
+      if (source_name !== undefined) updateData.source_name = source_name || null;
 
       const blog = await Blog.update(id, updateData);
 

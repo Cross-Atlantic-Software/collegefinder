@@ -208,6 +208,7 @@ export async function updateAcademics(data: {
   postmatric_obtained_marks?: number;
   postmatric_percentage?: number;
   stream?: string;
+  stream_id?: number;
   subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   matric_subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th?: boolean;

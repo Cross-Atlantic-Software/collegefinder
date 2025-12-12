@@ -77,7 +77,7 @@ export default function ExamPreparation() {
   return (
     <div className="w-full space-y-5">
       {/* PERFORMANCE RADAR STRIP */}
-      <div className="flex flex-col gap-3 rounded-md bg-amber-400/90 p-4 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      {/* <div className="flex flex-col gap-3 rounded-md bg-amber-400/90 p-4 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center text-3xl text-white/40">
             <MdSchool />
@@ -109,7 +109,7 @@ export default function ExamPreparation() {
             View Old Scores
           </Button>
         </div>
-      </div>
+      </div> */}
 
       {/* MODE TABS */}
       <div className="grid gap-3 sm:grid-cols-2">

@@ -70,13 +70,15 @@ class Blog {
       second_part,
       video_file,
       streams,
-      careers
+      careers,
+      url,
+      source_name
     } = data;
 
     const result = await db.query(
       `INSERT INTO college_finder_blogs 
-       (slug, is_featured, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file, streams, careers)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+       (slug, is_featured, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file, streams, careers, url, source_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
        RETURNING *`,
       [
         slug,
@@ -90,7 +92,9 @@ class Blog {
         second_part || null,
         video_file || null,
         streams ? JSON.stringify(streams) : '[]',
-        careers ? JSON.stringify(careers) : '[]'
+        careers ? JSON.stringify(careers) : '[]',
+        url || null,
+        source_name || null
       ]
     );
     return result.rows[0];
@@ -112,7 +116,9 @@ class Blog {
       second_part,
       video_file,
       streams,
-      careers
+      careers,
+      url,
+      source_name
     } = data;
 
     const updates = [];
@@ -167,6 +173,14 @@ class Blog {
       updates.push(`careers = $${paramCount++}`);
       values.push(Array.isArray(careers) ? JSON.stringify(careers) : careers);
     }
+    if (url !== undefined) {
+      updates.push(`url = $${paramCount++}`);
+      values.push(url || null);
+    }
+    if (source_name !== undefined) {
+      updates.push(`source_name = $${paramCount++}`);
+      values.push(source_name || null);
+    }
 
     if (updates.length === 0) {
       return null;
@@ -205,6 +219,43 @@ class Blog {
       'SELECT COUNT(*) as total FROM college_finder_blogs'
     );
     return parseInt(result.rows[0].total, 10);
+  }
+
+  /**
+   * Ensure new columns exist (migration helper)
+   * This ensures url and source_name columns exist in the database
+   */
+  static async ensureColumnsExist() {
+    try {
+      // Check if url column exists
+      const urlCheck = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'college_finder_blogs' 
+        AND column_name = 'url'
+      `);
+      
+      if (urlCheck.rows.length === 0) {
+        await db.query('ALTER TABLE college_finder_blogs ADD COLUMN url VARCHAR(500)');
+        console.log('✓ Added url column to college_finder_blogs table');
+      }
+
+      // Check if source_name column exists
+      const sourceNameCheck = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'college_finder_blogs' 
+        AND column_name = 'source_name'
+      `);
+      
+      if (sourceNameCheck.rows.length === 0) {
+        await db.query('ALTER TABLE college_finder_blogs ADD COLUMN source_name VARCHAR(255)');
+        console.log('✓ Added source_name column to college_finder_blogs table');
+      }
+    } catch (error) {
+      console.error('Error ensuring blog columns exist:', error);
+      // Don't throw - allow the app to continue even if migration fails
+    }
   }
 }
 

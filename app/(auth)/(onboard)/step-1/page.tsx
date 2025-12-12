@@ -43,7 +43,7 @@ export default function StepOne() {
           "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
       }}
     >
-      <WelcomeLayout progress={33}>
+      <WelcomeLayout progress={20}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl">
           {/* Robot */}
           <Robot variant="three" />

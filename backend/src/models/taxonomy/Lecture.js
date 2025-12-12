@@ -120,6 +120,7 @@ class Lecture {
       name,
       content_type = 'VIDEO',
       video_file,
+      iframe_code,
       article_content,
       thumbnail,
       status = true,
@@ -128,14 +129,15 @@ class Lecture {
     } = data;
 
     const result = await db.query(
-      `INSERT INTO lectures (subtopic_id, name, content_type, video_file, article_content, thumbnail, status, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO lectures (subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, status, description, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         subtopic_id,
         name,
         content_type,
         content_type === 'VIDEO' ? (video_file || null) : null,
+        content_type === 'VIDEO' ? (iframe_code || null) : null,
         content_type === 'ARTICLE' ? (article_content || null) : null,
         thumbnail || null,
         status,
@@ -155,6 +157,7 @@ class Lecture {
       name,
       content_type,
       video_file,
+      iframe_code,
       article_content,
       thumbnail,
       status,
@@ -184,11 +187,17 @@ class Lecture {
       } else if (content_type === 'ARTICLE') {
         updates.push(`video_file = $${paramCount++}`);
         values.push(null);
+        updates.push(`iframe_code = $${paramCount++}`);
+        values.push(null);
       }
     }
     if (video_file !== undefined) {
       updates.push(`video_file = $${paramCount++}`);
       values.push(video_file);
+    }
+    if (iframe_code !== undefined) {
+      updates.push(`iframe_code = $${paramCount++}`);
+      values.push(iframe_code);
     }
     if (article_content !== undefined) {
       updates.push(`article_content = $${paramCount++}`);

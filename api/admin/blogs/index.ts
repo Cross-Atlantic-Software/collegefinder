@@ -20,6 +20,8 @@ export interface Blog {
   video_file: string | null;
   streams: number[] | null;
   careers: number[] | null;
+  url: string | null;
+  source_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +65,8 @@ export async function createBlog(data: {
   video_file?: File;
   streams?: number[];
   careers?: number[];
+  url?: string;
+  source_name?: string;
 }): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
   
@@ -96,6 +100,12 @@ export async function createBlog(data: {
   }
   if (data.careers && Array.isArray(data.careers)) {
     formData.append('careers', JSON.stringify(data.careers));
+  }
+  if (data.url !== undefined) {
+    formData.append('url', data.url || '');
+  }
+  if (data.source_name !== undefined) {
+    formData.append('source_name', data.source_name || '');
   }
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
@@ -141,6 +151,8 @@ export async function updateBlog(
     video_file?: File | null;
     streams?: number[];
     careers?: number[];
+    url?: string;
+    source_name?: string;
   }
 ): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
@@ -180,6 +192,12 @@ export async function updateBlog(
   }
   if (data.careers !== undefined) {
     formData.append('careers', JSON.stringify(Array.isArray(data.careers) ? data.careers : []));
+  }
+  if (data.url !== undefined) {
+    formData.append('url', data.url || '');
+  }
+  if (data.source_name !== undefined) {
+    formData.append('source_name', data.source_name || '');
   }
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';

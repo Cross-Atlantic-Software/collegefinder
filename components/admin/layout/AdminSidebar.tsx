@@ -14,7 +14,8 @@ import {
   FiBook,
   FiUser,
   FiShield,
-  FiFileText
+  FiFileText,
+  FiLayers
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -47,29 +48,50 @@ const navGroups: NavGroup[] = [
       },
     ],
   },
+  {
+    label: 'Taxonomies',
+    icon: <FiLayers className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Career Goals',
+        href: '/admin/career-goals',
+        icon: <FiTarget className="h-4 w-4" />,
+      },
+      {
+        label: 'Subjects',
+        href: '/admin/subjects',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Streams',
+        href: '/admin/streams',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Careers',
+        href: '/admin/careers',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Topics',
+        href: '/admin/topics',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Subtopics',
+        href: '/admin/subtopics',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Purposes',
+        href: '/admin/purposes',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+    ],
+  },
 ];
 
 const navItems: NavItem[] = [
-  {
-    label: 'Career Goals',
-    href: '/admin/career-goals',
-    icon: <FiTarget className="h-4 w-4" />,
-  },
-  {
-    label: 'Subjects',
-    href: '/admin/subjects',
-    icon: <FiBook className="h-4 w-4" />,
-  },
-  {
-    label: 'Streams',
-    href: '/admin/streams',
-    icon: <FiBook className="h-4 w-4" />,
-  },
-  {
-    label: 'Careers',
-    href: '/admin/careers',
-    icon: <FiBook className="h-4 w-4" />,
-  },
   {
     label: 'Exams',
     href: '/admin/exams',
@@ -84,16 +106,6 @@ const navItems: NavItem[] = [
     label: 'Blogs',
     href: '/admin/blogs',
     icon: <FiFileText className="h-4 w-4" />,
-  },
-  {
-    label: 'Topics',
-    href: '/admin/topics',
-    icon: <FiBook className="h-4 w-4" />,
-  },
-  {
-    label: 'Subtopics',
-    href: '/admin/subtopics',
-    icon: <FiBook className="h-4 w-4" />,
   },
   {
     label: 'Lectures',

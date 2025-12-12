@@ -7,6 +7,7 @@ type Lecture = {
   id: number;
   name: string;
   video_file: string | null;
+  iframe_code: string | null;
   description: string | null;
 };
 
@@ -35,7 +36,14 @@ export default function VideoModal({ lecture, isOpen, onClose }: Props) {
 
         {/* Video Content */}
         <div className="flex-1 p-6 flex items-center justify-center">
-          {lecture.video_file ? (
+          {lecture.iframe_code ? (
+            <div className="w-full aspect-video">
+              <div 
+                className="w-full h-full rounded-lg overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: lecture.iframe_code }}
+              />
+            </div>
+          ) : lecture.video_file ? (
             <div className="w-full aspect-video">
               <video
                 controls

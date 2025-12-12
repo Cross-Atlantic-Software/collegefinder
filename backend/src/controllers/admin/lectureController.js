@@ -105,7 +105,7 @@ class LectureController {
         });
       }
 
-      const { subtopic_id, name, content_type = 'VIDEO', status, description, sort_order, article_content } = req.body;
+      const { subtopic_id, name, content_type = 'VIDEO', status, description, sort_order, article_content, iframe_code } = req.body;
 
       // Check if lecture with same name exists for this subtopic
       const existing = await Lecture.findByNameAndSubtopicId(name, parseInt(subtopic_id));
@@ -117,14 +117,7 @@ class LectureController {
       }
 
       // Validate content_type specific fields
-      if (content_type === 'VIDEO') {
-        if (!req.files || !req.files.video_file) {
-          return res.status(400).json({
-            success: false,
-            message: 'Video file is required when content_type is VIDEO'
-          });
-        }
-      } else if (content_type === 'ARTICLE') {
+      if (content_type === 'ARTICLE') {
         if (!article_content || article_content.trim() === '') {
           return res.status(400).json({
             success: false,
@@ -154,6 +147,7 @@ class LectureController {
         name,
         content_type,
         video_file,
+        iframe_code: content_type === 'VIDEO' ? (iframe_code || null) : null,
         article_content: content_type === 'ARTICLE' ? article_content : null,
         thumbnail,
         status: status !== undefined ? (status === 'true' || status === true) : true,
@@ -223,7 +217,7 @@ class LectureController {
         });
       }
 
-      const { subtopic_id, name, content_type, status, description, sort_order, article_content } = req.body;
+      const { subtopic_id, name, content_type, status, description, sort_order, article_content, iframe_code } = req.body;
 
       // Check if name is being changed and if it already exists for this subtopic
       const subtopicId = subtopic_id ? parseInt(subtopic_id) : existingLecture.subtopic_id;
@@ -239,15 +233,7 @@ class LectureController {
 
       // Validate content_type specific fields
       const finalContentType = content_type || existingLecture.content_type || 'VIDEO';
-      if (finalContentType === 'VIDEO') {
-        // If switching to VIDEO or updating VIDEO, ensure video file is provided or exists
-        if (content_type === 'VIDEO' && !req.files?.video_file && !existingLecture.video_file) {
-          return res.status(400).json({
-            success: false,
-            message: 'Video file is required when content_type is VIDEO'
-          });
-        }
-      } else if (finalContentType === 'ARTICLE') {
+      if (finalContentType === 'ARTICLE') {
         // If switching to ARTICLE or updating ARTICLE, ensure article_content is provided
         if (article_content === undefined && !existingLecture.article_content) {
           return res.status(400).json({
@@ -286,6 +272,14 @@ class LectureController {
       if (name !== undefined) updateData.name = name;
       if (content_type !== undefined) updateData.content_type = content_type;
       if (video_file !== undefined) updateData.video_file = video_file;
+      // Handle iframe_code - if empty string is sent, clear it (set to null)
+      if (iframe_code !== undefined) {
+        updateData.iframe_code = iframe_code && iframe_code.trim() !== '' ? iframe_code.trim() : null;
+      }
+      // If video_file is being set (and not null), clear iframe_code
+      if (video_file !== undefined && video_file !== null) {
+        updateData.iframe_code = null;
+      }
       if (article_content !== undefined) updateData.article_content = article_content;
       if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
       if (status !== undefined) updateData.status = status === 'true' || status === true;

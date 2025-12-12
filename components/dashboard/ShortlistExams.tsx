@@ -1,10 +1,7 @@
 'use client'
 import { useState } from "react";
-import { BiSearch } from "react-icons/bi";
-import { Button } from "../shared";
 import ExamBox from "./ExamBox";
 import { ExamApplicationModal } from "./ExamApplicationModal";
-import { IoFunnel } from "react-icons/io5";
 
 export default function ShortlistExams() {
     const [activeTab, setActiveTab] = useState("recommended");
@@ -13,15 +10,6 @@ export default function ShortlistExams() {
 
     return (
         <>
-            <section className="flex items-center gap-2 rounded-md bg-white/10 p-1 pl-4 text-xs text-slate-300 mb-5">
-                <BiSearch className="text-xl"/>
-                <input
-                    placeholder="Search exams, tutorials, colleges..."
-                    className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-                />
-                <Button variant="themeButton" size="sm" className="flex rounded-md gap-2"> <IoFunnel /> Filters</Button>
-            </section>
-
             {/* TABS */}
             <div className="flex w-full rounded-md bg-white/10 text-sm font-medium text-slate-300 overflow-hidden mb-5">
                 <button
