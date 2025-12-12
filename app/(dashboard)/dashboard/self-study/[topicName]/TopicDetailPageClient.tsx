@@ -18,6 +18,7 @@ type Lecture = {
   name: string;
   content_type: "VIDEO" | "ARTICLE";
   video_file: string | null;
+  iframe_code: string | null;
   article_content: string | null;
   thumbnail: string | null;
   description: string | null;

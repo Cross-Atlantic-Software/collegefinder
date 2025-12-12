@@ -432,7 +432,7 @@ export default function PurposesPage() {
         message="Are you sure you want to delete this purpose? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        isDestructive={true}
+        confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
     </div>
