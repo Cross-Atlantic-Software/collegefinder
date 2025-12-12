@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS lectures (
   name VARCHAR(255) NOT NULL,
   content_type VARCHAR(50) DEFAULT 'VIDEO', -- 'VIDEO' or 'ARTICLE'
   video_file VARCHAR(500), -- S3 URL/path for video file (for VIDEO type)
+  iframe_code TEXT, -- Iframe embed code for video (for VIDEO type, alternative to video_file)
   article_content TEXT, -- Rich text content (for ARTICLE type)
   thumbnail VARCHAR(500), -- S3 URL/path for lecture thumbnail
   description TEXT, -- Optional description
@@ -23,6 +24,7 @@ BEGIN
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS name VARCHAR(255);
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS content_type VARCHAR(50) DEFAULT 'VIDEO';
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS video_file VARCHAR(500);
+    ALTER TABLE lectures ADD COLUMN IF NOT EXISTS iframe_code TEXT;
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS article_content TEXT;
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS thumbnail VARCHAR(500);
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS description TEXT;
@@ -59,6 +61,7 @@ COMMENT ON COLUMN lectures.subtopic_id IS 'Foreign key reference to subtopics ta
 COMMENT ON COLUMN lectures.name IS 'Display name for the lecture';
 COMMENT ON COLUMN lectures.content_type IS 'Type of content: VIDEO or ARTICLE';
 COMMENT ON COLUMN lectures.video_file IS 'S3 URL/path for video file (for VIDEO type)';
+COMMENT ON COLUMN lectures.iframe_code IS 'Iframe embed code for video (for VIDEO type, alternative to video_file)';
 COMMENT ON COLUMN lectures.article_content IS 'Rich text content with images (for ARTICLE type)';
 COMMENT ON COLUMN lectures.thumbnail IS 'S3 URL/path for lecture thumbnail image';
 COMMENT ON COLUMN lectures.description IS 'Optional description of the lecture';

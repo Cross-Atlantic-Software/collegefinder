@@ -3,7 +3,6 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BiSearch } from "react-icons/bi";
 import { IoChevronDown, IoChevronUp } from "react-icons/io5";
 import Image from "next/image";
 
@@ -80,16 +79,6 @@ export default function SelfStudyTab({
 
   return (
     <div className="space-y-4">
-      {/* Search bar (Self Study) */}
-      <div className="flex items-center gap-2 rounded-full bg-white/10 p-3 pl-4 text-sm text-slate-200">
-        <BiSearch className="text-lg opacity-80" />
-        <input
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search topics, subjects, or keywords..."
-          className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
-        />
-      </div>
 
       {/* Content panel */}
       <div>

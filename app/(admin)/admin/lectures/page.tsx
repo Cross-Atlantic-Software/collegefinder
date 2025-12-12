@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllLectures, getLecturesBySubtopicId, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, createPurpose, updatePurpose, deletePurpose, Purpose } from '@/api';
+import { getAllLectures, getLecturesBySubtopicId, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes } from '@/api';
 import { getAllSubtopics } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage, FiVideo, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage, FiVideo } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 import RichTextEditor from '@/components/shared/RichTextEditor';
 
@@ -31,6 +31,8 @@ export default function LecturesPage() {
   const [articleContent, setArticleContent] = useState('');
   const [availableSubtopics, setAvailableSubtopics] = useState<SelectOption[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoSourceType, setVideoSourceType] = useState<'file' | 'iframe'>('file');
+  const [iframeCode, setIframeCode] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -40,15 +42,9 @@ export default function LecturesPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Purposes management
-  const [showPurposeModal, setShowPurposeModal] = useState(false);
-  const [purposes, setPurposes] = useState<Purpose[]>([]);
+  // Purposes for lecture form (read-only)
   const [availablePurposes, setAvailablePurposes] = useState<SelectOption[]>([]);
   const [selectedPurposes, setSelectedPurposes] = useState<string[]>([]);
-  const [purposeFormData, setPurposeFormData] = useState({ name: '', status: true });
-  const [editingPurpose, setEditingPurpose] = useState<Purpose | null>(null);
-  const [showPurposeDeleteConfirm, setShowPurposeDeleteConfirm] = useState(false);
-  const [deletingPurposeId, setDeletingPurposeId] = useState<number | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -83,7 +79,6 @@ export default function LecturesPage() {
     try {
       const response = await getAllPurposes();
       if (response.success && response.data) {
-        setPurposes(response.data.purposes);
         setAvailablePurposes(
           response.data.purposes
             .filter(p => p.status)
@@ -153,10 +148,20 @@ export default function LecturesPage() {
       
       // Add content based on type
       if (formData.content_type === 'VIDEO') {
-        if (videoFile) {
-          formDataToSend.append('video_file', videoFile);
-        } else if (!editingLecture) {
-          throw new Error('Video file is required for VIDEO content type');
+        if (videoSourceType === 'file') {
+          if (videoFile) {
+            formDataToSend.append('video_file', videoFile);
+          }
+          // Clear iframe_code when using file
+          formDataToSend.append('iframe_code', '');
+        } else if (videoSourceType === 'iframe') {
+          if (iframeCode) {
+            formDataToSend.append('iframe_code', iframeCode);
+          } else {
+            formDataToSend.append('iframe_code', '');
+          }
+          // Clear video_file when using iframe - send empty string
+          formDataToSend.append('video_file', '');
         }
       } else if (formData.content_type === 'ARTICLE') {
         formDataToSend.append('article_content', articleContent);
@@ -217,6 +222,14 @@ export default function LecturesPage() {
     setThumbnailPreview(lecture.thumbnail);
     setThumbnailFile(null);
     setVideoFile(null);
+    // Set video source type based on what exists
+    if (lecture.iframe_code) {
+      setVideoSourceType('iframe');
+      setIframeCode(lecture.iframe_code);
+    } else {
+      setVideoSourceType('file');
+      setIframeCode('');
+    }
     // Set selected purposes
     if (lecture.purposes && lecture.purposes.length > 0) {
       setSelectedPurposes(lecture.purposes.map(p => String(p.id)));
@@ -287,6 +300,8 @@ export default function LecturesPage() {
     });
     setArticleContent('');
     setVideoFile(null);
+    setVideoSourceType('file');
+    setIframeCode('');
     setThumbnailFile(null);
     setThumbnailPreview(null);
     setSelectedPurposes([]);
@@ -348,13 +363,6 @@ export default function LecturesPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowPurposeModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <FiSettings className="h-4 w-4" />
-                Manage Purpose
-              </button>
               <button
                 onClick={handleCreate}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
@@ -578,23 +586,77 @@ export default function LecturesPage() {
                 </div>
 
                 {formData.content_type === 'VIDEO' && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Video File <span className="text-pink">*</span>
-                    </label>
-                    {editingLecture && editingLecture.video_file && !videoFile && (
-                      <div className="mb-2 p-2 bg-gray-50 rounded border border-gray-200">
-                        <p className="text-xs text-gray-600">Current: {editingLecture.video_file}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Video Source <span className="text-pink">*</span>
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="videoSource"
+                            value="file"
+                            checked={videoSourceType === 'file'}
+                            onChange={(e) => {
+                              setVideoSourceType('file');
+                              setIframeCode('');
+                            }}
+                            className="w-4 h-4 text-pink border-gray-300 focus:ring-pink"
+                          />
+                          <span className="text-sm text-gray-700">Video File</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="videoSource"
+                            value="iframe"
+                            checked={videoSourceType === 'iframe'}
+                            onChange={(e) => {
+                              setVideoSourceType('iframe');
+                              setVideoFile(null);
+                            }}
+                            className="w-4 h-4 text-pink border-gray-300 focus:ring-pink"
+                          />
+                          <span className="text-sm text-gray-700">Iframe Code</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {videoSourceType === 'file' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Video File
+                        </label>
+                        {editingLecture && editingLecture.video_file && !videoFile && (
+                          <div className="mb-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">Current: {editingLecture.video_file}</p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={handleVideoChange}
+                          required={false}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Max file size: 500MB</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Iframe Code <span className="text-pink">*</span>
+                        </label>
+                        <textarea
+                          value={iframeCode}
+                          onChange={(e) => setIframeCode(e.target.value)}
+                          placeholder="Paste your iframe embed code here (e.g., &lt;iframe src=&quot;...&quot;&gt;&lt;/iframe&gt;)"
+                          rows={4}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none font-mono"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Paste the complete iframe embed code from YouTube, Vimeo, etc.</p>
                       </div>
                     )}
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoChange}
-                      required={!editingLecture}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Max file size: 500MB</p>
                   </div>
                 )}
 
@@ -761,17 +823,26 @@ export default function LecturesPage() {
                     </span>
                   </p>
                 </div>
-                {viewingLecture.content_type === 'VIDEO' && viewingLecture.video_file && (
+                {viewingLecture.content_type === 'VIDEO' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Video</label>
                     <div className="mt-1">
-                      <video
-                        src={viewingLecture.video_file}
-                        controls
-                        className="w-full max-w-md rounded border border-gray-200"
-                      >
-                        Your browser does not support the video tag.
-                      </video>
+                      {viewingLecture.iframe_code ? (
+                        <div 
+                          className="w-full aspect-video rounded border border-gray-200 overflow-hidden"
+                          dangerouslySetInnerHTML={{ __html: viewingLecture.iframe_code }}
+                        />
+                      ) : viewingLecture.video_file ? (
+                        <video
+                          src={viewingLecture.video_file}
+                          controls
+                          className="w-full max-w-md rounded border border-gray-200"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <p className="text-sm text-gray-500">No video available</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -849,208 +920,6 @@ export default function LecturesPage() {
         confirmButtonStyle="danger"
       />
 
-      {/* Purpose Management Modal */}
-      {showPurposeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Manage Purposes</h2>
-              <button
-                onClick={() => {
-                  setShowPurposeModal(false);
-                  setEditingPurpose(null);
-                  setPurposeFormData({ name: '', status: true });
-                }}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <FiX className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              <div className="space-y-4">
-                {/* Purpose Form */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                    {editingPurpose ? 'Edit Purpose' : 'Create Purpose'}
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Name <span className="text-pink">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={purposeFormData.name}
-                        onChange={(e) => setPurposeFormData({ ...purposeFormData, name: e.target.value })}
-                        placeholder="e.g., Exam Preparation, Concept Learning"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="purposeStatus"
-                            checked={purposeFormData.status === true}
-                            onChange={() => setPurposeFormData({ ...purposeFormData, status: true })}
-                            className="w-4 h-4 text-pink focus:ring-pink"
-                          />
-                          <span className="text-sm text-gray-700">Active</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="purposeStatus"
-                            checked={purposeFormData.status === false}
-                            onChange={() => setPurposeFormData({ ...purposeFormData, status: false })}
-                            className="w-4 h-4 text-pink focus:ring-pink"
-                          />
-                          <span className="text-sm text-gray-700">Inactive</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!purposeFormData.name.trim()) {
-                            showError('Name is required');
-                            return;
-                          }
-                          try {
-                            if (editingPurpose) {
-                              const response = await updatePurpose(editingPurpose.id, purposeFormData);
-                              if (response.success) {
-                                showSuccess('Purpose updated successfully');
-                                setPurposeFormData({ name: '', status: true });
-                                setEditingPurpose(null);
-                                fetchPurposes();
-                              } else {
-                                showError(response.message || 'Failed to update purpose');
-                              }
-                            } else {
-                              const response = await createPurpose(purposeFormData);
-                              if (response.success) {
-                                showSuccess('Purpose created successfully');
-                                setPurposeFormData({ name: '', status: true });
-                                fetchPurposes();
-                              } else {
-                                showError(response.message || 'Failed to create purpose');
-                              }
-                            }
-                          } catch (err: any) {
-                            showError(err.message || 'An error occurred');
-                          }
-                        }}
-                        className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
-                      >
-                        {editingPurpose ? 'Update' : 'Create'}
-                      </button>
-                      {editingPurpose && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingPurpose(null);
-                            setPurposeFormData({ name: '', status: true });
-                          }}
-                          className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Purposes List */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">All Purposes</h3>
-                  <div className="space-y-2">
-                    {purposes.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">No purposes found</p>
-                    ) : (
-                      purposes.map((purpose) => (
-                        <div
-                          key={purpose.id}
-                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-900">{purpose.name}</span>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                purpose.status
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              {purpose.status ? 'Active' : 'Inactive'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setEditingPurpose(purpose);
-                                setPurposeFormData({ name: purpose.name, status: purpose.status });
-                              }}
-                              className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors"
-                              title="Edit"
-                            >
-                              <FiEdit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeletingPurposeId(purpose.id);
-                                setShowPurposeDeleteConfirm(true);
-                              }}
-                              className="p-1.5 text-red-600 hover:text-red-800 transition-colors"
-                              title="Delete"
-                            >
-                              <FiTrash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Purpose Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showPurposeDeleteConfirm}
-        onClose={() => {
-          setShowPurposeDeleteConfirm(false);
-          setDeletingPurposeId(null);
-        }}
-        onConfirm={async () => {
-          if (!deletingPurposeId) return;
-          try {
-            const response = await deletePurpose(deletingPurposeId);
-            if (response.success) {
-              showSuccess('Purpose deleted successfully');
-              fetchPurposes();
-            } else {
-              showError(response.message || 'Failed to delete purpose');
-            }
-          } catch (err: any) {
-            showError(err.message || 'An error occurred');
-          } finally {
-            setShowPurposeDeleteConfirm(false);
-            setDeletingPurposeId(null);
-          }
-        }}
-        title="Delete Purpose"
-        message="Are you sure you want to delete this purpose? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmButtonStyle="danger"
-      />
     </div>
   );
 }

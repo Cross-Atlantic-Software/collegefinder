@@ -2,8 +2,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { BiSearch } from "react-icons/bi";
-import { IoFunnel } from "react-icons/io5";
 import {
   MdSchool,
   MdCheckCircle,
@@ -195,24 +193,6 @@ export default function ApplicationsPage() {
 
   return (
     <main className="flex flex-col gap-4">
-      {/* Search */}
-      <section className="flex items-center gap-2 rounded-full bg-white/10 p-1 pl-4 text-xs text-slate-300">
-        <BiSearch className="text-xl" />
-        <input
-          placeholder="Search applications by college, program or exam..."
-          className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <Button
-          variant="themeButton"
-          size="sm"
-          className="flex items-center gap-2 rounded-full"
-        >
-          <IoFunnel />
-          Filters
-        </Button>
-      </section>
 
       {/* Tabs */}
       <div className="flex w-full overflow-hidden rounded-md bg-white/10 text-sm font-medium text-slate-300">

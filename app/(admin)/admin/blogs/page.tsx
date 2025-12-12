@@ -578,6 +578,31 @@ export default function BlogsPage() {
                 </span>
               </div>
 
+              {/* URL and Source */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">URL</label>
+                  {viewingBlog.url ? (
+                    <a
+                      href={viewingBlog.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline break-all"
+                    >
+                      {viewingBlog.url}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-400">-</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Source</label>
+                  <p className="text-sm text-gray-700">
+                    {viewingBlog.source_name ? viewingBlog.source_name : <span className="text-gray-400">-</span>}
+                  </p>
+                </div>
+              </div>
+
               {/* Streams */}
               {viewingBlog.streams && viewingBlog.streams.length > 0 && (
                 <div>

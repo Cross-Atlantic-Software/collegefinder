@@ -12,7 +12,7 @@ export default function StepTwo() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
+  const [isNavigatingToStep2A, setIsNavigatingToStep2A] = useState(false);
   const router = useRouter();
   const { user, refreshUser, isLoading } = useAuth();
 
@@ -20,7 +20,7 @@ export default function StepTwo() {
   // But NEVER redirect if we're saving or navigating to step-3
   useEffect(() => {
     // Only redirect if we're not in the middle of saving or navigating to step-3
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
+    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
       setIsRedirecting(true);
       // Prefetch dashboard for faster loading
       router.prefetch('/dashboard');
@@ -30,20 +30,20 @@ export default function StepTwo() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router, isNavigatingToStep3, saving]);
+  }, [user, isLoading, router, isNavigatingToStep2A, saving]);
 
   // Show smooth loader while checking auth or redirecting (but NEVER while saving/navigating to step-3)
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
+  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
 
   // Don't render if user has completed onboarding and we're not saving/navigating to step-3
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
+  if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
     return <OnboardingLoader message="Taking you to dashboard..." />;
   }
 
   // Show saving state if we're navigating to step-3
-  if (saving || isNavigatingToStep3) {
+  if (saving || isNavigatingToStep2A) {
     return <OnboardingLoader message="Saving your name..." />;
   }
 
@@ -62,27 +62,27 @@ export default function StepTwo() {
 
     setSaving(true);
     setError(null);
-    setIsNavigatingToStep3(true); // Set flag immediately to prevent any redirects
+    setIsNavigatingToStep2A(true); // Set flag immediately to prevent any redirects
 
     try {
       const response = await updateProfile(name);
       
       if (response.success) {
-        // Prefetch step-3 for faster loading
-        router.prefetch("/step-3");
-        // Navigate to step-3 immediately - don't refresh user data here
-        // The user data will be updated naturally when step-3 loads
-        router.replace("/step-3");
+        // Prefetch step-2a for faster loading
+        router.prefetch("/step-2a");
+        // Navigate to step-2a immediately - don't refresh user data here
+        // The user data will be updated naturally when step-2a loads
+        router.replace("/step-2a");
       } else {
         setError(response.message || "Failed to save name. Please try again.");
         setSaving(false);
-        setIsNavigatingToStep3(false);
+        setIsNavigatingToStep2A(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       console.error("Error updating profile:", err);
       setSaving(false);
-      setIsNavigatingToStep3(false);
+      setIsNavigatingToStep2A(false);
     }
   };
 
@@ -94,7 +94,7 @@ export default function StepTwo() {
           "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
       }}
     >
-      <WelcomeLayout progress={66}>
+      <WelcomeLayout progress={40}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           {/* Robot */}
           <div className="flex-shrink-0">

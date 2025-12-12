@@ -38,6 +38,7 @@ class TopicsController {
               name: lecture.name,
               content_type: lecture.content_type,
               video_file: lecture.video_file,
+              iframe_code: lecture.iframe_code,
               article_content: lecture.article_content,
               thumbnail: lecture.thumbnail,
               description: lecture.description,
