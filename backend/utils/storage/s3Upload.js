@@ -57,12 +57,18 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const key = `${folder}/${timestamp}-${sanitizedFileName}`;
 
+    // Determine content type and content disposition
+    const contentType = getContentType(fileName);
+    const isPDF = fileName.toLowerCase().endsWith('.pdf') || contentType === 'application/pdf';
+    const contentDisposition = isPDF ? 'inline' : undefined; // 'inline' allows viewing in browser, 'attachment' forces download
+    
     // Try to upload with public-read ACL first
     let params = {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
-      ContentType: getContentType(fileName),
+      ContentType: contentType,
+      ContentDisposition: contentDisposition,
       ACL: 'public-read',
     };
 
@@ -148,6 +154,7 @@ const getContentType = (fileName) => {
     '.webm': 'video/webm',
     '.mov': 'video/quicktime',
     '.avi': 'video/x-msvideo',
+    '.pdf': 'application/pdf',
   };
   return contentTypes[ext] || 'application/octet-stream';
 };

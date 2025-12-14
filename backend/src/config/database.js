@@ -54,6 +54,19 @@ const init = async () => {
       'subtopics.sql',        // Subtopics table (depends on topics)
       'lectures.sql',         // Lectures table (depends on subtopics)
       'purposes.sql',         // Purposes table and lecture_purposes junction table
+      'levels.sql',           // Levels taxonomy table
+      'programs.sql',         // Programs taxonomy table
+      'categories.sql',       // Categories taxonomy table
+      'colleges.sql',         // Colleges table
+      'college_location.sql', // College locations table (depends on colleges)
+      'college_gallery.sql',  // College gallery table (depends on colleges)
+      'college_reviews.sql',  // College reviews table (depends on colleges and users)
+      'college_news.sql',     // College news table (depends on colleges)
+      'college_courses.sql', // College courses table (depends on colleges, streams, levels, programs)
+      'course_exams.sql',     // Course exams table (depends on college_courses)
+      'course_cutoffs.sql',   // Course cutoffs table (depends on college_courses and course_exams)
+      'course_subjects.sql',  // Course subjects table (depends on college_courses and subjects)
+      'college_faqs.sql',     // College FAQs table (depends on colleges)
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)
