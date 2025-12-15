@@ -100,7 +100,7 @@ export default function CollegeReviewsPage() {
       }
       
       if (usersResponse.success && usersResponse.data) {
-        setUsers(usersResponse.data.users || []);
+        setUsers((usersResponse.data.users || []).map(u => ({ ...u, name: u.name || undefined })));
       }
     } catch (err: any) {
       console.error('Error fetching data:', err);

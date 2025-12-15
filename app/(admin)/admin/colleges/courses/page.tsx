@@ -477,7 +477,7 @@ export default function CollegeCoursesPage() {
                   </label>
                   <Select
                     value={formData.college_id}
-                    onChange={(value) => setFormData({ ...formData, college_id: value })}
+                    onChange={(value) => setFormData({ ...formData, college_id: value || '' })}
                     options={colleges?.map(c => ({ value: c.id.toString(), label: c.name })) || []}
                     placeholder="Select college"
                   />
@@ -503,7 +503,7 @@ export default function CollegeCoursesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stream</label>
                     <Select
                       value={formData.stream_id}
-                      onChange={(value) => setFormData({ ...formData, stream_id: value })}
+                      onChange={(value) => setFormData({ ...formData, stream_id: value || '' })}
                     options={[
                       { value: '', label: 'None' },
                       ...(streams?.map(s => ({ value: s.id.toString(), label: s.name })) || [])
@@ -515,7 +515,7 @@ export default function CollegeCoursesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
                     <Select
                       value={formData.level_id}
-                      onChange={(value) => setFormData({ ...formData, level_id: value })}
+                      onChange={(value) => setFormData({ ...formData, level_id: value || '' })}
                     options={[
                       { value: '', label: 'None' },
                       ...(levels?.map(l => ({ value: l.id.toString(), label: l.name })) || [])
@@ -527,7 +527,7 @@ export default function CollegeCoursesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
                     <Select
                       value={formData.program_id}
-                      onChange={(value) => setFormData({ ...formData, program_id: value })}
+                      onChange={(value) => setFormData({ ...formData, program_id: value || '' })}
                     options={[
                       { value: '', label: 'None' },
                       ...(programs?.map(p => ({ value: p.id.toString(), label: p.name })) || [])

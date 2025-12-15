@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllCourseExams, createCourseExam, updateCourseExam, deleteCourseExam, CourseExam } from '@/api/admin/course-exams';
-import { getAllCollegeCourses, College } from '@/api/admin/college-courses';
+import { getAllCollegeCourses, CollegeCourse } from '@/api/admin/college-courses';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select } from '@/components/shared';
 
@@ -317,7 +317,7 @@ export default function CourseExamsPage() {
                   </label>
                   <Select
                     value={formData.course_id}
-                    onChange={(value) => setFormData({ ...formData, course_id: value })}
+                    onChange={(value) => setFormData({ ...formData, course_id: value || '' })}
                     options={courses?.map(c => ({ value: c.id.toString(), label: c.title })) || []}
                     placeholder="Select course"
                   />
