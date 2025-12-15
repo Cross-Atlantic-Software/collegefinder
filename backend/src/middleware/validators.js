@@ -738,6 +738,745 @@ const validateUpdatePurpose = [
     .withMessage('Status must be a boolean')
 ];
 
+/**
+ * Validation rules for creating level
+ */
+const validateCreateLevel = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating level
+ */
+const validateUpdateLevel = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for creating program
+ */
+const validateCreateProgram = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating program
+ */
+const validateUpdateProgram = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for creating category
+ */
+const validateCreateCategory = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters')
+];
+
+/**
+ * Validation rules for updating category
+ */
+const validateUpdateCategory = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters')
+];
+
+/**
+ * Validation rules for creating college
+ */
+const validateCreateCollege = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('ranking')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isInt({ min: 1 })
+    .withMessage('Ranking must be a positive integer')
+    .toInt(),
+  body('description')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isString()
+    .withMessage('Description must be a string'),
+  body('logo_url')
+    .optional({ nullable: true, checkFalsy: true })
+    .isURL()
+    .withMessage('Logo URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Logo URL must be less than 500 characters')
+];
+
+/**
+ * Validation rules for updating college
+ */
+const validateUpdateCollege = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('ranking')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Ranking must be a positive integer'),
+  body('description')
+    .optional()
+    .isString()
+    .withMessage('Description must be a string'),
+  body('logo_url')
+    .optional()
+    .isURL()
+    .withMessage('Logo URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Logo URL must be less than 500 characters')
+];
+
+/**
+ * Validation rules for creating college location
+ */
+const validateCreateCollegeLocation = [
+  body('college_id')
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('state')
+    .notEmpty()
+    .withMessage('State is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('State must be between 1 and 255 characters'),
+  body('city')
+    .notEmpty()
+    .withMessage('City is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('City must be between 1 and 255 characters'),
+  body('google_map_url')
+    .optional()
+    .isURL()
+    .withMessage('Google Map URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Google Map URL must be less than 500 characters')
+];
+
+/**
+ * Validation rules for updating college location
+ */
+const validateUpdateCollegeLocation = [
+  body('college_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('state')
+    .optional()
+    .notEmpty()
+    .withMessage('State cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('State must be between 1 and 255 characters'),
+  body('city')
+    .optional()
+    .notEmpty()
+    .withMessage('City cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('City must be between 1 and 255 characters'),
+  body('google_map_url')
+    .optional()
+    .isURL()
+    .withMessage('Google Map URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Google Map URL must be less than 500 characters')
+];
+
+/**
+ * Validation rules for creating college gallery
+ */
+const validateCreateCollegeGallery = [
+  body('college_id')
+    .trim()
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer')
+    .toInt(),
+  body('image_url')
+    .optional({ nullable: true, checkFalsy: true })
+    .isURL()
+    .withMessage('Image URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Image URL must be less than 500 characters'),
+  body('caption')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Caption must be less than 500 characters'),
+  body('sort_order')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return 0;
+      return value;
+    })
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+    .toInt(),
+  body().custom((value, { req }) => {
+    // Either image file or image_url must be provided
+    if (!req.file && !value.image_url) {
+      throw new Error('Either image file or image URL is required');
+    }
+    return true;
+  })
+];
+
+/**
+ * Validation rules for updating college gallery
+ */
+const validateUpdateCollegeGallery = [
+  body('college_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer')
+    .toInt(),
+  body('image_url')
+    .optional({ nullable: true, checkFalsy: true })
+    .isURL()
+    .withMessage('Image URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Image URL must be less than 500 characters'),
+  body('caption')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Caption must be less than 500 characters'),
+  body('sort_order')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return undefined;
+      return value;
+    })
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer')
+    .toInt()
+];
+
+/**
+ * Validation rules for creating college review
+ */
+const validateCreateCollegeReview = [
+  body('college_id')
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('user_id')
+    .notEmpty()
+    .withMessage('User ID is required')
+    .isInt({ min: 1 })
+    .withMessage('User ID must be a positive integer'),
+  body('rating')
+    .notEmpty()
+    .withMessage('Rating is required')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Rating must be between 1 and 5'),
+  body('review_text')
+    .optional()
+    .isString()
+    .withMessage('Review text must be a string'),
+  body('is_approved')
+    .optional()
+    .isBoolean()
+    .withMessage('Is approved must be a boolean')
+];
+
+/**
+ * Validation rules for updating college review
+ */
+const validateUpdateCollegeReview = [
+  body('college_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('user_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('User ID must be a positive integer'),
+  body('rating')
+    .optional()
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Rating must be between 1 and 5'),
+  body('review_text')
+    .optional()
+    .isString()
+    .withMessage('Review text must be a string'),
+  body('is_approved')
+    .optional()
+    .isBoolean()
+    .withMessage('Is approved must be a boolean')
+];
+
+/**
+ * Validation rules for creating college news
+ */
+const validateCreateCollegeNews = [
+  body('college_id')
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('title')
+    .notEmpty()
+    .withMessage('Title is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Title must be between 1 and 255 characters'),
+  body('teaser')
+    .notEmpty()
+    .withMessage('Teaser is required')
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('Teaser must be between 1 and 30 characters'),
+  body('url')
+    .notEmpty()
+    .withMessage('URL is required')
+    .isURL()
+    .withMessage('URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('URL must be less than 500 characters'),
+  body('source_name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Source name must be less than 255 characters')
+];
+
+/**
+ * Validation rules for updating college news
+ */
+const validateUpdateCollegeNews = [
+  body('college_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('title')
+    .optional()
+    .notEmpty()
+    .withMessage('Title cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Title must be between 1 and 255 characters'),
+  body('teaser')
+    .optional()
+    .notEmpty()
+    .withMessage('Teaser cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('Teaser must be between 1 and 30 characters'),
+  body('url')
+    .optional()
+    .notEmpty()
+    .withMessage('URL cannot be empty')
+    .isURL()
+    .withMessage('URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('URL must be less than 500 characters'),
+  body('source_name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Source name must be less than 255 characters')
+];
+
+/**
+ * Validation rules for creating college course
+ */
+const validateCreateCollegeCourse = [
+  body('college_id')
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('stream_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Stream ID must be a positive integer'),
+  body('level_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Level ID must be a positive integer'),
+  body('program_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Program ID must be a positive integer'),
+  body('title')
+    .notEmpty()
+    .withMessage('Title is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Title must be between 1 and 255 characters'),
+  body('summary')
+    .optional()
+    .isString()
+    .withMessage('Summary must be a string'),
+  body('duration')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Duration must be less than 100 characters'),
+  body('curriculum_detail')
+    .optional()
+    .isString()
+    .withMessage('Curriculum detail must be a string'),
+  body('admission_process')
+    .optional()
+    .isString()
+    .withMessage('Admission process must be a string'),
+  body('eligibility')
+    .optional()
+    .isString()
+    .withMessage('Eligibility must be a string'),
+  body('placements')
+    .optional()
+    .isString()
+    .withMessage('Placements must be a string'),
+  body('scholarship')
+    .optional()
+    .isString()
+    .withMessage('Scholarship must be a string'),
+  body('brochure_url')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isURL()
+    .withMessage('Brochure URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Brochure URL must be less than 500 characters'),
+  body('fee_per_sem')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Fee per semester must be a non-negative number'),
+  body('total_fee')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Total fee must be a non-negative number')
+];
+
+/**
+ * Validation rules for updating college course
+ */
+const validateUpdateCollegeCourse = [
+  body('college_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('stream_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Stream ID must be a positive integer'),
+  body('level_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Level ID must be a positive integer'),
+  body('program_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Program ID must be a positive integer'),
+  body('title')
+    .optional()
+    .notEmpty()
+    .withMessage('Title cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Title must be between 1 and 255 characters'),
+  body('summary')
+    .optional()
+    .isString()
+    .withMessage('Summary must be a string'),
+  body('duration')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Duration must be less than 100 characters'),
+  body('curriculum_detail')
+    .optional()
+    .isString()
+    .withMessage('Curriculum detail must be a string'),
+  body('admission_process')
+    .optional()
+    .isString()
+    .withMessage('Admission process must be a string'),
+  body('eligibility')
+    .optional()
+    .isString()
+    .withMessage('Eligibility must be a string'),
+  body('placements')
+    .optional()
+    .isString()
+    .withMessage('Placements must be a string'),
+  body('scholarship')
+    .optional()
+    .isString()
+    .withMessage('Scholarship must be a string'),
+  body('brochure_url')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isURL()
+    .withMessage('Brochure URL must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Brochure URL must be less than 500 characters'),
+  body('fee_per_sem')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Fee per semester must be a non-negative number'),
+  body('total_fee')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Total fee must be a non-negative number')
+];
+
+/**
+ * Validation rules for creating course exam
+ */
+const validateCreateCourseExam = [
+  body('course_id')
+    .notEmpty()
+    .withMessage('Course ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('exam_name')
+    .notEmpty()
+    .withMessage('Exam name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Exam name must be between 1 and 255 characters')
+];
+
+/**
+ * Validation rules for updating course exam
+ */
+const validateUpdateCourseExam = [
+  body('course_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('exam_name')
+    .optional()
+    .notEmpty()
+    .withMessage('Exam name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Exam name must be between 1 and 255 characters')
+];
+
+/**
+ * Validation rules for creating course cutoff
+ */
+const validateCreateCourseCutoff = [
+  body('course_id')
+    .notEmpty()
+    .withMessage('Course ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('exam_id')
+    .notEmpty()
+    .withMessage('Exam ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Exam ID must be a positive integer'),
+  body('year')
+    .notEmpty()
+    .withMessage('Year is required')
+    .isInt({ min: 2000, max: 2100 })
+    .withMessage('Year must be between 2000 and 2100'),
+  body('category_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage('Category ID must be a positive integer')
+    .toInt(),
+  body('cutoff_value')
+    .notEmpty()
+    .withMessage('Cutoff value is required')
+    .isFloat({ min: 0 })
+    .withMessage('Cutoff value must be a non-negative number')
+];
+
+/**
+ * Validation rules for updating course cutoff
+ */
+const validateUpdateCourseCutoff = [
+  body('course_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('exam_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Exam ID must be a positive integer'),
+  body('year')
+    .optional()
+    .isInt({ min: 2000, max: 2100 })
+    .withMessage('Year must be between 2000 and 2100'),
+  body('category_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage('Category ID must be a positive integer')
+    .toInt(),
+  body('cutoff_value')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Cutoff value must be a non-negative number')
+];
+
+/**
+ * Validation rules for creating course subject
+ */
+const validateCreateCourseSubject = [
+  body('course_id')
+    .notEmpty()
+    .withMessage('Course ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('subject_id')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer')
+];
+
+/**
+ * Validation rules for updating course subject
+ */
+const validateUpdateCourseSubject = [
+  body('course_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Course ID must be a positive integer'),
+  body('subject_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer')
+];
+
+/**
+ * Validation rules for creating college FAQ
+ */
+const validateCreateCollegeFAQ = [
+  body('college_id')
+    .notEmpty()
+    .withMessage('College ID is required')
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('question')
+    .notEmpty()
+    .withMessage('Question is required')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Question cannot be empty'),
+  body('answer')
+    .notEmpty()
+    .withMessage('Answer is required')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Answer cannot be empty')
+];
+
+/**
+ * Validation rules for updating college FAQ
+ */
+const validateUpdateCollegeFAQ = [
+  body('college_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('College ID must be a positive integer'),
+  body('question')
+    .optional()
+    .notEmpty()
+    .withMessage('Question cannot be empty')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Question cannot be empty'),
+  body('answer')
+    .optional()
+    .notEmpty()
+    .withMessage('Answer cannot be empty')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Answer cannot be empty')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -766,6 +1505,32 @@ module.exports = {
   validateCreateLecture,
   validateUpdateLecture,
   validateCreatePurpose,
-  validateUpdatePurpose
+  validateUpdatePurpose,
+  validateCreateLevel,
+  validateUpdateLevel,
+  validateCreateProgram,
+  validateUpdateProgram,
+  validateCreateCategory,
+  validateUpdateCategory,
+  validateCreateCollege,
+  validateUpdateCollege,
+  validateCreateCollegeLocation,
+  validateUpdateCollegeLocation,
+  validateCreateCollegeGallery,
+  validateUpdateCollegeGallery,
+  validateCreateCollegeReview,
+  validateUpdateCollegeReview,
+  validateCreateCollegeNews,
+  validateUpdateCollegeNews,
+  validateCreateCollegeCourse,
+  validateUpdateCollegeCourse,
+  validateCreateCourseExam,
+  validateUpdateCourseExam,
+  validateCreateCourseCutoff,
+  validateUpdateCourseCutoff,
+  validateCreateCourseSubject,
+  validateUpdateCourseSubject,
+  validateCreateCollegeFAQ,
+  validateUpdateCollegeFAQ
 };
 

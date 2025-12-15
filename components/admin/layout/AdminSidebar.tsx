@@ -15,7 +15,11 @@ import {
   FiUser,
   FiShield,
   FiFileText,
-  FiLayers
+  FiLayers,
+  FiMapPin,
+  FiImage,
+  FiStar,
+  FiRss
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -87,6 +91,83 @@ const navGroups: NavGroup[] = [
         href: '/admin/purposes',
         icon: <FiBook className="h-4 w-4" />,
       },
+      {
+        label: 'Levels',
+        href: '/admin/levels',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Programs',
+        href: '/admin/programs',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Categories',
+        href: '/admin/categories',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Colleges',
+    icon: <FiBook className="h-4 w-4" />,
+    children: [
+      {
+        label: 'All Colleges',
+        href: '/admin/colleges',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Locations',
+        href: '/admin/colleges/locations',
+        icon: <FiMapPin className="h-4 w-4" />,
+      },
+      {
+        label: 'Gallery',
+        href: '/admin/colleges/gallery',
+        icon: <FiImage className="h-4 w-4" />,
+      },
+      {
+        label: 'Reviews',
+        href: '/admin/colleges/reviews',
+        icon: <FiStar className="h-4 w-4" />,
+      },
+      {
+        label: 'News',
+        href: '/admin/colleges/news',
+        icon: <FiRss className="h-4 w-4" />,
+      },
+      {
+        label: 'Courses',
+        href: '/admin/colleges/courses',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'FAQs',
+        href: '/admin/colleges/faqs',
+        icon: <FiFileText className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Courses',
+    icon: <FiBook className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Exams',
+        href: '/admin/courses/exams',
+        icon: <FiFileText className="h-4 w-4" />,
+      },
+      {
+        label: 'Cutoffs',
+        href: '/admin/courses/cutoffs',
+        icon: <FiFileText className="h-4 w-4" />,
+      },
+      {
+        label: 'Subjects',
+        href: '/admin/courses/subjects',
+        icon: <FiBook className="h-4 w-4" />,
+      },
     ],
   },
 ];
@@ -122,7 +203,7 @@ export default function AdminSidebar() {
     // Auto-expand groups if any child is active
     const activeGroups = new Set<string>();
     navGroups.forEach((group) => {
-      const hasActiveChild = group.children.some((child) => pathname === child.href);
+      const hasActiveChild = group.children.some((child) => pathname === child.href || pathname.startsWith(child.href + '/'));
       if (hasActiveChild) {
         activeGroups.add(group.label);
       }
@@ -170,7 +251,7 @@ export default function AdminSidebar() {
         {/* Navigation Groups */}
         {navGroups.map((group) => {
           const isExpanded = isGroupExpanded(group.label);
-          const hasActiveChild = group.children.some((child) => pathname === child.href);
+          const hasActiveChild = group.children.some((child) => pathname === child.href || pathname.startsWith(child.href + '/'));
 
           return (
             <div key={group.label} className="space-y-1">
@@ -197,7 +278,7 @@ export default function AdminSidebar() {
               {isExpanded && (
                 <div className="ml-4 space-y-1">
                   {group.children.map((child) => {
-                    const isActive = pathname === child.href;
+                    const isActive = pathname === child.href || pathname.startsWith(child.href + '/');
                     return (
                       <Link
                         key={child.href}
