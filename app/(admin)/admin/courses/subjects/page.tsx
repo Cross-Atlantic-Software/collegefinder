@@ -323,7 +323,7 @@ export default function CourseSubjectsPage() {
                   </label>
                   <Select
                     value={formData.course_id}
-                    onChange={(value) => setFormData({ ...formData, course_id: value })}
+                    onChange={(value) => setFormData({ ...formData, course_id: value || '' })}
                     options={courses?.map(c => ({ value: c.id.toString(), label: c.title })) || []}
                     placeholder="Select course"
                   />
@@ -335,7 +335,7 @@ export default function CourseSubjectsPage() {
                   </label>
                   <Select
                     value={formData.subject_id}
-                    onChange={(value) => setFormData({ ...formData, subject_id: value })}
+                    onChange={(value) => setFormData({ ...formData, subject_id: value || '' })}
                     options={availableSubjects?.map(s => ({ value: s.id.toString(), label: s.name })) || []}
                     placeholder="Select subject"
                   />

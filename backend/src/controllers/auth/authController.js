@@ -441,6 +441,196 @@ class AuthController {
       res.redirect(`${frontendUrl}/login?error=oauth_failed`);
     }
   }
+
+  /**
+   * Initiate Facebook OAuth (redirect to Facebook)
+   * GET /api/auth/facebook
+   */
+  static async facebookAuth(req, res) {
+    try {
+      const appId = process.env.META_APP_ID;
+      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:5001'}/api/auth/facebook/callback`;
+
+      if (!appId) {
+        return res.status(500).json({
+          success: false,
+          message: 'Facebook OAuth not configured',
+        });
+      }
+
+      // Facebook OAuth URL with email and public_profile permissions
+      const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${encodeURIComponent(
+        appId
+      )}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email,public_profile&response_type=code`;
+
+      return res.redirect(authUrl);
+    } catch (error) {
+      console.error('Error initiating Facebook OAuth:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to initiate Facebook authentication',
+      });
+    }
+  }
+
+  /**
+   * Facebook OAuth callback
+   * GET /api/auth/facebook/callback
+   */
+  static async facebookCallback(req, res) {
+    try {
+      const { code, error: fbError } = req.query;
+      const appId = process.env.META_APP_ID;
+      const appSecret = process.env.META_APP_SECRET;
+      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:5001'}/api/auth/facebook/callback`;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      if (fbError || !code) {
+        console.error('Facebook OAuth error:', fbError);
+        return res.redirect(`${frontendUrl}/login?error=facebook_oauth_failed`);
+      }
+
+      if (!appId || !appSecret) {
+        return res.redirect(`${frontendUrl}/login?error=facebook_oauth_not_configured`);
+      }
+
+      // Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${encodeURIComponent(
+        appId
+      )}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${encodeURIComponent(
+        appSecret
+      )}&code=${encodeURIComponent(code)}`;
+
+      const tokenResponse = await fetch(tokenUrl);
+
+      if (!tokenResponse.ok) {
+        const errorBody = await tokenResponse.text();
+        console.error('Facebook token exchange failed:', tokenResponse.status, errorBody);
+        return res.redirect(`${frontendUrl}/login?error=facebook_oauth_failed`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      if (!accessToken) {
+        console.error('Invalid Facebook token response:', tokenData);
+        return res.redirect(`${frontendUrl}/login?error=facebook_oauth_failed`);
+      }
+
+      // Fetch user profile from Facebook Graph API
+      const profileResponse = await fetch(
+        `https://graph.facebook.com/v18.0/me?fields=id,name,email,first_name,last_name,picture.type(large)&access_token=${encodeURIComponent(
+          accessToken
+        )}`
+      );
+
+      if (!profileResponse.ok) {
+        const errorBody = await profileResponse.text();
+        console.error('Facebook profile fetch failed:', profileResponse.status, errorBody);
+        return res.redirect(`${frontendUrl}/login?error=facebook_profile_failed`);
+      }
+
+      const profile = await profileResponse.json();
+      const facebookId = profile.id;
+      const name = profile.name;
+      const firstName = profile.first_name;
+      const lastName = profile.last_name;
+      const pictureUrl = profile.picture?.data?.url || null;
+      
+      // Use Facebook email if provided, otherwise null
+      // User can add their real email later in profile section and verify it
+      const email = profile.email || null;
+
+      // Download and upload Facebook profile picture to S3 (if provided)
+      let profilePhotoUrl = null;
+      if (pictureUrl) {
+        try {
+          const fileName = `facebook-profile-${facebookId}-${Date.now()}`;
+          profilePhotoUrl = await downloadAndUploadToS3(pictureUrl, fileName, 'profile-photos');
+        } catch (error) {
+          console.error('Error downloading/uploading Facebook profile picture:', error);
+          profilePhotoUrl = null;
+        }
+      }
+
+      // Check if user exists by Facebook ID
+      let user = await User.findByFacebookId(facebookId);
+
+      if (!user) {
+        // Check if user exists by email (only if email is provided)
+        if (email) {
+          user = await User.findByEmail(email);
+        }
+
+        if (user) {
+          // Delete old profile photo from S3 if exists and we're updating with new one
+          if (user.profile_photo && profilePhotoUrl) {
+            try {
+              await deleteFromS3(user.profile_photo);
+            } catch (error) {
+              console.error('Error deleting old profile photo:', error);
+            }
+          }
+
+          // Link Facebook account to existing user
+          await User.linkFacebookAccount(user.id, facebookId);
+          await User.updateFromFacebook(user.id, {
+            firstName: firstName || null,
+            lastName: lastName || null,
+            name: name || null,
+            profilePhoto: profilePhotoUrl,
+          });
+          user = await User.findById(user.id);
+        } else {
+          // Create new user with Facebook data (email can be null)
+          user = await User.createWithFacebook({
+            email,
+            name: name || null,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            facebookId,
+            profilePhoto: profilePhotoUrl,
+          });
+        }
+      } else {
+        // Delete old profile photo from S3 if exists and we're updating with new one
+        if (user.profile_photo && profilePhotoUrl) {
+          try {
+            await deleteFromS3(user.profile_photo);
+          } catch (error) {
+            console.error('Error deleting old profile photo:', error);
+          }
+        }
+
+        // Update existing Facebook user's profile
+        await User.updateFromFacebook(user.id, {
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: name || null,
+          profilePhoto: profilePhotoUrl,
+        });
+        user = await User.findById(user.id);
+      }
+
+      // Update last login
+      await User.updateLastLogin(user.id);
+
+      // Generate JWT token
+      const tokenPayload = {
+        userId: user.id,
+        email: user.email || null,
+        facebookId: user.facebook_id,
+      };
+      const token = generateToken(tokenPayload);
+
+      // Redirect to frontend with token
+      return res.redirect(`${frontendUrl}/auth/callback?token=${token}&success=true`);
+    } catch (error) {
+      console.error('Error in Facebook OAuth callback:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/login?error=facebook_oauth_failed`);
+    }
+  }
 }
 
 module.exports = AuthController;

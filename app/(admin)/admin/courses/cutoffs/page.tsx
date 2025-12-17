@@ -32,7 +32,7 @@ export default function CourseCutoffsPage() {
     course_id: '',
     exam_id: '',
     year: new Date().getFullYear().toString(),
-    category: '',
+    category_id: '',
     cutoff_value: '',
   });
 
@@ -119,7 +119,7 @@ export default function CourseCutoffsPage() {
         course_id: parseInt(formData.course_id),
         exam_id: parseInt(formData.exam_id),
         year: parseInt(formData.year),
-        category_id: formData.category_id || null,
+        category_id: formData.category_id ? parseInt(formData.category_id) : null,
         cutoff_value: parseFloat(formData.cutoff_value),
       };
 
@@ -208,7 +208,7 @@ export default function CourseCutoffsPage() {
       course_id: '',
       exam_id: '',
       year: new Date().getFullYear().toString(),
-      category: '',
+      category_id: '',
       cutoff_value: '',
     });
     setError(null);
@@ -361,7 +361,7 @@ export default function CourseCutoffsPage() {
                   </label>
                   <Select
                     value={formData.course_id}
-                    onChange={(value) => setFormData({ ...formData, course_id: value, exam_id: '' })}
+                    onChange={(value) => setFormData({ ...formData, course_id: value || '', exam_id: '' })}
                     options={courses.map(c => ({ value: c.id.toString(), label: c.title }))}
                     placeholder="Select course"
                   />
@@ -373,7 +373,7 @@ export default function CourseCutoffsPage() {
                   </label>
                   <Select
                     value={formData.exam_id}
-                    onChange={(value) => setFormData({ ...formData, exam_id: value })}
+                    onChange={(value) => setFormData({ ...formData, exam_id: value || '' })}
                     options={filteredExams?.map(e => ({ value: e.id.toString(), label: e.exam_name })) || []}
                     placeholder="Select exam"
                     disabled={!formData.course_id}

@@ -11,6 +11,8 @@ export const API_ENDPOINTS = {
     RESEND_OTP: '/auth/resend-otp',
     GOOGLE_AUTH: '/auth/google',
     GOOGLE_CALLBACK: '/auth/google/callback',
+    FACEBOOK_AUTH: '/auth/facebook',
+    FACEBOOK_CALLBACK: '/auth/facebook/callback',
     ME: '/auth/me',
     PROFILE: '/auth/profile',
     PROFILE_BASIC: '/auth/profile/basic',
@@ -20,6 +22,8 @@ export const API_ENDPOINTS = {
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
     PROFILE_COMPLETION: '/auth/profile/completion',
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
+    PROFILE_EMAIL_SEND_OTP: '/auth/profile/email/send-otp',
+    PROFILE_EMAIL_VERIFY: '/auth/profile/email/verify',
   },
   
   // Public endpoints

@@ -37,7 +37,7 @@ export async function updateProfile(
  */
 export async function getBasicInfo(): Promise<ApiResponse<{
   id: number;
-  email: string;
+  email: string | null;
   name: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -320,6 +320,33 @@ export async function uploadProfilePhoto(
 export async function deleteProfilePhoto(): Promise<ApiResponse<{ profile_photo: null }>> {
   return apiRequest<{ profile_photo: null }>(API_ENDPOINTS.AUTH.PROFILE_UPLOAD_PHOTO, {
     method: 'DELETE',
+  });
+}
+
+/**
+ * Send OTP to email for verification (profile email update)
+ */
+export async function sendEmailOTP(email: string): Promise<ApiResponse<{
+  email: string;
+  expiresIn: number;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_EMAIL_SEND_OTP, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+/**
+ * Verify OTP and update email
+ */
+export async function verifyEmailOTP(email: string, code: string): Promise<ApiResponse<{
+  id: number;
+  email: string;
+  email_verified: boolean;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_EMAIL_VERIFY, {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
   });
 }
 

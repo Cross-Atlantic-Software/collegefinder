@@ -52,3 +52,11 @@ export function initiateGoogleAuth() {
   window.location.href = `${backendUrl}${API_ENDPOINTS.AUTH.GOOGLE_AUTH}`;
 }
 
+/**
+ * Initiate Facebook OAuth (redirects to Facebook)
+ */
+export function initiateFacebookAuth() {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  window.location.href = `${backendUrl}${API_ENDPOINTS.AUTH.FACEBOOK_AUTH}`;
+}
+

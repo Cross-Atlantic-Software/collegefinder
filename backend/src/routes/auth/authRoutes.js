@@ -34,7 +34,9 @@ const {
   validateUpdateProfile,
   validateUpdateBasicInfo,
   validateUpdateAcademics,
-  validateUpdateCareerGoals
+  validateUpdateCareerGoals,
+  validateSendEmailOTP,
+  validateVerifyEmailOTP
 } = require('../../middleware/validators');
 
 /**
@@ -73,6 +75,20 @@ router.get('/google', AuthController.googleAuth);
 router.get('/google/callback', AuthController.googleCallback);
 
 /**
+ * @route   GET /api/auth/facebook
+ * @desc    Initiate Facebook OAuth (redirects to Facebook)
+ * @access  Public
+ */
+router.get('/facebook', AuthController.facebookAuth);
+
+/**
+ * @route   GET /api/auth/facebook/callback
+ * @desc    Handle Facebook OAuth callback
+ * @access  Public
+ */
+router.get('/facebook/callback', AuthController.facebookCallback);
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get current authenticated user
  * @access  Private
@@ -99,6 +115,20 @@ router.get('/profile/basic', authenticate, BasicInfoController.getBasicInfo);
  * @access  Private
  */
 router.put('/profile/basic', authenticate, validateUpdateBasicInfo, BasicInfoController.updateBasicInfo);
+
+/**
+ * @route   POST /api/auth/profile/email/send-otp
+ * @desc    Send OTP to new email for verification
+ * @access  Private
+ */
+router.post('/profile/email/send-otp', authenticate, validateSendEmailOTP, BasicInfoController.sendEmailOTP);
+
+/**
+ * @route   POST /api/auth/profile/email/verify
+ * @desc    Verify OTP and update email
+ * @access  Private
+ */
+router.post('/profile/email/verify', authenticate, validateVerifyEmailOTP, BasicInfoController.verifyEmailOTP);
 
 /**
  * @route   DELETE /api/auth/profile/upload-photo

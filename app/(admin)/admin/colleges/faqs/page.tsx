@@ -319,7 +319,7 @@ export default function CollegeFAQsPage() {
                   </label>
                   <Select
                     value={formData.college_id}
-                    onChange={(value) => setFormData({ ...formData, college_id: value })}
+                    onChange={(value) => setFormData({ ...formData, college_id: value || '' })}
                     options={colleges?.map(c => ({ value: c.id.toString(), label: c.name })) || []}
                     placeholder="Select college"
                   />

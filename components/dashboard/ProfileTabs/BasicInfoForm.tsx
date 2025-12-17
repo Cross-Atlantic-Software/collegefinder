@@ -233,12 +233,14 @@ export default function BasicInfoForm() {
   };
 
 
-  const handleEmailVerified = async () => {
-    // Refresh basic info to get updated email_verified status
+  const handleEmailVerified = async (newEmail: string) => {
+    // Refresh basic info to get updated email and email_verified status
     try {
       const response = await getBasicInfo();
       if (response.success && response.data) {
+        setEmail(response.data.email || "");
         setEmailVerified(response.data.email_verified || false);
+        showSuccess("Email verified successfully!");
       }
     } catch (err) {
       console.error("Error refreshing basic info:", err);
@@ -482,32 +484,57 @@ export default function BasicInfoForm() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium text-slate-300">Email</p>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                emailVerified 
-                  ? "bg-emerald-100/20 text-emerald-300" 
-                  : "bg-amber-100/20 text-amber-300"
-              }`}>
-                <CiCircleInfo className="text-xs" />
-                {emailVerified ? "Verified" : "Unverified"}
-              </span>
+              {email ? (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  emailVerified 
+                    ? "bg-emerald-100/20 text-emerald-300" 
+                    : "bg-amber-100/20 text-amber-300"
+                }`}>
+                  <CiCircleInfo className="text-xs" />
+                  {emailVerified ? "Verified" : "Unverified"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-slate-100/20 text-slate-300">
+                  <CiCircleInfo className="text-xs" />
+                  Not Added
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="text"
-                value={email}
-                disabled
-                className={`${inputBase} flex-1 cursor-not-allowed opacity-50`}
-              />
-              {!emailVerified && (
+              {email ? (
+                <>
+                  <input
+                    type="text"
+                    value={email}
+                    disabled
+                    className={`${inputBase} flex-1 cursor-not-allowed opacity-50`}
+                  />
+                  {!emailVerified && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(true)}
+                      className="rounded-md bg-pink-600 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow transition hover:bg-pink-700"
+                    >
+                      Verify Now
+                    </button>
+                  )}
+                </>
+              ) : (
                 <button
                   type="button"
                   onClick={() => setShowEmailModal(true)}
-                  className="rounded-md bg-pink-600 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow transition hover:bg-pink-700"
+                  className="rounded-md bg-pink px-6 py-3 text-sm font-semibold text-white shadow transition hover:bg-pink/90 flex items-center gap-2"
                 >
-                  Verify Now
+                  <CiCircleInfo className="text-lg" />
+                  Add Email Address
                 </button>
               )}
             </div>
+            {!email && (
+              <p className="text-xs text-slate-400">
+                Add your email to receive important updates and recover your account
+              </p>
+            )}
           </div>
 
         {/* Phone */}
@@ -577,7 +604,7 @@ export default function BasicInfoForm() {
       </form>
 
       <EmailVerificationModal
-        email={email}
+        email={email || null}
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
         onVerified={handleEmailVerified}
