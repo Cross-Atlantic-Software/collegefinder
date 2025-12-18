@@ -1,6 +1,9 @@
 const User = require('../../models/user/User');
+const Otp = require('../../models/user/Otp');
 const { validationResult } = require('express-validator');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator');
+const { sendOTPEmail } = require('../../../utils/email/emailService');
 
 class BasicInfoController {
   /**
@@ -289,6 +292,156 @@ class BasicInfoController {
       res.status(500).json({
         success: false,
         message: 'Failed to update basic info'
+      });
+    }
+  }
+
+  /**
+   * Send OTP to new email for verification
+   * POST /api/auth/profile/email/send-otp
+   */
+  static async sendEmailOTP(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const userId = req.user.id;
+      const { email } = req.body;
+
+      // Check if email already exists for another user
+      const existingUser = await User.findByEmail(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'This email is already registered to another account'
+        });
+      }
+
+      const otpLength = parseInt(process.env.OTP_LENGTH) || 6;
+      const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
+
+      // Check rate limiting (max 3 OTPs per 10 minutes)
+      const recentOtpCount = await Otp.getRecentOtpCount(email, 10);
+      if (recentOtpCount >= 3) {
+        return res.status(429).json({
+          success: false,
+          message: 'Too many OTP requests. Please wait before requesting again.'
+        });
+      }
+
+      // Generate OTP
+      const code = generateOTP(otpLength);
+      const expiresAt = getOTPExpiry(otpExpiryMinutes);
+
+      // Invalidate previous unused OTPs for this email
+      await Otp.invalidateUserOtps(userId, email);
+
+      // Create new OTP
+      await Otp.create(userId, email, code, expiresAt);
+
+      // Send OTP email
+      try {
+        await sendOTPEmail(email, code);
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to send OTP email. Please try again.'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'OTP sent successfully to your email',
+        data: {
+          email,
+          expiresIn: otpExpiryMinutes * 60 // seconds
+        }
+      });
+    } catch (error) {
+      console.error('Error sending email OTP:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP. Please try again.'
+      });
+    }
+  }
+
+  /**
+   * Verify OTP and update email
+   * POST /api/auth/profile/email/verify
+   */
+  static async verifyEmailOTP(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const userId = req.user.id;
+      const { email, code } = req.body;
+
+      // Find valid OTP
+      const otpRecord = await Otp.findByCodeAndEmail(code, email);
+      if (!otpRecord) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or expired OTP code'
+        });
+      }
+
+      // Check if OTP belongs to the current user
+      if (otpRecord.user_id !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid OTP code'
+        });
+      }
+
+      // Check if email is already taken by another user
+      const existingUser = await User.findByEmail(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'This email is already registered to another account'
+        });
+      }
+
+      // Mark OTP as used
+      await Otp.markAsUsed(otpRecord.id);
+
+      // Update user's email and mark as verified
+      const db = require('../../config/database');
+      const result = await db.query(
+        `UPDATE users SET email = $1, email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+        [email, userId]
+      );
+      const updatedUser = result.rows[0];
+
+      res.json({
+        success: true,
+        message: 'Email verified and updated successfully',
+        data: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          email_verified: updatedUser.email_verified
+        }
+      });
+    } catch (error) {
+      console.error('Error verifying email OTP:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to verify OTP. Please try again.'
       });
     }
   }

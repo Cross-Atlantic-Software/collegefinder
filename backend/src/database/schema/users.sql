@@ -4,7 +4,7 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE,
   name VARCHAR(255),
   first_name VARCHAR(100),
   last_name VARCHAR(100),
@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_login TIMESTAMP,
-  is_active BOOLEAN DEFAULT TRUE
+  is_active BOOLEAN DEFAULT TRUE,
+  google_id VARCHAR(255),
+  facebook_id VARCHAR(255)
 );
 
 -- Ensure columns exist on older databases
@@ -37,6 +39,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(255);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
@@ -57,6 +60,7 @@ END $$;
 -- Indexes for users table
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id);
 
 -- Trigger to automatically update updated_at for users
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;

@@ -183,6 +183,31 @@ const validateUpdateBasicInfo = [
 ];
 
 /**
+ * Validation rules for sending email OTP (for profile email update)
+ */
+const validateSendEmailOTP = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail()
+];
+
+/**
+ * Validation rules for verifying email OTP (for profile email update)
+ */
+const validateVerifyEmailOTP = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('code')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP code must be 6 digits')
+    .isNumeric()
+    .withMessage('OTP code must contain only numbers')
+];
+
+/**
  * Validation rules for updating academics
  */
 const validateUpdateAcademics = [
@@ -1488,6 +1513,8 @@ module.exports = {
   validateCreateEmailTemplate,
   validateUpdateEmailTemplate,
   validateUpdateBasicInfo,
+  validateSendEmailOTP,
+  validateVerifyEmailOTP,
   validateUpdateAcademics,
   validateUpdateCareerGoals,
   validateCreateBlog,
