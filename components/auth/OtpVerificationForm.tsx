@@ -97,16 +97,49 @@ export function OtpVerificationForm({
         onVerified?.(code);
         
         // Redirect based on whether user has completed onboarding
-        const userHasName = response.data.user?.name;
+        // If onboarding_completed is true → go to dashboard
+        // If onboarding_completed is false/null → go to onboarding step-1
+        const onboardingCompletedValue = response.data.user?.onboarding_completed;
+        
+        // More robust check - handle boolean, string, number, or truthy values
+        let onboardingCompleted = false;
+        if (onboardingCompletedValue !== null && onboardingCompletedValue !== undefined) {
+          if (onboardingCompletedValue === true) {
+            onboardingCompleted = true;
+          } else if (onboardingCompletedValue === false) {
+            onboardingCompleted = false;
+          } else {
+            // TypeScript doesn't know the exact type, so we check at runtime
+            const valueType = typeof onboardingCompletedValue;
+            if (valueType === 'string') {
+              const strValue = onboardingCompletedValue as unknown as string;
+              onboardingCompleted = strValue.toLowerCase() === 'true' || strValue === 't';
+            } else if (valueType === 'number') {
+              const numValue = onboardingCompletedValue as unknown as number;
+              onboardingCompleted = numValue === 1;
+            } else {
+              // Fallback: treat as truthy
+              onboardingCompleted = !!onboardingCompletedValue;
+            }
+          }
+        }
+        
+        // Debug logging
+        console.log('🔍 OTP Verification - Full response:', JSON.stringify(response, null, 2));
+        console.log('🔍 OTP Verification - User data:', response.data.user);
+        console.log('🔍 OTP Verification - onboarding_completed (raw):', onboardingCompletedValue, 'Type:', typeof onboardingCompletedValue);
+        console.log('🔍 OTP Verification - onboarding_completed (converted):', onboardingCompleted);
+        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/dashboard' : '/step-1');
+        
         // Prefetch target route for faster loading
-        if (userHasName) {
+        if (onboardingCompleted) {
           router.prefetch("/dashboard");
         } else {
           router.prefetch("/step-1");
         }
         // Small delay for smooth transition, then redirect
         setTimeout(() => {
-          if (userHasName) {
+          if (onboardingCompleted) {
             router.replace("/dashboard");
           } else {
             router.replace("/step-1");

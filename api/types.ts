@@ -32,6 +32,7 @@ export interface VerifyOTPResponse {
     id: number;
     email: string;
     name: string | null;
+    onboarding_completed?: boolean;
     createdAt: string;
   };
   token: string;

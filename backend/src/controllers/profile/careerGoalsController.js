@@ -1,5 +1,6 @@
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
+const User = require('../../models/user/User');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class CareerGoalsTaxonomyController {
@@ -283,6 +284,12 @@ class CareerGoalsTaxonomyController {
       const userCareerGoals = await UserCareerGoals.upsert(userId, {
         interests: interests || []
       });
+
+      // Check if all onboarding steps are completed and mark onboarding as completed
+      const isOnboardingComplete = await User.checkOnboardingCompletion(userId);
+      if (isOnboardingComplete) {
+        await User.markOnboardingCompleted(userId);
+      }
 
       // Parse interests array for response (now INTEGER[] of taxonomy IDs)
       let interestsArray = [];
