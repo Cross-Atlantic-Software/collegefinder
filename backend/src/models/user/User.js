@@ -59,10 +59,117 @@ class User {
 
   static async updateName(id, name) {
     const result = await db.query(
-      'UPDATE users SET name = $1, onboarding_completed = TRUE WHERE id = $2 RETURNING *',
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
       [name, id]
     );
     return result.rows[0];
+  }
+
+  /**
+   * Check if user has completed all onboarding steps
+   * Required steps:
+   * 1. Name (from users table)
+   * 2. Stream (from user_academics table - stream_id)
+   * 3. Interests (from user_career_goals table - interests array)
+   */
+  static async checkOnboardingCompletion(userId) {
+    const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    if (isNaN(userIdNum)) {
+      console.log('❌ checkOnboardingCompletion - Invalid userId:', userId);
+      return false;
+    }
+
+    try {
+      console.log('🔍 checkOnboardingCompletion - Checking user ID:', userIdNum);
+      
+      // Check if user has name
+      const user = await User.findById(userIdNum);
+      console.log('🔍 checkOnboardingCompletion - User found:', !!user);
+      if (!user || !user.name || user.name.trim() === '') {
+        console.log('❌ checkOnboardingCompletion - Missing name. User:', user ? { id: user.id, name: user.name } : 'null');
+        return false;
+      }
+      console.log('✅ checkOnboardingCompletion - Name check passed:', user.name);
+
+      // Check if user has stream
+      const academicsResult = await db.query(
+        'SELECT stream_id FROM user_academics WHERE user_id = $1 AND stream_id IS NOT NULL',
+        [userIdNum]
+      );
+      console.log('🔍 checkOnboardingCompletion - Academics result:', academicsResult.rows);
+      if (!academicsResult.rows[0] || !academicsResult.rows[0].stream_id) {
+        console.log('❌ checkOnboardingCompletion - Missing stream_id');
+        return false;
+      }
+      console.log('✅ checkOnboardingCompletion - Stream check passed:', academicsResult.rows[0].stream_id);
+
+      // Check if user has interests
+      const careerGoalsResult = await db.query(
+        'SELECT interests FROM user_career_goals WHERE user_id = $1 AND interests IS NOT NULL AND array_length(interests, 1) > 0',
+        [userIdNum]
+      );
+      console.log('🔍 checkOnboardingCompletion - Career goals result:', careerGoalsResult.rows);
+      if (!careerGoalsResult.rows[0] || !careerGoalsResult.rows[0].interests || 
+          careerGoalsResult.rows[0].interests.length === 0) {
+        console.log('❌ checkOnboardingCompletion - Missing interests');
+        return false;
+      }
+      console.log('✅ checkOnboardingCompletion - Interests check passed:', careerGoalsResult.rows[0].interests);
+
+      console.log('✅ checkOnboardingCompletion - ALL CHECKS PASSED - User has completed onboarding');
+      return true;
+    } catch (error) {
+      console.error('❌ Error checking onboarding completion:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark onboarding as completed
+   */
+  static async markOnboardingCompleted(userId) {
+    const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    if (isNaN(userIdNum)) {
+      throw new Error('Invalid user ID');
+    }
+
+    const result = await db.query(
+      'UPDATE users SET onboarding_completed = TRUE WHERE id = $1 RETURNING *',
+      [userIdNum]
+    );
+    return result.rows[0];
+  }
+
+  /**
+   * Verify and update onboarding status based on actual data
+   * This ensures onboarding_completed flag matches the actual completion state
+   */
+  static async verifyAndUpdateOnboardingStatus(userId) {
+    const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    if (isNaN(userIdNum)) {
+      return false;
+    }
+
+    const isComplete = await User.checkOnboardingCompletion(userIdNum);
+    const currentUser = await User.findById(userIdNum);
+    
+    // If status doesn't match, update it
+    const currentStatus = currentUser?.onboarding_completed === true || 
+                         currentUser?.onboarding_completed === 't' || 
+                         currentUser?.onboarding_completed === 1;
+    
+    if (isComplete !== currentStatus) {
+      if (isComplete) {
+        await User.markOnboardingCompleted(userIdNum);
+      } else {
+        await db.query(
+          'UPDATE users SET onboarding_completed = FALSE WHERE id = $1',
+          [userIdNum]
+        );
+      }
+    }
+    
+    return isComplete;
   }
 
   static async findByGoogleId(googleId) {
@@ -215,7 +322,13 @@ class User {
            auth_provider, 
            created_at, 
            last_login, 
-           is_active 
+           is_active,
+           nationality,
+           marital_status,
+           father_full_name,
+           mother_full_name,
+           guardian_name,
+           alternate_mobile_number
          FROM users 
          ORDER BY created_at DESC`
       );
@@ -241,7 +354,13 @@ class User {
           state: null,
           district: null,
           email_verified: false,
-          auth_provider: 'email'
+          auth_provider: 'email',
+          nationality: null,
+          marital_status: null,
+          father_full_name: null,
+          mother_full_name: null,
+          guardian_name: null,
+          alternate_mobile_number: null
         }));
       }
       throw error;

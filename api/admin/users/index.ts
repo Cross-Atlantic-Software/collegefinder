@@ -129,6 +129,58 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     created_at?: string | null;
     updated_at?: string | null;
   } | null;
+  governmentIdentification: {
+    id: number;
+    user_id: number;
+    aadhar_number: string | null;
+    alternative_id_type: string | null;
+    alternative_id_number: string | null;
+    place_of_issue: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  categoryAndReservation: {
+    id: number;
+    user_id: number;
+    category_id: number | null;
+    category_name: string | null;
+    ews_status: boolean;
+    pwbd_status: boolean;
+    type_of_disability: string | null;
+    disability_percentage: number | null;
+    udid_number: string | null;
+    minority_status: string | null;
+    ex_serviceman_defence_quota: boolean;
+    kashmiri_migrant_regional_quota: boolean;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  otherPersonalDetails: {
+    id: number;
+    user_id: number;
+    religion: string | null;
+    mother_tongue: string | null;
+    annual_family_income: number | null;
+    occupation_of_father: string | null;
+    occupation_of_mother: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  userAddress: {
+    id: number;
+    user_id: number;
+    correspondence_address_line1: string | null;
+    correspondence_address_line2: string | null;
+    city_town_village: string | null;
+    district: string | null;
+    state: string | null;
+    country: string | null;
+    pincode: string | null;
+    permanent_address_same_as_correspondence: boolean;
+    permanent_address: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
     method: 'GET',

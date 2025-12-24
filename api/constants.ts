@@ -24,6 +24,10 @@ export const API_ENDPOINTS = {
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
     PROFILE_EMAIL_SEND_OTP: '/auth/profile/email/send-otp',
     PROFILE_EMAIL_VERIFY: '/auth/profile/email/verify',
+    PROFILE_GOVERNMENT_IDENTIFICATION: '/auth/profile/government-identification',
+    PROFILE_CATEGORY_AND_RESERVATION: '/auth/profile/category-and-reservation',
+    PROFILE_OTHER_PERSONAL_DETAILS: '/auth/profile/other-personal-details',
+    PROFILE_ADDRESS: '/auth/profile/address',
   },
   
   // Public endpoints
@@ -31,6 +35,7 @@ export const API_ENDPOINTS = {
     SUBJECTS: '/subjects',
     STREAMS: '/streams',
     CAREERS: '/careers',
+    CATEGORIES: '/categories',
   },
   
   // Admin endpoints

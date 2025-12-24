@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, User, BookOpen, Target, Loader2, GraduationCap } from 'lucide-react';
+import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin } from 'lucide-react';
 import { FaUserCircle } from 'react-icons/fa';
 import { getUserDetails } from '@/api/admin/users';
 import type { SiteUser } from '@/api/types';
@@ -59,6 +59,58 @@ interface UserDetails {
     }>;
     created_at?: string | null;
     updated_at?: string | null;
+  } | null;
+  governmentIdentification: {
+    id: number;
+    user_id: number;
+    aadhar_number: string | null;
+    alternative_id_type: string | null;
+    alternative_id_number: string | null;
+    place_of_issue: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  categoryAndReservation: {
+    id: number;
+    user_id: number;
+    category_id: number | null;
+    category_name: string | null;
+    ews_status: boolean;
+    pwbd_status: boolean;
+    type_of_disability: string | null;
+    disability_percentage: number | null;
+    udid_number: string | null;
+    minority_status: string | null;
+    ex_serviceman_defence_quota: boolean;
+    kashmiri_migrant_regional_quota: boolean;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  otherPersonalDetails: {
+    id: number;
+    user_id: number;
+    religion: string | null;
+    mother_tongue: string | null;
+    annual_family_income: number | null;
+    occupation_of_father: string | null;
+    occupation_of_mother: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  userAddress: {
+    id: number;
+    user_id: number;
+    correspondence_address_line1: string | null;
+    correspondence_address_line2: string | null;
+    city_town_village: string | null;
+    district: string | null;
+    state: string | null;
+    country: string | null;
+    pincode: string | null;
+    permanent_address_same_as_correspondence: boolean;
+    permanent_address: string | null;
+    created_at: string;
+    updated_at: string;
   } | null;
 }
 
@@ -207,14 +259,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     <span className="text-xs font-medium text-gray-600">Phone:</span>
                     <p className="text-sm text-gray-900 font-medium">{details.user.phone_number || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Domicile State:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.state || '-'}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">District:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.district || '-'}</p>
-                  </div>
+                  {details.user.alternate_mobile_number && (
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                      <span className="text-xs font-medium text-gray-600">Alternate Mobile:</span>
+                      <p className="text-sm text-gray-900 font-medium">{details.user.alternate_mobile_number}</p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
                     <span className="text-xs font-medium text-gray-600">Email Verified:</span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -289,6 +339,28 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                       <p className="text-sm text-gray-900 font-medium">
                         {Number(details.user.latitude).toFixed(6)}, {Number(details.user.longitude).toFixed(6)}
                       </p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                    <span className="text-xs font-medium text-gray-600">Nationality:</span>
+                    <p className="text-sm text-gray-900 font-medium">{details.user.nationality || '-'}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                    <span className="text-xs font-medium text-gray-600">Marital Status:</span>
+                    <p className="text-sm text-gray-900 font-medium">{details.user.marital_status || '-'}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                    <span className="text-xs font-medium text-gray-600">Father's Name:</span>
+                    <p className="text-sm text-gray-900 font-medium">{details.user.father_full_name || '-'}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                    <span className="text-xs font-medium text-gray-600">Mother's Name:</span>
+                    <p className="text-sm text-gray-900 font-medium">{details.user.mother_full_name || '-'}</p>
+                  </div>
+                  {details.user.guardian_name && (
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
+                      <span className="text-xs font-medium text-gray-600">Guardian Name:</span>
+                      <p className="text-sm text-gray-900 font-medium">{details.user.guardian_name}</p>
                     </div>
                   )}
                 </div>
@@ -488,6 +560,256 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No exam preferences information available</p>
+                )}
+              </section>
+
+              {/* Government Identification */}
+              <section className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <IdCard className="h-4 w-4 text-green-600" />
+                  Government Identification
+                </h3>
+                {details.governmentIdentification ? (
+                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      {details.governmentIdentification.aadhar_number && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Aadhar Number:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.aadhar_number}</p>
+                        </div>
+                      )}
+                      {details.governmentIdentification.alternative_id_type && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Alternative ID Type:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.alternative_id_type}</p>
+                        </div>
+                      )}
+                      {details.governmentIdentification.alternative_id_number && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Alternative ID Number:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.alternative_id_number}</p>
+                        </div>
+                      )}
+                      {details.governmentIdentification.place_of_issue && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Place of Issue:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.place_of_issue}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No government identification information available</p>
+                )}
+              </section>
+
+              {/* Category and Reservation */}
+              <section className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <IdCard className="h-4 w-4 text-indigo-600" />
+                  Category and Reservation
+                </h3>
+                {details.categoryAndReservation ? (
+                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      {details.categoryAndReservation.category_name && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Category:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.category_name}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-gray-500">EWS Status:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          details.categoryAndReservation.ews_status
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {details.categoryAndReservation.ews_status ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-gray-500">PwBD/PWD Status:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          details.categoryAndReservation.pwbd_status
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {details.categoryAndReservation.pwbd_status ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      {details.categoryAndReservation.type_of_disability && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Type of Disability:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.type_of_disability}</p>
+                        </div>
+                      )}
+                      {details.categoryAndReservation.disability_percentage !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Disability Percentage:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.disability_percentage}%</p>
+                        </div>
+                      )}
+                      {details.categoryAndReservation.udid_number && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">UDID Number:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.udid_number}</p>
+                        </div>
+                      )}
+                      {details.categoryAndReservation.minority_status && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Minority Status:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.minority_status}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-gray-500">Ex-serviceman/Defence-quota:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          details.categoryAndReservation.ex_serviceman_defence_quota
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {details.categoryAndReservation.ex_serviceman_defence_quota ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-gray-500">Kashmiri-migrant/Regional-quota:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          details.categoryAndReservation.kashmiri_migrant_regional_quota
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {details.categoryAndReservation.kashmiri_migrant_regional_quota ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No category and reservation information available</p>
+                )}
+              </section>
+
+              {/* Other Personal Details */}
+              <section className="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4 text-teal-600" />
+                  Personal Details
+                </h3>
+                {details.otherPersonalDetails ? (
+                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      {details.otherPersonalDetails.religion && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Religion:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.religion}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.mother_tongue && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Mother Tongue:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.mother_tongue}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.annual_family_income !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Annual Family Income:</span>
+                          <p className="text-sm text-gray-900 font-medium">₹{details.otherPersonalDetails.annual_family_income.toLocaleString('en-IN')}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.occupation_of_father && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Occupation of Father:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_father}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.occupation_of_mother && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Occupation of Mother:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_mother}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No personal details information available</p>
+                )}
+              </section>
+
+              {/* Address */}
+              <section className="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-cyan-600" />
+                  Address
+                </h3>
+                {details.userAddress ? (
+                  <div className="space-y-4">
+                    {/* Correspondence Address */}
+                    <div className="bg-white rounded-md p-3 border border-gray-200">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Correspondence Address</h4>
+                      <div className="space-y-2">
+                        {details.userAddress.correspondence_address_line1 && (
+                          <p className="text-sm text-gray-900">{details.userAddress.correspondence_address_line1}</p>
+                        )}
+                        {details.userAddress.correspondence_address_line2 && (
+                          <p className="text-sm text-gray-900">{details.userAddress.correspondence_address_line2}</p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {details.userAddress.city_town_village && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">City/Town/Village:</span>
+                              <p className="text-sm text-gray-900">{details.userAddress.city_town_village}</p>
+                            </div>
+                          )}
+                          {details.userAddress.district && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">District:</span>
+                              <p className="text-sm text-gray-900">{details.userAddress.district}</p>
+                            </div>
+                          )}
+                          {details.userAddress.state && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">State:</span>
+                              <p className="text-sm text-gray-900">{details.userAddress.state}</p>
+                            </div>
+                          )}
+                          {details.userAddress.country && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Country:</span>
+                              <p className="text-sm text-gray-900">{details.userAddress.country}</p>
+                            </div>
+                          )}
+                          {details.userAddress.pincode && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Pincode:</span>
+                              <p className="text-sm text-gray-900">{details.userAddress.pincode}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Permanent Address */}
+                    <div className="bg-white rounded-md p-3 border border-gray-200">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Permanent Address</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Same as Correspondence:</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            details.userAddress.permanent_address_same_as_correspondence
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {details.userAddress.permanent_address_same_as_correspondence ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        {!details.userAddress.permanent_address_same_as_correspondence && details.userAddress.permanent_address && (
+                          <p className="text-sm text-gray-900 whitespace-pre-line">{details.userAddress.permanent_address}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No address information available</p>
                 )}
               </section>
             </div>

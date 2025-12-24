@@ -44,12 +44,16 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   date_of_birth: string | null;
   gender: string | null;
   phone_number: string | null;
-  state: string | null;
-  district: string | null;
   email_verified: boolean;
   latitude: number | null;
   profile_photo?: string | null;
   longitude: number | null;
+  nationality: string | null;
+  marital_status: string | null;
+  father_full_name: string | null;
+  mother_full_name: string | null;
+  guardian_name: string | null;
+  alternate_mobile_number: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
@@ -65,11 +69,15 @@ export async function updateBasicInfo(data: {
   last_name?: string;
   date_of_birth?: string;
   gender?: string;
-  state?: string;
-  district?: string;
   phone_number?: string;
   latitude?: number;
   longitude?: number;
+  nationality?: string;
+  marital_status?: string;
+  father_full_name?: string;
+  mother_full_name?: string;
+  guardian_name?: string;
+  alternate_mobile_number?: string;
 }): Promise<ApiResponse<{
   id: number;
   email: string;
@@ -78,12 +86,16 @@ export async function updateBasicInfo(data: {
   last_name: string | null;
   date_of_birth: string | null;
   gender: string | null;
-  state: string | null;
-  district: string | null;
   phone_number: string | null;
   latitude: number | null;
   longitude: number | null;
   profile_photo?: string | null;
+  nationality: string | null;
+  marital_status: string | null;
+  father_full_name: string | null;
+  mother_full_name: string | null;
+  guardian_name: string | null;
+  alternate_mobile_number: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'PUT',
@@ -347,6 +359,253 @@ export async function verifyEmailOTP(email: string, code: string): Promise<ApiRe
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_EMAIL_VERIFY, {
     method: 'POST',
     body: JSON.stringify({ email, code }),
+  });
+}
+
+/**
+ * Get user government identification
+ */
+export async function getGovernmentIdentification(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  aadhar_number: string | null;
+  alternative_id_type: string | null;
+  alternative_id_number: string | null;
+  place_of_issue: string | null;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_GOVERNMENT_IDENTIFICATION, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Create or update user government identification
+ */
+export async function upsertGovernmentIdentification(data: {
+  aadhar_number?: string;
+  alternative_id_type?: 'Passport' | 'PAN' | 'Voter ID' | 'School ID';
+  alternative_id_number?: string;
+  place_of_issue?: string;
+}): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  aadhar_number: string | null;
+  alternative_id_type: string | null;
+  alternative_id_number: string | null;
+  place_of_issue: string | null;
+  created_at: string;
+  updated_at: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_GOVERNMENT_IDENTIFICATION, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete user government identification
+ */
+export async function deleteGovernmentIdentification(): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_GOVERNMENT_IDENTIFICATION, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get user category and reservation
+ */
+export async function getCategoryAndReservation(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  category_id: number | null;
+  category_name: string | null;
+  ews_status: boolean;
+  pwbd_status: boolean;
+  type_of_disability: string | null;
+  disability_percentage: number | null;
+  udid_number: string | null;
+  minority_status: string | null;
+  ex_serviceman_defence_quota: boolean;
+  kashmiri_migrant_regional_quota: boolean;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_CATEGORY_AND_RESERVATION, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Create or update user category and reservation
+ */
+export async function upsertCategoryAndReservation(data: {
+  category_id?: number;
+  ews_status?: boolean;
+  pwbd_status?: boolean;
+  type_of_disability?: string;
+  disability_percentage?: number;
+  udid_number?: string;
+  minority_status?: string;
+  ex_serviceman_defence_quota?: boolean;
+  kashmiri_migrant_regional_quota?: boolean;
+}): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  category_id: number | null;
+  category_name: string | null;
+  ews_status: boolean;
+  pwbd_status: boolean;
+  type_of_disability: string | null;
+  disability_percentage: number | null;
+  udid_number: string | null;
+  minority_status: string | null;
+  ex_serviceman_defence_quota: boolean;
+  kashmiri_migrant_regional_quota: boolean;
+  created_at: string;
+  updated_at: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_CATEGORY_AND_RESERVATION, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete user category and reservation
+ */
+export async function deleteCategoryAndReservation(): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_CATEGORY_AND_RESERVATION, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get user other personal details
+ */
+export async function getOtherPersonalDetails(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  religion: string | null;
+  mother_tongue: string | null;
+  annual_family_income: number | null;
+  occupation_of_father: string | null;
+  occupation_of_mother: string | null;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_OTHER_PERSONAL_DETAILS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Create or update user other personal details
+ */
+export async function upsertOtherPersonalDetails(data: {
+  religion?: 'Hindu' | 'Muslim' | 'Christian' | 'Sikh' | 'Buddhist' | 'Jain' | 'Jewish' | 'Parsi (Zoroastrian)' | 'Other' | 'Prefer not to say';
+  mother_tongue?: string;
+  annual_family_income?: number;
+  occupation_of_father?: string;
+  occupation_of_mother?: string;
+}): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  religion: string | null;
+  mother_tongue: string | null;
+  annual_family_income: number | null;
+  occupation_of_father: string | null;
+  occupation_of_mother: string | null;
+  created_at: string;
+  updated_at: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_OTHER_PERSONAL_DETAILS, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete user other personal details
+ */
+export async function deleteOtherPersonalDetails(): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_OTHER_PERSONAL_DETAILS, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get user address
+ */
+export async function getUserAddress(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  correspondence_address_line1: string | null;
+  correspondence_address_line2: string | null;
+  city_town_village: string | null;
+  district: string | null;
+  state: string | null;
+  country: string | null;
+  pincode: string | null;
+  permanent_address_same_as_correspondence: boolean;
+  permanent_address: string | null;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ADDRESS, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Create or update user address
+ */
+export async function upsertUserAddress(data: {
+  correspondence_address_line1?: string;
+  correspondence_address_line2?: string;
+  city_town_village?: string;
+  district?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  permanent_address_same_as_correspondence?: boolean;
+  permanent_address?: string;
+}): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  correspondence_address_line1: string | null;
+  correspondence_address_line2: string | null;
+  city_town_village: string | null;
+  district: string | null;
+  state: string | null;
+  country: string | null;
+  pincode: string | null;
+  permanent_address_same_as_correspondence: boolean;
+  permanent_address: string | null;
+  created_at: string;
+  updated_at: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ADDRESS, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete user address
+ */
+export async function deleteUserAddress(): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ADDRESS, {
+    method: 'DELETE',
   });
 }
 

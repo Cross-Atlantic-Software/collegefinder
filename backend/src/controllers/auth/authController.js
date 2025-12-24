@@ -120,26 +120,73 @@ class AuthController {
       // Update last login
       await User.updateLastLogin(user.id);
 
+      // Get fresh user data first
+      const updatedUser = await User.findById(user.id);
+      
+      // Debug: Log raw database value
+      console.log('🔍 verifyOTP - User ID:', updatedUser.id);
+      console.log('🔍 verifyOTP - Raw onboarding_completed from DB:', updatedUser.onboarding_completed);
+      console.log('🔍 verifyOTP - Type of onboarding_completed:', typeof updatedUser.onboarding_completed);
+      console.log('🔍 verifyOTP - Is it exactly true?', updatedUser.onboarding_completed === true);
+      console.log('🔍 verifyOTP - Is it truthy?', !!updatedUser.onboarding_completed);
+      
+      // Check database value first - if it's already true, trust it (unless we need to verify)
+      let dbOnboardingCompleted = false;
+      const dbValue = updatedUser.onboarding_completed;
+      if (dbValue !== null && dbValue !== undefined) {
+        dbOnboardingCompleted = dbValue === true || dbValue === 't' || dbValue === 1 || dbValue === 'true';
+      }
+      console.log('🔍 verifyOTP - DB value converted to boolean:', dbOnboardingCompleted);
+      
+      // Only verify if DB says false/null - if DB says true, trust it
+      let onboardingCompleted = dbOnboardingCompleted;
+      if (!dbOnboardingCompleted) {
+        // Only verify if database says it's not completed
+        console.log('🔍 verifyOTP - DB says not completed, verifying actual data...');
+        const actualOnboardingStatus = await User.verifyAndUpdateOnboardingStatus(user.id);
+        console.log('🔍 verifyOTP - actualOnboardingStatus (from check):', actualOnboardingStatus);
+        onboardingCompleted = actualOnboardingStatus;
+        
+        // Get fresh user data after potential update
+        const finalUser = await User.findById(user.id);
+        console.log('🔍 verifyOTP - Final onboarding_completed from DB after update:', finalUser.onboarding_completed);
+      } else {
+        console.log('🔍 verifyOTP - DB says completed, trusting database value');
+      }
+      
+      console.log('🔍 verifyOTP - Final onboardingCompleted value to send:', onboardingCompleted);
+
       // Generate JWT token
       const tokenPayload = {
-        userId: user.id,
-        email: user.email
+        userId: updatedUser.id,
+        email: updatedUser.email
       };
       const token = generateToken(tokenPayload);
 
-      res.json({
+      // Ensure we send a proper boolean (not string or number)
+      const finalOnboardingCompleted = onboardingCompleted === true;
+
+      const responseData = {
         success: true,
         message: 'OTP verified successfully',
         data: {
           user: {
-            id: user.id,
-            email: user.email,
-            name: user.name || null,
-            createdAt: user.created_at
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name || null,
+            onboarding_completed: finalOnboardingCompleted, // Explicitly send as boolean
+            createdAt: updatedUser.created_at
           },
           token
         }
-      });
+      };
+
+      console.log('🔍 verifyOTP - Sending response:');
+      console.log('  - onboarding_completed value:', finalOnboardingCompleted);
+      console.log('  - onboarding_completed type:', typeof finalOnboardingCompleted);
+      console.log('  - Full response:', JSON.stringify(responseData, null, 2));
+
+      res.json(responseData);
     } catch (error) {
       console.error('Error verifying OTP:', error);
       res.status(500).json({
@@ -195,17 +242,45 @@ class AuthController {
       // User is attached by authenticate middleware
       const user = req.user;
 
+      // Verify and update onboarding status based on actual data
+      // This ensures the flag matches the actual completion state
+      const actualOnboardingStatus = await User.verifyAndUpdateOnboardingStatus(user.id);
+      
+      // Get fresh user data after potential update
+      const updatedUser = await User.findById(user.id);
+
+      // Ensure onboarding_completed is properly converted to boolean
+      // PostgreSQL may return it as true/false, 't'/'f', or 1/0
+      let onboardingCompleted = false;
+      if (updatedUser.onboarding_completed !== null && updatedUser.onboarding_completed !== undefined) {
+        onboardingCompleted = updatedUser.onboarding_completed === true || 
+                              updatedUser.onboarding_completed === 't' || 
+                              updatedUser.onboarding_completed === 1 ||
+                              updatedUser.onboarding_completed === 'true';
+      }
+
+      // Use the verified status if different
+      if (actualOnboardingStatus !== onboardingCompleted) {
+        onboardingCompleted = actualOnboardingStatus;
+      }
+
+      // Debug logging
+      console.log('🔍 getMe - User ID:', updatedUser.id);
+      console.log('🔍 getMe - onboarding_completed (raw):', updatedUser.onboarding_completed, 'Type:', typeof updatedUser.onboarding_completed);
+      console.log('🔍 getMe - onboarding_completed (converted):', onboardingCompleted);
+      console.log('🔍 getMe - actualOnboardingStatus (verified):', actualOnboardingStatus);
+
       res.json({
         success: true,
         data: {
           user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            profile_photo: user.profile_photo,
-            onboarding_completed: user.onboarding_completed || false,
-            createdAt: user.created_at,
-            lastLogin: user.last_login
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            profile_photo: updatedUser.profile_photo,
+            onboarding_completed: onboardingCompleted,
+            createdAt: updatedUser.created_at,
+            lastLogin: updatedUser.last_login
           }
         }
       });
