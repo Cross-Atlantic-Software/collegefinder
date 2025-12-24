@@ -9,6 +9,10 @@ const ExamsController = require('../../controllers/profile/examsController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
 const SubjectsController = require('../../controllers/profile/subjectsController');
 const TopicsController = require('../../controllers/profile/topicsController');
+const GovernmentIdentificationController = require('../../controllers/profile/governmentIdentificationController');
+const CategoryAndReservationController = require('../../controllers/profile/categoryAndReservationController');
+const OtherPersonalDetailsController = require('../../controllers/profile/otherPersonalDetailsController');
+const UserAddressController = require('../../controllers/profile/userAddressController');
 const { authenticate } = require('../../middleware/auth');
 
 // Configure multer for memory storage (for S3 upload)
@@ -36,7 +40,11 @@ const {
   validateUpdateAcademics,
   validateUpdateCareerGoals,
   validateSendEmailOTP,
-  validateVerifyEmailOTP
+  validateVerifyEmailOTP,
+  validateGovernmentIdentification,
+  validateCategoryAndReservation,
+  validateOtherPersonalDetails,
+  validateUserAddress
 } = require('../../middleware/validators');
 
 /**
@@ -213,6 +221,90 @@ router.put('/profile/exam-preferences', authenticate, ExamsController.updateExam
  * @access  Private
  */
 router.get('/profile/completion', authenticate, ProfileCompletionController.getCompletion);
+
+/**
+ * @route   GET /api/auth/profile/government-identification
+ * @desc    Get user government identification
+ * @access  Private
+ */
+router.get('/profile/government-identification', authenticate, GovernmentIdentificationController.getGovernmentIdentification);
+
+/**
+ * @route   PUT /api/auth/profile/government-identification
+ * @desc    Create or update user government identification
+ * @access  Private
+ */
+router.put('/profile/government-identification', authenticate, validateGovernmentIdentification, GovernmentIdentificationController.upsertGovernmentIdentification);
+
+/**
+ * @route   DELETE /api/auth/profile/government-identification
+ * @desc    Delete user government identification
+ * @access  Private
+ */
+router.delete('/profile/government-identification', authenticate, GovernmentIdentificationController.deleteGovernmentIdentification);
+
+/**
+ * @route   GET /api/auth/profile/category-and-reservation
+ * @desc    Get user category and reservation
+ * @access  Private
+ */
+router.get('/profile/category-and-reservation', authenticate, CategoryAndReservationController.getCategoryAndReservation);
+
+/**
+ * @route   PUT /api/auth/profile/category-and-reservation
+ * @desc    Create or update user category and reservation
+ * @access  Private
+ */
+router.put('/profile/category-and-reservation', authenticate, validateCategoryAndReservation, CategoryAndReservationController.upsertCategoryAndReservation);
+
+/**
+ * @route   DELETE /api/auth/profile/category-and-reservation
+ * @desc    Delete user category and reservation
+ * @access  Private
+ */
+router.delete('/profile/category-and-reservation', authenticate, CategoryAndReservationController.deleteCategoryAndReservation);
+
+/**
+ * @route   GET /api/auth/profile/other-personal-details
+ * @desc    Get user other personal details
+ * @access  Private
+ */
+router.get('/profile/other-personal-details', authenticate, OtherPersonalDetailsController.getOtherPersonalDetails);
+
+/**
+ * @route   PUT /api/auth/profile/other-personal-details
+ * @desc    Create or update user other personal details
+ * @access  Private
+ */
+router.put('/profile/other-personal-details', authenticate, validateOtherPersonalDetails, OtherPersonalDetailsController.upsertOtherPersonalDetails);
+
+/**
+ * @route   DELETE /api/auth/profile/other-personal-details
+ * @desc    Delete user other personal details
+ * @access  Private
+ */
+router.delete('/profile/other-personal-details', authenticate, OtherPersonalDetailsController.deleteOtherPersonalDetails);
+
+/**
+ * @route   GET /api/auth/profile/address
+ * @desc    Get user address
+ * @access  Private
+ */
+router.get('/profile/address', authenticate, UserAddressController.getAddress);
+
+/**
+ * @route   PUT /api/auth/profile/address
+ * @desc    Create or update user address
+ * @access  Private
+ */
+router.put('/profile/address', authenticate, validateUserAddress, UserAddressController.upsertAddress);
+
+/**
+ * @route   DELETE /api/auth/profile/address
+ * @desc    Delete user address
+ * @access  Private
+ */
+router.delete('/profile/address', authenticate, UserAddressController.deleteAddress);
 
 module.exports = router;
 

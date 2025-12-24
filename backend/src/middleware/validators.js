@@ -179,7 +179,190 @@ const validateUpdateBasicInfo = [
     .isLength({ max: 25 })
     .withMessage('Phone number must be less than 25 characters')
     .matches(/^[+]?[0-9\s\-()]{7,25}$/)
-    .withMessage('Please provide a valid phone number')
+    .withMessage('Please provide a valid phone number'),
+  body('alternate_mobile_number')
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage('Alternate mobile number must be less than 20 characters')
+    .matches(/^[+]?[0-9\s\-()]{7,20}$/)
+    .withMessage('Alternate mobile number must be a valid phone number'),
+  body('nationality')
+    .optional()
+    .isIn(['Indian', 'Foreigner'])
+    .withMessage('Nationality must be either Indian or Foreigner'),
+  body('marital_status')
+    .optional()
+    .isIn(['Single', 'Unmarried', 'Divorced', 'Widowed', 'Separated'])
+    .withMessage('Marital status must be Single, Unmarried, Divorced, Widowed, or Separated'),
+  body('father_full_name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Father\'s full name must be less than 255 characters'),
+  body('mother_full_name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Mother\'s full name must be less than 255 characters'),
+  body('guardian_name')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Guardian name must be less than 255 characters')
+];
+
+/**
+ * Validation rules for government identification
+ */
+const validateGovernmentIdentification = [
+  body('aadhar_number')
+    .optional()
+    .trim()
+    .isLength({ min: 12, max: 12 })
+    .withMessage('Aadhar number must be exactly 12 digits')
+    .matches(/^\d{12}$/)
+    .withMessage('Aadhar number must contain only digits'),
+  body('alternative_id_type')
+    .optional()
+    .isIn(['Passport', 'PAN', 'Voter ID', 'School ID'])
+    .withMessage('Alternative ID type must be Passport, PAN, Voter ID, or School ID'),
+  body('alternative_id_number')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Alternative ID number must be less than 255 characters'),
+  body('place_of_issue')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Place of issue must be less than 255 characters')
+];
+
+/**
+ * Validation rules for category and reservation
+ */
+const validateCategoryAndReservation = [
+  body('category_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Category ID must be a valid integer'),
+  body('ews_status')
+    .optional()
+    .isBoolean()
+    .withMessage('EWS status must be a boolean'),
+  body('pwbd_status')
+    .optional()
+    .isBoolean()
+    .withMessage('PwBD/PWD status must be a boolean'),
+  body('type_of_disability')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Type of disability must be less than 255 characters'),
+  body('disability_percentage')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Disability percentage must be between 0 and 100'),
+  body('udid_number')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('UDID number must be less than 255 characters'),
+  body('minority_status')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Minority status must be less than 255 characters'),
+  body('ex_serviceman_defence_quota')
+    .optional()
+    .isBoolean()
+    .withMessage('Ex-serviceman/Defence quota must be a boolean'),
+  body('kashmiri_migrant_regional_quota')
+    .optional()
+    .isBoolean()
+    .withMessage('Kashmiri migrant/Regional quota must be a boolean')
+];
+
+/**
+ * Validation rules for other personal details
+ */
+const validateOtherPersonalDetails = [
+  body('religion')
+    .optional()
+    .isIn(['Hindu', 'Muslim', 'Christian', 'Sikh', 'Buddhist', 'Jain', 'Jewish', 'Parsi (Zoroastrian)', 'Other', 'Prefer not to say'])
+    .withMessage('Religion must be one of the allowed values'),
+  body('mother_tongue')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Mother tongue must be less than 255 characters'),
+  body('annual_family_income')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Annual family income must be a valid positive number'),
+  body('occupation_of_father')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Occupation of father must be less than 255 characters'),
+  body('occupation_of_mother')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Occupation of mother must be less than 255 characters')
+];
+
+/**
+ * Validation rules for user address
+ */
+const validateUserAddress = [
+  body('correspondence_address_line1')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Correspondence address line 1 must be less than 255 characters'),
+  body('correspondence_address_line2')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Correspondence address line 2 must be less than 255 characters'),
+  body('city_town_village')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('City/Town/Village must be less than 255 characters'),
+  body('district')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('District must be less than 255 characters'),
+  body('state')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('State must be less than 255 characters'),
+  body('country')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Country must be less than 255 characters'),
+  body('pincode')
+    .optional()
+    .trim()
+    .isLength({ min: 6, max: 10 })
+    .withMessage('Pincode must be between 6 and 10 characters')
+    .matches(/^[0-9]+$/)
+    .withMessage('Pincode must contain only digits'),
+  body('permanent_address_same_as_correspondence')
+    .optional()
+    .isBoolean()
+    .withMessage('Permanent address same as correspondence must be a boolean'),
+  body('permanent_address')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Permanent address must be less than 1000 characters')
 ];
 
 /**
@@ -1558,6 +1741,10 @@ module.exports = {
   validateCreateCourseSubject,
   validateUpdateCourseSubject,
   validateCreateCollegeFAQ,
-  validateUpdateCollegeFAQ
+  validateUpdateCollegeFAQ,
+  validateGovernmentIdentification,
+  validateCategoryAndReservation,
+  validateOtherPersonalDetails,
+  validateUserAddress
 };
 

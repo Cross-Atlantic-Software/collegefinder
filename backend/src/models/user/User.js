@@ -322,7 +322,13 @@ class User {
            auth_provider, 
            created_at, 
            last_login, 
-           is_active 
+           is_active,
+           nationality,
+           marital_status,
+           father_full_name,
+           mother_full_name,
+           guardian_name,
+           alternate_mobile_number
          FROM users 
          ORDER BY created_at DESC`
       );
@@ -348,7 +354,13 @@ class User {
           state: null,
           district: null,
           email_verified: false,
-          auth_provider: 'email'
+          auth_provider: 'email',
+          nationality: null,
+          marital_status: null,
+          father_full_name: null,
+          mother_full_name: null,
+          guardian_name: null,
+          alternate_mobile_number: null
         }));
       }
       throw error;

@@ -33,12 +33,16 @@ class BasicInfoController {
           date_of_birth: user.date_of_birth,
           gender: user.gender,
           phone_number: user.phone_number,
-          state: user.state,
-          district: user.district,
           email_verified: user.email_verified,
           profile_photo: user.profile_photo,
           latitude: user.latitude,
-          longitude: user.longitude
+          longitude: user.longitude,
+          nationality: user.nationality,
+          marital_status: user.marital_status,
+          father_full_name: user.father_full_name,
+          mother_full_name: user.mother_full_name,
+          guardian_name: user.guardian_name,
+          alternate_mobile_number: user.alternate_mobile_number
         }
       });
     } catch (error) {
@@ -172,12 +176,16 @@ class BasicInfoController {
         last_name,
         date_of_birth,
         gender,
-        state,
-        district,
         phone_number,
         profile_photo,
         latitude,
-        longitude
+        longitude,
+        nationality,
+        marital_status,
+        father_full_name,
+        mother_full_name,
+        guardian_name,
+        alternate_mobile_number
       } = req.body;
 
       // Build update query dynamically
@@ -218,14 +226,6 @@ class BasicInfoController {
         updates.push(`gender = $${paramCount++}`);
         values.push(gender);
       }
-      if (state !== undefined) {
-        updates.push(`state = $${paramCount++}`);
-        values.push(state);
-      }
-      if (district !== undefined) {
-        updates.push(`district = $${paramCount++}`);
-        values.push(district);
-      }
       if (phone_number !== undefined) {
         updates.push(`phone_number = $${paramCount++}`);
         values.push(phone_number);
@@ -247,6 +247,30 @@ class BasicInfoController {
       if (longitude !== undefined) {
         updates.push(`longitude = $${paramCount++}`);
         values.push(longitude);
+      }
+      if (nationality !== undefined) {
+        updates.push(`nationality = $${paramCount++}`);
+        values.push(nationality);
+      }
+      if (marital_status !== undefined) {
+        updates.push(`marital_status = $${paramCount++}`);
+        values.push(marital_status);
+      }
+      if (father_full_name !== undefined) {
+        updates.push(`father_full_name = $${paramCount++}`);
+        values.push(father_full_name || null);
+      }
+      if (mother_full_name !== undefined) {
+        updates.push(`mother_full_name = $${paramCount++}`);
+        values.push(mother_full_name || null);
+      }
+      if (guardian_name !== undefined) {
+        updates.push(`guardian_name = $${paramCount++}`);
+        values.push(guardian_name || null);
+      }
+      if (alternate_mobile_number !== undefined) {
+        updates.push(`alternate_mobile_number = $${paramCount++}`);
+        values.push(alternate_mobile_number || null);
       }
 
       if (updates.length === 0) {
@@ -279,12 +303,16 @@ class BasicInfoController {
           last_name: updatedUser.last_name,
           date_of_birth: updatedUser.date_of_birth,
           gender: updatedUser.gender,
-          state: updatedUser.state,
-          district: updatedUser.district,
           phone_number: updatedUser.phone_number,
           profile_photo: updatedUser.profile_photo,
           latitude: updatedUser.latitude,
-          longitude: updatedUser.longitude
+          longitude: updatedUser.longitude,
+          nationality: updatedUser.nationality,
+          marital_status: updatedUser.marital_status,
+          father_full_name: updatedUser.father_full_name,
+          mother_full_name: updatedUser.mother_full_name,
+          guardian_name: updatedUser.guardian_name,
+          alternate_mobile_number: updatedUser.alternate_mobile_number
         }
       });
     } catch (error) {

@@ -11,14 +11,35 @@ interface SimplifiedUsersTableProps {
 }
 
 function getInitials(nameOrEmail: string): string {
+  if (!nameOrEmail || nameOrEmail.length === 0) return '?';
   return nameOrEmail.charAt(0).toUpperCase();
 }
 
 function getUserDisplayName(user: SiteUser): string {
   if (user.first_name || user.last_name) {
-    return `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || user.email.split('@')[0];
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    if (fullName) return fullName;
   }
-  return user.name || user.email.split('@')[0];
+  
+  if (user.name) return user.name;
+  
+  if (user.email) {
+    return user.email.split('@')[0];
+  }
+  
+  return 'Unknown User';
+}
+
+// Helper function to convert various boolean representations to boolean
+function toBoolean(value: boolean | string | number | null | undefined): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return value === 't' || value === 'true' || value === '1' || value === 'T' || value === 'TRUE';
+  }
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+  return false;
 }
 
 function formatDate(dateString: string): string {
@@ -50,7 +71,7 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
-      user.email.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
       user.name?.toLowerCase().includes(query) ||
       user.first_name?.toLowerCase().includes(query) ||
       user.last_name?.toLowerCase().includes(query)
@@ -147,33 +168,33 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
                             <div className="text-sm font-medium text-gray-900">
                               {displayName}
                             </div>
-                            <div className="text-xs text-gray-500">{user.email}</div>
+                            <div className="text-xs text-gray-500">{user.email || 'No email'}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-900">
-                        {user.phone_number || '-'}
+                        {user.phone_number ? String(user.phone_number) : '-'}
                       </td>
                       <td className="px-4 py-2">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            user.is_active
+                            toBoolean(user.is_active as boolean | string | number | null | undefined)
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
-                          {user.is_active ? 'Active' : 'Inactive'}
+                          {toBoolean(user.is_active as boolean | string | number | null | undefined) ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 py-2">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            user.email_verified
+                            toBoolean(user.email_verified as boolean | string | number | null | undefined)
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
-                          {user.email_verified ? 'Verified' : 'Not Verified'}
+                          {toBoolean(user.email_verified as boolean | string | number | null | undefined) ? 'Verified' : 'Not Verified'}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-xs text-gray-600">

@@ -14,11 +14,19 @@ class AdminUsersController {
     try {
       const users = await User.findAll();
       
+      // Ensure boolean values are properly converted and phone_number is included
+      const formattedUsers = users.map(user => ({
+        ...user,
+        email_verified: user.email_verified === true || user.email_verified === 't' || user.email_verified === 1 || user.email_verified === 'true',
+        is_active: user.is_active === true || user.is_active === 't' || user.is_active === 1 || user.is_active === 'true',
+        phone_number: user.phone_number || null
+      }));
+      
       res.json({
         success: true,
         data: {
-          users,
-          total: users.length
+          users: formattedUsers,
+          total: formattedUsers.length
         }
       });
     } catch (error) {
@@ -238,6 +246,30 @@ class AdminUsersController {
           .filter(Boolean);
       }
 
+      // Get government identification
+      const GovernmentIdentification = require('../../models/user/GovernmentIdentification');
+      const governmentIdentification = await GovernmentIdentification.findByUserId(userId);
+
+      // Get category and reservation
+      const CategoryAndReservation = require('../../models/user/CategoryAndReservation');
+      const categoryAndReservation = await CategoryAndReservation.findByUserId(userId);
+      
+      // Get category name if category_id exists
+      let categoryName = null;
+      if (categoryAndReservation?.category_id) {
+        const Category = require('../../models/taxonomy/Category');
+        const category = await Category.findById(categoryAndReservation.category_id);
+        categoryName = category ? category.name : null;
+      }
+
+      // Get other personal details
+      const OtherPersonalDetails = require('../../models/user/OtherPersonalDetails');
+      const otherPersonalDetails = await OtherPersonalDetails.findByUserId(userId);
+
+      // Get user address
+      const UserAddress = require('../../models/user/UserAddress');
+      const userAddress = await UserAddress.findByUserId(userId);
+
       // Get exam preferences
       const examPreferences = await UserExamPreferences.findByUserId(userId);
       let targetExams = [];
@@ -331,6 +363,58 @@ class AdminUsersController {
             previous_attempts: previousAttempts,
             created_at: examPreferences.created_at,
             updated_at: examPreferences.updated_at
+          } : null,
+          governmentIdentification: governmentIdentification ? {
+            id: governmentIdentification.id,
+            user_id: governmentIdentification.user_id,
+            aadhar_number: governmentIdentification.aadhar_number,
+            alternative_id_type: governmentIdentification.alternative_id_type,
+            alternative_id_number: governmentIdentification.alternative_id_number,
+            place_of_issue: governmentIdentification.place_of_issue,
+            created_at: governmentIdentification.created_at,
+            updated_at: governmentIdentification.updated_at
+          } : null,
+          categoryAndReservation: categoryAndReservation ? {
+            id: categoryAndReservation.id,
+            user_id: categoryAndReservation.user_id,
+            category_id: categoryAndReservation.category_id,
+            category_name: categoryName,
+            ews_status: categoryAndReservation.ews_status,
+            pwbd_status: categoryAndReservation.pwbd_status,
+            type_of_disability: categoryAndReservation.type_of_disability,
+            disability_percentage: categoryAndReservation.disability_percentage,
+            udid_number: categoryAndReservation.udid_number,
+            minority_status: categoryAndReservation.minority_status,
+            ex_serviceman_defence_quota: categoryAndReservation.ex_serviceman_defence_quota,
+            kashmiri_migrant_regional_quota: categoryAndReservation.kashmiri_migrant_regional_quota,
+            created_at: categoryAndReservation.created_at,
+            updated_at: categoryAndReservation.updated_at
+          } : null,
+          otherPersonalDetails: otherPersonalDetails ? {
+            id: otherPersonalDetails.id,
+            user_id: otherPersonalDetails.user_id,
+            religion: otherPersonalDetails.religion,
+            mother_tongue: otherPersonalDetails.mother_tongue,
+            annual_family_income: otherPersonalDetails.annual_family_income,
+            occupation_of_father: otherPersonalDetails.occupation_of_father,
+            occupation_of_mother: otherPersonalDetails.occupation_of_mother,
+            created_at: otherPersonalDetails.created_at,
+            updated_at: otherPersonalDetails.updated_at
+          } : null,
+          userAddress: userAddress ? {
+            id: userAddress.id,
+            user_id: userAddress.user_id,
+            correspondence_address_line1: userAddress.correspondence_address_line1,
+            correspondence_address_line2: userAddress.correspondence_address_line2,
+            city_town_village: userAddress.city_town_village,
+            district: userAddress.district,
+            state: userAddress.state,
+            country: userAddress.country,
+            pincode: userAddress.pincode,
+            permanent_address_same_as_correspondence: userAddress.permanent_address_same_as_correspondence,
+            permanent_address: userAddress.permanent_address,
+            created_at: userAddress.created_at,
+            updated_at: userAddress.updated_at
           } : null
         }
       });

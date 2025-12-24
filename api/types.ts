@@ -50,6 +50,7 @@ export interface SiteUser {
   date_of_birth?: string | null;
   gender?: string | null;
   phone_number?: string | null;
+  alternate_mobile_number?: string | null;
   state?: string | null;
   district?: string | null;
   profile_photo?: string | null;
@@ -58,6 +59,11 @@ export interface SiteUser {
   created_at: string;
   last_login?: string | null;
   is_active: boolean;
+  nationality?: string | null;
+  marital_status?: string | null;
+  father_full_name?: string | null;
+  mother_full_name?: string | null;
+  guardian_name?: string | null;
 }
 
 export interface GetAllUsersResponse {

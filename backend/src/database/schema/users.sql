@@ -40,6 +40,11 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nationality VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS father_full_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
