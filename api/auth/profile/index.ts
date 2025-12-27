@@ -369,9 +369,7 @@ export async function getGovernmentIdentification(): Promise<ApiResponse<{
   id: number;
   user_id: number;
   aadhar_number: string | null;
-  alternative_id_type: string | null;
-  alternative_id_number: string | null;
-  place_of_issue: string | null;
+  apaar_id: string | null;
   created_at: string;
   updated_at: string;
 } | null>> {
@@ -385,16 +383,12 @@ export async function getGovernmentIdentification(): Promise<ApiResponse<{
  */
 export async function upsertGovernmentIdentification(data: {
   aadhar_number?: string;
-  alternative_id_type?: 'Passport' | 'PAN' | 'Voter ID' | 'School ID';
-  alternative_id_number?: string;
-  place_of_issue?: string;
+  apaar_id?: string;
 }): Promise<ApiResponse<{
   id: number;
   user_id: number;
   aadhar_number: string | null;
-  alternative_id_type: string | null;
-  alternative_id_number: string | null;
-  place_of_issue: string | null;
+  apaar_id: string | null;
   created_at: string;
   updated_at: string;
 }>> {

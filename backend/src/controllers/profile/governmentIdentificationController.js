@@ -24,9 +24,7 @@ class GovernmentIdentificationController {
           id: govId.id,
           user_id: govId.user_id,
           aadhar_number: govId.aadhar_number,
-          alternative_id_type: govId.alternative_id_type,
-          alternative_id_number: govId.alternative_id_number,
-          place_of_issue: govId.place_of_issue,
+          apaar_id: govId.apaar_id,
           created_at: govId.created_at,
           updated_at: govId.updated_at
         }
@@ -58,16 +56,24 @@ class GovernmentIdentificationController {
       const userId = req.user.id;
       const {
         aadhar_number,
-        alternative_id_type,
-        alternative_id_number,
-        place_of_issue
+        apaar_id
       } = req.body;
+
+      // Check if apaar_id is already used by another user
+      if (apaar_id) {
+        const existingGovId = await GovernmentIdentification.findByApaarId(apaar_id);
+        if (existingGovId && existingGovId.user_id !== userId) {
+          return res.status(400).json({
+            success: false,
+            message: 'APAAR ID is already registered to another student',
+            errors: [{ param: 'apaar_id', msg: 'APAAR ID must be unique' }]
+          });
+        }
+      }
 
       const govId = await GovernmentIdentification.upsert(userId, {
         aadhar_number,
-        alternative_id_type,
-        alternative_id_number,
-        place_of_issue
+        apaar_id
       });
 
       res.json({
@@ -77,9 +83,7 @@ class GovernmentIdentificationController {
           id: govId.id,
           user_id: govId.user_id,
           aadhar_number: govId.aadhar_number,
-          alternative_id_type: govId.alternative_id_type,
-          alternative_id_number: govId.alternative_id_number,
-          place_of_issue: govId.place_of_issue,
+          apaar_id: govId.apaar_id,
           created_at: govId.created_at,
           updated_at: govId.updated_at
         }

@@ -23,7 +23,7 @@ export default function StepTwoB() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
-  const { user, refreshUser, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Fetch career goals on mount
   useEffect(() => {
@@ -107,8 +107,8 @@ export default function StepTwoB() {
       });
       
       if (response.success) {
-        router.prefetch("/step-3");
-        router.replace("/step-3");
+        router.prefetch("/step-2c");
+        router.replace("/step-2c");
       } else {
         setError(response.message || "Failed to save interests. Please try again.");
         setSaving(false);

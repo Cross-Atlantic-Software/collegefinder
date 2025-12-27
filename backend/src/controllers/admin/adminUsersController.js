@@ -368,9 +368,7 @@ class AdminUsersController {
             id: governmentIdentification.id,
             user_id: governmentIdentification.user_id,
             aadhar_number: governmentIdentification.aadhar_number,
-            alternative_id_type: governmentIdentification.alternative_id_type,
-            alternative_id_number: governmentIdentification.alternative_id_number,
-            place_of_issue: governmentIdentification.place_of_issue,
+            apaar_id: governmentIdentification.apaar_id,
             created_at: governmentIdentification.created_at,
             updated_at: governmentIdentification.updated_at
           } : null,

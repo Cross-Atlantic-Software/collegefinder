@@ -81,6 +81,9 @@ const init = async () => {
     }
     
     console.log('✅ Database tables initialized');
+    
+    // Run migrations
+    await runMigrations();
   } catch (error) {
     // If tables already exist, that's okay
     if (error.code === '42P07') {
@@ -94,6 +97,60 @@ const init = async () => {
       throw error;
     }
   }
+};
+
+// Run database migrations
+const runMigrations = async () => {
+  const migrationsDir = path.join(__dirname, '../database/migrations');
+  const migrationFiles = [
+    'update_government_identification_apaar_id.sql'
+  ];
+  
+  console.log('\n🔄 Running database migrations...\n');
+  
+  for (const file of migrationFiles) {
+    const filePath = path.join(migrationsDir, file);
+    if (!fs.existsSync(filePath)) {
+      console.log(`⚠️  Migration file not found: ${file}`);
+      continue;
+    }
+    
+    const sql = fs.readFileSync(filePath, 'utf8');
+    const cleanedSql = sql
+      .split('\n')
+      .filter(line => !line.trim().startsWith('--'))
+      .join('\n');
+    
+    const statements = cleanedSql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    try {
+      for (const statement of statements) {
+        if (statement.trim()) {
+          await pool.query(statement);
+        }
+      }
+      console.log(`✅ Migration: ${file}`);
+    } catch (error) {
+      if (error.code === '42P07' || error.code === '42701' ||
+          error.message.includes('already exists') ||
+          error.message.includes('duplicate key') ||
+          error.message.includes('IF NOT EXISTS') ||
+          error.message.includes('relation already exists') ||
+          error.message.includes('constraint') ||
+          error.message.includes('column') ||
+          error.message.includes('does not exist')) {
+        console.log(`ℹ️  Migration ${file} - Already applied or skipped (${error.message})`);
+      } else {
+        console.error(`❌ Migration ${file} failed:`, error.message);
+        console.error(`   Error code: ${error.code}`);
+      }
+    }
+  }
+  
+  console.log('✅ Migrations check completed\n');
 };
 
 // Query helper

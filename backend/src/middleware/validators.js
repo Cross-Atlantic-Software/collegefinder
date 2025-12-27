@@ -223,20 +223,14 @@ const validateGovernmentIdentification = [
     .withMessage('Aadhar number must be exactly 12 digits')
     .matches(/^\d{12}$/)
     .withMessage('Aadhar number must contain only digits'),
-  body('alternative_id_type')
-    .optional()
-    .isIn(['Passport', 'PAN', 'Voter ID', 'School ID'])
-    .withMessage('Alternative ID type must be Passport, PAN, Voter ID, or School ID'),
-  body('alternative_id_number')
-    .optional()
+  body('apaar_id')
+    .notEmpty()
+    .withMessage('APAAR ID is required')
     .trim()
-    .isLength({ max: 255 })
-    .withMessage('Alternative ID number must be less than 255 characters'),
-  body('place_of_issue')
-    .optional()
-    .trim()
-    .isLength({ max: 255 })
-    .withMessage('Place of issue must be less than 255 characters')
+    .isLength({ min: 12, max: 12 })
+    .withMessage('APAAR ID must be exactly 12 digits')
+    .matches(/^\d{12}$/)
+    .withMessage('APAAR ID must contain only numbers')
 ];
 
 /**

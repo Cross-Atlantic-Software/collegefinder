@@ -578,22 +578,10 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.aadhar_number}</p>
                         </div>
                       )}
-                      {details.governmentIdentification.alternative_id_type && (
+                      {details.governmentIdentification.alternative_id_type && details.governmentIdentification.alternative_id_number && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Alternative ID Type:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.alternative_id_type}</p>
-                        </div>
-                      )}
-                      {details.governmentIdentification.alternative_id_number && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Alternative ID Number:</span>
+                          <span className="text-xs font-medium text-gray-500">{details.governmentIdentification.alternative_id_type}:</span>
                           <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.alternative_id_number}</p>
-                        </div>
-                      )}
-                      {details.governmentIdentification.place_of_issue && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Place of Issue:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.place_of_issue}</p>
                         </div>
                       )}
                     </div>

@@ -34,6 +34,21 @@ class GovernmentIdentification {
   }
 
   /**
+   * Find by APAAR ID
+   */
+  static async findByApaarId(apaarId) {
+    if (!apaarId || typeof apaarId !== 'string') {
+      return null;
+    }
+
+    const result = await db.query(
+      'SELECT * FROM government_identification WHERE apaar_id = $1',
+      [apaarId.trim()]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Create or update government identification (upsert)
    */
   static async upsert(userId, data) {
@@ -44,9 +59,7 @@ class GovernmentIdentification {
 
     const {
       aadhar_number,
-      alternative_id_type,
-      alternative_id_number,
-      place_of_issue
+      apaar_id
     } = data;
 
     // Check if record exists
@@ -57,17 +70,13 @@ class GovernmentIdentification {
       const result = await db.query(
         `UPDATE government_identification 
          SET aadhar_number = $1,
-             alternative_id_type = $2,
-             alternative_id_number = $3,
-             place_of_issue = $4,
+             apaar_id = $2,
              updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $5
+         WHERE user_id = $3
          RETURNING *`,
         [
           aadhar_number || null,
-          alternative_id_type || null,
-          alternative_id_number || null,
-          place_of_issue || null,
+          apaar_id || null,
           userIdNum
         ]
       );
@@ -76,15 +85,13 @@ class GovernmentIdentification {
       // Create new record
       const result = await db.query(
         `INSERT INTO government_identification 
-         (user_id, aadhar_number, alternative_id_type, alternative_id_number, place_of_issue)
-         VALUES ($1, $2, $3, $4, $5)
+         (user_id, aadhar_number, apaar_id)
+         VALUES ($1, $2, $3)
          RETURNING *`,
         [
           userIdNum,
           aadhar_number || null,
-          alternative_id_type || null,
-          alternative_id_number || null,
-          place_of_issue || null
+          apaar_id || null
         ]
       );
       return result.rows[0];
