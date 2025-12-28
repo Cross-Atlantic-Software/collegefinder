@@ -24,19 +24,20 @@ export function AuthRedirect({
   const pathname = usePathname();
 
   // Check if current route is an onboarding step
-  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-2a|step-2b|step-3)/.test(pathname || '');
+  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-2a|step-2b|step-2c|step-3)/.test(pathname || '');
   
   // Check if user has completed onboarding
   const hasCompletedOnboarding = user?.onboarding_completed;
 
   useEffect(() => {
     if (!isLoading) {
-      // Allow step-3, step-2a, and step-2b to show even if user has completed onboarding
+      // Allow step-3, step-2a, step-2b, and step-2c to show even if user has completed onboarding
       // (they may need to complete these steps even after name is saved)
       const isStep3 = pathname?.includes('/step-3');
       const isStep2A = pathname?.includes('/step-2a');
       const isStep2B = pathname?.includes('/step-2b');
-      const isAllowedStep = isStep3 || isStep2A || isStep2B;
+      const isStep2C = pathname?.includes('/step-2c');
+      const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
       
       // If authenticated and on onboarding route (but not allowed steps) and has completed onboarding, redirect to dashboard
       if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
@@ -60,7 +61,8 @@ export function AuthRedirect({
   const isStep3 = pathname?.includes('/step-3');
   const isStep2A = pathname?.includes('/step-2a');
   const isStep2B = pathname?.includes('/step-2b');
-  const isAllowedStep = isStep3 || isStep2A || isStep2B;
+  const isStep2C = pathname?.includes('/step-2c');
+  const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
   if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
     return <OnboardingLoader message="Taking you to dashboard..." />;
   }

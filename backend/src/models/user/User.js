@@ -71,6 +71,7 @@ class User {
    * 1. Name (from users table)
    * 2. Stream (from user_academics table - stream_id)
    * 3. Interests (from user_career_goals table - interests array)
+   * 4. State and District (from user_address table)
    */
   static async checkOnboardingCompletion(userId) {
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
@@ -115,6 +116,21 @@ class User {
         return false;
       }
       console.log('✅ checkOnboardingCompletion - Interests check passed:', careerGoalsResult.rows[0].interests);
+
+      // Check if user has state and district
+      const addressResult = await db.query(
+        'SELECT state, district FROM user_address WHERE user_id = $1 AND state IS NOT NULL AND district IS NOT NULL',
+        [userIdNum]
+      );
+      console.log('🔍 checkOnboardingCompletion - Address result:', addressResult.rows);
+      if (!addressResult.rows[0] || !addressResult.rows[0].state || !addressResult.rows[0].district) {
+        console.log('❌ checkOnboardingCompletion - Missing state or district');
+        return false;
+      }
+      console.log('✅ checkOnboardingCompletion - State and District check passed:', { 
+        state: addressResult.rows[0].state, 
+        district: addressResult.rows[0].district 
+      });
 
       console.log('✅ checkOnboardingCompletion - ALL CHECKS PASSED - User has completed onboarding');
       return true;

@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllColleges, createCollege, updateCollege, deleteCollege, College } from '@/api/admin/colleges';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
+import { getAllColleges, updateCollege, deleteCollege, College } from '@/api/admin/colleges';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
+import MultiStepCollegeForm from '@/components/admin/colleges/MultiStepCollegeForm';
 
 export default function CollegesPage() {
   const router = useRouter();
@@ -16,8 +17,9 @@ export default function CollegesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCollege, setEditingCollege] = useState<College | null>(null);
+  const [viewingCollege, setViewingCollege] = useState<College | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     ranking: null as number | null,
@@ -95,9 +97,16 @@ export default function CollegesPage() {
     setError(null);
   };
 
+  const handleViewClick = (college: College) => {
+    setViewingCollege(college);
+    setEditingCollege(null);
+    setShowCreateModal(true);
+  };
+
   const handleModalOpen = (college?: College) => {
     if (college) {
       setEditingCollege(college);
+      setViewingCollege(null);
       setFormData({
         name: college.name,
         ranking: college.ranking,
@@ -106,10 +115,12 @@ export default function CollegesPage() {
       });
       setLogoPreview(college.logo_url || null);
       setLogoFile(null);
+      setShowCreateModal(true);
     } else {
-      resetForm();
+      setEditingCollege(null);
+      setViewingCollege(null);
+      setShowCreateModal(true);
     }
-    setShowModal(true);
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +136,9 @@ export default function CollegesPage() {
   };
 
   const handleModalClose = () => {
-    setShowModal(false);
+    setShowCreateModal(false);
+    setEditingCollege(null);
+    setViewingCollege(null);
     resetForm();
   };
 
@@ -159,17 +172,6 @@ export default function CollegesPage() {
           fetchColleges();
         } else {
           const errorMsg = response.message || 'Failed to update college';
-          setError(errorMsg);
-          showError(errorMsg);
-        }
-      } else {
-        const response = await createCollege(collegeData);
-        if (response.success) {
-          showSuccess('College created successfully');
-          handleModalClose();
-          fetchColleges();
-        } else {
-          const errorMsg = response.message || 'Failed to create college';
           setError(errorMsg);
           showError(errorMsg);
         }
@@ -366,6 +368,13 @@ export default function CollegesPage() {
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <button
+                                onClick={() => handleViewClick(college)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="View"
+                              >
+                                <FiEye className="h-4 w-4" />
+                              </button>
+                              <button
                                 onClick={() => handleModalOpen(college)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                 title="Edit"
@@ -390,15 +399,25 @@ export default function CollegesPage() {
             )}
           </div>
 
-          {/* Create/Edit Modal */}
-          {showModal && (
+          {/* Create/Edit/View Multi-Step Modal */}
+          <MultiStepCollegeForm
+            isOpen={showCreateModal}
+            onClose={handleModalClose}
+            editingCollege={editingCollege}
+            viewingCollege={viewingCollege}
+            onSuccess={() => {
+              handleModalClose();
+              fetchColleges();
+            }}
+          />
+
+          {/* Old Edit Modal - Remove this */}
+          {false && editingCollege && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-                  <h2 className="text-lg font-bold">
-                    {editingCollege ? 'Edit College' : 'Create College'}
-                  </h2>
+                  <h2 className="text-lg font-bold">Edit College</h2>
                   <button
                     onClick={handleModalClose}
                     className="text-white hover:text-gray-200 transition-colors"
@@ -449,7 +468,7 @@ export default function CollegesPage() {
                       {logoPreview && (
                         <div className="mt-2">
                           <img
-                            src={logoPreview}
+                            src={logoPreview || ''}
                             alt="Logo preview"
                             className="h-24 w-24 object-contain border border-gray-300 rounded"
                           />
@@ -459,7 +478,7 @@ export default function CollegesPage() {
                         <div className="mt-2">
                           <p className="text-xs text-gray-500 mb-1">Current logo:</p>
                           <img
-                            src={editingCollege.logo_url}
+                            src={editingCollege?.logo_url || ''}
                             alt="Current logo"
                             className="h-24 w-24 object-contain border border-gray-300 rounded"
                             onError={(e) => {
@@ -503,7 +522,7 @@ export default function CollegesPage() {
                       type="submit"
                       className="px-4 py-2 bg-pink text-white rounded-lg hover:bg-pink/90 transition-colors"
                     >
-                      {editingCollege ? 'Update' : 'Create'}
+                      Update
                     </button>
                   </div>
                 </form>

@@ -118,34 +118,9 @@ const navGroups: NavGroup[] = [
         icon: <FiBook className="h-4 w-4" />,
       },
       {
-        label: 'Locations',
-        href: '/admin/colleges/locations',
-        icon: <FiMapPin className="h-4 w-4" />,
-      },
-      {
-        label: 'Gallery',
-        href: '/admin/colleges/gallery',
-        icon: <FiImage className="h-4 w-4" />,
-      },
-      {
         label: 'Reviews',
         href: '/admin/colleges/reviews',
         icon: <FiStar className="h-4 w-4" />,
-      },
-      {
-        label: 'News',
-        href: '/admin/colleges/news',
-        icon: <FiRss className="h-4 w-4" />,
-      },
-      {
-        label: 'Courses',
-        href: '/admin/colleges/courses',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'FAQs',
-        href: '/admin/colleges/faqs',
-        icon: <FiFileText className="h-4 w-4" />,
       },
     ],
   },

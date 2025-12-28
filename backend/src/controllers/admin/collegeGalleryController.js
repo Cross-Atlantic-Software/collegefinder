@@ -58,8 +58,20 @@ class CollegeGalleryController {
    */
   static async createCollegeGallery(req, res) {
     try {
+      console.log('createCollegeGallery - Request received:', {
+        body: req.body,
+        hasFile: !!req.file,
+        fileInfo: req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          bufferLength: req.file.buffer?.length
+        } : null
+      });
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.error('Validation errors:', errors.array());
         return res.status(400).json({
           success: false,
           message: 'Validation failed',
@@ -74,12 +86,24 @@ class CollegeGalleryController {
       // Handle image file upload if present
       if (req.file) {
         try {
+          console.log('Uploading gallery image:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            bufferLength: req.file.buffer?.length
+          });
           image_url = await uploadToS3(req.file.buffer, req.file.originalname, 'colleges/gallery');
+          console.log('Successfully uploaded gallery image to S3:', image_url);
         } catch (uploadError) {
-          console.error('Error uploading image:', uploadError);
+          console.error('Error uploading gallery image to S3:', {
+            error: uploadError.message,
+            code: uploadError.code,
+            stack: uploadError.stack
+          });
           return res.status(500).json({
             success: false,
-            message: 'Failed to upload image'
+            message: uploadError.message || 'Failed to upload image',
+            error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
           });
         }
       } else if (req.body.image_url) {
@@ -87,11 +111,19 @@ class CollegeGalleryController {
       }
 
       if (!image_url) {
+        console.error('No image URL provided - neither file nor image_url in body');
         return res.status(400).json({
           success: false,
-          message: 'Image is required'
+          message: 'Image is required. Please provide either an image file or image_url.'
         });
       }
+
+      console.log('Creating gallery image record:', {
+        college_id: parseInt(college_id),
+        image_url,
+        caption: caption || null,
+        sort_order: sort_order ? parseInt(sort_order) : 0
+      });
 
       const image = await CollegeGallery.create({ 
         college_id: parseInt(college_id),
@@ -100,16 +132,22 @@ class CollegeGalleryController {
         sort_order: sort_order ? parseInt(sort_order) : 0
       });
 
+      console.log('Gallery image created successfully:', image.id);
       res.status(201).json({
         success: true,
         message: 'Gallery image created successfully',
         data: { image }
       });
     } catch (error) {
-      console.error('Error creating gallery image:', error);
+      console.error('Error creating gallery image:', {
+        error: error.message,
+        stack: error.stack,
+        code: error.code
+      });
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to create gallery image'
+        message: error.message || 'Failed to create gallery image',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
