@@ -23,6 +23,8 @@ export interface CollegeCourse {
   brochure_url: string | null;
   fee_per_sem: number | null;
   total_fee: number | null;
+  subject_ids: number[] | null;
+  exam_ids: number[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,8 @@ export async function createCollegeCourse(data: {
   brochure_url?: string | null;
   fee_per_sem?: number | null;
   total_fee?: number | null;
+  subject_ids?: number[] | null;
+  exam_ids?: number[] | null;
   brochure?: File;
 }): Promise<ApiResponse<{
   course: CollegeCourse;
@@ -98,6 +102,12 @@ export async function createCollegeCourse(data: {
   }
   if (data.total_fee !== undefined && data.total_fee !== null) {
     formData.append('total_fee', data.total_fee.toString());
+  }
+  if (data.subject_ids !== undefined && data.subject_ids !== null && data.subject_ids.length > 0) {
+    formData.append('subject_ids', JSON.stringify(data.subject_ids));
+  }
+  if (data.exam_ids !== undefined && data.exam_ids !== null && data.exam_ids.length > 0) {
+    formData.append('exam_ids', JSON.stringify(data.exam_ids));
   }
   if (data.brochure) {
     formData.append('brochure', data.brochure);
@@ -130,6 +140,8 @@ export async function updateCollegeCourse(
     brochure_url?: string | null;
     fee_per_sem?: number | null;
     total_fee?: number | null;
+    subject_ids?: number[] | null;
+    exam_ids?: number[] | null;
     brochure?: File;
   }
 ): Promise<ApiResponse<{
@@ -181,6 +193,12 @@ export async function updateCollegeCourse(
   }
   if (data.total_fee !== undefined) {
     formData.append('total_fee', data.total_fee !== null ? data.total_fee.toString() : '');
+  }
+  if (data.subject_ids !== undefined) {
+    formData.append('subject_ids', data.subject_ids !== null && data.subject_ids.length > 0 ? JSON.stringify(data.subject_ids) : '');
+  }
+  if (data.exam_ids !== undefined) {
+    formData.append('exam_ids', data.exam_ids !== null && data.exam_ids.length > 0 ? JSON.stringify(data.exam_ids) : '');
   }
   if (data.brochure) {
     formData.append('brochure', data.brochure);

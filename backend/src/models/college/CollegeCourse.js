@@ -81,16 +81,18 @@ class CollegeCourse {
       scholarship,
       brochure_url,
       fee_per_sem,
-      total_fee
+      total_fee,
+      subject_ids,
+      exam_ids
     } = data;
 
     const result = await db.query(
       `INSERT INTO college_courses (
         college_id, stream_id, level_id, program_id, title, summary, duration,
         curriculum_detail, admission_process, eligibility, placements, scholarship,
-        brochure_url, fee_per_sem, total_fee
+        brochure_url, fee_per_sem, total_fee, subject_ids, exam_ids
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         college_id,
@@ -107,7 +109,9 @@ class CollegeCourse {
         scholarship || null,
         brochure_url || null,
         fee_per_sem || null,
-        total_fee || null
+        total_fee || null,
+        subject_ids && Array.isArray(subject_ids) && subject_ids.length > 0 ? subject_ids : null,
+        exam_ids && Array.isArray(exam_ids) && exam_ids.length > 0 ? exam_ids : null
       ]
     );
     return result.rows[0];
@@ -132,7 +136,9 @@ class CollegeCourse {
       scholarship,
       brochure_url,
       fee_per_sem,
-      total_fee
+      total_fee,
+      subject_ids,
+      exam_ids
     } = data;
 
     const updates = [];
@@ -198,6 +204,14 @@ class CollegeCourse {
     if (total_fee !== undefined) {
       updates.push(`total_fee = $${paramCount++}`);
       values.push(total_fee || null);
+    }
+    if (subject_ids !== undefined) {
+      updates.push(`subject_ids = $${paramCount++}`);
+      values.push(subject_ids && Array.isArray(subject_ids) && subject_ids.length > 0 ? subject_ids : null);
+    }
+    if (exam_ids !== undefined) {
+      updates.push(`exam_ids = $${paramCount++}`);
+      values.push(exam_ids && Array.isArray(exam_ids) && exam_ids.length > 0 ? exam_ids : null);
     }
 
     if (updates.length === 0) {

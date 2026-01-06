@@ -19,7 +19,8 @@ import {
   FiMapPin,
   FiImage,
   FiStar,
-  FiRss
+  FiRss,
+  FiHelpCircle
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -132,26 +133,15 @@ const navGroups: NavGroup[] = [
         href: '/admin/colleges/reviews',
         icon: <FiStar className="h-4 w-4" />,
       },
-    ],
-  },
-  {
-    label: 'Courses',
-    icon: <FiBook className="h-4 w-4" />,
-    children: [
       {
-        label: 'Exams',
-        href: '/admin/courses/exams',
-        icon: <FiFileText className="h-4 w-4" />,
+        label: 'FAQs',
+        href: '/admin/colleges/faqs',
+        icon: <FiHelpCircle className="h-4 w-4" />,
       },
       {
         label: 'Cutoffs',
         href: '/admin/courses/cutoffs',
         icon: <FiFileText className="h-4 w-4" />,
-      },
-      {
-        label: 'Subjects',
-        href: '/admin/courses/subjects',
-        icon: <FiBook className="h-4 w-4" />,
       },
     ],
   },

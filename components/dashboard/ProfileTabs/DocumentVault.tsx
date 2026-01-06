@@ -92,9 +92,9 @@ export default function DocumentVault() {
           migration_certificate: null,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching document vault:', error);
-      showError(error.message || 'Failed to fetch documents');
+      showError(error instanceof Error ? error.message : 'Failed to fetch documents');
     } finally {
       setLoading(false);
     }
@@ -108,9 +108,9 @@ export default function DocumentVault() {
         showSuccess('Document uploaded successfully');
         await fetchDocumentVault();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading document:', error);
-      showError(error.message || 'Failed to upload document');
+      showError(error instanceof Error ? error.message : 'Failed to upload document');
     } finally {
       setUploading(null);
     }
@@ -128,9 +128,9 @@ export default function DocumentVault() {
         showSuccess('Document deleted successfully');
         await fetchDocumentVault();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting document:', error);
-      showError(error.message || 'Failed to delete document');
+      showError(error instanceof Error ? error.message : 'Failed to delete document');
     } finally {
       setDeleting(null);
     }
@@ -193,6 +193,7 @@ export default function DocumentVault() {
     const isUploading = uploading === field.key;
     const isDeleting = deleting === field.key;
     const fileInputId = `file-${field.key}`;
+    const valueString = typeof value === 'string' ? value : null;
 
     return (
       <div key={field.key} className="space-y-2">
@@ -201,17 +202,17 @@ export default function DocumentVault() {
           {field.required && <span className="text-pink ml-1">*</span>}
         </label>
         
-        {value ? (
+        {valueString ? (
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
             <div className="flex items-center gap-2 flex-1">
               <FiFile className="h-5 w-5 text-slate-400" />
               <span className="text-sm text-slate-300">
-                {isImage(value) ? 'Image' : 'PDF'} Document
+                {isImage(valueString) ? 'Image' : 'PDF'} Document
               </span>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setViewingDocument({ url: value, label: field.label })}
+                onClick={() => setViewingDocument({ url: valueString, label: field.label })}
                 className="p-2 text-blue-400 hover:text-blue-300 transition-colors"
                 title="View"
               >

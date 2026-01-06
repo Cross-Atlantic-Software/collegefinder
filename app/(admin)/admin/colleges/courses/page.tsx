@@ -15,8 +15,10 @@ import { getAllColleges, College } from '@/api/admin/colleges';
 import { getAllStreams, Stream } from '@/api/admin/streams';
 import { getAllLevels, Level } from '@/api/admin/levels';
 import { getAllPrograms, Program } from '@/api/admin/programs';
+import { getAllSubjects, Subject } from '@/api/admin/subjects';
+import { getAllExamsAdmin, Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiFileText, FiEye, FiDownload } from 'react-icons/fi';
-import { ConfirmationModal, useToast, Select } from '@/components/shared';
+import { ConfirmationModal, useToast, Select, MultiSelect } from '@/components/shared';
 import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'), {
@@ -32,6 +34,8 @@ export default function CollegeCoursesPage() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +68,8 @@ export default function CollegeCoursesPage() {
     brochure_url: '',
     fee_per_sem: '',
     total_fee: '',
+    subject_ids: [] as number[],
+    exam_ids: [] as number[],
   });
 
   useEffect(() => {
@@ -107,12 +113,14 @@ export default function CollegeCoursesPage() {
       setIsLoading(true);
       setError(null);
       
-      const [coursesRes, collegesRes, streamsRes, levelsRes, programsRes] = await Promise.all([
+      const [coursesRes, collegesRes, streamsRes, levelsRes, programsRes, subjectsRes, examsRes] = await Promise.all([
         getAllCollegeCourses(),
         getAllColleges(),
         getAllStreams(),
         getAllLevels(),
         getAllPrograms(),
+        getAllSubjects(),
+        getAllExamsAdmin(),
       ]);
 
       if (coursesRes.success && coursesRes.data) {
@@ -130,6 +138,12 @@ export default function CollegeCoursesPage() {
       }
       if (programsRes.success && programsRes.data) {
         setPrograms(programsRes.data.programs.filter((p: Program) => p.status));
+      }
+      if (subjectsRes.success && subjectsRes.data) {
+        setSubjects(subjectsRes.data.subjects.filter((s: Subject) => s.status));
+      }
+      if (examsRes.success && examsRes.data) {
+        setExams(examsRes.data.exams);
       }
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -165,6 +179,8 @@ export default function CollegeCoursesPage() {
         scholarship: formData.scholarship || null,
         fee_per_sem: formData.fee_per_sem ? parseFloat(formData.fee_per_sem) : null,
         total_fee: formData.total_fee ? parseFloat(formData.total_fee) : null,
+        subject_ids: formData.subject_ids && formData.subject_ids.length > 0 ? formData.subject_ids : null,
+        exam_ids: formData.exam_ids && formData.exam_ids.length > 0 ? formData.exam_ids : null,
       };
 
       // Only include brochure_url if no file is being uploaded
@@ -258,6 +274,8 @@ export default function CollegeCoursesPage() {
       brochure_url: course.brochure_url || '',
       fee_per_sem: course.fee_per_sem?.toString() || '',
       total_fee: course.total_fee?.toString() || '',
+      subject_ids: course.subject_ids || [],
+      exam_ids: course.exam_ids || [],
     });
     setBrochureFile(null);
     setBrochurePreview(course.brochure_url);
@@ -287,6 +305,8 @@ export default function CollegeCoursesPage() {
       brochure_url: '',
       fee_per_sem: '',
       total_fee: '',
+      subject_ids: [],
+      exam_ids: [],
     });
     setBrochureFile(null);
     setBrochurePreview(null);
@@ -537,6 +557,34 @@ export default function CollegeCoursesPage() {
                   </div>
                 </div>
 
+                {/* Subjects - Searchable Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
+                  <MultiSelect
+                    value={formData.subject_ids.map(id => id.toString())}
+                    onChange={(selected) => {
+                      const ids = selected ? selected.map(s => parseInt(s)).filter(id => !isNaN(id)) : [];
+                      setFormData({ ...formData, subject_ids: ids });
+                    }}
+                    options={subjects.map(s => ({ value: s.id.toString(), label: s.name }))}
+                    placeholder="Select subjects..."
+                  />
+                </div>
+
+                {/* Exams - Multiselect Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Exams</label>
+                  <MultiSelect
+                    value={formData.exam_ids.map(id => id.toString())}
+                    onChange={(selected) => {
+                      const ids = selected ? selected.map(s => parseInt(s)).filter(id => !isNaN(id)) : [];
+                      setFormData({ ...formData, exam_ids: ids });
+                    }}
+                    options={exams.map(e => ({ value: e.id.toString(), label: e.name }))}
+                    placeholder="Select exams..."
+                  />
+                </div>
+
                 {/* Summary */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
@@ -749,6 +797,36 @@ export default function CollegeCoursesPage() {
                           <p className="text-sm text-gray-900">{viewingCourse.duration || '-'}</p>
                         </div>
                       </div>
+                      {viewingCourse.subject_ids && viewingCourse.subject_ids.length > 0 && (
+                        <div className="mt-4">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Subjects</label>
+                          <div className="flex flex-wrap gap-2">
+                            {viewingCourse.subject_ids.map((subjectId) => {
+                              const subject = subjects.find(s => s.id === subjectId);
+                              return subject ? (
+                                <span key={subjectId} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
+                                  {subject.name}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {viewingCourse.exam_ids && viewingCourse.exam_ids.length > 0 && (
+                        <div className="mt-4">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Exams</label>
+                          <div className="flex flex-wrap gap-2">
+                            {viewingCourse.exam_ids.map((examId) => {
+                              const exam = exams.find(e => e.id === examId);
+                              return exam ? (
+                                <span key={examId} className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 text-xs font-medium">
+                                  {exam.name}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Summary */}

@@ -62,6 +62,8 @@ export interface CollegeFormData {
     fee_per_sem: string;
     total_fee: string;
     brochureFile: File | null;
+    subject_ids: number[];
+    exam_ids: number[];
   }>;
 }
 
@@ -194,6 +196,8 @@ export default function MultiStepCollegeForm({ isOpen, onClose, onSuccess, editi
                 fee_per_sem: c.fee_per_sem?.toString() || '',
                 total_fee: c.total_fee?.toString() || '',
                 brochureFile: null,
+                subject_ids: c.subject_ids || [],
+                exam_ids: c.exam_ids || [],
               })),
             }));
           }
@@ -592,6 +596,8 @@ export default function MultiStepCollegeForm({ isOpen, onClose, onSuccess, editi
           stream_id?: number | null;
           level_id?: number | null;
           program_id?: number | null;
+          subject_ids?: number[] | null;
+          exam_ids?: number[] | null;
           brochure?: File;
         } = {
           college_id: createdCollegeId,
@@ -606,6 +612,8 @@ export default function MultiStepCollegeForm({ isOpen, onClose, onSuccess, editi
           brochure_url: course.brochure_url.trim() || null,
           fee_per_sem: course.fee_per_sem ? parseFloat(course.fee_per_sem) : null,
           total_fee: course.total_fee ? parseFloat(course.total_fee) : null,
+          subject_ids: course.subject_ids && course.subject_ids.length > 0 ? course.subject_ids : null,
+          exam_ids: course.exam_ids && course.exam_ids.length > 0 ? course.exam_ids : null,
         };
 
         if (course.stream_id) {
