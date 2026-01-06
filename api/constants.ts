@@ -29,6 +29,8 @@ export const API_ENDPOINTS = {
     PROFILE_OTHER_PERSONAL_DETAILS: '/auth/profile/other-personal-details',
     PROFILE_ADDRESS: '/auth/profile/address',
     PROFILE_OTHER_INFO: '/auth/profile/other-info',
+    PROFILE_DOCUMENT_VAULT: '/auth/profile/document-vault',
+    PROFILE_DOCUMENT_VAULT_UPLOAD: '/auth/profile/document-vault/upload',
   },
   
   // Public endpoints

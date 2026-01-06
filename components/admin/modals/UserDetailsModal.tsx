@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin, Info } from 'lucide-react';
+import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin, Info, FileText, Eye, Download } from 'lucide-react';
 import { FaUserCircle } from 'react-icons/fa';
 import { getUserDetails } from '@/api/admin/users';
 import type { SiteUser } from '@/api/types';
@@ -132,6 +132,27 @@ interface UserDetails {
     program_names: string[];
     exam_city_ids: number[];
     exam_city_names: string[];
+    created_at: string;
+    updated_at: string;
+  } | null;
+  documentVault: {
+    id: number;
+    user_id: number;
+    passport_size_photograph: string | null;
+    signature_image: string | null;
+    matric_marksheet: string | null;
+    matric_certificate: string | null;
+    postmatric_marksheet: string | null;
+    valid_photo_id_proof: string | null;
+    sc_certificate: string | null;
+    st_certificate: string | null;
+    obc_ncl_certificate: string | null;
+    ews_certificate: string | null;
+    pwbd_disability_certificate: string | null;
+    udid_card: string | null;
+    domicile_certificate: string | null;
+    citizenship_certificate: string | null;
+    migration_certificate: string | null;
     created_at: string;
     updated_at: string;
   } | null;
@@ -586,6 +607,139 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No academic information available</p>
                 )}
               </section>
+
+              {/* Document Vault */}
+              {details.documentVault && (
+                <section className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-slate-600" />
+                    Documents Vault
+                  </h3>
+                  <div className="space-y-4">
+                    {(() => {
+                      const documentFields = [
+                        { key: 'passport_size_photograph', label: 'Passport-size Photograph', section: 'Mandatory Uploads' },
+                        { key: 'signature_image', label: 'Signature Image', section: 'Mandatory Uploads' },
+                        { key: 'matric_marksheet', label: 'Matric Marksheet', section: 'Identity & Academic Proof' },
+                        { key: 'matric_certificate', label: 'Matric Certificate', section: 'Identity & Academic Proof' },
+                        { key: 'postmatric_marksheet', label: 'Postmatric Marksheet', section: 'Identity & Academic Proof' },
+                        { key: 'valid_photo_id_proof', label: 'Valid Photo ID Proof', section: 'Identity & Academic Proof' },
+                        { key: 'sc_certificate', label: 'SC Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'st_certificate', label: 'ST Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'obc_ncl_certificate', label: 'OBC-NCL Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'ews_certificate', label: 'EWS Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'pwbd_disability_certificate', label: 'PwBD/Disability Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'udid_card', label: 'UDID Card', section: 'Category and Reservation Documents' },
+                        { key: 'domicile_certificate', label: 'Domicile Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'citizenship_certificate', label: 'Citizenship Certificate (OCI/PIO)', section: 'Additional Uploads' },
+                        { key: 'migration_certificate', label: 'Migration Certificate', section: 'Additional Uploads' },
+                      ];
+
+                      const groupedFields = documentFields.reduce((acc, field) => {
+                        if (!acc[field.section]) {
+                          acc[field.section] = [];
+                        }
+                        acc[field.section].push(field);
+                        return acc;
+                      }, {} as Record<string, typeof documentFields>);
+
+                      const handleView = (url: string) => {
+                        window.open(url, '_blank');
+                      };
+
+                      const handleDownload = async (url: string, label: string) => {
+                        try {
+                          // Fetch the file as a blob
+                          const response = await fetch(url);
+                          if (!response.ok) {
+                            throw new Error('Failed to fetch file');
+                          }
+                          const blob = await response.blob();
+                          
+                          // Create object URL from blob
+                          const blobUrl = window.URL.createObjectURL(blob);
+                          
+                          // Create download link
+                          const link = document.createElement('a');
+                          link.href = blobUrl;
+                          const extension = url.split('.').pop()?.split('?')[0] || 'pdf';
+                          link.download = `${label.replace(/\s+/g, '_')}.${extension}`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          
+                          // Clean up object URL
+                          window.URL.revokeObjectURL(blobUrl);
+                        } catch (error) {
+                          console.error('Error downloading file:', error);
+                          // Fallback: open in new tab if download fails
+                          window.open(url, '_blank');
+                        }
+                      };
+
+                      return Object.entries(groupedFields).map(([section, fields]) => {
+                        const sectionDocuments = fields.filter(field => {
+                          const value = details.documentVault?.[field.key as keyof typeof details.documentVault];
+                          return value && value !== null;
+                        });
+
+                        if (sectionDocuments.length === 0) return null;
+
+                        return (
+                          <div key={section} className="bg-white rounded-md p-3 border border-gray-200">
+                            <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">{section}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {sectionDocuments.map((field) => {
+                                const url = details.documentVault?.[field.key as keyof typeof details.documentVault] as string;
+                                if (!url) return null;
+
+                                return (
+                                  <div key={field.key} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                                    <span className="text-xs text-gray-700 flex-1 truncate">{field.label}</span>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                      <button
+                                        onClick={() => handleView(url)}
+                                        className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                        title="View"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDownload(url, field.label)}
+                                        className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                                        title="Download"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                    {!details.documentVault.passport_size_photograph &&
+                     !details.documentVault.signature_image &&
+                     !details.documentVault.matric_marksheet &&
+                     !details.documentVault.matric_certificate &&
+                     !details.documentVault.postmatric_marksheet &&
+                     !details.documentVault.valid_photo_id_proof &&
+                     !details.documentVault.sc_certificate &&
+                     !details.documentVault.st_certificate &&
+                     !details.documentVault.obc_ncl_certificate &&
+                     !details.documentVault.ews_certificate &&
+                     !details.documentVault.pwbd_disability_certificate &&
+                     !details.documentVault.udid_card &&
+                     !details.documentVault.domicile_certificate &&
+                     !details.documentVault.citizenship_certificate &&
+                     !details.documentVault.migration_certificate && (
+                      <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No documents uploaded yet</p>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* Career Goals */}
               <section className="bg-purple-50 rounded-lg p-4 border border-purple-200">

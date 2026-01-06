@@ -620,3 +620,87 @@ export async function deleteUserAddress(): Promise<ApiResponse<{
   });
 }
 
+/**
+ * Get user document vault
+ */
+export async function getDocumentVault(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  passport_size_photograph: string | null;
+  signature_image: string | null;
+  matric_marksheet: string | null;
+  matric_certificate: string | null;
+  postmatric_marksheet: string | null;
+  valid_photo_id_proof: string | null;
+  sc_certificate: string | null;
+  st_certificate: string | null;
+  obc_ncl_certificate: string | null;
+  ews_certificate: string | null;
+  pwbd_disability_certificate: string | null;
+  udid_card: string | null;
+  domicile_certificate: string | null;
+  citizenship_certificate: string | null;
+  migration_certificate: string | null;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Upload a document to document vault
+ */
+export async function uploadDocument(
+  file: File,
+  fieldName: string
+): Promise<ApiResponse<{
+  fieldName: string;
+  url: string;
+  documentVault: {
+    id: number;
+    user_id: number;
+    [key: string]: string | number | null;
+  };
+}>> {
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('fieldName', fieldName);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${apiUrl}${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT_UPLOAD}`;
+  
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to upload document');
+  }
+
+  return data;
+}
+
+/**
+ * Delete a document from document vault
+ */
+export async function deleteDocument(fieldName: string): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT}/${fieldName}`, {
+    method: 'DELETE',
+  });
+}
+

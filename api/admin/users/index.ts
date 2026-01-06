@@ -204,6 +204,27 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     created_at: string;
     updated_at: string;
   } | null;
+  documentVault: {
+    id: number;
+    user_id: number;
+    passport_size_photograph: string | null;
+    signature_image: string | null;
+    matric_marksheet: string | null;
+    matric_certificate: string | null;
+    postmatric_marksheet: string | null;
+    valid_photo_id_proof: string | null;
+    sc_certificate: string | null;
+    st_certificate: string | null;
+    obc_ncl_certificate: string | null;
+    ews_certificate: string | null;
+    pwbd_disability_certificate: string | null;
+    udid_card: string | null;
+    domicile_certificate: string | null;
+    citizenship_certificate: string | null;
+    migration_certificate: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
     method: 'GET',

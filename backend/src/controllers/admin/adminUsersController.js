@@ -336,6 +336,10 @@ class AdminUsersController {
       const OtherPersonalDetails = require('../../models/user/OtherPersonalDetails');
       const otherPersonalDetails = await OtherPersonalDetails.findByUserId(userId);
 
+      // Get document vault
+      const DocumentVault = require('../../models/user/DocumentVault');
+      const documentVault = await DocumentVault.findByUserId(userId);
+
       // Get user address
       const UserAddress = require('../../models/user/UserAddress');
       const userAddress = await UserAddress.findByUserId(userId);
@@ -520,6 +524,27 @@ class AdminUsersController {
             occupation_of_mother: otherPersonalDetails.occupation_of_mother,
             created_at: otherPersonalDetails.created_at,
             updated_at: otherPersonalDetails.updated_at
+          } : null,
+          documentVault: documentVault ? {
+            id: documentVault.id,
+            user_id: documentVault.user_id,
+            passport_size_photograph: documentVault.passport_size_photograph,
+            signature_image: documentVault.signature_image,
+            matric_marksheet: documentVault.matric_marksheet,
+            matric_certificate: documentVault.matric_certificate,
+            postmatric_marksheet: documentVault.postmatric_marksheet,
+            valid_photo_id_proof: documentVault.valid_photo_id_proof,
+            sc_certificate: documentVault.sc_certificate,
+            st_certificate: documentVault.st_certificate,
+            obc_ncl_certificate: documentVault.obc_ncl_certificate,
+            ews_certificate: documentVault.ews_certificate,
+            pwbd_disability_certificate: documentVault.pwbd_disability_certificate,
+            udid_card: documentVault.udid_card,
+            domicile_certificate: documentVault.domicile_certificate,
+            citizenship_certificate: documentVault.citizenship_certificate,
+            migration_certificate: documentVault.migration_certificate,
+            created_at: documentVault.created_at,
+            updated_at: documentVault.updated_at
           } : null,
           userAddress: userAddress ? {
             id: userAddress.id,

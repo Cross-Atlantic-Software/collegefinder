@@ -72,7 +72,8 @@ const init = async () => {
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql', // User exam preferences table (depends on users and exams)
       'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
-      'user_other_info.sql'   // User other info table (depends on users, programs, exam_city)
+      'user_other_info.sql',   // User other info table (depends on users, programs, exam_city)
+      'user_document_vault.sql' // User document vault table (depends on users)
     ];
 
     // Execute each schema file in order

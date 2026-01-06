@@ -7,6 +7,7 @@ import { getAcademics, updateAcademics, getAllStreamsPublic, type StreamPublic }
 import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousExamAttempt } from "@/api/exams";
 import { Button, Select, SelectOption, useToast } from "../../shared";
 import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
+import DocumentVault from "./DocumentVault";
 
 const getBarColor = (percent: number) => {
     if (percent >= 85) return "bg-green-500";
@@ -1116,6 +1117,15 @@ export default function AcademicsProfile() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Document Vault Section */}
+            <div className="space-y-5 rounded-md bg-white/5 p-6 mt-6">
+                <div>
+                    <h2 className="text-base font-semibold text-pink sm:text-lg">Document Vault</h2>
+                    <p className="text-sm text-slate-300">Upload and manage your documents securely.</p>
+                </div>
+                <DocumentVault />
             </div>
 
             {/* Actions */}

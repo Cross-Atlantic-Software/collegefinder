@@ -7,6 +7,7 @@ const OtherPersonalDetails = require('../../models/user/OtherPersonalDetails');
 const UserAddress = require('../../models/user/UserAddress');
 const UserOtherInfo = require('../../models/user/UserOtherInfo');
 const UserExamPreferences = require('../../models/user/UserExamPreferences');
+const DocumentVault = require('../../models/user/DocumentVault');
 
 class ProfileCompletionController {
   /**
@@ -27,6 +28,7 @@ class ProfileCompletionController {
       const userAddress = await UserAddress.findByUserId(userId);
       const otherInfo = await UserOtherInfo.findByUserId(userId);
       const examPreferences = await UserExamPreferences.findByUserId(userId);
+      const documentVault = await DocumentVault.findByUserId(userId);
 
       // Parse JSONB fields from academics if they exist
       let academics = academicsRaw;
@@ -121,7 +123,7 @@ class ProfileCompletionController {
           { key: 'postmatric_passing_year', label: '12th Passing Year', value: academics?.postmatric_passing_year },
           { key: 'postmatric_roll_number', label: '12th Roll Number', value: academics?.postmatric_roll_number },
           { key: 'postmatric_marks_type', label: '12th Marks Type', value: academics?.postmatric_marks_type },
-          { key: 'stream', label: 'Stream', value: academics?.stream },
+          { key: 'stream_id', label: 'Stream', value: academics?.stream_id },
           { key: 'subjects', label: '12th Subjects', value: academics?.subjects }
         ];
 
@@ -142,7 +144,7 @@ class ProfileCompletionController {
         matricFields.push(...postmatricFields);
       } else {
         // If pursuing 12th, only stream is required
-        matricFields.push({ key: 'stream', label: 'Stream', value: academics?.stream });
+        matricFields.push({ key: 'stream_id', label: 'Stream', value: academics?.stream_id });
       }
 
       const academicsFields = matricFields;
@@ -275,6 +277,21 @@ class ProfileCompletionController {
           } else {
             missingFields.push({ section: 'Other Info', field: field.label });
           }
+        }
+      });
+
+      // Document Vault Section - Mandatory Documents
+      const mandatoryDocuments = [
+        { key: 'passport_size_photograph', label: 'Passport-size Photograph', value: documentVault?.passport_size_photograph },
+        { key: 'signature_image', label: 'Signature Image', value: documentVault?.signature_image }
+      ];
+
+      mandatoryDocuments.forEach(field => {
+        totalFields++;
+        if (field.value !== null && field.value !== undefined && field.value !== '') {
+          completedFields++;
+        } else {
+          missingFields.push({ section: 'Document Vault', field: field.label });
         }
       });
 
