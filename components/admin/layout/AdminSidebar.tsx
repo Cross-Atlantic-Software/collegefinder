@@ -111,6 +111,11 @@ const navGroups: NavGroup[] = [
         href: '/admin/exam-cities',
         icon: <FiMapPin className="h-4 w-4" />,
       },
+      {
+        label: 'Exams',
+        href: '/admin/exams',
+        icon: <FiFileText className="h-4 w-4" />,
+      },
     ],
   },
   {
@@ -153,11 +158,6 @@ const navGroups: NavGroup[] = [
 ];
 
 const navItems: NavItem[] = [
-  {
-    label: 'Exams',
-    href: '/admin/exams',
-    icon: <FiBook className="h-4 w-4" />,
-  },
   {
     label: 'Email Templates',
     href: '/admin/email-templates',
