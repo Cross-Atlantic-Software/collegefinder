@@ -52,6 +52,8 @@ export default function BasicInfoForm() {
     pwbd_status: false,
     type_of_disability: "",
     disability_percentage: "",
+    state_domicile: false,
+    home_state_for_quota: "",
     udid_number: "",
     minority_status: "",
     ex_serviceman_defence_quota: false,
@@ -79,7 +81,7 @@ export default function BasicInfoForm() {
     permanent_address_same_as_correspondence: true,
     permanent_address: "",
   });
-
+  
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
@@ -105,7 +107,7 @@ export default function BasicInfoForm() {
               }
             }
           }
-
+          
           const formDataToSet: CoreIdentityFormData = {
             name: response.data.name ?? "",
             first_name: response.data.first_name ?? "",
@@ -121,7 +123,7 @@ export default function BasicInfoForm() {
             guardian_name: response.data.guardian_name ?? "",
             alternate_mobile_number: response.data.alternate_mobile_number ?? "",
           };
-
+          
           setFormData(formDataToSet);
           setProfilePhotoPreview(response.data.profile_photo || null);
           setEmail(response.data.email || "");
@@ -154,6 +156,8 @@ export default function BasicInfoForm() {
                 minority_status: catResResponse.data.minority_status || "",
                 ex_serviceman_defence_quota: catResResponse.data.ex_serviceman_defence_quota || false,
                 kashmiri_migrant_regional_quota: catResResponse.data.kashmiri_migrant_regional_quota || false,
+                state_domicile: catResResponse.data.state_domicile || false,
+                home_state_for_quota: catResResponse.data.home_state_for_quota || "",
               });
             }
           } catch (err) {

@@ -275,7 +275,17 @@ const validateCategoryAndReservation = [
   body('kashmiri_migrant_regional_quota')
     .optional()
     .isBoolean()
-    .withMessage('Kashmiri migrant/Regional quota must be a boolean')
+    .withMessage('Kashmiri migrant/Regional quota must be a boolean'),
+  body('state_domicile')
+    .optional()
+    .isBoolean()
+    .withMessage('State domicile must be a boolean'),
+  body('home_state_for_quota')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Home state for quota must be a string with max 100 characters')
 ];
 
 /**
@@ -1007,6 +1017,39 @@ const validateUpdateProgram = [
 ];
 
 /**
+ * Validation rules for creating exam city
+ */
+const validateCreateExamCity = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
+ * Validation rules for updating exam city
+ */
+const validateUpdateExamCity = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+/**
  * Validation rules for creating category
  */
 const validateCreateCategory = [
@@ -1714,6 +1757,8 @@ module.exports = {
   validateUpdateLevel,
   validateCreateProgram,
   validateUpdateProgram,
+  validateCreateExamCity,
+  validateUpdateExamCity,
   validateCreateCategory,
   validateUpdateCategory,
   validateCreateCollege,

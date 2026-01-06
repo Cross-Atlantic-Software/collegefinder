@@ -2,8 +2,12 @@ const User = require('../../models/user/User');
 const UserAcademics = require('../../models/user/UserAcademics');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
 const UserExamPreferences = require('../../models/user/UserExamPreferences');
+const UserOtherInfo = require('../../models/user/UserOtherInfo');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Exam = require('../../models/taxonomy/Exam');
+const Program = require('../../models/taxonomy/Program');
+const ExamCity = require('../../models/taxonomy/ExamCity');
+const Stream = require('../../models/taxonomy/Stream');
 
 class AdminUsersController {
   /**
@@ -14,11 +18,23 @@ class AdminUsersController {
     try {
       const users = await User.findAll();
       
+      // Helper function to convert PostgreSQL boolean to JavaScript boolean
+      const toBoolean = (value) => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase().trim();
+          return lower === 't' || lower === 'true' || lower === '1';
+        }
+        if (typeof value === 'number') return value === 1;
+        return false;
+      };
+      
       // Ensure boolean values are properly converted and phone_number is included
       const formattedUsers = users.map(user => ({
         ...user,
-        email_verified: user.email_verified === true || user.email_verified === 't' || user.email_verified === 1 || user.email_verified === 'true',
-        is_active: user.is_active === true || user.is_active === 't' || user.is_active === 1 || user.is_active === 'true',
+        email_verified: toBoolean(user.email_verified),
+        is_active: toBoolean(user.is_active),
         phone_number: user.phone_number || null
       }));
       
@@ -197,6 +213,33 @@ class AdminUsersController {
 
       // Get academics
       const academics = await UserAcademics.findByUserId(userId);
+      
+      // Debug: Log what we got from the database
+      if (academics) {
+        console.log(`[DEBUG] User ${userId} academics from DB:`, {
+          stream_id: academics.stream_id,
+          stream: academics.stream,
+          stream_id_type: typeof academics.stream_id,
+          stream_id_value: academics.stream_id,
+          has_stream_id: 'stream_id' in academics,
+          all_keys: Object.keys(academics).filter(k => k.includes('stream'))
+        });
+        
+        // If stream_id is not in the object, try to get it directly from DB
+        if (!('stream_id' in academics) || academics.stream_id === undefined) {
+          console.log(`[DEBUG] stream_id missing, querying directly...`);
+          const db = require('../../config/database');
+          const directQuery = await db.query(
+            'SELECT stream_id FROM user_academics WHERE user_id = $1',
+            [userId]
+          );
+          if (directQuery.rows[0]) {
+            academics.stream_id = directQuery.rows[0].stream_id;
+            console.log(`[DEBUG] Retrieved stream_id directly: ${academics.stream_id}`);
+          }
+        }
+      }
+      
       let subjects = [];
       if (academics?.subjects) {
         try {
@@ -220,6 +263,33 @@ class AdminUsersController {
           matricSubjects = [];
         }
       }
+
+      // Get stream name if stream_id exists
+      let streamName = null;
+      const streamId = academics?.stream_id;
+      
+      console.log(`[DEBUG] User ${userId} - stream_id value:`, streamId, 'type:', typeof streamId);
+      
+      if (streamId !== null && streamId !== undefined) {
+        try {
+          console.log(`[DEBUG] Looking up stream with ID: ${streamId}`);
+          const stream = await Stream.findById(streamId);
+          streamName = stream ? stream.name : null;
+          console.log(`[DEBUG] Stream lookup result:`, stream ? stream.name : 'NOT FOUND');
+        } catch (error) {
+          console.error(`Error fetching stream for user ${userId}, stream_id=${streamId}:`, error);
+        }
+      } else {
+        console.log(`[DEBUG] User ${userId} - stream_id is null/undefined, checking deprecated stream field`);
+      }
+      
+      // Fallback to deprecated stream field if stream_id is not available
+      if (!streamName && academics?.stream) {
+        streamName = academics.stream;
+        console.log(`[DEBUG] Using fallback stream field: ${streamName}`);
+      }
+      
+      console.log(`[DEBUG] Final streamName for user ${userId}:`, streamName);
 
       // Get career goals
       const careerGoals = await UserCareerGoals.findByUserId(userId);
@@ -269,6 +339,45 @@ class AdminUsersController {
       // Get user address
       const UserAddress = require('../../models/user/UserAddress');
       const userAddress = await UserAddress.findByUserId(userId);
+
+      // Get other info
+      const otherInfo = await UserOtherInfo.findByUserId(userId);
+      let programNames = [];
+      let examCityNames = [];
+
+      if (otherInfo) {
+        // Map program IDs to names
+        if (otherInfo.program_ids && Array.isArray(otherInfo.program_ids) && otherInfo.program_ids.length > 0) {
+          const allPrograms = await Program.findAll();
+          const programMap = new Map();
+          allPrograms.forEach(program => {
+            programMap.set(program.id, program);
+          });
+
+          programNames = otherInfo.program_ids
+            .map(id => {
+              const program = programMap.get(parseInt(id));
+              return program ? program.name : `ID: ${id}`;
+            })
+            .filter(Boolean);
+        }
+
+        // Map exam city IDs to names
+        if (otherInfo.exam_city_ids && Array.isArray(otherInfo.exam_city_ids) && otherInfo.exam_city_ids.length > 0) {
+          const allExamCities = await ExamCity.findAll();
+          const examCityMap = new Map();
+          allExamCities.forEach(city => {
+            examCityMap.set(city.id, city);
+          });
+
+          examCityNames = otherInfo.exam_city_ids
+            .map(id => {
+              const city = examCityMap.get(parseInt(id));
+              return city ? city.name : `ID: ${id}`;
+            })
+            .filter(Boolean);
+        }
+      }
 
       // Get exam preferences
       const examPreferences = await UserExamPreferences.findByUserId(userId);
@@ -339,6 +448,11 @@ class AdminUsersController {
             matric_total_marks: academics.matric_total_marks,
             matric_obtained_marks: academics.matric_obtained_marks,
             matric_percentage: academics.matric_percentage,
+            matric_state: academics.matric_state,
+            matric_city: academics.matric_city,
+            matric_marks_type: academics.matric_marks_type,
+            matric_cgpa: academics.matric_cgpa,
+            matric_result_status: academics.matric_result_status,
             matric_subjects: matricSubjects,
             postmatric_board: academics.postmatric_board,
             postmatric_school_name: academics.postmatric_school_name,
@@ -347,7 +461,13 @@ class AdminUsersController {
             postmatric_total_marks: academics.postmatric_total_marks,
             postmatric_obtained_marks: academics.postmatric_obtained_marks,
             postmatric_percentage: academics.postmatric_percentage,
-            stream: academics.stream,
+            postmatric_state: academics.postmatric_state,
+            postmatric_city: academics.postmatric_city,
+            postmatric_marks_type: academics.postmatric_marks_type,
+            postmatric_cgpa: academics.postmatric_cgpa,
+            postmatric_result_status: academics.postmatric_result_status,
+            stream: streamName,
+            stream_id: academics.stream_id !== undefined ? academics.stream_id : null,
             subjects: subjects,
             is_pursuing_12th: academics.is_pursuing_12th || false,
             created_at: academics.created_at,
@@ -385,6 +505,8 @@ class AdminUsersController {
             minority_status: categoryAndReservation.minority_status,
             ex_serviceman_defence_quota: categoryAndReservation.ex_serviceman_defence_quota,
             kashmiri_migrant_regional_quota: categoryAndReservation.kashmiri_migrant_regional_quota,
+            state_domicile: categoryAndReservation.state_domicile,
+            home_state_for_quota: categoryAndReservation.home_state_for_quota,
             created_at: categoryAndReservation.created_at,
             updated_at: categoryAndReservation.updated_at
           } : null,
@@ -413,6 +535,18 @@ class AdminUsersController {
             permanent_address: userAddress.permanent_address,
             created_at: userAddress.created_at,
             updated_at: userAddress.updated_at
+          } : null,
+          otherInfo: otherInfo ? {
+            id: otherInfo.id,
+            user_id: otherInfo.user_id,
+            medium: otherInfo.medium,
+            language: otherInfo.language,
+            program_ids: otherInfo.program_ids || [],
+            program_names: programNames,
+            exam_city_ids: otherInfo.exam_city_ids || [],
+            exam_city_names: examCityNames,
+            created_at: otherInfo.created_at,
+            updated_at: otherInfo.updated_at
           } : null
         }
       });

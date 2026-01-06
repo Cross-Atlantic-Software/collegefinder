@@ -13,6 +13,7 @@ const GovernmentIdentificationController = require('../../controllers/profile/go
 const CategoryAndReservationController = require('../../controllers/profile/categoryAndReservationController');
 const OtherPersonalDetailsController = require('../../controllers/profile/otherPersonalDetailsController');
 const UserAddressController = require('../../controllers/profile/userAddressController');
+const UserOtherInfoController = require('../../controllers/profile/userOtherInfoController');
 const { authenticate } = require('../../middleware/auth');
 
 // Configure multer for memory storage (for S3 upload)
@@ -305,6 +306,20 @@ router.put('/profile/address', authenticate, validateUserAddress, UserAddressCon
  * @access  Private
  */
 router.delete('/profile/address', authenticate, UserAddressController.deleteAddress);
+
+/**
+ * @route   GET /api/auth/profile/other-info
+ * @desc    Get user other info
+ * @access  Private
+ */
+router.get('/profile/other-info', authenticate, UserOtherInfoController.getOtherInfo);
+
+/**
+ * @route   PUT /api/auth/profile/other-info
+ * @desc    Create or update user other info
+ * @access  Private
+ */
+router.put('/profile/other-info', authenticate, UserOtherInfoController.updateOtherInfo);
 
 module.exports = router;
 

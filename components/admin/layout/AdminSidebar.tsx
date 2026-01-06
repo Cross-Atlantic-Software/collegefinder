@@ -106,6 +106,11 @@ const navGroups: NavGroup[] = [
         href: '/admin/categories',
         icon: <FiBook className="h-4 w-4" />,
       },
+      {
+        label: 'Exam Cities',
+        href: '/admin/exam-cities',
+        icon: <FiMapPin className="h-4 w-4" />,
+      },
     ],
   },
   {

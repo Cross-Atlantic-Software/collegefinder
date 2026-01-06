@@ -56,6 +56,7 @@ const init = async () => {
       'purposes.sql',         // Purposes table and lecture_purposes junction table
       'levels.sql',           // Levels taxonomy table
       'programs.sql',         // Programs taxonomy table
+      'exam_city.sql',        // Exam city taxonomy table
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges table
       'college_location.sql', // College locations table (depends on colleges)
@@ -69,7 +70,9 @@ const init = async () => {
       'college_faqs.sql',     // College FAQs table (depends on colleges)
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
-      'user_exam_preferences.sql' // User exam preferences table (depends on users and exams)
+      'user_exam_preferences.sql', // User exam preferences table (depends on users and exams)
+      'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
+      'user_other_info.sql'   // User other info table (depends on users, programs, exam_city)
     ];
 
     // Execute each schema file in order
