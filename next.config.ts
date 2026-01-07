@@ -4,8 +4,20 @@ const nextConfig: NextConfig = {
   /* config options here */
   // Force webpack instead of Turbopack (Turbopack doesn't work with WASM bindings)
   webpack: (config, { isServer }) => {
+    // Optimize webpack for faster builds
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+      };
+    }
+    // Reduce parallelism to save memory
+    config.parallelism = 1;
     return config;
   },
+  // Disable source maps in production for faster builds
+  productionBrowserSourceMaps: false,
+  // Optimize images
   images: {
     remotePatterns: [
       {
@@ -24,6 +36,12 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
   },
 };
 
