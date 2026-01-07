@@ -35,6 +35,8 @@ class UserAcademics {
       matric_total_marks,
       matric_obtained_marks,
       matric_percentage,
+      matric_state,
+      matric_city,
       // Post-Matric (12th) fields
       postmatric_board,
       postmatric_school_name,
@@ -43,6 +45,14 @@ class UserAcademics {
       postmatric_total_marks,
       postmatric_obtained_marks,
       postmatric_percentage,
+      postmatric_state,
+      postmatric_city,
+      matric_marks_type,
+      matric_cgpa,
+      matric_result_status,
+      postmatric_marks_type,
+      postmatric_cgpa,
+      postmatric_result_status,
       stream,
       stream_id,
       subjects,
@@ -123,66 +133,127 @@ class UserAcademics {
       const matricSubjectsParam = matricSubjectsJson ? JSON.stringify(matricSubjectsJson) : null;
       const subjectsParam = subjectsJson ? JSON.stringify(subjectsJson) : null;
       
-      // Pass as text and let PostgreSQL convert to JSONB
-      // This avoids double-stringification issues
-      const result = await db.query(
-        `INSERT INTO user_academics (
-          user_id, 
-          matric_board, matric_school_name, matric_passing_year, matric_roll_number,
-          matric_total_marks, matric_obtained_marks, matric_percentage,
-          postmatric_board, postmatric_school_name, postmatric_passing_year, postmatric_roll_number,
-          postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage,
-          stream, stream_id, subjects, matric_subjects, is_pursuing_12th
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20)
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          matric_board = EXCLUDED.matric_board,
-          matric_school_name = EXCLUDED.matric_school_name,
-          matric_passing_year = EXCLUDED.matric_passing_year,
-          matric_roll_number = EXCLUDED.matric_roll_number,
-          matric_total_marks = EXCLUDED.matric_total_marks,
-          matric_obtained_marks = EXCLUDED.matric_obtained_marks,
-          matric_percentage = EXCLUDED.matric_percentage,
-          postmatric_board = EXCLUDED.postmatric_board,
-          postmatric_school_name = EXCLUDED.postmatric_school_name,
-          postmatric_passing_year = EXCLUDED.postmatric_passing_year,
-          postmatric_roll_number = EXCLUDED.postmatric_roll_number,
-          postmatric_total_marks = EXCLUDED.postmatric_total_marks,
-          postmatric_obtained_marks = EXCLUDED.postmatric_obtained_marks,
-          postmatric_percentage = EXCLUDED.postmatric_percentage,
-          stream = EXCLUDED.stream,
-          stream_id = EXCLUDED.stream_id,
-          subjects = EXCLUDED.subjects::jsonb,
-          matric_subjects = EXCLUDED.matric_subjects::jsonb,
-          is_pursuing_12th = EXCLUDED.is_pursuing_12th,
-          updated_at = CURRENT_TIMESTAMP
-        RETURNING *`,
-        [
-          userIdNum,
-          matric_board || null,
-          matric_school_name || null,
-          matric_passing_year || null,
-          matric_roll_number || null,
-          matric_total_marks || null,
-          matric_obtained_marks || null,
-          matric_percentage || null,
-          postmatric_board || null,
-          postmatric_school_name || null,
-          postmatric_passing_year || null,
-          postmatric_roll_number || null,
-          postmatric_total_marks || null,
-          postmatric_obtained_marks || null,
-          postmatric_percentage || null,
-          stream || null,
-          stream_id || null,
-          subjectsParam,  // JSON string - cast to jsonb
-          matricSubjectsParam,  // JSON string - cast to jsonb
-          is_pursuing_12th !== undefined ? is_pursuing_12th : false
-        ]
-      );
-
-      return result.rows[0];
+      // Check if record exists
+      const existing = await UserAcademics.findByUserId(userIdNum);
+      
+      if (existing) {
+        // Update existing record - only update fields that are provided (not undefined)
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+        
+        // Helper to add update if value is provided
+        const addUpdate = (field, value) => {
+          if (value !== undefined) {
+            updates.push(`${field} = $${paramCount++}`);
+            values.push(value !== null && value !== '' ? value : null);
+          }
+        };
+        
+        // Matric fields
+        addUpdate('matric_board', matric_board);
+        addUpdate('matric_school_name', matric_school_name);
+        addUpdate('matric_passing_year', matric_passing_year);
+        addUpdate('matric_roll_number', matric_roll_number);
+        addUpdate('matric_total_marks', matric_total_marks);
+        addUpdate('matric_obtained_marks', matric_obtained_marks);
+        addUpdate('matric_percentage', matric_percentage);
+        addUpdate('matric_state', matric_state);
+        addUpdate('matric_city', matric_city);
+        addUpdate('matric_marks_type', matric_marks_type);
+        addUpdate('matric_cgpa', matric_cgpa);
+        addUpdate('matric_result_status', matric_result_status);
+        
+        // Post-Matric fields
+        addUpdate('postmatric_board', postmatric_board);
+        addUpdate('postmatric_school_name', postmatric_school_name);
+        addUpdate('postmatric_passing_year', postmatric_passing_year);
+        addUpdate('postmatric_roll_number', postmatric_roll_number);
+        addUpdate('postmatric_total_marks', postmatric_total_marks);
+        addUpdate('postmatric_obtained_marks', postmatric_obtained_marks);
+        addUpdate('postmatric_percentage', postmatric_percentage);
+        addUpdate('postmatric_state', postmatric_state);
+        addUpdate('postmatric_city', postmatric_city);
+        addUpdate('postmatric_marks_type', postmatric_marks_type);
+        addUpdate('postmatric_cgpa', postmatric_cgpa);
+        addUpdate('postmatric_result_status', postmatric_result_status);
+        addUpdate('stream', stream);
+        addUpdate('stream_id', stream_id);
+        addUpdate('is_pursuing_12th', is_pursuing_12th);
+        
+        // Handle JSONB fields
+        if (subjectsParam !== undefined) {
+          updates.push(`subjects = $${paramCount++}::jsonb`);
+          values.push(subjectsParam);
+        }
+        if (matricSubjectsParam !== undefined) {
+          updates.push(`matric_subjects = $${paramCount++}::jsonb`);
+          values.push(matricSubjectsParam);
+        }
+        
+        // Always update updated_at
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        
+        if (updates.length > 0) {
+          values.push(userIdNum);
+          const result = await db.query(
+            `UPDATE user_academics SET ${updates.join(', ')} WHERE user_id = $${paramCount} RETURNING *`,
+            values
+          );
+          return result.rows[0];
+        } else {
+          return existing;
+        }
+      } else {
+        // Insert new record
+        const result = await db.query(
+          `INSERT INTO user_academics (
+            user_id, 
+            matric_board, matric_school_name, matric_passing_year, matric_roll_number,
+            matric_total_marks, matric_obtained_marks, matric_percentage, matric_state, matric_city,
+            postmatric_board, postmatric_school_name, postmatric_passing_year, postmatric_roll_number,
+            postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage, postmatric_state, postmatric_city,
+            matric_marks_type, matric_cgpa, matric_result_status,
+            postmatric_marks_type, postmatric_cgpa, postmatric_result_status,
+            stream, stream_id, subjects, matric_subjects, is_pursuing_12th
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28::jsonb, $29::jsonb, $30)
+          RETURNING *`,
+          [
+            userIdNum,
+            matric_board || null,
+            matric_school_name || null,
+            matric_passing_year || null,
+            matric_roll_number || null,
+            matric_total_marks || null,
+            matric_obtained_marks || null,
+            matric_percentage || null,
+            matric_state || null,
+            matric_city || null,
+            postmatric_board || null,
+            postmatric_school_name || null,
+            postmatric_passing_year || null,
+            postmatric_roll_number || null,
+            postmatric_total_marks || null,
+            postmatric_obtained_marks || null,
+            postmatric_percentage || null,
+            postmatric_state || null,
+            postmatric_city || null,
+            matric_marks_type || null,
+            matric_cgpa || null,
+            matric_result_status || null,
+            postmatric_marks_type || null,
+            postmatric_cgpa || null,
+            postmatric_result_status || null,
+            stream || null,
+            stream_id || null,
+            subjectsParam,  // JSON string - cast to jsonb
+            matricSubjectsParam,  // JSON string - cast to jsonb
+            is_pursuing_12th !== undefined ? is_pursuing_12th : false
+          ]
+        );
+        return result.rows[0];
+      }
     } catch (dbError) {
       throw dbError;
     }

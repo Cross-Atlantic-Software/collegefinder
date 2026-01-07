@@ -3,17 +3,20 @@
 
 import { useState, ReactNode } from "react";
 import { FaUser, FaGraduationCap, FaBullseye } from "react-icons/fa6";
+import { FaInfoCircle } from "react-icons/fa";
 
 import BasicInfoForm from "./BasicInfoForm";
 import AcademicsProfile from "./AcademicsProfile";
 import CareerGoalsTab from "./CareerGoals";
+import OtherInfoTab from "./OtherInfoTab";
 
-type TabKey = "basic" | "academics" | "career";
+type TabKey = "basic" | "academics" | "career" | "other";
 
 const tabs: { key: TabKey; label: string; icon: ReactNode }[] = [
-  { key: "basic", label: "Basic Info", icon: <FaUser className="text-base" /> },
+  { key: "basic", label: "Personal Details", icon: <FaUser className="text-base" /> },
   { key: "academics", label: "Academics", icon: <FaGraduationCap className="text-base" /> },
   { key: "career", label: "Career Goals", icon: <FaBullseye className="text-base" /> },
+  { key: "other", label: "Other Info", icon: <FaInfoCircle className="text-base" /> },
 ];
 
 export default function ProfileTabs() {
@@ -45,6 +48,7 @@ export default function ProfileTabs() {
       {activeTab === "basic" && <BasicInfoForm />}
       {activeTab === "academics" && <AcademicsProfile />}
       {activeTab === "career" && <CareerGoalsTab />}
+      {activeTab === "other" && <OtherInfoTab />}
     </div>
   );
 }

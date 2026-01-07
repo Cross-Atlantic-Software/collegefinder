@@ -31,6 +31,8 @@ export interface CategoryAndReservationData {
   minority_status: string;
   ex_serviceman_defence_quota: boolean;
   kashmiri_migrant_regional_quota: boolean;
+  state_domicile: boolean;
+  home_state_for_quota: string;
 }
 
 export interface OtherPersonalDetailsData {

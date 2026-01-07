@@ -115,6 +115,11 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_total_marks: number | null;
   matric_obtained_marks: number | null;
   matric_percentage: number | null;
+  matric_state: string | null;
+  matric_city: string | null;
+  matric_marks_type: string | null;
+  matric_cgpa: number | null;
+  matric_result_status: string | null;
   matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   // Post-Matric (12th) fields
   postmatric_board: string | null;
@@ -124,7 +129,13 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_total_marks: number | null;
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
+  postmatric_state: string | null;
+  postmatric_city: string | null;
+  postmatric_marks_type: string | null;
+  postmatric_cgpa: number | null;
+  postmatric_result_status: string | null;
   stream: string | null;
+  stream_id: number | null;
   subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
 } | null>> {
@@ -425,6 +436,8 @@ export async function getCategoryAndReservation(): Promise<ApiResponse<{
   minority_status: string | null;
   ex_serviceman_defence_quota: boolean;
   kashmiri_migrant_regional_quota: boolean;
+  state_domicile: boolean;
+  home_state_for_quota: string | null;
   created_at: string;
   updated_at: string;
 } | null>> {
@@ -446,6 +459,8 @@ export async function upsertCategoryAndReservation(data: {
   minority_status?: string;
   ex_serviceman_defence_quota?: boolean;
   kashmiri_migrant_regional_quota?: boolean;
+  state_domicile?: boolean;
+  home_state_for_quota?: string;
 }): Promise<ApiResponse<{
   id: number;
   user_id: number;
@@ -459,6 +474,8 @@ export async function upsertCategoryAndReservation(data: {
   minority_status: string | null;
   ex_serviceman_defence_quota: boolean;
   kashmiri_migrant_regional_quota: boolean;
+  state_domicile: boolean;
+  home_state_for_quota: string | null;
   created_at: string;
   updated_at: string;
 }>> {
@@ -599,6 +616,90 @@ export async function deleteUserAddress(): Promise<ApiResponse<{
   message: string;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ADDRESS, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get user document vault
+ */
+export async function getDocumentVault(): Promise<ApiResponse<{
+  id: number;
+  user_id: number;
+  passport_size_photograph: string | null;
+  signature_image: string | null;
+  matric_marksheet: string | null;
+  matric_certificate: string | null;
+  postmatric_marksheet: string | null;
+  valid_photo_id_proof: string | null;
+  sc_certificate: string | null;
+  st_certificate: string | null;
+  obc_ncl_certificate: string | null;
+  ews_certificate: string | null;
+  pwbd_disability_certificate: string | null;
+  udid_card: string | null;
+  domicile_certificate: string | null;
+  citizenship_certificate: string | null;
+  migration_certificate: string | null;
+  created_at: string;
+  updated_at: string;
+} | null>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Upload a document to document vault
+ */
+export async function uploadDocument(
+  file: File,
+  fieldName: string
+): Promise<ApiResponse<{
+  fieldName: string;
+  url: string;
+  documentVault: {
+    id: number;
+    user_id: number;
+    [key: string]: string | number | null;
+  };
+}>> {
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('fieldName', fieldName);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${apiUrl}${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT_UPLOAD}`;
+  
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to upload document');
+  }
+
+  return data;
+}
+
+/**
+ * Delete a document from document vault
+ */
+export async function deleteDocument(fieldName: string): Promise<ApiResponse<{
+  message: string;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT}/${fieldName}`, {
     method: 'DELETE',
   });
 }

@@ -51,7 +51,9 @@ class CategoryAndReservation {
       udid_number,
       minority_status,
       ex_serviceman_defence_quota,
-      kashmiri_migrant_regional_quota
+      kashmiri_migrant_regional_quota,
+      state_domicile,
+      home_state_for_quota
     } = data;
 
     // Check if record exists
@@ -70,8 +72,10 @@ class CategoryAndReservation {
              minority_status = $7,
              ex_serviceman_defence_quota = $8,
              kashmiri_migrant_regional_quota = $9,
+             state_domicile = $10,
+             home_state_for_quota = $11,
              updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $10
+         WHERE user_id = $12
          RETURNING *`,
         [
           category_id || null,
@@ -83,6 +87,8 @@ class CategoryAndReservation {
           minority_status || null,
           ex_serviceman_defence_quota === true || ex_serviceman_defence_quota === 'true' || ex_serviceman_defence_quota === 1,
           kashmiri_migrant_regional_quota === true || kashmiri_migrant_regional_quota === 'true' || kashmiri_migrant_regional_quota === 1,
+          state_domicile === true || state_domicile === 'true' || state_domicile === 1,
+          home_state_for_quota || null,
           userIdNum
         ]
       );
@@ -93,8 +99,9 @@ class CategoryAndReservation {
         `INSERT INTO category_and_reservation 
          (user_id, category_id, ews_status, pwbd_status, type_of_disability, 
           disability_percentage, udid_number, minority_status, 
-          ex_serviceman_defence_quota, kashmiri_migrant_regional_quota)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ex_serviceman_defence_quota, kashmiri_migrant_regional_quota,
+          state_domicile, home_state_for_quota)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING *`,
         [
           userIdNum,
@@ -106,7 +113,9 @@ class CategoryAndReservation {
           udid_number || null,
           minority_status || null,
           ex_serviceman_defence_quota === true || ex_serviceman_defence_quota === 'true' || ex_serviceman_defence_quota === 1,
-          kashmiri_migrant_regional_quota === true || kashmiri_migrant_regional_quota === 'true' || kashmiri_migrant_regional_quota === 1
+          kashmiri_migrant_regional_quota === true || kashmiri_migrant_regional_quota === 'true' || kashmiri_migrant_regional_quota === 1,
+          state_domicile === true || state_domicile === 'true' || state_domicile === 1,
+          home_state_for_quota || null
         ]
       );
       return result.rows[0];

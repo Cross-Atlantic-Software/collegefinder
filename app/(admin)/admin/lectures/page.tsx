@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllLectures, getLecturesBySubtopicId, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes } from '@/api';
-import { getAllSubtopics } from '@/api';
+import { getAllLectures, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, getAllTopics, getSubtopicsByTopicId, getSubtopicById, getAllSubtopics } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage, FiVideo } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 import RichTextEditor from '@/components/shared/RichTextEditor';
@@ -21,6 +20,7 @@ export default function LecturesPage() {
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({ 
+    topic_id: '',
     subtopic_id: '', 
     name: '', 
     content_type: 'VIDEO' as 'VIDEO' | 'ARTICLE',
@@ -29,7 +29,9 @@ export default function LecturesPage() {
     sort_order: 0
   });
   const [articleContent, setArticleContent] = useState('');
+  const [availableTopics, setAvailableTopics] = useState<SelectOption[]>([]);
   const [availableSubtopics, setAvailableSubtopics] = useState<SelectOption[]>([]);
+  const [allSubtopics, setAllSubtopics] = useState<Array<{ id: number; topic_id: number; name: string }>>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoSourceType, setVideoSourceType] = useState<'file' | 'iframe'>('file');
   const [iframeCode, setIframeCode] = useState('');
@@ -55,13 +57,51 @@ export default function LecturesPage() {
     }
 
     fetchLectures();
-    fetchSubtopics();
+    fetchTopics();
+    fetchAllSubtopics();
     fetchPurposes();
   }, [router]);
 
-  const fetchSubtopics = async () => {
+  const fetchTopics = async () => {
+    try {
+      const response = await getAllTopics();
+      if (response.success && response.data) {
+        setAvailableTopics(
+          response.data.topics.map((t) => ({
+            value: String(t.id),
+            label: t.name,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching topics:', err);
+    }
+  };
+
+  const fetchAllSubtopics = async () => {
     try {
       const response = await getAllSubtopics();
+      if (response.success && response.data) {
+        setAllSubtopics(
+          response.data.subtopics.map((s) => ({
+            id: s.id,
+            topic_id: s.topic_id,
+            name: s.name,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching all subtopics:', err);
+    }
+  };
+
+  const fetchSubtopicsByTopic = async (topicId: string) => {
+    if (!topicId) {
+      setAvailableSubtopics([]);
+      return;
+    }
+    try {
+      const response = await getSubtopicsByTopicId(parseInt(topicId));
       if (response.success && response.data) {
         setAvailableSubtopics(
           response.data.subtopics.map((s) => ({
@@ -69,11 +109,25 @@ export default function LecturesPage() {
             label: s.name,
           }))
         );
+      } else {
+        setAvailableSubtopics([]);
       }
     } catch (err) {
       console.error('Error fetching subtopics:', err);
+      setAvailableSubtopics([]);
     }
   };
+
+  // Fetch subtopics when topic changes
+  useEffect(() => {
+    if (formData.topic_id) {
+      fetchSubtopicsByTopic(formData.topic_id);
+      // Clear subtopic when topic changes (but preserve other form data)
+      setFormData(prev => ({ ...prev, subtopic_id: '' }));
+    } else {
+      setAvailableSubtopics([]);
+    }
+  }, [formData.topic_id]);
 
   const fetchPurposes = async () => {
     try {
@@ -208,16 +262,51 @@ export default function LecturesPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (lecture: Lecture) => {
+  const handleEdit = async (lecture: Lecture) => {
     setEditingLecture(lecture);
-    setFormData({
-      subtopic_id: String(lecture.subtopic_id),
-      name: lecture.name,
-      content_type: lecture.content_type || 'VIDEO',
-      status: lecture.status,
-      description: lecture.description || '',
-      sort_order: lecture.sort_order
-    });
+    
+    // Get the subtopic to find its topic_id
+    try {
+      const subtopicResponse = await getSubtopicById(lecture.subtopic_id);
+      if (subtopicResponse.success && subtopicResponse.data) {
+        const topicId = String(subtopicResponse.data.subtopic.topic_id);
+        setFormData({
+          topic_id: topicId,
+          subtopic_id: String(lecture.subtopic_id),
+          name: lecture.name,
+          content_type: lecture.content_type || 'VIDEO',
+          status: lecture.status,
+          description: lecture.description || '',
+          sort_order: lecture.sort_order
+        });
+        // Fetch subtopics for this topic
+        await fetchSubtopicsByTopic(topicId);
+      } else {
+        // Fallback if subtopic fetch fails
+        setFormData({
+          topic_id: '',
+          subtopic_id: String(lecture.subtopic_id),
+          name: lecture.name,
+          content_type: lecture.content_type || 'VIDEO',
+          status: lecture.status,
+          description: lecture.description || '',
+          sort_order: lecture.sort_order
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching subtopic:', err);
+      // Fallback
+      setFormData({
+        topic_id: '',
+        subtopic_id: String(lecture.subtopic_id),
+        name: lecture.name,
+        content_type: lecture.content_type || 'VIDEO',
+        status: lecture.status,
+        description: lecture.description || '',
+        sort_order: lecture.sort_order
+      });
+    }
+    
     setArticleContent(lecture.article_content || '');
     setThumbnailPreview(lecture.thumbnail);
     setThumbnailFile(null);
@@ -291,6 +380,7 @@ export default function LecturesPage() {
 
   const resetForm = () => {
     setFormData({ 
+      topic_id: '',
       subtopic_id: '', 
       name: '', 
       content_type: 'VIDEO',
@@ -305,6 +395,7 @@ export default function LecturesPage() {
     setThumbnailFile(null);
     setThumbnailPreview(null);
     setSelectedPurposes([]);
+    setAvailableSubtopics([]);
     setError(null);
   };
 
@@ -391,6 +482,7 @@ export default function LecturesPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">THUMBNAIL</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TOPIC</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">SUBTOPIC</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CONTENT TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">PURPOSES</th>
@@ -402,13 +494,16 @@ export default function LecturesPage() {
                   <tbody className="divide-y divide-gray-200">
                     {lectures.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500">
                           {lectures.length < allLectures.length ? 'No lectures found matching your search' : 'No lectures found'}
                         </td>
                       </tr>
                     ) : (
                       lectures.map((lecture) => {
-                        const subtopic = availableSubtopics.find((s) => s.value === String(lecture.subtopic_id));
+                        const subtopicData = allSubtopics.find((s) => s.id === lecture.subtopic_id);
+                        const topic = subtopicData ? availableTopics.find((t) => t.value === String(subtopicData.topic_id)) : null;
+                        const subtopic = availableSubtopics.find((s) => s.value === String(lecture.subtopic_id)) || 
+                          (subtopicData ? { value: String(subtopicData.id), label: subtopicData.name } : null);
                         const lecturePurposes = lecture.purposes || [];
                         return (
                           <tr key={lecture.id} className="hover:bg-gray-50 transition-colors">
@@ -427,6 +522,9 @@ export default function LecturesPage() {
                             </td>
                             <td className="px-4 py-2">
                               <span className="text-sm font-medium text-gray-900">{lecture.name}</span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className="text-sm text-gray-600">{topic?.label || '-'}</span>
                             </td>
                             <td className="px-4 py-2">
                               <span className="text-sm text-gray-600">{subtopic?.label || `Subtopic ${lecture.subtopic_id}`}</span>
@@ -543,16 +641,34 @@ export default function LecturesPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Topic <span className="text-pink">*</span>
+                  </label>
+                  <Select
+                    options={availableTopics}
+                    value={formData.topic_id}
+                    onChange={(value) => setFormData({ ...formData, topic_id: value || '', subtopic_id: '' })}
+                    placeholder="Select topic first"
+                    isSearchable
+                    isClearable={false}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Subtopic <span className="text-pink">*</span>
                   </label>
                   <Select
                     options={availableSubtopics}
                     value={formData.subtopic_id}
                     onChange={(value) => setFormData({ ...formData, subtopic_id: value || '' })}
-                    placeholder="Select subtopic"
+                    placeholder={formData.topic_id ? "Select subtopic" : "Select topic first"}
                     isSearchable
                     isClearable={false}
+                    disabled={!formData.topic_id}
                   />
+                  {!formData.topic_id && (
+                    <p className="text-xs text-gray-500 mt-1">Please select a topic first</p>
+                  )}
                 </div>
 
                 <div>
@@ -799,9 +915,22 @@ export default function LecturesPage() {
                   <p className="text-sm text-gray-900">{viewingLecture.name}</p>
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
+                  <p className="text-sm text-gray-900">
+                    {(() => {
+                      const subtopicData = allSubtopics.find((s) => s.id === viewingLecture.subtopic_id);
+                      const topic = subtopicData ? availableTopics.find((t) => t.value === String(subtopicData.topic_id)) : null;
+                      return topic?.label || '-';
+                    })()}
+                  </p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Subtopic</label>
                   <p className="text-sm text-gray-900">
-                    {availableSubtopics.find((s) => s.value === String(viewingLecture.subtopic_id))?.label || `Subtopic ${viewingLecture.subtopic_id}`}
+                    {(() => {
+                      const subtopicData = allSubtopics.find((s) => s.id === viewingLecture.subtopic_id);
+                      return subtopicData?.name || availableSubtopics.find((s) => s.value === String(viewingLecture.subtopic_id))?.label || `Subtopic ${viewingLecture.subtopic_id}`;
+                    })()}
                   </p>
                 </div>
                 <div>

@@ -14,6 +14,7 @@ const LectureController = require('../../controllers/admin/lectureController');
 const PurposeController = require('../../controllers/admin/purposeController');
 const LevelController = require('../../controllers/admin/levelController');
 const ProgramController = require('../../controllers/admin/programController');
+const ExamCityController = require('../../controllers/admin/examCityController');
 const CategoryController = require('../../controllers/admin/categoryController');
 const { CollegeController, upload: logoUpload } = require('../../controllers/admin/collegeController');
 const CollegeLocationController = require('../../controllers/admin/collegeLocationController');
@@ -48,6 +49,8 @@ const {
   validateUpdateLevel,
   validateCreateProgram,
   validateUpdateProgram,
+  validateCreateExamCity,
+  validateUpdateExamCity,
   validateCreateCategory,
   validateUpdateCategory,
   validateCreateCollege,
@@ -625,6 +628,45 @@ router.put('/programs/:id', authenticateAdmin, validateUpdateProgram, ProgramCon
  * @access  Private (Admin)
  */
 router.delete('/programs/:id', authenticateAdmin, ProgramController.deleteProgram);
+
+/**
+ * Exam Cities Taxonomy Routes
+ */
+
+/**
+ * @route   GET /api/admin/exam-cities
+ * @desc    Get all exam cities (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/exam-cities', authenticateAdmin, ExamCityController.getAllExamCities);
+
+/**
+ * @route   GET /api/admin/exam-cities/:id
+ * @desc    Get exam city by ID
+ * @access  Private (Admin)
+ */
+router.get('/exam-cities/:id', authenticateAdmin, ExamCityController.getExamCityById);
+
+/**
+ * @route   POST /api/admin/exam-cities
+ * @desc    Create new exam city
+ * @access  Private (Admin)
+ */
+router.post('/exam-cities', authenticateAdmin, validateCreateExamCity, ExamCityController.createExamCity);
+
+/**
+ * @route   PUT /api/admin/exam-cities/:id
+ * @desc    Update exam city
+ * @access  Private (Admin)
+ */
+router.put('/exam-cities/:id', authenticateAdmin, validateUpdateExamCity, ExamCityController.updateExamCity);
+
+/**
+ * @route   DELETE /api/admin/exam-cities/:id
+ * @desc    Delete exam city
+ * @access  Private (Admin)
+ */
+router.delete('/exam-cities/:id', authenticateAdmin, ExamCityController.deleteExamCity);
 
 /**
  * @route   GET /api/admin/categories

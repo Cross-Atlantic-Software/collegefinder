@@ -6,7 +6,9 @@ import { CollegeFormData } from '../MultiStepCollegeForm';
 import { getAllStreams, Stream } from '@/api/admin/streams';
 import { getAllLevels, Level } from '@/api/admin/levels';
 import { getAllPrograms, Program } from '@/api/admin/programs';
-import { Select } from '@/components/shared';
+import { getAllSubjects, Subject } from '@/api/admin/subjects';
+import { getAllExamsAdmin, Exam } from '@/api/admin/exams';
+import { Select, MultiSelect } from '@/components/shared';
 
 interface Step5CoursesProps {
   formData: CollegeFormData;
@@ -21,6 +23,8 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
   const [streams, setStreams] = useState<Stream[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [tempCourse, setTempCourse] = useState({
     stream_id: '',
     level_id: '',
@@ -37,15 +41,19 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
     fee_per_sem: '',
     total_fee: '',
     brochureFile: null as File | null,
+    subject_ids: [] as number[],
+    exam_ids: [] as number[],
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [streamsRes, levelsRes, programsRes] = await Promise.all([
+        const [streamsRes, levelsRes, programsRes, subjectsRes, examsRes] = await Promise.all([
           getAllStreams(),
           getAllLevels(),
           getAllPrograms(),
+          getAllSubjects(),
+          getAllExamsAdmin(),
         ]);
 
         if (streamsRes.success && streamsRes.data) {
@@ -56,6 +64,12 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
         }
         if (programsRes.success && programsRes.data) {
           setPrograms(programsRes.data.programs.filter((p: Program) => p.status));
+        }
+        if (subjectsRes.success && subjectsRes.data) {
+          setSubjects(subjectsRes.data.subjects.filter((s: Subject) => s.status));
+        }
+        if (examsRes.success && examsRes.data) {
+          setExams(examsRes.data.exams);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -82,6 +96,8 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
       fee_per_sem: '',
       total_fee: '',
       brochureFile: null,
+      subject_ids: [],
+      exam_ids: [],
     });
     setEditingIndex(null);
     setViewingIndex(null);
@@ -268,6 +284,36 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
                       disabled={viewingIndex !== null}
                     />
                   </div>
+                </div>
+
+                {/* Subjects - Searchable Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
+                  <MultiSelect
+                    value={tempCourse.subject_ids.map(id => id.toString())}
+                    onChange={(selected) => {
+                      const ids = selected ? selected.map(s => parseInt(s)).filter(id => !isNaN(id)) : [];
+                      setTempCourse({ ...tempCourse, subject_ids: ids });
+                    }}
+                    options={subjects.map(s => ({ value: s.id.toString(), label: s.name }))}
+                    placeholder="Select subjects..."
+                    disabled={viewingIndex !== null}
+                  />
+                </div>
+
+                {/* Exams - Multiselect Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Exams</label>
+                  <MultiSelect
+                    value={tempCourse.exam_ids.map(id => id.toString())}
+                    onChange={(selected) => {
+                      const ids = selected ? selected.map(s => parseInt(s)).filter(id => !isNaN(id)) : [];
+                      setTempCourse({ ...tempCourse, exam_ids: ids });
+                    }}
+                    options={exams.map(e => ({ value: e.id.toString(), label: e.name }))}
+                    placeholder="Select exams..."
+                    disabled={viewingIndex !== null}
+                  />
                 </div>
 
                 <div>

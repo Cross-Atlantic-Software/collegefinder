@@ -41,6 +41,8 @@ class CategoryAndReservationController {
           minority_status: catRes.minority_status,
           ex_serviceman_defence_quota: catRes.ex_serviceman_defence_quota,
           kashmiri_migrant_regional_quota: catRes.kashmiri_migrant_regional_quota,
+          state_domicile: catRes.state_domicile,
+          home_state_for_quota: catRes.home_state_for_quota,
           created_at: catRes.created_at,
           updated_at: catRes.updated_at
         }
@@ -79,7 +81,9 @@ class CategoryAndReservationController {
         udid_number,
         minority_status,
         ex_serviceman_defence_quota,
-        kashmiri_migrant_regional_quota
+        kashmiri_migrant_regional_quota,
+        state_domicile,
+        home_state_for_quota
       } = req.body;
 
       const catRes = await CategoryAndReservation.upsert(userId, {
@@ -91,7 +95,9 @@ class CategoryAndReservationController {
         udid_number,
         minority_status,
         ex_serviceman_defence_quota,
-        kashmiri_migrant_regional_quota
+        kashmiri_migrant_regional_quota,
+        state_domicile,
+        home_state_for_quota
       });
 
       // Get category name if category_id exists

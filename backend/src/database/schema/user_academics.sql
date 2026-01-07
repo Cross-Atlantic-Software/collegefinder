@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS user_academics (
   matric_total_marks DECIMAL(10, 2),
   matric_obtained_marks DECIMAL(10, 2),
   matric_percentage DECIMAL(5, 2),
+  matric_state VARCHAR(100),
+  matric_city VARCHAR(100),
   -- Post-Matric (12th) fields
   postmatric_board VARCHAR(100),
   postmatric_school_name VARCHAR(255),
@@ -21,6 +23,14 @@ CREATE TABLE IF NOT EXISTS user_academics (
   postmatric_total_marks DECIMAL(10, 2),
   postmatric_obtained_marks DECIMAL(10, 2),
   postmatric_percentage DECIMAL(5, 2),
+  postmatric_state VARCHAR(100),
+  postmatric_city VARCHAR(100),
+  matric_marks_type VARCHAR(20), -- 'Percentage' or 'CGPA' for matric
+  matric_cgpa DECIMAL(5, 2), -- CGPA value for matric (when matric_marks_type is 'CGPA')
+  matric_result_status VARCHAR(20), -- 'passed' or 'failed' for matric
+  postmatric_marks_type VARCHAR(20), -- 'Percentage' or 'CGPA' for postmatric
+  postmatric_cgpa DECIMAL(5, 2), -- CGPA value for postmatric (when postmatric_marks_type is 'CGPA')
+  postmatric_result_status VARCHAR(20), -- 'passed' or 'failed' for postmatric
   stream VARCHAR(100), -- PCM, PCB, Commerce, Humanities/Arts, Others (kept for backward compatibility)
   stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL, -- Foreign key to streams table
   subjects JSONB, -- Array of subjects for 12th: [{"subject_id": 1, "name": "Physics", "percent": 89}, ...]
@@ -39,6 +49,8 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_roll_number VARCHAR(5
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_total_marks DECIMAL(10, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_obtained_marks DECIMAL(10, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_percentage DECIMAL(5, 2);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_state VARCHAR(100);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_city VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_board VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_school_name VARCHAR(255);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_passing_year INTEGER;
@@ -46,6 +58,14 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_roll_number VARCH
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_total_marks DECIMAL(10, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_obtained_marks DECIMAL(10, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_percentage DECIMAL(5, 2);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_state VARCHAR(100);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_city VARCHAR(100);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_marks_type VARCHAR(20);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_cgpa DECIMAL(5, 2);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_result_status VARCHAR(20);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_marks_type VARCHAR(20);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_cgpa DECIMAL(5, 2);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_result_status VARCHAR(20);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL;
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS subjects JSONB;
@@ -60,6 +80,8 @@ COMMENT ON COLUMN user_academics.matric_roll_number IS '10th standard roll numbe
 COMMENT ON COLUMN user_academics.matric_total_marks IS '10th standard total marks';
 COMMENT ON COLUMN user_academics.matric_obtained_marks IS '10th standard obtained marks';
 COMMENT ON COLUMN user_academics.matric_percentage IS '10th standard percentage';
+COMMENT ON COLUMN user_academics.matric_state IS '10th standard state';
+COMMENT ON COLUMN user_academics.matric_city IS '10th standard city';
 COMMENT ON COLUMN user_academics.postmatric_board IS '12th standard board name';
 COMMENT ON COLUMN user_academics.postmatric_school_name IS '12th standard school name';
 COMMENT ON COLUMN user_academics.postmatric_passing_year IS '12th standard passing year';
@@ -67,6 +89,14 @@ COMMENT ON COLUMN user_academics.postmatric_roll_number IS '12th standard roll n
 COMMENT ON COLUMN user_academics.postmatric_total_marks IS '12th standard total marks';
 COMMENT ON COLUMN user_academics.postmatric_obtained_marks IS '12th standard obtained marks';
 COMMENT ON COLUMN user_academics.postmatric_percentage IS '12th standard percentage';
+COMMENT ON COLUMN user_academics.postmatric_state IS '12th standard state';
+COMMENT ON COLUMN user_academics.postmatric_city IS '12th standard city';
+COMMENT ON COLUMN user_academics.matric_marks_type IS 'Marks type for matric: Percentage or CGPA';
+COMMENT ON COLUMN user_academics.matric_cgpa IS 'CGPA value for matric (when matric_marks_type is CGPA)';
+COMMENT ON COLUMN user_academics.matric_result_status IS 'Result status for matric: passed or failed';
+COMMENT ON COLUMN user_academics.postmatric_marks_type IS 'Marks type for postmatric: Percentage or CGPA';
+COMMENT ON COLUMN user_academics.postmatric_cgpa IS 'CGPA value for postmatric (when postmatric_marks_type is CGPA)';
+COMMENT ON COLUMN user_academics.postmatric_result_status IS 'Result status for postmatric: passed or failed';
 COMMENT ON COLUMN user_academics.stream IS '12th standard stream: PCM, PCB, Commerce, Humanities/Arts, Others (deprecated - use stream_id)';
 COMMENT ON COLUMN user_academics.stream_id IS 'Foreign key reference to streams table';
 COMMENT ON COLUMN user_academics.subjects IS '12th standard subject breakdown: [{"name": "Physics", "percent": 89}, ...]';

@@ -113,11 +113,30 @@ class AdminController {
     try {
       const users = await User.findAll();
       
+      // Helper function to convert PostgreSQL boolean to JavaScript boolean
+      const toBoolean = (value) => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase().trim();
+          return lower === 't' || lower === 'true' || lower === '1';
+        }
+        if (typeof value === 'number') return value === 1;
+        return false;
+      };
+      
+      // Ensure boolean values are properly converted
+      const formattedUsers = users.map(user => ({
+        ...user,
+        email_verified: toBoolean(user.email_verified),
+        is_active: toBoolean(user.is_active)
+      }));
+      
       res.json({
         success: true,
         data: {
-          users,
-          total: users.length
+          users: formattedUsers,
+          total: formattedUsers.length
         }
       });
     } catch (error) {

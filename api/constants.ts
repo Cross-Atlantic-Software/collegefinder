@@ -28,6 +28,9 @@ export const API_ENDPOINTS = {
     PROFILE_CATEGORY_AND_RESERVATION: '/auth/profile/category-and-reservation',
     PROFILE_OTHER_PERSONAL_DETAILS: '/auth/profile/other-personal-details',
     PROFILE_ADDRESS: '/auth/profile/address',
+    PROFILE_OTHER_INFO: '/auth/profile/other-info',
+    PROFILE_DOCUMENT_VAULT: '/auth/profile/document-vault',
+    PROFILE_DOCUMENT_VAULT_UPLOAD: '/auth/profile/document-vault/upload',
   },
   
   // Public endpoints
@@ -36,6 +39,8 @@ export const API_ENDPOINTS = {
     STREAMS: '/streams',
     CAREERS: '/careers',
     CATEGORIES: '/categories',
+    PROGRAMS: '/programs',
+    EXAM_CITIES: '/exam-cities',
   },
   
   // Admin endpoints
@@ -60,6 +65,7 @@ export const API_ENDPOINTS = {
     PURPOSES: '/admin/purposes',
     LEVELS: '/admin/levels',
     PROGRAMS: '/admin/programs',
+    EXAM_CITIES: '/admin/exam-cities',
     CATEGORIES: '/admin/categories',
     COLLEGES: '/admin/colleges',
     COLLEGE_LOCATIONS: '/admin/college-locations',

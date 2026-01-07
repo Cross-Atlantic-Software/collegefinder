@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin } from 'lucide-react';
+import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin, Info, FileText, Eye, Download } from 'lucide-react';
 import { FaUserCircle } from 'react-icons/fa';
 import { getUserDetails } from '@/api/admin/users';
 import type { SiteUser } from '@/api/types';
@@ -31,6 +31,11 @@ interface UserDetails {
     matric_total_marks: number | null;
     matric_obtained_marks: number | null;
     matric_percentage: number | null;
+    matric_state: string | null;
+    matric_city: string | null;
+    matric_marks_type: string | null;
+    matric_cgpa: number | null;
+    matric_result_status: string | null;
     matric_subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
     postmatric_board: string | null;
     postmatric_school_name: string | null;
@@ -39,7 +44,13 @@ interface UserDetails {
     postmatric_total_marks: number | null;
     postmatric_obtained_marks: number | null;
     postmatric_percentage: number | null;
+    postmatric_state: string | null;
+    postmatric_city: string | null;
+    postmatric_marks_type: string | null;
+    postmatric_cgpa: number | null;
+    postmatric_result_status: string | null;
     stream: string | null;
+    stream_id: number | null;
     subjects: Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
     is_pursuing_12th: boolean;
     created_at?: string | null;
@@ -64,9 +75,7 @@ interface UserDetails {
     id: number;
     user_id: number;
     aadhar_number: string | null;
-    alternative_id_type: string | null;
-    alternative_id_number: string | null;
-    place_of_issue: string | null;
+    apaar_id: string | null;
     created_at: string;
     updated_at: string;
   } | null;
@@ -83,6 +92,8 @@ interface UserDetails {
     minority_status: string | null;
     ex_serviceman_defence_quota: boolean;
     kashmiri_migrant_regional_quota: boolean;
+    state_domicile: boolean;
+    home_state_for_quota: string | null;
     created_at: string;
     updated_at: string;
   } | null;
@@ -109,6 +120,39 @@ interface UserDetails {
     pincode: string | null;
     permanent_address_same_as_correspondence: boolean;
     permanent_address: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  otherInfo: {
+    id: number;
+    user_id: number;
+    medium: string | null;
+    language: string | null;
+    program_ids: number[];
+    program_names: string[];
+    exam_city_ids: number[];
+    exam_city_names: string[];
+    created_at: string;
+    updated_at: string;
+  } | null;
+  documentVault: {
+    id: number;
+    user_id: number;
+    passport_size_photograph: string | null;
+    signature_image: string | null;
+    matric_marksheet: string | null;
+    matric_certificate: string | null;
+    postmatric_marksheet: string | null;
+    valid_photo_id_proof: string | null;
+    sc_certificate: string | null;
+    st_certificate: string | null;
+    obc_ncl_certificate: string | null;
+    ews_certificate: string | null;
+    pwbd_disability_certificate: string | null;
+    udid_card: string | null;
+    domicile_certificate: string | null;
+    citizenship_certificate: string | null;
+    migration_certificate: string | null;
     created_at: string;
     updated_at: string;
   } | null;
@@ -190,11 +234,11 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
             </div>
           ) : details ? (
             <div className="space-y-5">
-              {/* Basic Information */}
+              {/* Personal Details */}
               <section className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <User className="h-4 w-4 text-pink" />
-                  Basic Information
+                  Personal Details
                 </h3>
                 
                 {/* Profile Photo */}
@@ -394,21 +438,52 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           <span className="text-xs font-medium text-gray-500">Roll No:</span>
                           <p className="text-sm text-gray-900">{details.academics.matric_roll_number || '-'}</p>
                         </div>
+                        {details.academics.matric_marks_type === 'Percentage' && (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Total:</span>
+                              <p className="text-sm text-gray-900">{details.academics.matric_total_marks || '-'}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Obtained:</span>
+                              <p className="text-sm text-gray-900">{details.academics.matric_obtained_marks || '-'}</p>
+                            </div>
+                          </>
+                        )}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Total:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_total_marks || '-'}</p>
+                          <span className="text-xs font-medium text-gray-500">State:</span>
+                          <p className="text-sm text-gray-900">{details.academics.matric_state || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Obtained:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_obtained_marks || '-'}</p>
+                          <span className="text-xs font-medium text-gray-500">City:</span>
+                          <p className="text-sm text-gray-900">{details.academics.matric_city || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Percentage:</span>
-                          <p className="text-sm text-gray-900">
-                            {details.academics.matric_percentage !== null
-                              ? `${details.academics.matric_percentage}%`
-                              : '-'}
-                          </p>
+                          <span className="text-xs font-medium text-gray-500">Marks Type:</span>
+                          <p className="text-sm text-gray-900">{details.academics.matric_marks_type || '-'}</p>
+                        </div>
+                        {details.academics.matric_marks_type === 'Percentage' ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-gray-500">Percentage:</span>
+                            <p className="text-sm text-gray-900">
+                              {details.academics.matric_percentage !== null
+                                ? `${details.academics.matric_percentage}%`
+                                : '-'}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-gray-500">CGPA:</span>
+                            <p className="text-sm text-gray-900">
+                              {details.academics.matric_cgpa !== null
+                                ? details.academics.matric_cgpa.toString()
+                                : '-'}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Result Status:</span>
+                          <p className="text-sm text-gray-900 capitalize">{details.academics.matric_result_status || '-'}</p>
                         </div>
                       </div>
                     </div>
@@ -455,10 +530,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                               <span className="text-xs font-medium text-gray-500">Year:</span>
                               <p className="text-sm text-gray-900">{details.academics.postmatric_passing_year || '-'}</p>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Roll No:</span>
-                              <p className="text-sm text-gray-900">{details.academics.postmatric_roll_number || '-'}</p>
-                            </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Roll No:</span>
+                          <p className="text-sm text-gray-900">{details.academics.postmatric_roll_number || '-'}</p>
+                        </div>
+                        {details.academics.postmatric_marks_type === 'Percentage' && (
+                          <>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-medium text-gray-500">Total:</span>
                               <p className="text-sm text-gray-900">{details.academics.postmatric_total_marks || '-'}</p>
@@ -467,17 +544,48 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                               <span className="text-xs font-medium text-gray-500">Obtained:</span>
                               <p className="text-sm text-gray-900">{details.academics.postmatric_obtained_marks || '-'}</p>
                             </div>
+                          </>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">State:</span>
+                          <p className="text-sm text-gray-900">{details.academics.postmatric_state || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">City:</span>
+                          <p className="text-sm text-gray-900">{details.academics.postmatric_city || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Marks Type:</span>
+                          <p className="text-sm text-gray-900">{details.academics.postmatric_marks_type || '-'}</p>
+                        </div>
+                        {details.academics.postmatric_marks_type === 'Percentage' ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-gray-500">Percentage:</span>
+                            <p className="text-sm text-gray-900">
+                              {details.academics.postmatric_percentage !== null
+                                ? `${details.academics.postmatric_percentage}%`
+                                : '-'}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-gray-500">CGPA:</span>
+                            <p className="text-sm text-gray-900">
+                              {details.academics.postmatric_cgpa !== null
+                                ? details.academics.postmatric_cgpa.toString()
+                                : '-'}
+                            </p>
+                          </div>
+                        )}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Percentage:</span>
-                              <p className="text-sm text-gray-900">
-                                {details.academics.postmatric_percentage !== null
-                                  ? `${details.academics.postmatric_percentage}%`
-                                  : '-'}
-                              </p>
+                              <span className="text-xs font-medium text-gray-500">Result Status:</span>
+                              <p className="text-sm text-gray-900 capitalize">{details.academics.postmatric_result_status || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-medium text-gray-500">Stream:</span>
-                              <p className="text-sm text-gray-900">{details.academics.stream || '-'}</p>
+                              <p className="text-sm text-gray-900">
+                                {details.academics.stream || '-'}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -499,6 +607,139 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No academic information available</p>
                 )}
               </section>
+
+              {/* Document Vault */}
+              {details.documentVault && (
+                <section className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-slate-600" />
+                    Documents Vault
+                  </h3>
+                  <div className="space-y-4">
+                    {(() => {
+                      const documentFields = [
+                        { key: 'passport_size_photograph', label: 'Passport-size Photograph', section: 'Mandatory Uploads' },
+                        { key: 'signature_image', label: 'Signature Image', section: 'Mandatory Uploads' },
+                        { key: 'matric_marksheet', label: 'Matric Marksheet', section: 'Identity & Academic Proof' },
+                        { key: 'matric_certificate', label: 'Matric Certificate', section: 'Identity & Academic Proof' },
+                        { key: 'postmatric_marksheet', label: 'Postmatric Marksheet', section: 'Identity & Academic Proof' },
+                        { key: 'valid_photo_id_proof', label: 'Valid Photo ID Proof', section: 'Identity & Academic Proof' },
+                        { key: 'sc_certificate', label: 'SC Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'st_certificate', label: 'ST Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'obc_ncl_certificate', label: 'OBC-NCL Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'ews_certificate', label: 'EWS Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'pwbd_disability_certificate', label: 'PwBD/Disability Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'udid_card', label: 'UDID Card', section: 'Category and Reservation Documents' },
+                        { key: 'domicile_certificate', label: 'Domicile Certificate', section: 'Category and Reservation Documents' },
+                        { key: 'citizenship_certificate', label: 'Citizenship Certificate (OCI/PIO)', section: 'Additional Uploads' },
+                        { key: 'migration_certificate', label: 'Migration Certificate', section: 'Additional Uploads' },
+                      ];
+
+                      const groupedFields = documentFields.reduce((acc, field) => {
+                        if (!acc[field.section]) {
+                          acc[field.section] = [];
+                        }
+                        acc[field.section].push(field);
+                        return acc;
+                      }, {} as Record<string, typeof documentFields>);
+
+                      const handleView = (url: string) => {
+                        window.open(url, '_blank');
+                      };
+
+                      const handleDownload = async (url: string, label: string) => {
+                        try {
+                          // Fetch the file as a blob
+                          const response = await fetch(url);
+                          if (!response.ok) {
+                            throw new Error('Failed to fetch file');
+                          }
+                          const blob = await response.blob();
+                          
+                          // Create object URL from blob
+                          const blobUrl = window.URL.createObjectURL(blob);
+                          
+                          // Create download link
+                          const link = document.createElement('a');
+                          link.href = blobUrl;
+                          const extension = url.split('.').pop()?.split('?')[0] || 'pdf';
+                          link.download = `${label.replace(/\s+/g, '_')}.${extension}`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          
+                          // Clean up object URL
+                          window.URL.revokeObjectURL(blobUrl);
+                        } catch (error) {
+                          console.error('Error downloading file:', error);
+                          // Fallback: open in new tab if download fails
+                          window.open(url, '_blank');
+                        }
+                      };
+
+                      return Object.entries(groupedFields).map(([section, fields]) => {
+                        const sectionDocuments = fields.filter(field => {
+                          const value = details.documentVault?.[field.key as keyof typeof details.documentVault];
+                          return value && value !== null;
+                        });
+
+                        if (sectionDocuments.length === 0) return null;
+
+                        return (
+                          <div key={section} className="bg-white rounded-md p-3 border border-gray-200">
+                            <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">{section}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {sectionDocuments.map((field) => {
+                                const url = details.documentVault?.[field.key as keyof typeof details.documentVault] as string;
+                                if (!url) return null;
+
+                                return (
+                                  <div key={field.key} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                                    <span className="text-xs text-gray-700 flex-1 truncate">{field.label}</span>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                      <button
+                                        onClick={() => handleView(url)}
+                                        className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                        title="View"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDownload(url, field.label)}
+                                        className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                                        title="Download"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                    {!details.documentVault.passport_size_photograph &&
+                     !details.documentVault.signature_image &&
+                     !details.documentVault.matric_marksheet &&
+                     !details.documentVault.matric_certificate &&
+                     !details.documentVault.postmatric_marksheet &&
+                     !details.documentVault.valid_photo_id_proof &&
+                     !details.documentVault.sc_certificate &&
+                     !details.documentVault.st_certificate &&
+                     !details.documentVault.obc_ncl_certificate &&
+                     !details.documentVault.ews_certificate &&
+                     !details.documentVault.pwbd_disability_certificate &&
+                     !details.documentVault.udid_card &&
+                     !details.documentVault.domicile_certificate &&
+                     !details.documentVault.citizenship_certificate &&
+                     !details.documentVault.migration_certificate && (
+                      <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No documents uploaded yet</p>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* Career Goals */}
               <section className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -578,16 +819,66 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.aadhar_number}</p>
                         </div>
                       )}
-                      {details.governmentIdentification.alternative_id_type && details.governmentIdentification.alternative_id_number && (
+                      {details.governmentIdentification.apaar_id && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">{details.governmentIdentification.alternative_id_type}:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.alternative_id_number}</p>
+                          <span className="text-xs font-medium text-gray-500">APAAR ID:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.apaar_id}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No government identification information available</p>
+                )}
+              </section>
+
+              {/* Other Personal Details */}
+              <section className="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4 text-teal-600" />
+                  Other Personal Details
+                </h3>
+                {details.otherPersonalDetails ? (
+                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      {details.otherPersonalDetails.religion && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Religion:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.religion}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.mother_tongue && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Mother Tongue:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.mother_tongue}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.annual_family_income !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Annual Family Income:</span>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {details.otherPersonalDetails.annual_family_income !== null
+                              ? `₹${details.otherPersonalDetails.annual_family_income.toLocaleString('en-IN')}`
+                              : '-'}
+                          </p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.occupation_of_father && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Father's Occupation:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_father}</p>
+                        </div>
+                      )}
+                      {details.otherPersonalDetails.occupation_of_mother && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Mother's Occupation:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_mother}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No other personal details information available</p>
                 )}
               </section>
 
@@ -670,56 +961,26 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           {details.categoryAndReservation.kashmiri_migrant_regional_quota ? 'Yes' : 'No'}
                         </span>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-gray-500">State Domicile:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          details.categoryAndReservation.state_domicile
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {details.categoryAndReservation.state_domicile ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      {details.categoryAndReservation.home_state_for_quota && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-gray-500">Home State for Quota:</span>
+                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.home_state_for_quota}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No category and reservation information available</p>
-                )}
-              </section>
-
-              {/* Other Personal Details */}
-              <section className="bg-teal-50 rounded-lg p-4 border border-teal-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <User className="h-4 w-4 text-teal-600" />
-                  Personal Details
-                </h3>
-                {details.otherPersonalDetails ? (
-                  <div className="bg-white rounded-md p-3 border border-gray-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      {details.otherPersonalDetails.religion && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Religion:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.religion}</p>
-                        </div>
-                      )}
-                      {details.otherPersonalDetails.mother_tongue && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Mother Tongue:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.mother_tongue}</p>
-                        </div>
-                      )}
-                      {details.otherPersonalDetails.annual_family_income !== null && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Annual Family Income:</span>
-                          <p className="text-sm text-gray-900 font-medium">₹{details.otherPersonalDetails.annual_family_income.toLocaleString('en-IN')}</p>
-                        </div>
-                      )}
-                      {details.otherPersonalDetails.occupation_of_father && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Occupation of Father:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_father}</p>
-                        </div>
-                      )}
-                      {details.otherPersonalDetails.occupation_of_mother && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Occupation of Mother:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_mother}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No personal details information available</p>
                 )}
               </section>
 
@@ -798,6 +1059,81 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No address information available</p>
+                )}
+              </section>
+
+              {/* Other Information */}
+              <section className="bg-violet-50 rounded-lg p-4 border border-violet-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-violet-600" />
+                  Other Information
+                </h3>
+                {details.otherInfo ? (
+                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="space-y-4">
+                      {/* Medium and Language */}
+                      {(details.otherInfo.medium || details.otherInfo.language) && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {details.otherInfo.medium && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Medium of Examination:</span>
+                              <p className="text-sm text-gray-900 font-medium">{details.otherInfo.medium}</p>
+                            </div>
+                          )}
+                          {details.otherInfo.language && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-500">Language Preference:</span>
+                              <p className="text-sm text-gray-900 font-medium">{details.otherInfo.language}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Program Preferences */}
+                      {details.otherInfo.program_names && details.otherInfo.program_names.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Course & Program Preferences</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {details.otherInfo.program_names.map((programName, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1.5 rounded-md bg-violet-100 text-violet-800 text-xs font-medium border border-violet-300"
+                              >
+                                {index + 1}. {programName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Exam City Preferences */}
+                      {details.otherInfo.exam_city_names && details.otherInfo.exam_city_names.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Exam City Preferences</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {details.otherInfo.exam_city_names.map((cityName, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1.5 rounded-md bg-violet-100 text-violet-800 text-xs font-medium border border-violet-300"
+                              >
+                                {index + 1}. {cityName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show message if otherInfo exists but all fields are empty */}
+                      {!details.otherInfo.medium && 
+                       !details.otherInfo.language && 
+                       (!details.otherInfo.program_names || details.otherInfo.program_names.length === 0) && 
+                       (!details.otherInfo.exam_city_names || details.otherInfo.exam_city_names.length === 0) && (
+                        <p className="text-sm text-gray-500 italic">Other information record exists but no data has been entered yet.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No other information available</p>
                 )}
               </section>
             </div>

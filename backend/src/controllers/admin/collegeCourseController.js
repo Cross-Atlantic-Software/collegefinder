@@ -117,6 +117,34 @@ class CollegeCourseController {
         brochure_url = req.body.brochure_url;
       }
 
+      // Parse subject_ids and exam_ids if they are strings
+      let parsedSubjectIds = null;
+      let parsedExamIds = null;
+      
+      if (subject_ids) {
+        if (typeof subject_ids === 'string') {
+          try {
+            parsedSubjectIds = JSON.parse(subject_ids);
+          } catch (e) {
+            parsedSubjectIds = subject_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          }
+        } else if (Array.isArray(subject_ids)) {
+          parsedSubjectIds = subject_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+        }
+      }
+      
+      if (exam_ids) {
+        if (typeof exam_ids === 'string') {
+          try {
+            parsedExamIds = JSON.parse(exam_ids);
+          } catch (e) {
+            parsedExamIds = exam_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          }
+        } else if (Array.isArray(exam_ids)) {
+          parsedExamIds = exam_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+        }
+      }
+
       const course = await CollegeCourse.create({
         college_id: parseInt(college_id),
         stream_id: stream_id ? parseInt(stream_id) : null,
@@ -132,7 +160,9 @@ class CollegeCourseController {
         scholarship: scholarship || null,
         brochure_url,
         fee_per_sem: fee_per_sem ? parseFloat(fee_per_sem) : null,
-        total_fee: total_fee ? parseFloat(total_fee) : null
+        total_fee: total_fee ? parseFloat(total_fee) : null,
+        subject_ids: parsedSubjectIds,
+        exam_ids: parsedExamIds
       });
 
       res.status(201).json({
@@ -187,7 +217,9 @@ class CollegeCourseController {
         placements,
         scholarship,
         fee_per_sem,
-        total_fee
+        total_fee,
+        subject_ids,
+        exam_ids
       } = req.body;
 
       let brochure_url = existing.brochure_url;
@@ -216,6 +248,38 @@ class CollegeCourseController {
         brochure_url = req.body.brochure_url || null;
       }
 
+      // Parse subject_ids and exam_ids if they are strings
+      let parsedSubjectIds = undefined;
+      let parsedExamIds = undefined;
+      
+      if (subject_ids !== undefined) {
+        if (typeof subject_ids === 'string') {
+          try {
+            parsedSubjectIds = JSON.parse(subject_ids);
+          } catch (e) {
+            parsedSubjectIds = subject_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          }
+        } else if (Array.isArray(subject_ids)) {
+          parsedSubjectIds = subject_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+        } else if (subject_ids === null || subject_ids === '') {
+          parsedSubjectIds = null;
+        }
+      }
+      
+      if (exam_ids !== undefined) {
+        if (typeof exam_ids === 'string') {
+          try {
+            parsedExamIds = JSON.parse(exam_ids);
+          } catch (e) {
+            parsedExamIds = exam_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          }
+        } else if (Array.isArray(exam_ids)) {
+          parsedExamIds = exam_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+        } else if (exam_ids === null || exam_ids === '') {
+          parsedExamIds = null;
+        }
+      }
+
       const updateData = {};
       if (college_id !== undefined) updateData.college_id = parseInt(college_id);
       if (stream_id !== undefined) updateData.stream_id = stream_id ? parseInt(stream_id) : null;
@@ -232,6 +296,8 @@ class CollegeCourseController {
       if (brochure_url !== undefined) updateData.brochure_url = brochure_url;
       if (fee_per_sem !== undefined) updateData.fee_per_sem = fee_per_sem ? parseFloat(fee_per_sem) : null;
       if (total_fee !== undefined) updateData.total_fee = total_fee ? parseFloat(total_fee) : null;
+      if (parsedSubjectIds !== undefined) updateData.subject_ids = parsedSubjectIds;
+      if (parsedExamIds !== undefined) updateData.exam_ids = parsedExamIds;
 
       const course = await CollegeCourse.update(parseInt(id), updateData);
 

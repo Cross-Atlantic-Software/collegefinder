@@ -6,6 +6,8 @@ import { SubjectInputList } from "../SubjectInputList";
 import { getAcademics, updateAcademics, getAllStreamsPublic, type StreamPublic } from "@/api";
 import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousExamAttempt } from "@/api/exams";
 import { Button, Select, SelectOption, useToast } from "../../shared";
+import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
+import DocumentVault from "./DocumentVault";
 
 const getBarColor = (percent: number) => {
     if (percent >= 85) return "bg-green-500";
@@ -44,6 +46,8 @@ export default function AcademicsProfile() {
         matric_total_marks: "",
         matric_obtained_marks: "",
         matric_percentage: "",
+        matric_state: "",
+        matric_city: "",
     });
 
     // Post-Matric (12th) form data
@@ -55,8 +59,18 @@ export default function AcademicsProfile() {
         postmatric_total_marks: "",
         postmatric_obtained_marks: "",
         postmatric_percentage: "",
+        postmatric_state: "",
+        postmatric_city: "",
         stream: "",
     });
+
+    // Marks type, CGPA, and result status (separate for matric and postmatric)
+    const [matricMarksType, setMatricMarksType] = useState<"Percentage" | "CGPA">("Percentage");
+    const [matricCgpa, setMatricCgpa] = useState("");
+    const [matricResultStatus, setMatricResultStatus] = useState<"passed" | "failed">("passed");
+    const [postmatricMarksType, setPostmatricMarksType] = useState<"Percentage" | "CGPA">("Percentage");
+    const [postmatricCgpa, setPostmatricCgpa] = useState("");
+    const [postmatricResultStatus, setPostmatricResultStatus] = useState<"passed" | "failed">("passed");
 
     const [matricSubjects, setMatricSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
     const [subjects, setSubjects] = useState<Array<{ name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>>([]);
@@ -111,10 +125,15 @@ export default function AcademicsProfile() {
                             matric_total_marks: data.matric_total_marks?.toString() || "",
                             matric_obtained_marks: data.matric_obtained_marks?.toString() || "",
                             matric_percentage: data.matric_percentage?.toString() || "",
+                            matric_state: data.matric_state || "",
+                            matric_city: data.matric_city || "",
                         });
 
                         // Set post-matric data
-                        // Use stream_id if available, otherwise fallback to stream name for backward compatibility
+                        // Use stream_id if available (convert to string for Select component), otherwise fallback to stream name for backward compatibility
+                        const streamValue = data.stream_id 
+                            ? data.stream_id.toString() 
+                            : (data.stream || "");
                         setPostmatricData({
                             postmatric_board: data.postmatric_board || "",
                             postmatric_school_name: data.postmatric_school_name || "",
@@ -123,8 +142,18 @@ export default function AcademicsProfile() {
                             postmatric_total_marks: data.postmatric_total_marks?.toString() || "",
                             postmatric_obtained_marks: data.postmatric_obtained_marks?.toString() || "",
                             postmatric_percentage: data.postmatric_percentage?.toString() || "",
-                            stream: data.stream || "",
+                            postmatric_state: data.postmatric_state || "",
+                            postmatric_city: data.postmatric_city || "",
+                            stream: streamValue,
                         });
+
+                        // Set marks type, CGPA, and result status (separate for matric and postmatric)
+                        setMatricMarksType(data.matric_marks_type === "CGPA" ? "CGPA" : "Percentage");
+                        setMatricCgpa(data.matric_cgpa?.toString() || "");
+                        setMatricResultStatus(data.matric_result_status === "failed" ? "failed" : "passed");
+                        setPostmatricMarksType(data.postmatric_marks_type === "CGPA" ? "CGPA" : "Percentage");
+                        setPostmatricCgpa(data.postmatric_cgpa?.toString() || "");
+                        setPostmatricResultStatus(data.postmatric_result_status === "failed" ? "failed" : "passed");
 
                         setMatricSubjects(data.matric_subjects || []);
                         setSubjects(data.subjects || []);
@@ -219,6 +248,8 @@ export default function AcademicsProfile() {
                 const percent = parseFloat(matricData.matric_percentage);
                 if (!isNaN(percent)) payload.matric_percentage = percent;
             }
+            if (matricData.matric_state?.trim()) payload.matric_state = matricData.matric_state.trim();
+            if (matricData.matric_city?.trim()) payload.matric_city = matricData.matric_city.trim();
 
             // Post-Matric fields (only if not pursuing 12th)
             if (!isPursuing12th) {
@@ -241,6 +272,25 @@ export default function AcademicsProfile() {
                     const percent = parseFloat(postmatricData.postmatric_percentage);
                     if (!isNaN(percent)) payload.postmatric_percentage = percent;
                 }
+                if (postmatricData.postmatric_state?.trim()) payload.postmatric_state = postmatricData.postmatric_state.trim();
+                if (postmatricData.postmatric_city?.trim()) payload.postmatric_city = postmatricData.postmatric_city.trim();
+            }
+            
+            // Marks type, CGPA, and result status (separate for matric and postmatric)
+            payload.matric_marks_type = matricMarksType;
+            if (matricMarksType === "CGPA" && matricCgpa?.trim()) {
+                const cgpaValue = parseFloat(matricCgpa);
+                if (!isNaN(cgpaValue)) payload.matric_cgpa = cgpaValue;
+            }
+            payload.matric_result_status = matricResultStatus;
+            
+            if (!isPursuing12th) {
+                payload.postmatric_marks_type = postmatricMarksType;
+                if (postmatricMarksType === "CGPA" && postmatricCgpa?.trim()) {
+                    const cgpaValue = parseFloat(postmatricCgpa);
+                    if (!isNaN(cgpaValue)) payload.postmatric_cgpa = cgpaValue;
+                }
+                payload.postmatric_result_status = postmatricResultStatus;
             }
             
             // Stream (use stream_id if available, otherwise fallback to stream name for backward compatibility)
@@ -400,54 +450,164 @@ export default function AcademicsProfile() {
                             )}
                         </div>
 
-                        {/* Matric Total Marks */}
+                        {/* Matric State */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={matricData.matric_total_marks}
-                                onChange={(e) => setMatricData({ ...matricData, matric_total_marks: e.target.value })}
-                                className={`${inputBase} ${validationErrors.matric_total_marks ? 'border-red-500' : ''}`}
-                                placeholder="e.g. 500"
+                            <label className="mb-1 block text-sm font-medium text-slate-300">State</label>
+                            <Select
+                                options={getAllStates().map((state) => ({
+                                    value: state,
+                                    label: state,
+                                }))}
+                                value={matricData.matric_state}
+                                onChange={(value) => {
+                                    setMatricData({
+                                        ...matricData,
+                                        matric_state: value || "",
+                                        matric_city: "", // Reset city when state changes
+                                    });
+                                }}
+                                placeholder="Select State"
+                                error={validationErrors.matric_state}
+                                isSearchable={true}
+                                isClearable={true}
                             />
-                            {validationErrors.matric_total_marks && (
-                                <p className="mt-1 text-xs text-red-400">{validationErrors.matric_total_marks}</p>
-                            )}
                         </div>
 
-                        {/* Matric Obtained Marks */}
+                        {/* Matric City */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={matricData.matric_obtained_marks}
-                                onChange={(e) => setMatricData({ ...matricData, matric_obtained_marks: e.target.value })}
-                                className={`${inputBase} ${validationErrors.matric_obtained_marks ? 'border-red-500' : ''}`}
-                                placeholder="e.g. 450"
+                            <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
+                            <Select
+                                options={
+                                    matricData.matric_state
+                                        ? getDistrictsForState(matricData.matric_state).map((city) => ({
+                                              value: city,
+                                              label: city,
+                                          }))
+                                        : []
+                                }
+                                value={matricData.matric_city}
+                                onChange={(value) => setMatricData({ ...matricData, matric_city: value || "" })}
+                                placeholder={matricData.matric_state ? "Select City" : "Select State first"}
+                                error={validationErrors.matric_city}
+                                disabled={!matricData.matric_state}
+                                isSearchable={true}
+                                isClearable={true}
                             />
-                            {validationErrors.matric_obtained_marks && (
-                                <p className="mt-1 text-xs text-red-400">{validationErrors.matric_obtained_marks}</p>
-                            )}
                         </div>
-                    </div>
 
-                    {/* Matric Percentage with Performance Bar */}
-                    {matricData.matric_percentage && (
-                        <div className="mt-4 rounded-md bg-white/5 px-4 py-3 border border-white/10">
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
-                            <p className="text-4xl font-semibold text-emerald-400">{matricData.matric_percentage}%</p>
-                            <div className="mt-2 h-2 rounded-full bg-white/10">
-                                <div 
-                                    className={`h-2 rounded-full ${getBarColor(parseFloat(matricData.matric_percentage))}`} 
-                                    style={{ width: `${Math.min(100, parseFloat(matricData.matric_percentage))}%` }} 
+                        {/* Matric Marks Type */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-300">Marks Type</label>
+                            <Select
+                                options={[
+                                    { value: "Percentage", label: "Percentage" },
+                                    { value: "CGPA", label: "CGPA" }
+                                ]}
+                                value={matricMarksType}
+                                onChange={(value) => {
+                                    const newType = (value as "Percentage" | "CGPA") || "Percentage";
+                                    setMatricMarksType(newType);
+                                    // Clear fields when switching types
+                                    if (newType === "CGPA") {
+                                        setMatricData({ ...matricData, matric_total_marks: "", matric_obtained_marks: "", matric_percentage: "" });
+                                    } else {
+                                        setMatricCgpa("");
+                                    }
+                                }}
+                                placeholder="Select Type"
+                                isSearchable={false}
+                                isClearable={false}
+                            />
+                        </div>
+
+                        {/* Show Total Marks and Obtained Marks only for Percentage */}
+                        {matricMarksType === "Percentage" && (
+                            <>
+                                {/* Matric Total Marks */}
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={matricData.matric_total_marks}
+                                        onChange={(e) => setMatricData({ ...matricData, matric_total_marks: e.target.value })}
+                                        className={`${inputBase} ${validationErrors.matric_total_marks ? 'border-red-500' : ''}`}
+                                        placeholder="e.g. 500"
+                                    />
+                                    {validationErrors.matric_total_marks && (
+                                        <p className="mt-1 text-xs text-red-400">{validationErrors.matric_total_marks}</p>
+                                    )}
+                                </div>
+
+                                {/* Matric Obtained Marks */}
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={matricData.matric_obtained_marks}
+                                        onChange={(e) => setMatricData({ ...matricData, matric_obtained_marks: e.target.value })}
+                                        className={`${inputBase} ${validationErrors.matric_obtained_marks ? 'border-red-500' : ''}`}
+                                        placeholder="e.g. 450"
+                                    />
+                                    {validationErrors.matric_obtained_marks && (
+                                        <p className="mt-1 text-xs text-red-400">{validationErrors.matric_obtained_marks}</p>
+                                    )}
+                                </div>
+
+                                {/* Percentage Display */}
+                                {matricData.matric_percentage && (
+                                    <div className="rounded-md bg-white/5 px-4 py-3 border border-white/10">
+                                        <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
+                                        <p className="text-4xl font-semibold text-emerald-400">{matricData.matric_percentage}%</p>
+                                        <div className="mt-2 h-2 rounded-full bg-white/10">
+                                            <div 
+                                                className={`h-2 rounded-full ${getBarColor(parseFloat(matricData.matric_percentage))}`} 
+                                                style={{ width: `${Math.min(100, parseFloat(matricData.matric_percentage))}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Show CGPA only for CGPA type */}
+                        {matricMarksType === "CGPA" && (
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-300">CGPA</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    step="0.01"
+                                    value={matricCgpa}
+                                    onChange={(e) => setMatricCgpa(e.target.value)}
+                                    className={inputBase}
+                                    placeholder="e.g. 8.5"
                                 />
                             </div>
+                        )}
+                    </div>
+
+                    {/* Matric Result Status */}
+                    <div className="mt-4">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-300">Result Status</label>
+                            <Select
+                                options={[
+                                    { value: "passed", label: "Passed" },
+                                    { value: "failed", label: "Failed" }
+                                ]}
+                                value={matricResultStatus}
+                                onChange={(value) => setMatricResultStatus((value as "passed" | "failed") || "passed")}
+                                placeholder="Select Status"
+                                isSearchable={false}
+                                isClearable={false}
+                            />
                         </div>
-                    )}
+                    </div>
 
                     {/* Matric Subject Breakdown */}
                     <div className="mt-6">
@@ -611,54 +771,164 @@ export default function AcademicsProfile() {
                                     )}
                                 </div>
 
-                                {/* Post-Matric Total Marks */}
+                                {/* Post-Matric State */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={postmatricData.postmatric_total_marks}
-                                        onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_total_marks: e.target.value })}
-                                        className={`${inputBase} ${validationErrors.postmatric_total_marks ? 'border-red-500' : ''}`}
-                                        placeholder="e.g. 500"
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">State</label>
+                                    <Select
+                                        options={getAllStates().map((state) => ({
+                                            value: state,
+                                            label: state,
+                                        }))}
+                                        value={postmatricData.postmatric_state}
+                                        onChange={(value) => {
+                                            setPostmatricData({
+                                                ...postmatricData,
+                                                postmatric_state: value || "",
+                                                postmatric_city: "", // Reset city when state changes
+                                            });
+                                        }}
+                                        placeholder="Select State"
+                                        error={validationErrors.postmatric_state}
+                                        isSearchable={true}
+                                        isClearable={true}
                                     />
-                                    {validationErrors.postmatric_total_marks && (
-                                        <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_total_marks}</p>
-                                    )}
                                 </div>
 
-                                {/* Post-Matric Obtained Marks */}
+                                {/* Post-Matric City */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={postmatricData.postmatric_obtained_marks}
-                                        onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_obtained_marks: e.target.value })}
-                                        className={`${inputBase} ${validationErrors.postmatric_obtained_marks ? 'border-red-500' : ''}`}
-                                        placeholder="e.g. 450"
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
+                                    <Select
+                                        options={
+                                            postmatricData.postmatric_state
+                                                ? getDistrictsForState(postmatricData.postmatric_state).map((city) => ({
+                                                      value: city,
+                                                      label: city,
+                                                  }))
+                                                : []
+                                        }
+                                        value={postmatricData.postmatric_city}
+                                        onChange={(value) => setPostmatricData({ ...postmatricData, postmatric_city: value || "" })}
+                                        placeholder={postmatricData.postmatric_state ? "Select City" : "Select State first"}
+                                        error={validationErrors.postmatric_city}
+                                        disabled={!postmatricData.postmatric_state}
+                                        isSearchable={true}
+                                        isClearable={true}
                                     />
-                                    {validationErrors.postmatric_obtained_marks && (
-                                        <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_obtained_marks}</p>
-                                    )}
                                 </div>
-                            </div>
 
-                            {/* Post-Matric Percentage with Performance Bar */}
-                            {postmatricData.postmatric_percentage && (
-                                <div className="mt-4 rounded-md bg-white/5 px-4 py-3 border border-white/10">
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
-                                    <p className="text-4xl font-semibold text-emerald-400">{postmatricData.postmatric_percentage}%</p>
-                                    <div className="mt-2 h-2 rounded-full bg-white/10">
-                                        <div 
-                                            className={`h-2 rounded-full ${getBarColor(parseFloat(postmatricData.postmatric_percentage))}`} 
-                                            style={{ width: `${Math.min(100, parseFloat(postmatricData.postmatric_percentage))}%` }} 
+                                {/* Post-Matric Marks Type */}
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">Marks Type</label>
+                                    <Select
+                                        options={[
+                                            { value: "Percentage", label: "Percentage" },
+                                            { value: "CGPA", label: "CGPA" }
+                                        ]}
+                                        value={postmatricMarksType}
+                                        onChange={(value) => {
+                                            const newType = (value as "Percentage" | "CGPA") || "Percentage";
+                                            setPostmatricMarksType(newType);
+                                            // Clear fields when switching types
+                                            if (newType === "CGPA") {
+                                                setPostmatricData({ ...postmatricData, postmatric_total_marks: "", postmatric_obtained_marks: "", postmatric_percentage: "" });
+                                            } else {
+                                                setPostmatricCgpa("");
+                                            }
+                                        }}
+                                        placeholder="Select Type"
+                                        isSearchable={false}
+                                        isClearable={false}
+                                    />
+                                </div>
+
+                                {/* Show Total Marks and Obtained Marks only for Percentage */}
+                                {postmatricMarksType === "Percentage" && (
+                                    <>
+                                        {/* Post-Matric Total Marks */}
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={postmatricData.postmatric_total_marks}
+                                                onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_total_marks: e.target.value })}
+                                                className={`${inputBase} ${validationErrors.postmatric_total_marks ? 'border-red-500' : ''}`}
+                                                placeholder="e.g. 500"
+                                            />
+                                            {validationErrors.postmatric_total_marks && (
+                                                <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_total_marks}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Post-Matric Obtained Marks */}
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={postmatricData.postmatric_obtained_marks}
+                                                onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_obtained_marks: e.target.value })}
+                                                className={`${inputBase} ${validationErrors.postmatric_obtained_marks ? 'border-red-500' : ''}`}
+                                                placeholder="e.g. 450"
+                                            />
+                                            {validationErrors.postmatric_obtained_marks && (
+                                                <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_obtained_marks}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Percentage Display */}
+                                        {postmatricData.postmatric_percentage && (
+                                            <div className="rounded-md bg-white/5 px-4 py-3 border border-white/10">
+                                                <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
+                                                <p className="text-4xl font-semibold text-emerald-400">{postmatricData.postmatric_percentage}%</p>
+                                                <div className="mt-2 h-2 rounded-full bg-white/10">
+                                                    <div 
+                                                        className={`h-2 rounded-full ${getBarColor(parseFloat(postmatricData.postmatric_percentage))}`} 
+                                                        style={{ width: `${Math.min(100, parseFloat(postmatricData.postmatric_percentage))}%` }} 
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Show CGPA only for CGPA type */}
+                                {postmatricMarksType === "CGPA" && (
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-slate-300">CGPA</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="10"
+                                            step="0.01"
+                                            value={postmatricCgpa}
+                                            onChange={(e) => setPostmatricCgpa(e.target.value)}
+                                            className={inputBase}
+                                            placeholder="e.g. 8.5"
                                         />
                                     </div>
+                                )}
+                            </div>
+
+                            {/* Post-Matric Result Status */}
+                            <div className="mt-4">
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-slate-300">Result Status</label>
+                                    <Select
+                                        options={[
+                                            { value: "passed", label: "Passed" },
+                                            { value: "failed", label: "Failed" }
+                                        ]}
+                                        value={postmatricResultStatus}
+                                        onChange={(value) => setPostmatricResultStatus((value as "passed" | "failed") || "passed")}
+                                        placeholder="Select Status"
+                                        isSearchable={false}
+                                        isClearable={false}
+                                    />
                                 </div>
-                            )}
+                            </div>
                         </>
                     )}
 
@@ -847,6 +1117,15 @@ export default function AcademicsProfile() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Document Vault Section */}
+            <div className="space-y-5 rounded-md bg-white/5 p-6 mt-6">
+                <div>
+                    <h2 className="text-base font-semibold text-pink sm:text-lg">Document Vault</h2>
+                    <p className="text-sm text-slate-300">Upload and manage your documents securely.</p>
+                </div>
+                <DocumentVault />
             </div>
 
             {/* Actions */}

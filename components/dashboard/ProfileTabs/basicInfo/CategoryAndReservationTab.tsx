@@ -4,6 +4,7 @@ import { Button, Select, Notification } from "../../../shared";
 import { upsertCategoryAndReservation } from "@/api";
 import type { CategoryAndReservationData } from "./types";
 import { inputBase } from "./constants";
+import { getAllStates } from "@/lib/data/indianStatesDistricts";
 
 interface CategoryAndReservationTabProps {
   catResData: CategoryAndReservationData;
@@ -46,6 +47,8 @@ export default function CategoryAndReservationTab({
         minority_status: catResData.minority_status || undefined,
         ex_serviceman_defence_quota: catResData.ex_serviceman_defence_quota,
         kashmiri_migrant_regional_quota: catResData.kashmiri_migrant_regional_quota,
+        state_domicile: catResData.state_domicile,
+        home_state_for_quota: catResData.home_state_for_quota || undefined,
       });
 
       if (response.success) {
@@ -225,6 +228,41 @@ export default function CategoryAndReservationTab({
             />
             Kashmiri-migrant/Regional-quota
           </label>
+        </div>
+
+        {/* State Domicile */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+            <input
+              type="checkbox"
+              checked={catResData.state_domicile}
+              onChange={(e) => setCatResData({ ...catResData, state_domicile: e.target.checked })}
+              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+            />
+            State Domicile
+          </label>
+        </div>
+
+        {/* Home State for Quota */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            Home State for Quota
+          </label>
+          <Select
+            options={getAllStates().map((state) => ({
+              value: state,
+              label: state,
+            }))}
+            value={catResData.home_state_for_quota}
+            onChange={(value) => setCatResData({ ...catResData, home_state_for_quota: value || "" })}
+            placeholder="Select Home State"
+            error={validationErrors.home_state_for_quota}
+            isSearchable={true}
+            isClearable={true}
+          />
+          {validationErrors.home_state_for_quota && (
+            <p className="text-xs text-red-400">{validationErrors.home_state_for_quota}</p>
+          )}
         </div>
       </div>
 

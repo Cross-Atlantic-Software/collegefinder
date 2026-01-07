@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS college_courses (
   brochure_url VARCHAR(500),
   fee_per_sem DECIMAL(10, 2),
   total_fee DECIMAL(10, 2),
+  subject_ids INTEGER[], -- Array of subject IDs from subjects table
+  exam_ids INTEGER[], -- Array of exam IDs from exams_taxonomies table
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,6 +42,8 @@ BEGIN
     ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS brochure_url VARCHAR(500);
     ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS fee_per_sem DECIMAL(10, 2);
     ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS total_fee DECIMAL(10, 2);
+    ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS subject_ids INTEGER[];
+    ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS exam_ids INTEGER[];
     ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE college_courses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   END IF;
@@ -73,4 +77,6 @@ COMMENT ON COLUMN college_courses.scholarship IS 'Scholarship information';
 COMMENT ON COLUMN college_courses.brochure_url IS 'URL to course brochure PDF (S3)';
 COMMENT ON COLUMN college_courses.fee_per_sem IS 'Fee per semester';
 COMMENT ON COLUMN college_courses.total_fee IS 'Total course fee';
+COMMENT ON COLUMN college_courses.subject_ids IS 'Array of subject IDs from subjects table';
+COMMENT ON COLUMN college_courses.exam_ids IS 'Array of exam IDs from exams_taxonomies table';
 

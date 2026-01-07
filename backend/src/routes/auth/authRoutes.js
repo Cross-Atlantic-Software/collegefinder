@@ -13,10 +13,45 @@ const GovernmentIdentificationController = require('../../controllers/profile/go
 const CategoryAndReservationController = require('../../controllers/profile/categoryAndReservationController');
 const OtherPersonalDetailsController = require('../../controllers/profile/otherPersonalDetailsController');
 const UserAddressController = require('../../controllers/profile/userAddressController');
+const UserOtherInfoController = require('../../controllers/profile/userOtherInfoController');
+const DocumentVaultController = require('../../controllers/profile/documentVaultController');
 const { authenticate } = require('../../middleware/auth');
 
-// Configure multer for memory storage (for S3 upload)
+// Configure multer for document vault (images and PDFs, 10MB)
 const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for documents
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only specific image types and PDF files for document vault
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'application/pdf'
+    ];
+    
+    // Check MIME type
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return cb(new Error('Only JPEG, PNG, WebP images and PDF files are allowed'), false);
+    }
+    
+    // Check file extension as additional validation
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+    const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return cb(new Error('Invalid file extension. Only .jpg, .jpeg, .png, .webp, and .pdf files are allowed'), false);
+    }
+    
+    cb(null, true);
+  },
+});
+
+// Configure multer for profile photo (images only, 5MB)
+const uploadPhoto = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
@@ -150,7 +185,7 @@ router.delete('/profile/upload-photo', authenticate, BasicInfoController.deleteP
  * @desc    Upload profile photo
  * @access  Private
  */
-router.post('/profile/upload-photo', authenticate, upload.single('photo'), BasicInfoController.uploadProfilePhoto);
+router.post('/profile/upload-photo', authenticate, uploadPhoto.single('photo'), BasicInfoController.uploadProfilePhoto);
 
 /**
  * @route   GET /api/auth/profile/academics
@@ -305,6 +340,41 @@ router.put('/profile/address', authenticate, validateUserAddress, UserAddressCon
  * @access  Private
  */
 router.delete('/profile/address', authenticate, UserAddressController.deleteAddress);
+
+/**
+ * @route   GET /api/auth/profile/other-info
+ * @desc    Get user other info
+ * @access  Private
+ */
+router.get('/profile/other-info', authenticate, UserOtherInfoController.getOtherInfo);
+
+/**
+ * @route   PUT /api/auth/profile/other-info
+ * @desc    Create or update user other info
+ * @access  Private
+ */
+router.put('/profile/other-info', authenticate, UserOtherInfoController.updateOtherInfo);
+
+/**
+ * @route   GET /api/auth/profile/document-vault
+ * @desc    Get user document vault
+ * @access  Private
+ */
+router.get('/profile/document-vault', authenticate, DocumentVaultController.getDocumentVault);
+
+/**
+ * @route   POST /api/auth/profile/document-vault/upload
+ * @desc    Upload a document to document vault
+ * @access  Private
+ */
+router.post('/profile/document-vault/upload', authenticate, upload.single('document'), DocumentVaultController.uploadDocument);
+
+/**
+ * @route   DELETE /api/auth/profile/document-vault/:fieldName
+ * @desc    Delete a document from document vault
+ * @access  Private
+ */
+router.delete('/profile/document-vault/:fieldName', authenticate, DocumentVaultController.deleteDocument);
 
 module.exports = router;
 
