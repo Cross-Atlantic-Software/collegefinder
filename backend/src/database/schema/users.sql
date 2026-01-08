@@ -45,6 +45,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS father_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
