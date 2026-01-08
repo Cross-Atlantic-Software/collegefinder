@@ -703,4 +703,3 @@ export async function deleteDocument(fieldName: string): Promise<ApiResponse<{
     method: 'DELETE',
   });
 }
-
