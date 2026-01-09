@@ -116,6 +116,7 @@ class Lecture {
    */
   static async create(data) {
     const {
+      topic_id,
       subtopic_id,
       name,
       content_type = 'VIDEO',
@@ -129,10 +130,11 @@ class Lecture {
     } = data;
 
     const result = await db.query(
-      `INSERT INTO lectures (subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, status, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO lectures (topic_id, subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, status, description, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
+        topic_id,
         subtopic_id,
         name,
         content_type,
@@ -153,6 +155,7 @@ class Lecture {
    */
   static async update(id, data) {
     const {
+      topic_id,
       subtopic_id,
       name,
       content_type,
@@ -169,6 +172,10 @@ class Lecture {
     const values = [];
     let paramCount = 1;
 
+    if (topic_id !== undefined) {
+      updates.push(`topic_id = $${paramCount++}`);
+      values.push(topic_id);
+    }
     if (subtopic_id !== undefined) {
       updates.push(`subtopic_id = $${paramCount++}`);
       values.push(subtopic_id);
