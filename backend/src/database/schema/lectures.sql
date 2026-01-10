@@ -2,6 +2,7 @@
 -- Stores lectures that belong to subtopics
 CREATE TABLE IF NOT EXISTS lectures (
   id SERIAL PRIMARY KEY,
+  topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
   subtopic_id INTEGER NOT NULL REFERENCES subtopics(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   content_type VARCHAR(50) DEFAULT 'VIDEO', -- 'VIDEO' or 'ARTICLE'
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS lectures (
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'lectures') THEN
+    ALTER TABLE lectures ADD COLUMN IF NOT EXISTS topic_id INTEGER REFERENCES topics(id) ON DELETE CASCADE;
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS subtopic_id INTEGER REFERENCES subtopics(id) ON DELETE CASCADE;
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS name VARCHAR(255);
     ALTER TABLE lectures ADD COLUMN IF NOT EXISTS content_type VARCHAR(50) DEFAULT 'VIDEO';
@@ -46,6 +48,7 @@ BEGIN
 END $$;
 
 -- Create indexes
+CREATE INDEX IF NOT EXISTS idx_lectures_topic_id ON lectures(topic_id);
 CREATE INDEX IF NOT EXISTS idx_lectures_subtopic_id ON lectures(subtopic_id);
 CREATE INDEX IF NOT EXISTS idx_lectures_name ON lectures(name);
 CREATE INDEX IF NOT EXISTS idx_lectures_status ON lectures(status);
@@ -57,6 +60,7 @@ CREATE TRIGGER update_lectures_updated_at BEFORE UPDATE ON lectures
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE lectures IS 'Lectures table - lectures belong to subtopics';
+COMMENT ON COLUMN lectures.topic_id IS 'Foreign key reference to topics table';
 COMMENT ON COLUMN lectures.subtopic_id IS 'Foreign key reference to subtopics table';
 COMMENT ON COLUMN lectures.name IS 'Display name for the lecture';
 COMMENT ON COLUMN lectures.content_type IS 'Type of content: VIDEO or ARTICLE';

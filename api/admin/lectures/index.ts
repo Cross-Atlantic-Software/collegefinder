@@ -4,6 +4,7 @@ import { ApiResponse } from '../../types';
 
 export interface Lecture {
   id: number;
+  topic_id: number;
   subtopic_id: number;
   name: string;
   content_type: 'VIDEO' | 'ARTICLE';

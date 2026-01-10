@@ -193,6 +193,7 @@ export default function LecturesPage() {
 
     try {
       const formDataToSend = new FormData();
+      formDataToSend.append('topic_id', formData.topic_id);
       formDataToSend.append('subtopic_id', formData.subtopic_id);
       formDataToSend.append('name', formData.name);
       formDataToSend.append('content_type', formData.content_type);

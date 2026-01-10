@@ -105,7 +105,7 @@ class LectureController {
         });
       }
 
-      const { subtopic_id, name, content_type = 'VIDEO', status, description, sort_order, article_content, iframe_code } = req.body;
+      const { topic_id, subtopic_id, name, content_type = 'VIDEO', status, description, sort_order, article_content, iframe_code } = req.body;
 
       // Check if lecture with same name exists for this subtopic
       const existing = await Lecture.findByNameAndSubtopicId(name, parseInt(subtopic_id));
@@ -143,6 +143,7 @@ class LectureController {
       }
 
       const lecture = await Lecture.create({
+        topic_id: parseInt(topic_id),
         subtopic_id: parseInt(subtopic_id),
         name,
         content_type,
@@ -217,7 +218,7 @@ class LectureController {
         });
       }
 
-      const { subtopic_id, name, content_type, status, description, sort_order, article_content, iframe_code } = req.body;
+      const { topic_id, subtopic_id, name, content_type, status, description, sort_order, article_content, iframe_code } = req.body;
 
       // Check if name is being changed and if it already exists for this subtopic
       const subtopicId = subtopic_id ? parseInt(subtopic_id) : existingLecture.subtopic_id;
@@ -268,6 +269,7 @@ class LectureController {
       }
 
       const updateData = {};
+      if (topic_id !== undefined) updateData.topic_id = parseInt(topic_id);
       if (subtopic_id !== undefined) updateData.subtopic_id = parseInt(subtopic_id);
       if (name !== undefined) updateData.name = name;
       if (content_type !== undefined) updateData.content_type = content_type;
