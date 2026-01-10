@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllLectures, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, getAllTopics, getSubtopicsByTopicId, getSubtopicById, getAllSubtopics } from '@/api';
+import { getAllLectures, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, getAllTopics, getSubtopicsByTopicId, getAllSubtopics } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage, FiVideo } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 import RichTextEditor from '@/components/shared/RichTextEditor';
@@ -122,12 +122,15 @@ export default function LecturesPage() {
   useEffect(() => {
     if (formData.topic_id) {
       fetchSubtopicsByTopic(formData.topic_id);
-      // Clear subtopic when topic changes (but preserve other form data)
-      setFormData(prev => ({ ...prev, subtopic_id: '' }));
+      // Only clear subtopic if we're not editing (editingLecture is null)
+      // or if the current subtopic doesn't belong to the new topic
+      if (!editingLecture) {
+        setFormData(prev => ({ ...prev, subtopic_id: '' }));
+      }
     } else {
       setAvailableSubtopics([]);
     }
-  }, [formData.topic_id]);
+  }, [formData.topic_id, editingLecture]);
 
   const fetchPurposes = async () => {
     try {
@@ -265,48 +268,22 @@ export default function LecturesPage() {
 
   const handleEdit = async (lecture: Lecture) => {
     setEditingLecture(lecture);
-    
-    // Get the subtopic to find its topic_id
-    try {
-      const subtopicResponse = await getSubtopicById(lecture.subtopic_id);
-      if (subtopicResponse.success && subtopicResponse.data) {
-        const topicId = String(subtopicResponse.data.subtopic.topic_id);
-        setFormData({
-          topic_id: topicId,
-          subtopic_id: String(lecture.subtopic_id),
-          name: lecture.name,
-          content_type: lecture.content_type || 'VIDEO',
-          status: lecture.status,
-          description: lecture.description || '',
-          sort_order: lecture.sort_order
-        });
-        // Fetch subtopics for this topic
-        await fetchSubtopicsByTopic(topicId);
-      } else {
-        // Fallback if subtopic fetch fails
-        setFormData({
-          topic_id: '',
-          subtopic_id: String(lecture.subtopic_id),
-          name: lecture.name,
-          content_type: lecture.content_type || 'VIDEO',
-          status: lecture.status,
-          description: lecture.description || '',
-          sort_order: lecture.sort_order
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching subtopic:', err);
-      // Fallback
-      setFormData({
-        topic_id: '',
-        subtopic_id: String(lecture.subtopic_id),
-        name: lecture.name,
-        content_type: lecture.content_type || 'VIDEO',
-        status: lecture.status,
-        description: lecture.description || '',
-        sort_order: lecture.sort_order
-      });
-    }
+
+    // Use topic_id directly from the lecture object (should already be available)
+    const topicId = String(lecture.topic_id);
+
+    setFormData({
+      topic_id: topicId,
+      subtopic_id: String(lecture.subtopic_id),
+      name: lecture.name,
+      content_type: lecture.content_type || 'VIDEO',
+      status: lecture.status,
+      description: lecture.description || '',
+      sort_order: lecture.sort_order
+    });
+
+    // Fetch subtopics for this topic
+    await fetchSubtopicsByTopic(topicId);
     
     setArticleContent(lecture.article_content || '');
     setThumbnailPreview(lecture.thumbnail);
