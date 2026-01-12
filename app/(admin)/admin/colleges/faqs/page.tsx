@@ -8,6 +8,7 @@ import { getAllCollegeFAQs, createCollegeFAQ, updateCollegeFAQ, deleteCollegeFAQ
 import { getAllColleges, College } from '@/api/admin/colleges';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select } from '@/components/shared';
+import RichTextEditor from '@/components/shared/RichTextEditor';
 
 export default function CollegeFAQsPage() {
   const router = useRouter();
@@ -264,10 +265,30 @@ export default function CollegeFAQsPage() {
                             <span className="text-sm font-medium text-gray-900">{faq.college_name || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700 line-clamp-2 max-w-xs">{faq.question}</span>
+                            <div
+                              className="text-sm text-gray-700 max-w-xs overflow-hidden"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: '1.5em',
+                                maxHeight: '3em'
+                              }}
+                              dangerouslySetInnerHTML={{ __html: faq.question }}
+                            />
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700 line-clamp-2 max-w-xs">{faq.answer}</span>
+                            <div
+                              className="text-sm text-gray-700 max-w-xs overflow-hidden"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: '1.5em',
+                                maxHeight: '3em'
+                              }}
+                              dangerouslySetInnerHTML={{ __html: faq.answer }}
+                            />
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
@@ -329,12 +350,14 @@ export default function CollegeFAQsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Question <span className="text-red-500">*</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
+                    key={editingFAQ ? `edit-${editingFAQ.id}` : 'create'}
                     value={formData.question}
-                    onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
-                    required
+                    onChange={(value) => setFormData({ ...formData, question: value })}
+                    placeholder="Enter your question..."
+                    className="min-h-[100px]"
+                    imageUploadEndpoint="/admin/college-faqs/upload-image"
+                    imageFormFieldName="faq_image"
                   />
                 </div>
 
@@ -342,12 +365,13 @@ export default function CollegeFAQsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Answer <span className="text-red-500">*</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={formData.answer}
-                    onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                    rows={5}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
-                    required
+                    onChange={(value) => setFormData({ ...formData, answer: value })}
+                    placeholder="Enter your answer..."
+                    className="min-h-[150px]"
+                    imageUploadEndpoint="/admin/college-faqs/upload-image"
+                    imageFormFieldName="faq_image"
                   />
                 </div>
               </div>

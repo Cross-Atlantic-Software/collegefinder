@@ -25,7 +25,7 @@ const { CollegeCourseController, upload: courseUpload } = require('../../control
 const CourseExamController = require('../../controllers/admin/courseExamController');
 const CourseCutoffController = require('../../controllers/admin/courseCutoffController');
 const CourseSubjectController = require('../../controllers/admin/courseSubjectController');
-const CollegeFAQController = require('../../controllers/admin/collegeFAQController');
+const { CollegeFAQController, upload: faqUpload } = require('../../controllers/admin/collegeFAQController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -1073,6 +1073,20 @@ router.post('/lectures/upload-thumbnail', authenticateAdmin, LectureController.u
  * @access  Private (Admin)
  */
 router.post('/lectures/upload-image', authenticateAdmin, LectureController.upload.single('lecture_image'), LectureController.uploadImage);
+
+/**
+ * @route   POST /api/admin/college-courses/upload-image
+ * @desc    Upload image for rich text editor (course content)
+ * @access  Private (Admin)
+ */
+router.post('/college-courses/upload-image', authenticateAdmin, courseUpload.single('course_image'), CollegeCourseController.uploadImage);
+
+/**
+ * @route   POST /api/admin/college-faqs/upload-image
+ * @desc    Upload image for rich text editor (FAQ content)
+ * @access  Private (Admin)
+ */
+router.post('/college-faqs/upload-image', authenticateAdmin, faqUpload.single('faq_image'), CollegeFAQController.uploadImage);
 
 module.exports = router;
 

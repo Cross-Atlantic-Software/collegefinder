@@ -355,6 +355,36 @@ class CollegeCourseController {
       });
     }
   }
+
+  /**
+   * Upload image for rich text editor
+   * POST /api/admin/college-courses/upload-image
+   */
+  static async uploadImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file provided'
+        });
+      }
+
+      const fileBuffer = req.file.buffer;
+      const fileName = req.file.originalname;
+      const s3Url = await uploadToS3(fileBuffer, fileName, 'college_course_images');
+
+      res.json({
+        success: true,
+        data: { imageUrl: s3Url }
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload image'
+      });
+    }
+  }
 }
 
 module.exports = { CollegeCourseController, upload };
