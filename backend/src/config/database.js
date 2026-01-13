@@ -68,6 +68,10 @@ const init = async () => {
       'course_cutoffs.sql',   // Course cutoffs table (depends on college_courses and course_exams)
       'course_subjects.sql',  // Course subjects table (depends on college_courses and subjects)
       'college_faqs.sql',     // College FAQs table (depends on colleges)
+      'coachings.sql',        // Coachings table
+      'coaching_location.sql', // Coaching locations table (depends on coachings)
+      'coaching_gallery.sql',  // Coaching gallery table (depends on coachings)
+      'coaching_courses.sql',  // Coaching courses table (depends on coachings)
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql', // User exam preferences table (depends on users and exams)

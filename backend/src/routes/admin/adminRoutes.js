@@ -26,6 +26,13 @@ const CourseExamController = require('../../controllers/admin/courseExamControll
 const CourseCutoffController = require('../../controllers/admin/courseCutoffController');
 const CourseSubjectController = require('../../controllers/admin/courseSubjectController');
 const { CollegeFAQController, upload: faqUpload } = require('../../controllers/admin/collegeFAQController');
+const {
+  CoachingController,
+  CoachingLocationController,
+  CoachingGalleryController,
+  CoachingCourseController,
+  upload: coachingUpload
+} = require('../../controllers/admin/coachingController');
 const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -72,7 +79,15 @@ const {
   validateCreateCourseSubject,
   validateUpdateCourseSubject,
   validateCreateCollegeFAQ,
-  validateUpdateCollegeFAQ
+  validateUpdateCollegeFAQ,
+  validateCreateCoaching,
+  validateUpdateCoaching,
+  validateCreateCoachingLocation,
+  validateUpdateCoachingLocation,
+  validateCreateCoachingGallery,
+  validateUpdateCoachingGallery,
+  validateCreateCoachingCourse,
+  validateUpdateCoachingCourse
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -1087,6 +1102,198 @@ router.post('/college-courses/upload-image', authenticateAdmin, courseUpload.sin
  * @access  Private (Admin)
  */
 router.post('/college-faqs/upload-image', authenticateAdmin, faqUpload.single('faq_image'), CollegeFAQController.uploadImage);
+
+/**
+ * Coaching Routes
+ */
+
+/**
+ * @route   GET /api/admin/coachings
+ * @desc    Get all coachings
+ * @access  Private (Admin)
+ */
+router.get('/coachings', authenticateAdmin, CoachingController.getAllCoachings);
+
+/**
+ * @route   GET /api/admin/coachings/:id
+ * @desc    Get coaching by ID
+ * @access  Private (Admin)
+ */
+router.get('/coachings/:id', authenticateAdmin, CoachingController.getCoachingById);
+
+/**
+ * @route   POST /api/admin/coachings
+ * @desc    Create new coaching
+ * @access  Private (Admin)
+ */
+router.post('/coachings', authenticateAdmin, coachingUpload.fields([
+  { name: 'logo', maxCount: 1 }
+]), validateCreateCoaching, CoachingController.createCoaching);
+
+/**
+ * @route   PUT /api/admin/coachings/:id
+ * @desc    Update coaching
+ * @access  Private (Admin)
+ */
+router.put('/coachings/:id', authenticateAdmin, coachingUpload.fields([
+  { name: 'logo', maxCount: 1 }
+]), validateUpdateCoaching, CoachingController.updateCoaching);
+
+/**
+ * @route   DELETE /api/admin/coachings/:id
+ * @desc    Delete coaching
+ * @access  Private (Admin)
+ */
+router.delete('/coachings/:id', authenticateAdmin, CoachingController.deleteCoaching);
+
+/**
+ * Coaching Location Routes
+ */
+
+/**
+ * @route   GET /api/admin/coaching-locations
+ * @desc    Get all coaching locations
+ * @access  Private (Admin)
+ */
+router.get('/coaching-locations', authenticateAdmin, CoachingLocationController.getAllCoachingLocations);
+
+/**
+ * @route   GET /api/admin/coaching-locations/coaching/:coachingId
+ * @desc    Get locations by coaching ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-locations/coaching/:coachingId', authenticateAdmin, CoachingLocationController.getLocationsByCoachingId);
+
+/**
+ * @route   GET /api/admin/coaching-locations/:id
+ * @desc    Get coaching location by ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-locations/:id', authenticateAdmin, CoachingLocationController.getCoachingLocationById);
+
+/**
+ * @route   POST /api/admin/coaching-locations
+ * @desc    Create new coaching location
+ * @access  Private (Admin)
+ */
+router.post('/coaching-locations', authenticateAdmin, validateCreateCoachingLocation, CoachingLocationController.createCoachingLocation);
+
+/**
+ * @route   PUT /api/admin/coaching-locations/:id
+ * @desc    Update coaching location
+ * @access  Private (Admin)
+ */
+router.put('/coaching-locations/:id', authenticateAdmin, validateUpdateCoachingLocation, CoachingLocationController.updateCoachingLocation);
+
+/**
+ * @route   DELETE /api/admin/coaching-locations/:id
+ * @desc    Delete coaching location
+ * @access  Private (Admin)
+ */
+router.delete('/coaching-locations/:id', authenticateAdmin, CoachingLocationController.deleteCoachingLocation);
+
+/**
+ * Coaching Gallery Routes
+ */
+
+/**
+ * @route   GET /api/admin/coaching-gallery
+ * @desc    Get all coaching gallery images
+ * @access  Private (Admin)
+ */
+router.get('/coaching-gallery', authenticateAdmin, CoachingGalleryController.getAllCoachingGallery);
+
+/**
+ * @route   GET /api/admin/coaching-gallery/coaching/:coachingId
+ * @desc    Get gallery images by coaching ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-gallery/coaching/:coachingId', authenticateAdmin, CoachingGalleryController.getGalleryByCoachingId);
+
+/**
+ * @route   GET /api/admin/coaching-gallery/:id
+ * @desc    Get gallery image by ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-gallery/:id', authenticateAdmin, CoachingGalleryController.getCoachingGalleryById);
+
+/**
+ * @route   POST /api/admin/coaching-gallery
+ * @desc    Create new gallery image
+ * @access  Private (Admin)
+ */
+router.post('/coaching-gallery', authenticateAdmin, coachingUpload.fields([
+  { name: 'image', maxCount: 1 }
+]), validateCreateCoachingGallery, CoachingGalleryController.createCoachingGallery);
+
+/**
+ * @route   PUT /api/admin/coaching-gallery/:id
+ * @desc    Update gallery image
+ * @access  Private (Admin)
+ */
+router.put('/coaching-gallery/:id', authenticateAdmin, coachingUpload.fields([
+  { name: 'image', maxCount: 1 }
+]), validateUpdateCoachingGallery, CoachingGalleryController.updateCoachingGallery);
+
+/**
+ * @route   DELETE /api/admin/coaching-gallery/:id
+ * @desc    Delete gallery image
+ * @access  Private (Admin)
+ */
+router.delete('/coaching-gallery/:id', authenticateAdmin, CoachingGalleryController.deleteCoachingGallery);
+
+/**
+ * Coaching Course Routes
+ */
+
+/**
+ * @route   GET /api/admin/coaching-courses
+ * @desc    Get all coaching courses
+ * @access  Private (Admin)
+ */
+router.get('/coaching-courses', authenticateAdmin, CoachingCourseController.getAllCoachingCourses);
+
+/**
+ * @route   GET /api/admin/coaching-courses/coaching/:coachingId
+ * @desc    Get courses by coaching ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-courses/coaching/:coachingId', authenticateAdmin, CoachingCourseController.getCoursesByCoachingId);
+
+/**
+ * @route   GET /api/admin/coaching-courses/:id
+ * @desc    Get coaching course by ID
+ * @access  Private (Admin)
+ */
+router.get('/coaching-courses/:id', authenticateAdmin, CoachingCourseController.getCoachingCourseById);
+
+/**
+ * @route   POST /api/admin/coaching-courses
+ * @desc    Create new coaching course
+ * @access  Private (Admin)
+ */
+router.post('/coaching-courses', authenticateAdmin, validateCreateCoachingCourse, CoachingCourseController.createCoachingCourse);
+
+/**
+ * @route   PUT /api/admin/coaching-courses/:id
+ * @desc    Update coaching course
+ * @access  Private (Admin)
+ */
+router.put('/coaching-courses/:id', authenticateAdmin, validateUpdateCoachingCourse, CoachingCourseController.updateCoachingCourse);
+
+/**
+ * @route   DELETE /api/admin/coaching-courses/:id
+ * @desc    Delete coaching course
+ * @access  Private (Admin)
+ */
+router.delete('/coaching-courses/:id', authenticateAdmin, CoachingCourseController.deleteCoachingCourse);
+
+/**
+ * @route   POST /api/admin/coaching-courses/upload-image
+ * @desc    Upload image for coaching courses
+ * @access  Private (Admin)
+ */
+router.post('/coaching-courses/upload-image', authenticateAdmin, coachingUpload.single('course_image'), CoachingCourseController.uploadImage);
 
 module.exports = router;
 
