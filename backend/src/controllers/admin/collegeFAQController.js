@@ -1,5 +1,22 @@
 const CollegeFAQ = require('../../models/college/CollegeFAQ');
 const { validationResult } = require('express-validator');
+const { uploadToS3 } = require('../../../utils/storage/s3Upload');
+const multer = require('multer');
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for images
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 class CollegeFAQController {
   /**
@@ -164,7 +181,37 @@ class CollegeFAQController {
       });
     }
   }
+
+  /**
+   * Upload image for rich text editor
+   * POST /api/admin/college-faqs/upload-image
+   */
+  static async uploadImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file provided'
+        });
+      }
+
+      const fileBuffer = req.file.buffer;
+      const fileName = req.file.originalname;
+      const s3Url = await uploadToS3(fileBuffer, fileName, 'college_faq_images');
+
+      res.json({
+        success: true,
+        data: { imageUrl: s3Url }
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload image'
+      });
+    }
+  }
 }
 
-module.exports = CollegeFAQController;
+module.exports = { CollegeFAQController, upload };
 

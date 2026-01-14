@@ -77,6 +77,10 @@ export const API_ENDPOINTS = {
     COURSE_CUTOFFS: '/admin/course-cutoffs',
     COURSE_SUBJECTS: '/admin/course-subjects',
     COLLEGE_FAQS: '/admin/college-faqs',
+    COACHINGS: '/admin/coachings',
+    COACHING_LOCATIONS: '/admin/coaching-locations',
+    COACHING_GALLERY: '/admin/coaching-gallery',
+    COACHING_COURSES: '/admin/coaching-courses',
   },
 } as const;
 

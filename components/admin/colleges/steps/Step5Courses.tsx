@@ -9,6 +9,7 @@ import { getAllPrograms, Program } from '@/api/admin/programs';
 import { getAllSubjects, Subject } from '@/api/admin/subjects';
 import { getAllExamsAdmin, Exam } from '@/api/admin/exams';
 import { Select, MultiSelect } from '@/components/shared';
+import RichTextEditor from '@/components/shared/RichTextEditor';
 
 interface Step5CoursesProps {
   formData: CollegeFormData;
@@ -422,13 +423,20 @@ export default function Step5Courses({ formData, setFormData, isViewMode = false
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Curriculum Detail</label>
-                  <textarea
-                    value={tempCourse.curriculum_detail}
-                    onChange={(e) => setTempCourse({ ...tempCourse, curriculum_detail: e.target.value })}
-                    disabled={viewingIndex !== null}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent disabled:bg-gray-100"
-                  />
+                  {viewingIndex !== null ? (
+                    <div
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 min-h-[120px] prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: tempCourse.curriculum_detail || '<p class="text-gray-500 italic">No curriculum details provided</p>' }}
+                    />
+                  ) : (
+                    <RichTextEditor
+                      key={editingIndex !== null ? `edit-${editingIndex}` : 'create'}
+                      value={tempCourse.curriculum_detail}
+                      onChange={(value) => setTempCourse({ ...tempCourse, curriculum_detail: value })}
+                      placeholder="Enter curriculum details..."
+                      className="min-h-[120px]"
+                    />
+                  )}
                 </div>
 
                 <div>

@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { 
-  FiLayout, 
-  FiUsers, 
+import {
+  FiUsers,
   FiLogOut,
   FiChevronRight,
   FiChevronDown,
@@ -19,7 +18,6 @@ import {
   FiMapPin,
   FiImage,
   FiStar,
-  FiRss,
   FiHelpCircle
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
@@ -142,6 +140,32 @@ const navGroups: NavGroup[] = [
         label: 'Cutoffs',
         href: '/admin/courses/cutoffs',
         icon: <FiFileText className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Coachings',
+    icon: <FiBook className="h-4 w-4" />,
+    children: [
+      {
+        label: 'All Coachings',
+        href: '/admin/coachings',
+        icon: <FiBook className="h-4 w-4" />,
+      },
+      {
+        label: 'Locations',
+        href: '/admin/coachings/locations',
+        icon: <FiMapPin className="h-4 w-4" />,
+      },
+      {
+        label: 'Gallery',
+        href: '/admin/coachings/gallery',
+        icon: <FiImage className="h-4 w-4" />,
+      },
+      {
+        label: 'Courses',
+        href: '/admin/coachings/courses',
+        icon: <FiBook className="h-4 w-4" />,
       },
     ],
   },

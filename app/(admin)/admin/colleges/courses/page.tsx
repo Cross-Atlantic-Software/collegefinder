@@ -19,11 +19,7 @@ import { getAllSubjects, Subject } from '@/api/admin/subjects';
 import { getAllExamsAdmin, Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiFileText, FiEye, FiDownload } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Select, MultiSelect } from '@/components/shared';
-import dynamic from 'next/dynamic';
-
-const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'), {
-  ssr: false,
-});
+import RichTextEditor from '@/components/shared/RichTextEditor';
 
 export default function CollegeCoursesPage() {
   const router = useRouter();
@@ -612,9 +608,12 @@ export default function CollegeCoursesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Curriculum Detail</label>
                   <RichTextEditor
+                    key={editingCourse ? `edit-${editingCourse.id}` : 'create'}
                     value={formData.curriculum_detail}
                     onChange={(value) => setFormData({ ...formData, curriculum_detail: value })}
                     placeholder="Enter curriculum details..."
+                    imageUploadEndpoint="/admin/college-courses/upload-image"
+                    imageFormFieldName="course_image"
                   />
                 </div>
 
