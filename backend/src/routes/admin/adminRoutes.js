@@ -1295,5 +1295,67 @@ router.delete('/coaching-courses/:id', authenticateAdmin, CoachingCourseControll
  */
 router.post('/coaching-courses/upload-image', authenticateAdmin, coachingUpload.single('course_image'), CoachingCourseController.uploadImage);
 
+/**
+ * Automation Applications Routes
+ * For managing user exam automation requests
+ */
+const AutomationApplicationsController = require('../../controllers/admin/automationApplicationsController');
+
+/**
+ * @route   GET /api/admin/automation-applications
+ * @desc    Get all automation applications
+ * @access  Private (Admin)
+ */
+router.get('/automation-applications', authenticateAdmin, AutomationApplicationsController.getAllApplications);
+
+/**
+ * @route   GET /api/admin/automation-applications/:id
+ * @desc    Get automation application by ID
+ * @access  Private (Admin)
+ */
+router.get('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.getApplicationById);
+
+/**
+ * @route   POST /api/admin/automation-applications
+ * @desc    Create new automation application
+ * @access  Private (Admin)
+ */
+router.post('/automation-applications', authenticateAdmin, AutomationApplicationsController.createApplication);
+
+/**
+ * @route   POST /api/admin/automation-applications/:id/approve
+ * @desc    Approve an automation application
+ * @access  Private (Admin)
+ */
+router.post('/automation-applications/:id/approve', authenticateAdmin, AutomationApplicationsController.approveApplication);
+
+/**
+ * @route   PUT /api/admin/automation-applications/:id
+ * @desc    Update automation application status
+ * @access  Private (Admin)
+ */
+router.put('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.updateStatus);
+
+/**
+ * @route   DELETE /api/admin/automation-applications/:id
+ * @desc    Delete automation application
+ * @access  Private (Admin)
+ */
+router.delete('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.deleteApplication);
+
+/**
+ * @route   GET /api/admin/automation-exams
+ * @desc    Get automation exams for selection dropdown
+ * @access  Private (Admin)
+ */
+router.get('/automation-exams', authenticateAdmin, AutomationApplicationsController.getAutomationExams);
+
+/**
+ * @route   GET /api/admin/users-for-automation
+ * @desc    Get users for automation selection dropdown
+ * @access  Private (Admin)
+ */
+router.get('/users-for-automation', authenticateAdmin, AutomationApplicationsController.getUsersForSelection);
+
 module.exports = router;
 

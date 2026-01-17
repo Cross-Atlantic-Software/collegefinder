@@ -85,7 +85,7 @@ export default function StepTwoB() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (selectedInterests.length === 0) {
       setError("Please select at least one interest");
       return;
@@ -105,7 +105,7 @@ export default function StepTwoB() {
       const response = await updateCareerGoals({
         interests: interests,
       });
-      
+
       if (response.success) {
         router.prefetch("/step-2c");
         router.replace("/step-2c");
@@ -153,41 +153,42 @@ export default function StepTwoB() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {interestOptions.map((opt) => {
-                    const active = selectedInterests.includes(opt.id);
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => toggleInterest(opt.id)}
-                        className={[
-                          "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
-                          "border group",
-                          active
-                            ? "bg-pink text-white border-pink"
-                            : "bg-white/5 border-white/10 hover:bg-white/10",
-                        ].join(" ")}
-                      >
-                        <Image
-                          src={opt.logo}
-                          alt={opt.label}
-                          width={60}
-                          height={60}
-                          className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
-                          priority
-                          unoptimized
-                        />
-                        <span
-                          className={`text-md font-semibold transition duration-500 ${
-                            active ? "text-white" : "text-slate-200 group-hover:text-white"
-                          }`}
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {interestOptions.map((opt) => {
+                      const active = selectedInterests.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => toggleInterest(opt.id)}
+                          className={[
+                            "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
+                            "border group",
+                            active
+                              ? "bg-pink text-white border-pink"
+                              : "bg-white/5 border-white/10 hover:bg-white/10",
+                          ].join(" ")}
                         >
-                          {opt.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                          <Image
+                            src={opt.logo}
+                            alt={opt.label}
+                            width={60}
+                            height={60}
+                            className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
+                            priority
+                            unoptimized
+                          />
+                          <span
+                            className={`text-md font-semibold transition duration-500 ${active ? "text-white" : "text-slate-200 group-hover:text-white"
+                              }`}
+                          >
+                            {opt.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <Button

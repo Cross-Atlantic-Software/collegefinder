@@ -36,7 +36,7 @@ pool.on('error', (err) => {
 const init = async () => {
   try {
     const dbDir = path.join(__dirname, '../database/schema');
-    
+
     // Define schema files in execution order
     const schemaFiles = [
       'functions.sql',        // Functions must be loaded first
@@ -72,12 +72,19 @@ const init = async () => {
       'coaching_location.sql', // Coaching locations table (depends on coachings)
       'coaching_gallery.sql',  // Coaching gallery table (depends on coachings)
       'coaching_courses.sql',  // Coaching courses table (depends on coachings)
+      'user_address.sql',      // User address table (depends on users)
+      'government_identification.sql', // Government ID table (depends on users)
+      'other_personal_details.sql', // Other personal details (depends on users)
       'user_academics.sql',   // User academics table (depends on users)
       'user_career_goals.sql', // User career goals table (depends on users)
       'user_exam_preferences.sql', // User exam preferences table (depends on users and exams)
       'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
       'user_other_info.sql',   // User other info table (depends on users, programs, exam_city)
-      'user_document_vault.sql' // User document vault table (depends on users)
+      'user_document_vault.sql', // User document vault table (depends on users)
+      // Automation tables (for python-backend PostgreSQL integration)
+      'automation_exams.sql',       // Automation exam configurations
+      'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
+      'automation_applications.sql' // Automation application queue (depends on automation_exams, users, admin_users, automation_sessions)
     ];
 
     // Execute each schema file in order
@@ -87,16 +94,16 @@ const init = async () => {
       await pool.query(sql);
       console.log(`✅ Loaded schema: ${file}`);
     }
-    
+
     console.log('✅ Database tables initialized');
-    
+
     // Run migrations
     await runMigrations();
   } catch (error) {
     // If tables already exist, that's okay
     if (error.code === '42P07') {
       console.log('ℹ️  Database tables already exist');
-    } 
+    }
     // If trigger already exists, that's okay too (shouldn't happen with DROP IF EXISTS, but just in case)
     else if (error.code === '42710') {
       console.log('ℹ️  Database triggers already exist');
@@ -113,27 +120,27 @@ const runMigrations = async () => {
   const migrationFiles = [
     'update_government_identification_apaar_id.sql'
   ];
-  
+
   console.log('\n🔄 Running database migrations...\n');
-  
+
   for (const file of migrationFiles) {
     const filePath = path.join(migrationsDir, file);
     if (!fs.existsSync(filePath)) {
       console.log(`⚠️  Migration file not found: ${file}`);
       continue;
     }
-    
+
     const sql = fs.readFileSync(filePath, 'utf8');
     const cleanedSql = sql
       .split('\n')
       .filter(line => !line.trim().startsWith('--'))
       .join('\n');
-    
+
     const statements = cleanedSql
       .split(';')
       .map(s => s.trim())
       .filter(s => s.length > 0);
-    
+
     try {
       for (const statement of statements) {
         if (statement.trim()) {
@@ -143,13 +150,13 @@ const runMigrations = async () => {
       console.log(`✅ Migration: ${file}`);
     } catch (error) {
       if (error.code === '42P07' || error.code === '42701' ||
-          error.message.includes('already exists') ||
-          error.message.includes('duplicate key') ||
-          error.message.includes('IF NOT EXISTS') ||
-          error.message.includes('relation already exists') ||
-          error.message.includes('constraint') ||
-          error.message.includes('column') ||
-          error.message.includes('does not exist')) {
+        error.message.includes('already exists') ||
+        error.message.includes('duplicate key') ||
+        error.message.includes('IF NOT EXISTS') ||
+        error.message.includes('relation already exists') ||
+        error.message.includes('constraint') ||
+        error.message.includes('column') ||
+        error.message.includes('does not exist')) {
         console.log(`ℹ️  Migration ${file} - Already applied or skipped (${error.message})`);
       } else {
         console.error(`❌ Migration ${file} failed:`, error.message);
@@ -157,7 +164,7 @@ const runMigrations = async () => {
       }
     }
   }
-  
+
   console.log('✅ Migrations check completed\n');
 };
 

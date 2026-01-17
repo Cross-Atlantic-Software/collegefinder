@@ -46,6 +46,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS father_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT gen_random_uuid()::text;
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
