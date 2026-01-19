@@ -45,3 +45,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python Backend
+python-backend/venv/
+python-backend/__pycache__/
+python-backend/**/__pycache__/
+python-backend/*.pyc
+python-backend/.env
+
+# Stagehand Backend
+stagehand-backend/node_modules/
+stagehand-backend/dist/
+stagehand-backend/.env
+
+# Backend
+backend/node_modules/
+backend/.env
+
+# IDE
+.idea/
+*.swp
+*.swo

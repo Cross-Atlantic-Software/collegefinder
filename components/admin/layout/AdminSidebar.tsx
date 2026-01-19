@@ -18,7 +18,8 @@ import {
   FiMapPin,
   FiImage,
   FiStar,
-  FiHelpCircle
+  FiHelpCircle,
+  FiPlay
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -187,6 +188,11 @@ const navItems: NavItem[] = [
     href: '/admin/lectures',
     icon: <FiFileText className="h-4 w-4" />,
   },
+  {
+    label: 'Applications',
+    href: '/admin/applications',
+    icon: <FiPlay className="h-4 w-4" />,
+  },
 ];
 
 export default function AdminSidebar() {
@@ -231,8 +237,8 @@ export default function AdminSidebar() {
       {/* Logo */}
       <div className="p-4 border-b border-white/10">
         <Link href="/admin" className="block">
-          <Logo 
-            mode="dark" 
+          <Logo
+            mode="dark"
             darkSrc="/svgs/logo-white.svg"
             width={160}
             height={36}
@@ -253,10 +259,9 @@ export default function AdminSidebar() {
                 onClick={() => toggleGroup(group.label)}
                 className={`
                   w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm
-                  ${
-                    hasActiveChild
-                      ? 'bg-pink/20 text-white'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  ${hasActiveChild
+                    ? 'bg-pink/20 text-white'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }
                 `}
               >
@@ -268,7 +273,7 @@ export default function AdminSidebar() {
                   <FiChevronRight className="h-3.5 w-3.5" />
                 )}
               </button>
-              
+
               {isExpanded && (
                 <div className="ml-4 space-y-1">
                   {group.children.map((child) => {
@@ -279,10 +284,9 @@ export default function AdminSidebar() {
                         href={child.href}
                         className={`
                           flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm
-                          ${
-                            isActive
-                              ? 'bg-pink text-white shadow-lg'
-                              : 'text-white/60 hover:bg-white/10 hover:text-white/80'
+                          ${isActive
+                            ? 'bg-pink text-white shadow-lg'
+                            : 'text-white/60 hover:bg-white/10 hover:text-white/80'
                           }
                         `}
                       >
@@ -308,10 +312,9 @@ export default function AdminSidebar() {
               href={item.href}
               className={`
                 flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm
-                ${
-                  isActive
-                    ? 'bg-pink text-white shadow-lg'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ${isActive
+                  ? 'bg-pink text-white shadow-lg'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
                 }
               `}
             >

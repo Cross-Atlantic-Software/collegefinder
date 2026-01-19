@@ -32,7 +32,7 @@ export const API_ENDPOINTS = {
     PROFILE_DOCUMENT_VAULT: '/auth/profile/document-vault',
     PROFILE_DOCUMENT_VAULT_UPLOAD: '/auth/profile/document-vault/upload',
   },
-  
+
   // Public endpoints
   PUBLIC: {
     SUBJECTS: '/subjects',
@@ -42,7 +42,7 @@ export const API_ENDPOINTS = {
     PROGRAMS: '/programs',
     EXAM_CITIES: '/exam-cities',
   },
-  
+
   // Admin endpoints
   ADMIN: {
     LOGIN: '/admin/login',
@@ -81,6 +81,15 @@ export const API_ENDPOINTS = {
     COACHING_LOCATIONS: '/admin/coaching-locations',
     COACHING_GALLERY: '/admin/coaching-gallery',
     COACHING_COURSES: '/admin/coaching-courses',
+  },
+
+  // Automation endpoints (python-backend at port 8000)
+  AUTOMATION: {
+    SYNC_USER: '/sync/user',
+    START_WORKFLOW: '/workflow/start',
+    WORKFLOW_STATUS: '/workflow/status',
+    EXAMS: '/exams',
+    USERS: '/users',
   },
 } as const;
 

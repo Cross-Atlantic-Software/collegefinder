@@ -22,17 +22,17 @@ export default function AdminLoginPage() {
 
     try {
       const response = await adminLogin(email, password);
-      
+
       if (response.success && response.data) {
         // Store admin token and info in localStorage (for client-side)
         localStorage.setItem('admin_token', response.data.token);
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_user', JSON.stringify(response.data.admin));
-        
+
         // Also set cookie for server-side access
         document.cookie = `admin_token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-        
+
         router.push('/admin/site-users');
       } else {
         setError(response.message || 'Invalid email or password');
@@ -51,8 +51,8 @@ export default function AdminLoginPage() {
         {/* Logo Banner */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-darkGradient shadow-xl">
-            <Logo 
-              mode="dark" 
+            <Logo
+              mode="dark"
               darkSrc="/svgs/logo-white.svg"
               width={200}
               height={45}
@@ -78,7 +78,7 @@ export default function AdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white"
+                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white text-gray-900"
                   placeholder="Enter your email"
                 />
               </div>
@@ -96,7 +96,7 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white"
+                  className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all text-base bg-gray-50 focus:bg-white text-gray-900"
                   placeholder="Enter your password"
                 />
                 <button

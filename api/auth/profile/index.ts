@@ -54,6 +54,7 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   mother_full_name: string | null;
   guardian_name: string | null;
   alternate_mobile_number: string | null;
+  automation_password: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
@@ -314,7 +315,7 @@ export async function uploadProfilePhoto(
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
   const url = `${apiUrl}/auth/profile/upload-photo`;
-  
+
   const token = localStorage.getItem('auth_token');
   if (!token) {
     throw new Error('No authentication token found');
@@ -329,7 +330,7 @@ export async function uploadProfilePhoto(
   });
 
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.message || 'Failed to upload profile photo');
   }
@@ -670,7 +671,7 @@ export async function uploadDocument(
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
   const url = `${apiUrl}${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT_UPLOAD}`;
-  
+
   const token = localStorage.getItem('auth_token');
   if (!token) {
     throw new Error('No authentication token found');
@@ -685,7 +686,7 @@ export async function uploadDocument(
   });
 
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.message || 'Failed to upload document');
   }
