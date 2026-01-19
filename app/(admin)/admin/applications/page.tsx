@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlay, FiCheck, FiClock, FiX, FiRefreshCw, FiUser, FiFileText, FiPlus } from 'react-icons/fi';
+import { FiPlay, FiCheck, FiClock, FiX, FiRefreshCw, FiUser, FiFileText, FiPlus, FiTrash2 } from 'react-icons/fi';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { WorkflowModal } from '@/components/admin/WorkflowModal';
@@ -48,6 +48,7 @@ export default function ApplicationsPage() {
     const [showWorkflow, setShowWorkflow] = useState(false);
     const [selectedApp, setSelectedApp] = useState<Application | null>(null);
     const [syncingAppId, setSyncingAppId] = useState<number | null>(null);
+    const [deletingAppId, setDeletingAppId] = useState<number | null>(null);
 
     // Create modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -206,6 +207,34 @@ export default function ApplicationsPage() {
             alert('Failed to create application');
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    // Delete application
+    const handleDelete = async (appId: number) => {
+        if (!confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+            return;
+        }
+
+        setDeletingAppId(appId);
+        try {
+            const adminToken = localStorage.getItem('admin_token') || '';
+            const response = await fetch(`${API_URL}/admin/automation-applications/${appId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+
+            if (response.ok) {
+                fetchApplications();
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Failed to delete application');
+            }
+        } catch (err) {
+            console.error('Error deleting application:', err);
+            alert('Failed to delete application');
+        } finally {
+            setDeletingAppId(null);
         }
     };
 
@@ -388,6 +417,19 @@ export default function ApplicationsPage() {
                                                             Retry
                                                         </button>
                                                     )}
+                                                    {/* Delete button for all statuses */}
+                                                    <button
+                                                        onClick={() => handleDelete(app.id)}
+                                                        disabled={deletingAppId === app.id}
+                                                        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 rounded-lg flex items-center gap-1 transition"
+                                                        title="Delete application"
+                                                    >
+                                                        {deletingAppId === app.id ? (
+                                                            <FiRefreshCw className="w-3 h-3 animate-spin" />
+                                                        ) : (
+                                                            <FiTrash2 className="w-3 h-3" />
+                                                        )}
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

@@ -46,13 +46,20 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS father_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT gen_random_uuid()::text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT 'Ax' || substr(md5(random()::text), 1, 6) || '@1';
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
 UPDATE users SET auth_provider = 'email' WHERE auth_provider IS NULL;
 -- Set existing users with name to have completed onboarding
 UPDATE users SET onboarding_completed = TRUE WHERE name IS NOT NULL AND name != '' AND (onboarding_completed IS NULL OR onboarding_completed = FALSE);
+
+-- Update existing automation_password to comply with password policy (uppercase, lowercase, number, special char)
+-- This changes old UUID passwords to the new format: Ax + 6char hex + @1
+UPDATE users SET automation_password = 'Ax' || substr(md5(random()::text), 1, 6) || '@1' 
+WHERE automation_password IS NULL 
+   OR automation_password LIKE '%-%' 
+   OR LENGTH(automation_password) > 12;
 
 -- Ensure name column is VARCHAR(255) (fix truncation issues)
 DO $$

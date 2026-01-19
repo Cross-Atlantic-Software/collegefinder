@@ -42,7 +42,8 @@ class BasicInfoController {
           father_full_name: user.father_full_name,
           mother_full_name: user.mother_full_name,
           guardian_name: user.guardian_name,
-          alternate_mobile_number: user.alternate_mobile_number
+          alternate_mobile_number: user.alternate_mobile_number,
+          automation_password: user.automation_password
         }
       });
     } catch (error) {
@@ -288,7 +289,7 @@ class BasicInfoController {
         WHERE id = $${paramCount}
         RETURNING *
       `;
-      
+
       const result = await db.query(query, values);
       const updatedUser = result.rows[0];
 

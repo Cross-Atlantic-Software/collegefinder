@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { CiCircleInfo } from "react-icons/ci";
-import { FaUser } from "react-icons/fa6";
+import { FaUser, FaCopy } from "react-icons/fa6";
 
 import { Button, DateOfBirthPicker, PhoneInput, Select, Notification } from "../../../shared";
 import { useToast } from "../../../shared";
@@ -30,6 +30,7 @@ interface CoreIdentityTabProps {
   onValidationErrors: (errors: Record<string, string>) => void;
   onShowEmailModal: () => void;
   getCurrentLocation: () => Promise<{ latitude: number; longitude: number } | null>;
+  automationPassword: string | null;
 }
 
 export default function CoreIdentityTab({
@@ -49,10 +50,25 @@ export default function CoreIdentityTab({
   onValidationErrors,
   onShowEmailModal,
   getCurrentLocation,
+  automationPassword,
 }: CoreIdentityTabProps) {
   const { showSuccess, showError } = useToast();
   const { refreshUser } = useAuth();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
+  const copyPassword = async () => {
+    if (automationPassword) {
+      try {
+        await navigator.clipboard.writeText(automationPassword);
+        setCopiedPassword(true);
+        showSuccess("Password copied to clipboard!");
+        setTimeout(() => setCopiedPassword(false), 2000);
+      } catch {
+        showError("Failed to copy password");
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +78,7 @@ export default function CoreIdentityTab({
 
     try {
       const location = await getCurrentLocation();
-      
+
       const updateData: {
         name?: string;
         first_name?: string;
@@ -79,7 +95,7 @@ export default function CoreIdentityTab({
         guardian_name?: string;
         alternate_mobile_number?: string;
       } = {};
-      
+
       if (formData.name !== undefined) {
         updateData.name = formData.name || undefined;
       }
@@ -94,12 +110,12 @@ export default function CoreIdentityTab({
       if (formData.mother_full_name) updateData.mother_full_name = formData.mother_full_name;
       if (formData.guardian_name !== undefined) updateData.guardian_name = formData.guardian_name || undefined;
       if (formData.alternate_mobile_number !== undefined) updateData.alternate_mobile_number = formData.alternate_mobile_number || undefined;
-      
+
       if (location) {
         updateData.latitude = location.latitude;
         updateData.longitude = location.longitude;
       }
-      
+
       const response = await updateBasicInfo(updateData);
 
       if (response.success && response.data) {
@@ -114,7 +130,7 @@ export default function CoreIdentityTab({
             }
           }
         }
-        
+
         const updatedFormData: CoreIdentityFormData = {
           name: response.data.name || "",
           first_name: response.data.first_name || "",
@@ -130,10 +146,10 @@ export default function CoreIdentityTab({
           guardian_name: response.data.guardian_name || "",
           alternate_mobile_number: response.data.alternate_mobile_number || "",
         };
-        
+
         setFormData(updatedFormData);
         setProfilePhotoPreview(response.data.profile_photo || null);
-        
+
         onSuccess();
         showSuccess("Core Identity updated successfully!");
       } else {
@@ -174,7 +190,7 @@ export default function CoreIdentityTab({
           <Notification
             type="success"
             message="Core Identity updated successfully!"
-            onClose={() => {}}
+            onClose={() => { }}
             autoClose={true}
             duration={3000}
           />
@@ -333,11 +349,10 @@ export default function CoreIdentityTab({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-slate-300">Email</p>
             {email ? (
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                emailVerified 
-                  ? "bg-emerald-100/20 text-emerald-300" 
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${emailVerified
+                  ? "bg-emerald-100/20 text-emerald-300"
                   : "bg-amber-100/20 text-amber-300"
-              }`}>
+                }`}>
                 <CiCircleInfo className="text-xs" />
                 {emailVerified ? "Verified" : "Unverified"}
               </span>
@@ -427,11 +442,10 @@ export default function CoreIdentityTab({
                   key={gender.label}
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: gender.label })}
-                  className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition ${
-                    isActive
+                  className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition ${isActive
                       ? "border-transparent bg-pink text-white shadow"
                       : "border-white/10 bg-white/5 text-slate-200 hover:border-pink hover:bg-white/10"
-                  }`}
+                    }`}
                 >
                   <Image
                     src={gender.icon}
@@ -541,6 +555,38 @@ export default function CoreIdentityTab({
             <p className="text-xs text-red-400">{validationErrors.guardian_name}</p>
           )}
         </div>
+
+        {/* Automation Password (Read-Only) */}
+        {automationPassword && (
+          <div className="space-y-2 rounded-md border border-pink/30 bg-pink/5 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-pink">
+              <CiCircleInfo className="text-lg" />
+              Automation Password
+            </label>
+            <p className="text-xs text-slate-400 mb-2">
+              This is your auto-generated password used by the automation system to fill exam registration forms. It is NOT your login password.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={automationPassword}
+                readOnly
+                className={`${inputBase} flex-1 cursor-default bg-white/5 font-mono text-sm`}
+              />
+              <button
+                type="button"
+                onClick={copyPassword}
+                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${copiedPassword
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "bg-pink/20 text-pink hover:bg-pink/30"
+                  }`}
+              >
+                <FaCopy className="text-sm" />
+                {copiedPassword ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Save Button */}

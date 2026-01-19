@@ -81,10 +81,11 @@ export default function BasicInfoForm() {
     permanent_address_same_as_correspondence: true,
     permanent_address: "",
   });
-  
+
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
+  const [automationPassword, setAutomationPassword] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,7 +108,7 @@ export default function BasicInfoForm() {
               }
             }
           }
-          
+
           const formDataToSet: CoreIdentityFormData = {
             name: response.data.name ?? "",
             first_name: response.data.first_name ?? "",
@@ -123,11 +124,12 @@ export default function BasicInfoForm() {
             guardian_name: response.data.guardian_name ?? "",
             alternate_mobile_number: response.data.alternate_mobile_number ?? "",
           };
-          
+
           setFormData(formDataToSet);
           setProfilePhotoPreview(response.data.profile_photo || null);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
+          setAutomationPassword(response.data.automation_password || null);
 
           // Fetch government identification
           try {
@@ -295,6 +297,7 @@ export default function BasicInfoForm() {
         setOtherPersonalDetails={setOtherPersonalDetails}
         addressData={addressData}
         setAddressData={setAddressData}
+        automationPassword={automationPassword}
       />
 
       <EmailVerificationModal

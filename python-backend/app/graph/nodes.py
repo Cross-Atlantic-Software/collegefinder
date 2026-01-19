@@ -166,7 +166,7 @@ async def capture_screenshot_node(state: GraphState) -> dict:
             await send_log(session_id, f"✓ OTP entered, waiting for dialog...", "success")
             
             # Wait for OK/success dialog to appear after OTP entry
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(4.5)
             
             await call_stagehand("execute", {
                 "sessionId": session_id,

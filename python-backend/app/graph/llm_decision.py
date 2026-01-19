@@ -196,7 +196,7 @@ TRIGGER wait_for_human if you see ANY of these:
 If you see a captcha image:
 - READ the captcha text from the image carefully
 - Pay attention to case sensitivity (uppercase vs lowercase letters)
-- Type EXACTLY what you see, with no extra spaces
+- Type EXACTLY what you see, with no spaces
 - Return action_type: "fill_field" with:
   - field_name: "captcha"
   - field_value: exactly what you read from the captcha image
@@ -228,8 +228,8 @@ If you see password or confirm password fields:
 
 ### 6. SUBMIT BUTTON - ONLY if ALL fields are FILLED!
 BEFORE clicking Submit/Get OTP/Continue:
-- Double-check that the captcha field has text in it
 - Double-check all required fields are filled
+- Double-check that the captcha field has text in it
 - If ANY field is empty, fill it first instead of clicking submit!
 
 ### 7. SUCCESS DETECTION - BE VERY CAREFUL
@@ -339,7 +339,7 @@ If all fields are filled (including captcha in Already filled list), click the s
                 loop.run_in_executor(
                     None, 
                     lambda: client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-3-flash-preview",
                         contents=contents,
                         config=genai.types.GenerateContentConfig(
                             temperature=0.1,

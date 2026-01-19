@@ -42,6 +42,9 @@ interface BasicInfoTabsProps {
   // Address
   addressData: AddressData;
   setAddressData: (data: AddressData | ((prev: AddressData) => AddressData)) => void;
+
+  // Automation
+  automationPassword: string | null;
 }
 
 export default function BasicInfoTabs({
@@ -62,6 +65,7 @@ export default function BasicInfoTabs({
   setOtherPersonalDetails,
   addressData,
   setAddressData,
+  automationPassword,
 }: BasicInfoTabsProps) {
   const [activeTab, setActiveTab] = useState<BasicInfoTabKey>("core-identity");
   const [saving, setSaving] = useState<Record<string, boolean>>({
@@ -119,9 +123,8 @@ export default function BasicInfoTabs({
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center justify-center gap-2 whitespace-nowrap px-4 py-3 text-center transition ${
-                isActive ? "bg-pink text-white" : "hover:bg-white/5"
-              }`}
+              className={`flex items-center justify-center gap-2 whitespace-nowrap px-4 py-3 text-center transition ${isActive ? "bg-pink text-white" : "hover:bg-white/5"
+                }`}
             >
               {tab.label}
             </button>
@@ -149,6 +152,7 @@ export default function BasicInfoTabs({
             onValidationErrors={setValidationErrors}
             onShowEmailModal={onShowEmailModal}
             getCurrentLocation={getCurrentLocation}
+            automationPassword={automationPassword}
           />
         )}
 
