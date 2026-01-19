@@ -338,6 +338,28 @@ async def handle_start_workflow(websocket: WebSocket, message: dict) -> Optional
     user_flat = await get_user_flat(user_id_int)
     user_data = user_flat.data
     
+    # Check if this is a recording session (admin creating workflow)
+    is_recording_workflow = payload.get("isRecordingWorkflow", False)
+    
+    # Get existing workflow steps from exam (if any and not recording)
+    workflow_steps = None
+    if not is_recording_workflow:
+        workflow_data = exam.get("workflow_steps")
+        if workflow_data and isinstance(workflow_data, dict):
+            workflow_steps = workflow_data.get("steps", [])
+            if workflow_steps:
+                await manager.send_personal(websocket, {
+                    "type": MessageTypes.LOG,
+                    "payload": {"message": f"Using pre-recorded workflow ({len(workflow_steps)} steps)", "level": "info"}
+                })
+        elif workflow_data and isinstance(workflow_data, list):
+            workflow_steps = workflow_data
+    else:
+        await manager.send_personal(websocket, {
+            "type": MessageTypes.LOG,
+            "payload": {"message": "📹 Recording mode: creating workflow for this exam", "level": "warning"}
+        })
+    
     # Start LangGraph workflow in background task
     from app.graph.builder import run_workflow
     
@@ -350,6 +372,8 @@ async def handle_start_workflow(websocket: WebSocket, message: dict) -> Optional
             exam_name=exam["name"],
             field_mappings=exam.get("field_mappings", {}),
             user_data=user_data,
+            workflow_steps=workflow_steps,
+            is_recording_workflow=is_recording_workflow,
         )
     )
     
@@ -364,10 +388,13 @@ async def execute_workflow(
     exam_name: str,
     field_mappings: dict,
     user_data: dict,
+    workflow_steps: list = None,
+    is_recording_workflow: bool = False,
 ):
     """
     Execute the LangGraph workflow.
     Runs in a background task.
+    If is_recording_workflow=True, saves recorded steps after completion.
     """
     from app.graph.builder import run_workflow
     
@@ -380,7 +407,20 @@ async def execute_workflow(
             exam_name=exam_name,
             field_mappings=field_mappings,
             user_data=user_data,
+            workflow_steps=workflow_steps,
+            is_recording_workflow=is_recording_workflow,
         )
+        
+        # If recording mode and completed successfully, save the workflow
+        if is_recording_workflow and result.get("status") == "completed":
+            recorded_steps = result.get("recorded_steps", [])
+            if recorded_steps:
+                from app.graph.workflow_executor import save_workflow_to_exam
+                saved = await save_workflow_to_exam(exam_id, recorded_steps)
+                if saved:
+                    await send_log(session_id, f"✅ Workflow saved! ({len(recorded_steps)} steps)", "success")
+                else:
+                    await send_log(session_id, "⚠️ Failed to save workflow", "error")
         
         # Update session with final result
         status = result.get("status", "completed")

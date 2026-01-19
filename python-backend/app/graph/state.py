@@ -151,6 +151,12 @@ class GraphState(TypedDict):
     # Status
     status: Literal["running", "waiting_input", "paused", "completed", "failed"]
     result_message: Optional[str]
+    
+    # Workflow recording & execution
+    is_recording_workflow: bool  # True when admin is creating workflow
+    recorded_steps: list[dict]  # Steps being recorded during workflow creation
+    workflow_steps: Optional[list[dict]]  # Pre-recorded workflow to execute (None = use LLM)
+    current_workflow_step: int  # Current step index during workflow execution
 
 
 def create_initial_state(
@@ -193,4 +199,9 @@ def create_initial_state(
         last_error=None,
         status="running",
         result_message=None,
+        # Workflow fields
+        is_recording_workflow=False,
+        recorded_steps=[],
+        workflow_steps=None,
+        current_workflow_step=0,
     )

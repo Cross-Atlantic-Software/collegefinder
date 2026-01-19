@@ -24,7 +24,8 @@ export interface WorkflowHandlers {
 export function connectToWorkflow(
     examId: string,
     userId: string,
-    handlers: Partial<WorkflowHandlers>
+    handlers: Partial<WorkflowHandlers>,
+    isRecordingWorkflow: boolean = false
 ): WebSocket {
     const ws = new WebSocket(`${WS_URL}/workflow`);
 
@@ -34,7 +35,7 @@ export function connectToWorkflow(
         // Send start workflow message
         ws.send(JSON.stringify({
             type: 'START_WORKFLOW',
-            payload: { examId, userId }
+            payload: { examId, userId, isRecordingWorkflow }
         }));
     };
 

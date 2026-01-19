@@ -349,10 +349,41 @@ async def execute_single_action_node(state: GraphState) -> dict:
     if action_type == "fill_field" and decision.field_name and result.get("success"):
         already_filled.append(decision.field_name)
     
+    # WORKFLOW RECORDING: Record successful steps when in recording mode
+    recorded_steps = list(state.get("recorded_steps", []))
+    if state.get("is_recording_workflow") and result.get("success"):
+        from app.graph.workflow_executor import record_step_from_decision
+        
+        # Determine value_key for user data substitution during playback
+        value_key = None
+        if action_type == "fill_field" and decision.field_name:
+            value_key = decision.field_name
+        
+        # Record wait_for_human as well if it was waiting
+        if action_type == "wait_for_human":
+            recorded_steps = record_step_from_decision(
+                state,
+                action_type="wait_human",
+                stagehand_prompt="",
+                wait_type=decision.input_type or "custom",
+                delay_ms=1000
+            )
+        elif action_type in ["fill_field", "click_button", "click_checkbox"]:
+            recorded_steps = record_step_from_decision(
+                state,
+                action_type=action_type,
+                stagehand_prompt=stagehand_prompt,
+                field_name=decision.field_name,
+                value_key=value_key,
+                delay_ms=1500
+            )
+            await send_log(session_id, f"📝 Recorded step {len(recorded_steps)}: {action_type}", "info")
+    
     return {
         "current_step": "execute_action",
         "screenshot_base64": result.get("screenshot"),
         "already_filled_fields": already_filled,
+        "recorded_steps": recorded_steps,  # Updated recorded steps
         "progress": min(state.get("progress", 30) + 5, 90),
         "action_history": state.get("action_history", []) + [{
             "action": action_type,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlay, FiCheck, FiClock, FiX, FiRefreshCw, FiUser, FiFileText, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiPlay, FiCheck, FiClock, FiX, FiRefreshCw, FiUser, FiFileText, FiPlus, FiTrash2, FiVideo } from 'react-icons/fi';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { WorkflowModal } from '@/components/admin/WorkflowModal';
@@ -49,6 +49,7 @@ export default function ApplicationsPage() {
     const [selectedApp, setSelectedApp] = useState<Application | null>(null);
     const [syncingAppId, setSyncingAppId] = useState<number | null>(null);
     const [deletingAppId, setDeletingAppId] = useState<number | null>(null);
+    const [isRecordingWorkflow, setIsRecordingWorkflow] = useState(false);
 
     // Create modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -166,6 +167,37 @@ export default function ApplicationsPage() {
         } catch (error) {
             console.error('Error starting automation:', error);
             alert('Failed to start automation');
+        } finally {
+            setSyncingAppId(null);
+        }
+    };
+
+    // Record workflow for an application (admin creates workflow)
+    const handleRecordWorkflow = async (app: Application) => {
+        setSyncingAppId(app.id);
+
+        try {
+            // Update application status to running
+            const adminToken = localStorage.getItem('admin_token') || '';
+            await fetch(`${API_URL}/admin/automation-applications/${app.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'running' })
+            });
+
+            // Open workflow modal in RECORDING mode
+            setSelectedApp(app);
+            setIsRecordingWorkflow(true);
+            setShowWorkflow(true);
+
+            // Refresh applications
+            fetchApplications();
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            alert('Failed to start workflow recording');
         } finally {
             setSyncingAppId(null);
         }
@@ -378,23 +410,34 @@ export default function ApplicationsPage() {
                                                         </button>
                                                     )}
                                                     {app.status === 'approved' && (
-                                                        <button
-                                                            onClick={() => handleStartAutomation(app)}
-                                                            disabled={syncingAppId === app.id}
-                                                            className="px-3 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 rounded-lg flex items-center gap-1 transition"
-                                                        >
-                                                            {syncingAppId === app.id ? (
-                                                                <>
-                                                                    <FiRefreshCw className="w-3 h-3 animate-spin" />
-                                                                    Starting...
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <FiPlay className="w-3 h-3" />
-                                                                    Start Automation
-                                                                </>
-                                                            )}
-                                                        </button>
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleStartAutomation(app)}
+                                                                disabled={syncingAppId === app.id}
+                                                                className="px-3 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 rounded-lg flex items-center gap-1 transition"
+                                                            >
+                                                                {syncingAppId === app.id ? (
+                                                                    <>
+                                                                        <FiRefreshCw className="w-3 h-3 animate-spin" />
+                                                                        Starting...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <FiPlay className="w-3 h-3" />
+                                                                        Start Automation
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRecordWorkflow(app)}
+                                                                disabled={syncingAppId === app.id}
+                                                                className="px-3 py-1.5 text-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 rounded-lg flex items-center gap-1 transition"
+                                                                title="Record workflow for this exam"
+                                                            >
+                                                                <FiVideo className="w-3 h-3" />
+                                                                Record
+                                                            </button>
+                                                        </>
                                                     )}
                                                     {app.status === 'running' && (
                                                         <button
@@ -527,12 +570,14 @@ export default function ApplicationsPage() {
                     onClose={() => {
                         setShowWorkflow(false);
                         setSelectedApp(null);
+                        setIsRecordingWorkflow(false);
                         fetchApplications();
                     }}
                     examId={String(selectedApp.exam_id)}
                     examName={selectedApp.exam_name}
                     userId={String(selectedApp.user_id)}
                     userName={selectedApp.user_name}
+                    isRecordingWorkflow={isRecordingWorkflow}
                 />
             )}
         </div>

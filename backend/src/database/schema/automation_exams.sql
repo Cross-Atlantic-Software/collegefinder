@@ -33,6 +33,13 @@ CREATE TABLE IF NOT EXISTS automation_exams (
   notify_on_failure BOOLEAN DEFAULT TRUE,
   notification_emails TEXT[] DEFAULT ARRAY[]::TEXT[],
   
+  -- Workflow recording (populated by admin when creating workflow)
+  workflow_steps JSONB DEFAULT NULL,
+  workflow_status VARCHAR(20) DEFAULT NULL, -- 'draft', 'active', 'deprecated'
+  workflow_version INT DEFAULT 0,
+  workflow_created_by INT DEFAULT NULL,
+  workflow_created_at TIMESTAMP DEFAULT NULL,
+  
   -- Timestamps
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

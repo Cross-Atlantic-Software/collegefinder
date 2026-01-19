@@ -23,6 +23,7 @@ interface WorkflowModalProps {
     examName: string;
     userId: string;
     userName: string;
+    isRecordingWorkflow?: boolean;  // True when admin is creating workflow
 }
 
 export function WorkflowModal({
@@ -32,6 +33,7 @@ export function WorkflowModal({
     examName,
     userId,
     userName,
+    isRecordingWorkflow = false,
 }: WorkflowModalProps) {
     const [status, setStatus] = useState<'idle' | 'connecting' | 'running' | 'waiting' | 'success' | 'failed'>('idle');
     const [progress, setProgress] = useState(0);
@@ -130,7 +132,7 @@ export function WorkflowModal({
             },
         };
 
-        wsRef.current = connectToWorkflow(examId, userId, handlers);
+        wsRef.current = connectToWorkflow(examId, userId, handlers, isRecordingWorkflow);
     };
 
     const handleSubmitOtp = () => {
@@ -189,6 +191,11 @@ export function WorkflowModal({
                         <h2 className="text-xl font-bold text-white">Automation Workflow</h2>
                         <p className="text-sm text-gray-400">
                             {examName} • {userName}
+                            {isRecordingWorkflow && (
+                                <span className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs font-medium">
+                                    📹 Recording
+                                </span>
+                            )}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -252,8 +259,8 @@ export function WorkflowModal({
                                     <div
                                         key={i}
                                         className={`mb-1 ${log.level === 'error' ? 'text-red-400' :
-                                                log.level === 'warning' ? 'text-amber-400' :
-                                                    log.level === 'success' ? 'text-green-400' : 'text-gray-300'
+                                            log.level === 'warning' ? 'text-amber-400' :
+                                                log.level === 'success' ? 'text-green-400' : 'text-gray-300'
                                             }`}
                                     >
                                         <span className="text-gray-500">[{log.timestamp}]</span> {log.message}

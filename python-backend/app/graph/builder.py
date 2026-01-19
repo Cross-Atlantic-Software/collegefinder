@@ -16,6 +16,7 @@ from app.graph.nodes import (
     success_node,
     save_analytics_node,
 )
+from app.graph.workflow_executor import execute_workflow_step_node
 
 
 # Global checkpointer instance
@@ -57,6 +58,49 @@ def route_after_execute(state: GraphState) -> Literal["capture_screenshot", "suc
     return "capture_screenshot"
 
 
+def route_after_init(state: GraphState) -> Literal["capture_screenshot", "execute_workflow_step"]:
+    """
+    Route after browser init based on workflow availability.
+    If workflow_steps exists and not recording, go to workflow execution.
+    Otherwise, go to LLM decision path.
+    """
+    workflow_steps = state.get("workflow_steps")
+    is_recording = state.get("is_recording_workflow", False)
+    
+    # If we have workflow and not recording, execute pre-recorded steps
+    if workflow_steps and not is_recording:
+        return "execute_workflow_step"
+    
+    # Otherwise use LLM to decide (recording mode or no workflow)
+    return "capture_screenshot"
+
+
+def route_after_workflow_step(state: GraphState) -> Literal["execute_workflow_step", "llm_decide", "success", "end"]:
+    """
+    Route after workflow step execution.
+    """
+    status = state.get("status", "running")
+    workflow_steps = state.get("workflow_steps", [])
+    current_step = state.get("current_workflow_step", 0)
+    step_failed = state.get("workflow_step_failed", False)
+    
+    if status == "completed":
+        return "success"
+    
+    if status == "waiting_input":
+        return "end"
+    
+    # If step failed, fall back to LLM for this step
+    if step_failed:
+        return "llm_decide"
+    
+    # If more steps, continue workflow
+    if current_step < len(workflow_steps):
+        return "execute_workflow_step"
+    
+    return "success"
+
+
 def build_workflow_graph() -> StateGraph:
     """
     Build the NEW LLM-driven state machine.
@@ -78,16 +122,26 @@ def build_workflow_graph() -> StateGraph:
     builder.add_node("capture_screenshot", capture_screenshot_node)
     builder.add_node("llm_decide", llm_decide_node)
     builder.add_node("execute_action", execute_single_action_node)
+    builder.add_node("execute_workflow_step", execute_workflow_step_node)  # NEW: Workflow executor
     builder.add_node("success", success_node)
     builder.add_node("save_analytics", save_analytics_node)
     
     # ============= Add Edges =============
     
-    # Entry: init -> capture
+    # Entry: START -> init
     builder.add_edge(START, "init_browser")
-    builder.add_edge("init_browser", "capture_screenshot")
     
-    # Main loop: capture -> decide -> execute
+    # After init: conditional routing based on workflow availability
+    builder.add_conditional_edges(
+        "init_browser",
+        route_after_init,
+        {
+            "capture_screenshot": "capture_screenshot",  # LLM path
+            "execute_workflow_step": "execute_workflow_step",  # Workflow path
+        }
+    )
+    
+    # LLM decision loop: capture -> decide -> execute
     builder.add_edge("capture_screenshot", "llm_decide")
     builder.add_edge("llm_decide", "execute_action")
     
@@ -97,6 +151,18 @@ def build_workflow_graph() -> StateGraph:
         route_after_execute,
         {
             "capture_screenshot": "capture_screenshot",  # Loop back
+            "success": "success",
+            "end": END,  # Pause for user input
+        }
+    )
+    
+    # Workflow execution loop
+    builder.add_conditional_edges(
+        "execute_workflow_step",
+        route_after_workflow_step,
+        {
+            "execute_workflow_step": "execute_workflow_step",  # Continue workflow
+            "llm_decide": "llm_decide",  # Fallback to LLM on failure
             "success": "success",
             "end": END,  # Pause for user input
         }
@@ -139,9 +205,13 @@ async def run_workflow(
     exam_name: str,
     field_mappings: dict,
     user_data: dict,
+    workflow_steps: list = None,  # NEW: Pre-recorded workflow steps
+    is_recording_workflow: bool = False,  # NEW: True when admin is creating workflow
 ) -> dict:
     """
     Run the workflow for a given session.
+    If workflow_steps provided, executes pre-recorded workflow.
+    If is_recording_workflow=True, records steps during LLM execution.
     """
     from app.graph.state import create_initial_state
     
@@ -155,6 +225,12 @@ async def run_workflow(
         field_mappings=field_mappings,
         user_data=user_data,
     )
+    
+    # Add workflow-related state
+    initial_state["workflow_steps"] = workflow_steps
+    initial_state["is_recording_workflow"] = is_recording_workflow
+    initial_state["current_workflow_step"] = 0
+    initial_state["recorded_steps"] = []
     
     # Create compiled graph
     graph = await create_compiled_graph()
