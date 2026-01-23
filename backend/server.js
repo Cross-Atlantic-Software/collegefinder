@@ -36,6 +36,7 @@ app.use('/api/careers', require('./src/routes/public/careersRoutes'));
 app.use('/api/categories', require('./src/routes/public/categoriesRoutes'));
 app.use('/api/programs', require('./src/routes/public/programsRoutes'));
 app.use('/api/exam-cities', require('./src/routes/public/examCitiesRoutes'));
+app.use('/api/user', require('./src/routes/user/userAutomationRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {
