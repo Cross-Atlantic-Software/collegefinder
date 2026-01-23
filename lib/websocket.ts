@@ -186,3 +186,10 @@ export function pauseWorkflow(ws: WebSocket) {
 export function resumeWorkflow(ws: WebSocket) {
     ws.send(JSON.stringify({ type: 'RESUME_WORKFLOW' }));
 }
+
+/**
+ * Stop workflow - cancels the running automation
+ */
+export function stopWorkflow(ws: WebSocket) {
+    ws.send(JSON.stringify({ type: 'STOP_WORKFLOW' }));
+}

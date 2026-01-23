@@ -17,14 +17,19 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
+
+    // Debug: Log request path and token preview
+    console.log(`🔐 Auth request: ${req.method} ${req.path}`);
+    console.log(`🔐 Token preview: ${token ? token.substring(0, 20) + '...' : 'NO TOKEN'}`);
+
     let decoded;
     try {
       decoded = verifyToken(token);
       console.log('🔍 Decoded token:', JSON.stringify(decoded, null, 2));
       console.log('🔍 Token keys:', Object.keys(decoded));
     } catch (error) {
-      console.error('❌ Token verification failed:', error.message);
+      console.error(`❌ Token verification failed for ${req.path}:`, error.message);
+      console.error(`❌ Full token that failed: ${token}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token'
@@ -33,7 +38,7 @@ const authenticate = async (req, res, next) => {
 
     // Check if userId exists in token (could be userId or id)
     const userIdFromToken = decoded.userId || decoded.id || decoded.user_id;
-    
+
     if (!userIdFromToken) {
       console.error('❌ No userId found in token. Full token payload:', JSON.stringify(decoded, null, 2));
       console.error('❌ Available keys in token:', Object.keys(decoded));
@@ -45,7 +50,7 @@ const authenticate = async (req, res, next) => {
 
     // Ensure userId is a number (PostgreSQL expects integer)
     const userId = typeof userIdFromToken === 'string' ? parseInt(userIdFromToken, 10) : userIdFromToken;
-    
+
     if (isNaN(userId)) {
       console.error('❌ Invalid userId in token:', userIdFromToken);
       return res.status(401).json({
@@ -78,9 +83,9 @@ const authenticate = async (req, res, next) => {
         message: 'User not found'
       });
     }
-    
+
     console.log('✅ User found - ID:', user.id, 'Email:', user.email);
-    
+
     // Check if user is active (null defaults to true since default in DB is TRUE)
     if (user.is_active === false) {
       return res.status(401).json({
