@@ -10,7 +10,7 @@ export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, userVerifiedFromServer } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -25,23 +25,21 @@ export default function DashboardLayout({
     }
   }, [isLoading, user]);
 
-  // Redirect to onboarding if user hasn't completed onboarding
+  // Redirect to step-1 ONLY when server confirmed they haven't completed. If stored user has onboarding_completed === true, we never redirect.
   useEffect(() => {
-    if (!isLoading && user && !user.onboarding_completed) {
+    if (!isLoading && userVerifiedFromServer && user && user.onboarding_completed === false) {
       setIsRedirecting(true);
-      // Prefetch step-1 for faster loading
       router.prefetch("/step-1");
-      // Use replace for smoother redirect (no back button history)
-      // Small delay for smooth transition
       const timer = setTimeout(() => {
         router.replace("/step-1");
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, userVerifiedFromServer, router]);
 
-  // Show smooth loader while checking auth and onboarding status
-  if (isLoading || isInitialLoad || (user && !user.onboarding_completed) || isRedirecting) {
+  // Show loader only when loading or when redirecting to step-1. If user has onboarding_completed === true (from storage), show dashboard immediately.
+  const mustRedirectToOnboarding = userVerifiedFromServer && user && user.onboarding_completed === false;
+  if (isLoading || mustRedirectToOnboarding || isRedirecting) {
     return <OnboardingLoader message={isRedirecting ? "Redirecting to onboarding..." : "Loading dashboard..."} />;
   }
 

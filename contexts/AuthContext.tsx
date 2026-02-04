@@ -11,6 +11,8 @@ interface AuthContextType {
   isLoading: boolean;
   isLoggingOut: boolean;
   isAuthenticated: boolean;
+  /** True once we've fetched user from server (or confirmed no token). Use this before redirecting to step-1 so we don't use stale localStorage. */
+  userVerifiedFromServer: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -22,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [userVerifiedFromServer, setUserVerifiedFromServer] = useState(false);
   const router = useRouter();
 
   // Initialize auth state on mount
@@ -32,21 +35,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (token && storedUser) {
         setUserState(storedUser);
-        
-        // Verify token is still valid in the background (silently update user data)
-        // Never automatically log out - only logout button can log out
+        // Verify token and get fresh user from server before trusting onboarding_completed
         try {
           const response = await getCurrentUser();
           if (response.success && response.data) {
-            // Update with fresh data from server
             setUserState(response.data.user);
             setUser(response.data.user);
           }
-          // If API call fails, keep the stored user - don't log out
         } catch (error) {
           console.error('Error verifying token:', error);
           // Keep stored user even if API call fails - never auto-logout
         }
+        setUserVerifiedFromServer(true);
+      } else {
+        setUserVerifiedFromServer(true);
       }
       setIsLoading(false);
     };
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(token);
     setUser(userData);
     setUserState(userData);
+    setUserVerifiedFromServer(true); // Login response is from server
   };
 
   const logout = () => {
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     isLoggingOut,
     isAuthenticated: !!user,
+    userVerifiedFromServer,
     login,
     logout,
     refreshUser,

@@ -42,9 +42,12 @@ export async function apiRequest<T>(
     }
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout so app doesn't hang if backend is down
   try {
     const response = await fetch(url, {
       ...options,
+      signal: controller.signal,
       headers: {
         ...defaultHeaders,
         ...options.headers,
@@ -133,11 +136,14 @@ export async function apiRequest<T>(
       ...data,
     };
   } catch (error) {
+    const isAbort = error instanceof Error && error.name === 'AbortError';
     console.error('API request error:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Network error occurred',
+      message: isAbort ? 'Request timed out' : (error instanceof Error ? error.message : 'Network error occurred'),
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

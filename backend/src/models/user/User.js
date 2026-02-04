@@ -117,21 +117,8 @@ class User {
       }
       console.log('✅ checkOnboardingCompletion - Interests check passed:', careerGoalsResult.rows[0].interests);
 
-      // Check if user has state and district
-      const addressResult = await db.query(
-        'SELECT state, district FROM user_address WHERE user_id = $1 AND state IS NOT NULL AND district IS NOT NULL',
-        [userIdNum]
-      );
-      console.log('🔍 checkOnboardingCompletion - Address result:', addressResult.rows);
-      if (!addressResult.rows[0] || !addressResult.rows[0].state || !addressResult.rows[0].district) {
-        console.log('❌ checkOnboardingCompletion - Missing state or district');
-        return false;
-      }
-      console.log('✅ checkOnboardingCompletion - State and District check passed:', { 
-        state: addressResult.rows[0].state, 
-        district: addressResult.rows[0].district 
-      });
-
+      // State and district are OPTIONAL - not required for onboarding completion
+      // Only name, stream, and interests are mandatory
       console.log('✅ checkOnboardingCompletion - ALL CHECKS PASSED - User has completed onboarding');
       return true;
     } catch (error) {

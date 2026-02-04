@@ -23,7 +23,7 @@ export default function StepTwoB() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
 
   // Fetch career goals on mount
   useEffect(() => {
@@ -107,6 +107,7 @@ export default function StepTwoB() {
       });
 
       if (response.success) {
+        await refreshUser(); // Update context + localStorage with onboarding_completed: true so next visit goes to dashboard
         router.prefetch("/step-2c");
         router.replace("/step-2c");
       } else {

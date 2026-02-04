@@ -10,24 +10,29 @@ import Image from "next/image";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function Home() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, userVerifiedFromServer } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      // Check if user has completed onboarding
-      if (user?.onboarding_completed) {
+    if (!isLoading && isAuthenticated && user) {
+      // Trust localStorage: if user already completed onboarding, go to dashboard immediately
+      if (user.onboarding_completed === true) {
         router.prefetch("/dashboard");
         router.replace("/dashboard");
-      } else {
+        return;
+      }
+      // Only send to step-1 when server confirmed they haven't completed (avoid stale "false" in storage)
+      if (userVerifiedFromServer && user.onboarding_completed === false) {
         router.prefetch("/step-1");
         router.replace("/step-1");
       }
     }
-  }, [isAuthenticated, isLoading, user, router]);
+  }, [isAuthenticated, isLoading, user, userVerifiedFromServer, router]);
 
-  // Show loader while checking auth or redirecting
-  if (isLoading || isAuthenticated) {
+  // Show loader when we're redirecting (dashboard or step-1)
+  const goToDashboard = isAuthenticated && user?.onboarding_completed === true;
+  const goToStep1 = isAuthenticated && userVerifiedFromServer && user && user.onboarding_completed === false;
+  if (isLoading || goToDashboard || goToStep1) {
     return <OnboardingLoader message="Redirecting..." />;
   }
 

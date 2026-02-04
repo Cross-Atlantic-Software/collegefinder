@@ -9,7 +9,11 @@ const Stream = require('../../models/taxonomy/Stream');
  */
 router.get('/', async (req, res) => {
   try {
-    const streams = await Stream.findActive();
+    let streams = await Stream.findActive();
+    // If no active streams (e.g. table empty or all status=false), return all streams so onboarding works
+    if (!streams || streams.length === 0) {
+      streams = await Stream.findAll();
+    }
     res.json({
       success: true,
       data: { streams }
