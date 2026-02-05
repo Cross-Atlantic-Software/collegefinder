@@ -4,6 +4,9 @@ LLM Vision Decision Module
 Uses Gemini Vision to analyze screenshots and decide the next action.
 Returns structured outputs that map directly to Stagehand actions.
 """
+import json
+from decimal import Decimal
+from typing import Any
 import base64
 import json
 from typing import Optional, Literal
@@ -285,6 +288,9 @@ async def decide_next_action(
     
     # Build the user context
     remaining_fields = {k: v for k, v in user_data.items() if k not in already_filled and v}
+
+    # Convert Decimal values to float for JSON serialization
+    remaining_fields = convert_decimals(remaining_fields)
     
     # If captcha has failed 3 times, force human input
     captcha_note = ""
@@ -420,3 +426,17 @@ def build_checkbox_prompt(label: str) -> str:
 def build_button_prompt(button_text: str) -> str:
     """Build a button click prompt."""
     return f"Click the button labeled '{button_text}'. Look for buttons, links, or submit elements."
+
+
+def convert_decimals(obj: Any) -> Any:
+    """Recursively convert Decimal objects to float for JSON serialization."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimals(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_decimals(item) for item in obj)
+    else:
+        return obj    

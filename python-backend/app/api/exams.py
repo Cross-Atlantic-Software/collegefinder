@@ -77,14 +77,27 @@ class ExamResponse(BaseModel):
 
 def row_to_exam_response(row: dict) -> ExamResponse:
     """Convert database row to ExamResponse."""
+    # Parse JSONB columns if they're strings (asyncpg returns JSONB as strings)
+    field_mappings = row["field_mappings"]
+    if isinstance(field_mappings, str):
+        field_mappings = json.loads(field_mappings) if field_mappings else {}
+    elif field_mappings is None:
+        field_mappings = {}
+    
+    agent_config = row["agent_config"]
+    if isinstance(agent_config, str):
+        agent_config = json.loads(agent_config) if agent_config else {}
+    elif agent_config is None:
+        agent_config = {}
+    
     return ExamResponse(
         id=row["id"],
         name=row["name"],
         slug=row["slug"],
         url=row["url"],
         is_active=row["is_active"],
-        field_mappings=row["field_mappings"] or {},
-        agent_config=row["agent_config"] or {},
+        field_mappings=field_mappings,
+        agent_config=agent_config,
         notify_on_complete=row["notify_on_complete"],
         notify_on_failure=row["notify_on_failure"],
         notification_emails=row["notification_emails"] or [],
