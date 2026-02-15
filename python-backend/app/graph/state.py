@@ -135,6 +135,9 @@ class GraphState(TypedDict):
     received_captcha: Optional[str]
     received_custom_inputs: dict[str, str]
     human_input_value: Optional[Any]  # Value from user input
+    waiting_for_login_password: bool  # Flag to track if we're waiting for login password input
+    email_already_registered_detected: bool  # Flag to track if email already registered error was detected
+    account_creation_complete: bool  # Flag to track if account creation/login is complete (prevents going back to registration)
     
     # Action tracking (using Annotated with add for append-only)
     action_history: Annotated[list[dict], add]
@@ -151,6 +154,17 @@ class GraphState(TypedDict):
     # Status
     status: Literal["running", "waiting_input", "paused", "completed", "failed"]
     result_message: Optional[str]
+    
+    # Phase tracking for resume capability
+    current_phase: Literal["registration", "login", "form_filling", "completed"]  # Current automation phase
+    registration_completed: bool  # Registration phase completed
+    login_completed: bool  # Login phase completed
+    form_filling_progress: dict[str, Any]  # Track form filling progress (steps, fields filled, etc.)
+    
+    # Page state tracking for loop detection
+    previous_page_url: Optional[str]  # Previous page URL to detect navigation
+    previous_page_text_hash: Optional[str]  # Hash of previous page text to detect content changes
+    repeated_action_count: int  # Count of repeated actions without page change
 
 
 def create_initial_state(
@@ -185,6 +199,9 @@ def create_initial_state(
         received_captcha=None,
         received_custom_inputs={},
         human_input_value=None,
+        waiting_for_login_password=False,
+        email_already_registered_detected=False,
+        account_creation_complete=False,
         action_history=[],
         current_step="init",
         progress=0,
@@ -193,4 +210,11 @@ def create_initial_state(
         last_error=None,
         status="running",
         result_message=None,
+        current_phase="registration",  # Start with registration
+        registration_completed=False,
+        login_completed=False,
+        form_filling_progress={},
+        previous_page_url=None,
+        previous_page_text_hash=None,
+        repeated_action_count=0,
     )

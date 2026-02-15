@@ -3,7 +3,23 @@
  * Connects to python-backend WebSocket for live automation status
  */
 
-const WS_URL = process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8000/ws';
+interface WebSocketMessage {
+    type: string;
+    payload?: {
+        sessionId?: string;
+        message?: string;
+        level?: 'info' | 'success' | 'warning' | 'error';
+        imageBase64?: string;
+        step?: string;
+        progress?: number;
+        fieldId?: string;
+        label?: string;
+        type?: string;
+        success?: boolean;
+    };
+}
+
+const WS_URL = process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8001/ws';
 
 export interface WorkflowHandlers {
     onLog: (message: string, level: 'info' | 'success' | 'warning' | 'error') => void;
@@ -98,24 +114,24 @@ export function connectToSession(
 /**
  * Handle incoming WebSocket messages
  */
-function handleMessage(message: any, handlers: Partial<WorkflowHandlers>) {
+function handleMessage(message: WebSocketMessage, handlers: Partial<WorkflowHandlers>) {
     const { type, payload } = message;
 
     switch (type) {
         case 'SESSION_CREATED':
-            handlers.onSessionCreated?.(payload.sessionId);
+            handlers.onSessionCreated?.(payload?.sessionId || '');
             break;
 
         case 'LOG':
-            handlers.onLog?.(payload.message, payload.level || 'info');
+            handlers.onLog?.(payload?.message || '', payload?.level || 'info');
             break;
 
         case 'SCREENSHOT':
-            handlers.onScreenshot?.(payload.imageBase64, payload.step || 'capture');
+            handlers.onScreenshot?.(payload?.imageBase64 || '', payload?.step || 'capture');
             break;
 
         case 'STATUS':
-            handlers.onStatus?.(payload.step, payload.progress || 0, payload.message || '');
+            handlers.onStatus?.(payload?.step || '', payload?.progress || 0, payload?.message || '');
             break;
 
         case 'REQUEST_OTP':
@@ -123,19 +139,19 @@ function handleMessage(message: any, handlers: Partial<WorkflowHandlers>) {
             break;
 
         case 'REQUEST_CAPTCHA':
-            handlers.onRequestCaptcha?.(payload.imageBase64);
+            handlers.onRequestCaptcha?.(payload?.imageBase64 || '');
             break;
 
         case 'REQUEST_CUSTOM_INPUT':
-            handlers.onRequestCustomInput?.(payload.fieldId, payload.label, payload.type || 'text');
+            handlers.onRequestCustomInput?.(payload?.fieldId || '', payload?.label || '', payload?.type || 'text');
             break;
 
         case 'RESULT':
-            handlers.onResult?.(payload.success, payload.message);
+            handlers.onResult?.(payload?.success || false, payload?.message || '');
             break;
 
         case 'ERROR':
-            handlers.onError?.(payload.message);
+            handlers.onError?.(payload?.message || ''   );
             break;
 
         default:
