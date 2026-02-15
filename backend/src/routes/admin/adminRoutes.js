@@ -87,7 +87,9 @@ const {
   validateCreateCoachingGallery,
   validateUpdateCoachingGallery,
   validateCreateCoachingCourse,
-  validateUpdateCoachingCourse
+  validateUpdateCoachingCourse,
+  validateCreateAutomationExam,
+  validateUpdateAutomationExam
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -1300,6 +1302,7 @@ router.post('/coaching-courses/upload-image', authenticateAdmin, coachingUpload.
  * For managing user exam automation requests
  */
 const AutomationApplicationsController = require('../../controllers/admin/automationApplicationsController');
+const AutomationExamController = require('../../controllers/admin/automationExamController');
 
 /**
  * @route   GET /api/admin/automation-applications
@@ -1349,6 +1352,41 @@ router.delete('/automation-applications/:id', authenticateAdmin, AutomationAppli
  * @access  Private (Admin)
  */
 router.get('/automation-exams', authenticateAdmin, AutomationApplicationsController.getAutomationExams);
+
+/**
+ * @route   GET /api/admin/automation-exams-full
+ * @desc    Get all automation exams with full details
+ * @access  Private (Admin)
+ */
+router.get('/automation-exams-full', authenticateAdmin, AutomationExamController.getAllExams);
+
+/**
+ * @route   GET /api/admin/automation-exams/:id
+ * @desc    Get a single automation exam by ID
+ * @access  Private (Admin)
+ */
+router.get('/automation-exams/:id', authenticateAdmin, AutomationExamController.getExamById);
+
+/**
+ * @route   POST /api/admin/automation-exams
+ * @desc    Create a new automation exam
+ * @access  Private (Admin)
+ */
+router.post('/automation-exams', authenticateAdmin, validateCreateAutomationExam, AutomationExamController.createExam);
+
+/**
+ * @route   PUT /api/admin/automation-exams/:id
+ * @desc    Update an automation exam
+ * @access  Private (Admin)
+ */
+router.put('/automation-exams/:id', authenticateAdmin, validateUpdateAutomationExam, AutomationExamController.updateExam);
+
+/**
+ * @route   DELETE /api/admin/automation-exams/:id
+ * @desc    Delete an automation exam
+ * @access  Private (Admin)
+ */
+router.delete('/automation-exams/:id', authenticateAdmin, AutomationExamController.deleteExam);
 
 /**
  * @route   GET /api/admin/users-for-automation

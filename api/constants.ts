@@ -81,6 +81,8 @@ export const API_ENDPOINTS = {
     COACHING_LOCATIONS: '/admin/coaching-locations',
     COACHING_GALLERY: '/admin/coaching-gallery',
     COACHING_COURSES: '/admin/coaching-courses',
+    AUTOMATION_EXAMS: '/admin/automation-exams',
+    AUTOMATION_EXAMS_FULL: '/admin/automation-exams-full',
   },
 
   // Automation endpoints (python-backend at port 8000)
