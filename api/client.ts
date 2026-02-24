@@ -71,6 +71,7 @@ export async function apiRequest<T>(
       ...options,
       signal: controller.signal,
       headers: headersObj,
+      credentials: 'include', // Send cookies for auth
     });
 
     // Check if response is JSON before parsing
