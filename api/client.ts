@@ -78,23 +78,33 @@ export async function apiRequest<T>(
       credentials: 'include', // Send cookies for auth
     });
 
-    // Read response body as text first (more reliable than .json() with proxies)
-    const text = await response.text();
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
     let data: { message?: string; errors?: Array<{ msg: string; param: string }>; [key: string]: unknown } = {};
     
-    // Try to parse as JSON
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json') && text) {
+    // Clone response before reading (in case we need to read it again for error handling)
+    const responseClone = response.clone();
+    
+    // Try to parse as JSON first (most common case)
+    if (contentType && contentType.includes('application/json')) {
       try {
-        data = JSON.parse(text) as typeof data;
+        data = await response.json() as typeof data;
       } catch {
-        console.error('Failed to parse JSON response:', text.substring(0, 200));
-        if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
-          return {
-            success: false,
-            message: 'Server received multipart data but expected JSON.',
-            errors: undefined,
-          };
+        // If JSON parsing fails, get text from clone for debugging
+        try {
+          const text = await responseClone.text();
+          console.error('Failed to parse JSON response:', text.substring(0, 200));
+          
+          // Check if it looks like multipart/form-data boundary
+          if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
+            return {
+              success: false,
+              message: 'Server received multipart data but expected JSON. This usually means a FormData request was sent incorrectly.',
+              errors: undefined,
+            };
+          }
+        } catch (textError) {
+          console.error('Failed to read response as text:', textError);
         }
         return {
           success: false,
@@ -103,18 +113,25 @@ export async function apiRequest<T>(
         };
       }
     } else {
-      // Non-JSON or empty response
-      if (text) console.error('Non-JSON response received:', text.substring(0, 200));
-      if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
-        return {
-          success: false,
-          message: 'Server received multipart data but expected JSON.',
-          errors: undefined,
-        };
+      // Non-JSON response - get text
+      try {
+        const text = await response.text();
+        console.error('Non-JSON response received:', text.substring(0, 200));
+        
+        // If it looks like multipart/form-data, it might be a misconfigured request
+        if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
+          return {
+            success: false,
+            message: 'Server received multipart data but expected JSON. Please check your request format.',
+            errors: undefined,
+          };
+        }
+      } catch (textError) {
+        console.error('Failed to read response as text:', textError);
       }
       return {
         success: false,
-        message: text || 'Server returned an invalid response format',
+        message: 'Server returned an invalid response format',
         errors: undefined,
       };
     }
