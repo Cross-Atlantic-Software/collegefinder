@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
-import { adminLogin } from '@/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -21,28 +20,32 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await adminLogin(email, password);
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (response.success && response.data) {
-        // Store admin token and info in localStorage (for client-side)
-        localStorage.setItem('admin_token', response.data.token);
+      const data = await res.json();
+
+      if (res.ok && data.success && data.data) {
+        const { token, admin } = data.data;
+
+        localStorage.setItem('admin_token', token);
         localStorage.setItem('admin_authenticated', 'true');
-        localStorage.setItem('admin_user', JSON.stringify(response.data.admin));
+        localStorage.setItem('admin_user', JSON.stringify(admin));
 
-        // Also set cookie for server-side access (required for server components / requireAdmin)
-        document.cookie = `admin_token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        document.cookie = `admin_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
-        // Full page navigation so the next request includes the new cookie; router.push()
-        // can trigger RSC fetch before the cookie is sent, causing server to redirect back to login.
         window.location.href = '/admin/site-users';
         return;
       } else {
-        setError(response.message || 'Invalid email or password');
+        setError(data.message || 'Invalid email or password');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
       console.error('Admin login error:', err);
+      setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
