@@ -16,7 +16,7 @@ export async function apiRequest<T>(
   // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)
   const isFormData = options.body instanceof FormData;
   
-  const defaultHeaders: HeadersInit = {};
+  const defaultHeaders: Record<string, string> = {};
   
   // Only set Content-Type for non-FormData requests
   if (!isFormData) {
@@ -45,18 +45,37 @@ export async function apiRequest<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout so app doesn't hang if backend is down
   try {
-    const response = await fetch(url, {
+     // Convert options.headers to plain object if it's a Headers object
+     const headersObj: HeadersInit = { ...defaultHeaders };
+    
+     if (options.headers) {
+       if (options.headers instanceof Headers) {
+         // Convert Headers object to plain object
+         const plainHeaders: Record<string, string> = {};
+         options.headers.forEach((value, key) => {
+           plainHeaders[key] = value;
+         });
+         Object.assign(headersObj, plainHeaders);
+       } else if (Array.isArray(options.headers)) {
+         // Convert array of [key, value] tuples to object
+         const plainHeaders: Record<string, string> = {};
+         options.headers.forEach(([key, value]) => {
+           plainHeaders[key] = value;
+         });
+       } else {
+         // It's already a plain object
+         Object.assign(headersObj, options.headers);
+       }
+     }
+     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-      headers: {
-        ...defaultHeaders,
-        ...options.headers,
-      },
+      headers: headersObj,
     });
 
     // Check if response is JSON before parsing
     const contentType = response.headers.get('content-type');
-    let data: any = {};
+    let data: { message?: string; errors?: Array<{ msg: string; param: string }>; [key: string]: unknown } = {};
     
     // Clone response before reading (in case we need to read it again for error handling)
     const responseClone = response.clone();
@@ -64,8 +83,8 @@ export async function apiRequest<T>(
     // Try to parse as JSON first (most common case)
     if (contentType && contentType.includes('application/json')) {
       try {
-        data = await response.json();
-      } catch (jsonError) {
+        data = await response.json() as typeof data;
+      } catch {
         // If JSON parsing fails, get text from clone for debugging
         try {
           const text = await responseClone.text();
@@ -133,7 +152,7 @@ export async function apiRequest<T>(
 
     return {
       success: true,
-      ...data,
+      ...(data as Record<string, unknown>),
     };
   } catch (error) {
     const isAbort = error instanceof Error && error.name === 'AbortError';

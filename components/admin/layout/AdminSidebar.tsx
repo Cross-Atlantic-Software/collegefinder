@@ -19,7 +19,8 @@ import {
   FiImage,
   FiStar,
   FiHelpCircle,
-  FiPlay
+  FiPlay,
+  FiSettings
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -192,6 +193,11 @@ const navItems: NavItem[] = [
     label: 'Applications',
     href: '/admin/applications',
     icon: <FiPlay className="h-4 w-4" />,
+  },
+  {
+    label: 'Automation Exams',
+    href: '/admin/automation-exams',
+    icon: <FiSettings className="h-4 w-4" />,
   },
 ];
 

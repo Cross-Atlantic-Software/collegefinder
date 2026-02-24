@@ -2041,6 +2041,117 @@ const validateUpdateCollegeFAQ = [
     .withMessage('Answer cannot be empty')
 ];
 
+/**
+ * Validation rules for creating automation exam
+ */
+const validateCreateAutomationExam = [
+  body('name')
+    .notEmpty()
+    .withMessage('Exam name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Exam name must be between 1 and 255 characters'),
+  body('slug')
+    .notEmpty()
+    .withMessage('Slug is required')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Slug must be between 1 and 100 characters')
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  body('url')
+    .notEmpty()
+    .withMessage('URL is required')
+    .trim()
+    .isURL()
+    .withMessage('URL must be a valid URL'),
+  body('is_active')
+    .optional()
+    .isBoolean()
+    .withMessage('is_active must be a boolean'),
+  body('field_mappings')
+    .optional()
+    .isObject()
+    .withMessage('field_mappings must be an object'),
+  body('agent_config')
+    .optional()
+    .isObject()
+    .withMessage('agent_config must be an object'),
+  body('notify_on_complete')
+    .optional()
+    .isBoolean()
+    .withMessage('notify_on_complete must be a boolean'),
+  body('notify_on_failure')
+    .optional()
+    .isBoolean()
+    .withMessage('notify_on_failure must be a boolean'),
+  body('notification_emails')
+    .optional()
+    .isArray()
+    .withMessage('notification_emails must be an array')
+    .custom((emails) => {
+      if (emails.length > 0) {
+        return emails.every(email => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      }
+      return true;
+    })
+    .withMessage('All notification emails must be valid email addresses')
+];
+
+/**
+ * Validation rules for updating automation exam
+ */
+const validateUpdateAutomationExam = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Exam name must be between 1 and 255 characters'),
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Slug must be between 1 and 100 characters')
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  body('url')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('URL must be a valid URL'),
+  body('is_active')
+    .optional()
+    .isBoolean()
+    .withMessage('is_active must be a boolean'),
+  body('field_mappings')
+    .optional()
+    .isObject()
+    .withMessage('field_mappings must be an object'),
+  body('agent_config')
+    .optional()
+    .isObject()
+    .withMessage('agent_config must be an object'),
+  body('notify_on_complete')
+    .optional()
+    .isBoolean()
+    .withMessage('notify_on_complete must be a boolean'),
+  body('notify_on_failure')
+    .optional()
+    .isBoolean()
+    .withMessage('notify_on_failure must be a boolean'),
+  body('notification_emails')
+    .optional()
+    .isArray()
+    .withMessage('notification_emails must be an array')
+    .custom((emails) => {
+      if (emails.length > 0) {
+        return emails.every(email => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      }
+      return true;
+    })
+    .withMessage('All notification emails must be valid email addresses')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -2111,6 +2222,8 @@ module.exports = {
   validateGovernmentIdentification,
   validateCategoryAndReservation,
   validateOtherPersonalDetails,
-  validateUserAddress
+  validateUserAddress,
+  validateCreateAutomationExam,
+  validateUpdateAutomationExam
 };
 

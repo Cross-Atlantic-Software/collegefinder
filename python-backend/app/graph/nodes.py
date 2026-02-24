@@ -21,6 +21,7 @@ from app.api.websocket import (
     request_captcha,
     request_custom_input,
     send_result,
+    update_session,
 )
 
 
@@ -75,6 +76,28 @@ async def init_browser_node(state: GraphState) -> dict:
     if state.get("progress", 0) > 5:
         await send_log(session_id, "Browser session exists, skipping re-init...", "info")
         return {"current_step": "init_browser"}
+    
+    # Check phase and skip completed phases
+    current_phase = state.get("current_phase", "registration")
+    registration_completed = state.get("registration_completed", False)
+    login_completed = state.get("login_completed", False)
+    
+    if current_phase == "login" and registration_completed:
+        await send_log(session_id, "📋 Registration already completed - skipping to login phase", "info")
+        # Navigate directly to login URL (exam_url typically has both registration and login)
+        exam_url = state.get("exam_url", exam_url)
+    elif current_phase == "form_filling" and login_completed:
+        await send_log(session_id, "📋 Login already completed - skipping to form filling phase", "info")
+        # After login, the form is usually accessible from dashboard
+        # We'll navigate to exam_url and let the workflow find the form
+        exam_url = state.get("exam_url", exam_url)
+    elif current_phase == "completed":
+        await send_log(session_id, "✅ Registration already completed - no action needed", "info")
+        return {
+            "current_step": "init_browser",
+            "status": "completed",
+            "progress": 100,
+        }
     
     await send_log(session_id, f"Initializing browser for {state['exam_name']}...", "info")
     await send_status(session_id, "init_browser", 5, "Starting browser...")
@@ -135,13 +158,61 @@ async def capture_screenshot_node(state: GraphState) -> dict:
     human_input = state.get("human_input_value")
     waiting_type = state.get("waiting_for_input_type")  # Will be None after resume clears it
     
+    # Initialize clear_input dict to accumulate updates
+    clear_input = {}
+    updated_user_data = None
+    
     # If we just resumed with input, we need to enter it
     # The input is stored, and we check if waiting was just cleared
     if human_input and state.get("status") == "running":
         import asyncio
         
-        # Determine input type from recent action history or state
-        if isinstance(human_input, str) and len(human_input) <= 6 and human_input.isdigit():
+        # Check if this is login password input
+        # Method 1: Check the flag
+        waiting_for_login_password = state.get("waiting_for_login_password", False)
+        # Method 2: Check received_custom_inputs
+        received_custom = state.get("received_custom_inputs", {})
+        # Method 3: Check if we're in login flow (email_already_registered_detected is True)
+        email_already_registered = state.get("email_already_registered_detected", False)
+        # Method 4: Check if human_input matches the value in received_custom
+        is_login_password = (
+            waiting_for_login_password or 
+            "login_password" in received_custom or 
+            (email_already_registered and received_custom.get("login_password") == human_input) or
+            (email_already_registered and waiting_for_login_password)  # If flag is set and we're in login flow
+        )
+        
+        # Debug logging
+        if human_input:
+            await send_log(session_id, f"🔍 Password check: flag={waiting_for_login_password}, custom_keys={list(received_custom.keys())}, in_login_flow={email_already_registered}, is_login={is_login_password}", "info")
+        
+        if is_login_password and isinstance(human_input, str):
+            # This is login password - update user_data and fill password field
+            await send_log(session_id, f"🔐 Updating password in user_data and filling login password field...", "info")
+            
+            # Update user_data password
+            updated_user_data = state.get("user_data", {}).copy()
+            updated_user_data["password"] = human_input
+            await send_log(session_id, f"✅ Password updated in user_data", "success")
+            
+            # Fill password field directly
+            await send_log(session_id, f"🔐 Filling password field in login form...", "info")
+            fill_password_result = await call_stagehand("execute", {
+                "sessionId": session_id,
+                "action": "act",
+                "prompt": f"Find the password field in the login form (the one next to the email field) and type '{human_input}' into it"
+            }, timeout=30.0)
+            
+            if fill_password_result.get("success"):
+                await send_log(session_id, f"✅ Password filled in login form", "success")
+            else:
+                await send_log(session_id, f"⚠️ Could not fill password: {fill_password_result.get('error')}", "warning")
+            
+            # Clear the flag and update user_data
+            clear_input["waiting_for_login_password"] = False
+            clear_input["user_data"] = updated_user_data  # Update user_data in state
+            
+        elif isinstance(human_input, str) and len(human_input) <= 6 and human_input.isdigit():
             # OTP - simple approach: click first box, then type entire OTP
             await send_log(session_id, f"🔢 Entering OTP: {human_input}...", "info")
             
@@ -184,21 +255,175 @@ async def capture_screenshot_node(state: GraphState) -> dict:
             }, timeout=60.0)
     
     # Clear the input after using it
-    clear_input = {"human_input_value": None} if human_input else {}
+    if human_input:
+        clear_input["human_input_value"] = None
     
     # Capture screenshot
     result = await call_stagehand("screenshot", {"sessionId": session_id})
     
+    # ========== UI-BASED EMAIL ERROR DETECTION (NOT LLM) ==========
+    email_already_registered_detected = state.get("email_already_registered_detected", False)
+    should_navigate_to_login = False
+    
+    if result.get("success"):
+        page_text = result.get("page_text", "")
+        if page_text:
+            page_text_lower = page_text.lower()
+            # HARD UI-BASED DETECTION - NO LLM REASONING
+            # Check for email already registered errors in actual DOM text
+            if any(keyword in page_text_lower for keyword in [
+                "already registered",
+                "email already",
+                "email id already registered",
+                "email id already exists",  # Exact match for "Email Id Already Exists"
+                "email already exists",
+                "already registered with",
+                "use another email",
+                "email id exists",  # Shorter variant
+            ]):
+                if not email_already_registered_detected:
+                    # First time detection - navigate back to original URL
+                    email_already_registered_detected = True
+                    should_navigate_to_login = True
+                    await send_log(session_id, "🔥 UI DETECTED: Email already registered - navigating back to login page", "critical")
+                else:
+                    # Already detected before - just preserve flag
+                    await send_log(session_id, "🔥 Email already registered flag is active", "warning")
+    
+    # If email already registered detected, navigate to exam_url and click login
+    if should_navigate_to_login:
+        exam_url = state.get("exam_url")
+        if exam_url:
+            await send_log(session_id, f"🔄 Navigating to: {exam_url}", "info")
+            await send_status(session_id, "navigate", state.get("progress", 30), "Navigating to login page...")
+            
+            # Navigate to exam_url
+            nav_result = await call_stagehand("execute", {
+                "sessionId": session_id,
+                "action": "act",
+                "prompt": f"Navigate to this URL: {exam_url}"
+            }, timeout=60.0)
+            
+            if nav_result.get("success"):
+                await send_log(session_id, "✅ Navigated to exam URL", "success")
+                # Get screenshot after navigation
+                result = await call_stagehand("screenshot", {"sessionId": session_id})
+                if result.get("success"):
+                    await forward_screenshot(session_id, result, "capture")
+                    
+                    # First, dismiss any popups that might be showing
+                    await send_log(session_id, "🔍 Checking for popups to dismiss...", "info")
+                    import asyncio
+                    await asyncio.sleep(1.0)  # Wait for popup to appear if any
+                    
+                    popup_result = await call_stagehand("execute", {
+                        "sessionId": session_id,
+                        "action": "act",
+                        "prompt": "If there is a popup or dialog box visible, click the 'OK' or 'Close' button to dismiss it"
+                    }, timeout=10.0)
+                    
+                    if popup_result.get("success"):
+                        await send_log(session_id, "✅ Dismissed popup", "success")
+                        await asyncio.sleep(1.0)
+                        result = await call_stagehand("screenshot", {"sessionId": session_id})
+                        if result.get("success"):
+                            await forward_screenshot(session_id, result, "capture")
+                    
+                    # Now click login link/button to switch to login form
+                    await send_log(session_id, "🔍 Clicking login link/button to switch to login form...", "info")
+                    login_result = await call_stagehand("execute", {
+                        "sessionId": session_id,
+                        "action": "act",
+                        "prompt": "Click on the 'Login' link or button to switch to the login form"
+                    }, timeout=30.0)
+                    
+                    if login_result.get("success"):
+                        await send_log(session_id, "✅ Switched to login form", "success")
+                        await asyncio.sleep(2.0)  # Wait for form to load
+                        result = await call_stagehand("screenshot", {"sessionId": session_id})
+                        if result.get("success"):
+                            await forward_screenshot(session_id, result, "capture")
+                            
+                            # Verify we're on login form (has password field, not "Confirm Email")
+                            page_text = result.get("page_text", "")
+                            if page_text:
+                                page_text_lower = page_text.lower()
+                                if "password" in page_text_lower and "confirm email" not in page_text_lower:
+                                    await send_log(session_id, "✅ Confirmed: We're on LOGIN form (has password field)", "success")
+                                elif "confirm email" in page_text_lower:
+                                    await send_log(session_id, "⚠️ Still on registration form - trying to find login form again", "warning")
+                                    # Try to find login form more explicitly
+                                    login_form_result = await call_stagehand("execute", {
+                                        "sessionId": session_id,
+                                        "action": "act",
+                                        "prompt": "Find the login section with email and password fields. Look for a form that has 'Password' field (not 'Confirm Email'). Click on the email field in that login form"
+                                    }, timeout=30.0)
+                                    if login_form_result.get("success"):
+                                        await send_log(session_id, "✅ Found login form explicitly", "success")
+                                        result = await call_stagehand("screenshot", {"sessionId": session_id})
+                                        if result.get("success"):
+                                            await forward_screenshot(session_id, result, "capture")
+                            
+                            # After confirming we're on login form, fill email immediately
+                            user_email = state.get("user_data", {}).get("email", "")
+                            if user_email and "password" in page_text_lower and "confirm email" not in page_text_lower:
+                                await send_log(session_id, f"📧 Filling email in login form: {user_email}", "info")
+                                fill_email_result = await call_stagehand("execute", {
+                                    "sessionId": session_id,
+                                    "action": "act",
+                                    "prompt": f"Find the email field in the login form (the one with password field next to it) and type '{user_email}' into it"
+                                }, timeout=30.0)
+                                
+                                if fill_email_result.get("success"):
+                                    await send_log(session_id, "✅ Email filled in login form - requesting password", "success")
+                                    result = await call_stagehand("screenshot", {"sessionId": session_id})
+                                    if result.get("success"):
+                                        await forward_screenshot(session_id, result, "capture")
+                                    
+                                    # Request password immediately
+                                    await send_log(session_id, "🔐 Requesting login password", "warning")
+                                    await send_status(session_id, "waiting_input", state.get("progress", 50), "Waiting for password...")
+                                    await request_custom_input(
+                                        session_id,
+                                        field_id="login_password",  # Special field_id to identify login password
+                                        label="Login Password Required",
+                                        field_type="password",
+                                        suggestions=["Enter your login password", "Use 'Forgot Password' if available", "Cancel automation"]
+                                    )
+                                    return {
+                                        **clear_input,
+                                        "current_step": "capture_screenshot",
+                                        "status": "waiting_input",
+                                        "waiting_for_input_type": "custom",
+                                        "email_already_registered_detected": email_already_registered_detected,
+                                        "already_filled_fields": ["email"],  # Mark email as filled for login
+                                        "waiting_for_login_password": True,  # Flag to track we're waiting for login password
+                                    }
+                    else:
+                        await send_log(session_id, f"⚠️ Could not click login: {login_result.get('error')}", "warning")
+            else:
+                await send_log(session_id, f"⚠️ Navigation failed: {nav_result.get('error')}", "warning")
+    
     if result.get("success"):
         # Forward screenshot to frontend
         await forward_screenshot(session_id, result, "capture")
-        return {
+        return_dict = {
             **clear_input,
             "current_step": "capture_screenshot",
             "screenshot_base64": result.get("screenshot"),
+            "email_already_registered_detected": email_already_registered_detected,  # Set flag from UI
+            "page_url": state.get("exam_url") if should_navigate_to_login else state.get("page_url"),
         }
+        # Clear already_filled_fields when navigating back for login
+        if should_navigate_to_login:
+            return_dict["already_filled_fields"] = []  # Start fresh for login flow
+        return return_dict
     
-    return {"current_step": "capture_screenshot", **clear_input}
+    return {
+        "current_step": "capture_screenshot", 
+        **clear_input,
+        "email_already_registered_detected": email_already_registered_detected,
+    }
 
 
 # ============= NEW: LLM-Driven Decision Nodes =============
@@ -227,6 +452,9 @@ async def llm_decide_node(state: GraphState) -> dict:
     await send_log(session_id, "🤖 LLM analyzing page...", "info")
     await send_status(session_id, "llm_decide", state.get("progress", 20), "AI analyzing page...")
     
+    # Check if account creation is complete
+    account_creation_complete = state.get("account_creation_complete", False)
+    
     # Call LLM to decide next action
     decision = await decide_next_action(
         screenshot_base64=screenshot,
@@ -234,8 +462,35 @@ async def llm_decide_node(state: GraphState) -> dict:
         already_filled=already_filled,
         page_url=page_url,
         retry_count=retry_count,
-        captcha_fail_count=captcha_fail_count
+        captcha_fail_count=captcha_fail_count,
+        account_creation_complete=account_creation_complete
     )
+    
+    # Override decision if it tries to go back to registration after login
+    registration_completed = state.get("registration_completed", False)
+    if (account_creation_complete or registration_completed) and decision.action_type == "click_button":
+        if decision.button_text and any(keyword in decision.button_text.lower() for keyword in [
+            "create account", "register", "sign up", "new registration", "click here to create", "create your account"
+        ]):
+            await send_log(session_id, "🚫 Blocked: Registration already completed - skipping registration link", "warning")
+            # Instead of retry, look for login link or form filling
+            decision = ActionDecision(
+                action_type="click_button",
+                button_text="Login",
+                reasoning="Registration is already completed. Look for 'Login' link or button to proceed to form filling.",
+                stagehand_prompt="Find and click the 'Login' link or button. If already logged in, look for form filling options like 'Proceed for Universal Registration' or 'Identity Profile'."
+            )
+    
+    # Also block registration field filling if registration is complete
+    if registration_completed and decision.action_type == "fill_field":
+        field_name_lower = (decision.field_name or "").lower()
+        if any(keyword in field_name_lower for keyword in ["email", "confirm email", "otp", "verify email"]):
+            await send_log(session_id, f"🚫 Blocked: Registration complete - skipping registration field '{decision.field_name}'", "warning")
+            decision = ActionDecision(
+                action_type="retry",
+                reasoning="Registration is complete. Skip registration fields and look for login or form filling options.",
+                stagehand_prompt=""
+            )
     
     await send_log(
         session_id, 
@@ -243,10 +498,17 @@ async def llm_decide_node(state: GraphState) -> dict:
         "info"
     )
     
+    # CRITICAL: Preserve email_already_registered_detected flag
+    email_already_registered_detected = state.get("email_already_registered_detected", False)
+    if email_already_registered_detected:
+        await send_log(session_id, "🔒 Flag preserved in llm_decide_node", "info")
+    
     return {
         "current_step": "llm_decide",
         "llm_decision": decision.model_dump(),
         "progress": 25,
+        "email_already_registered_detected": email_already_registered_detected,  # PRESERVE FLAG
+        "account_creation_complete": account_creation_complete,  # PRESERVE FLAG
     }
 
 
@@ -268,12 +530,70 @@ async def execute_single_action_node(state: GraphState) -> dict:
     
     # Handle different action types
     if action_type == "success":
-        await send_log(session_id, "✅ Success detected by LLM!", "success")
-        return {
-            "current_step": "execute_action",
-            "status": "completed",
-            "progress": 100,
-        }
+        # Only mark as completed if we're in form_filling phase AND form is actually complete
+        current_phase = state.get("current_phase", "registration")
+        login_completed = state.get("login_completed", False)
+        
+        # Check if this is a real completion (form filled and submitted) or just a step completion
+        decision_reasoning_lower = (decision.reasoning or "").lower()
+        
+        # STRICT completion detection - must have explicit completion keywords
+        is_real_completion = any(keyword in decision_reasoning_lower for keyword in [
+            "application submitted", "registration completed", "form submitted successfully",
+            "application successful", "successfully submitted", "thank you for submitting",
+            "application has been submitted", "your application has been submitted",
+            "registration form submitted", "form successfully submitted"
+        ])
+        
+        # CRITICAL: Only complete if ALL conditions are met:
+        # 1. We're in form_filling phase
+        # 2. Login is completed
+        # 3. LLM explicitly says it's a completion (with keywords)
+        # 4. We've filled a reasonable number of fields (not just 2-3 fields)
+        already_filled_count = len(state.get("already_filled_fields", []))
+        has_enough_fields_filled = already_filled_count >= 5  # At least 5 fields filled
+        
+        # If LLM says "success" but conditions aren't met, treat it as a false positive and continue
+        if not (current_phase == "form_filling" and login_completed and is_real_completion and has_enough_fields_filled):
+            # This is NOT a real completion - LLM incorrectly said "success"
+            reason = "LLM returned 'success' but conditions not met:"
+            if current_phase != "form_filling":
+                reason += f" phase is {current_phase} (not form_filling)"
+            elif not login_completed:
+                reason += " login not completed yet"
+            elif not is_real_completion:
+                reason += " no completion keywords in reasoning"
+            elif not has_enough_fields_filled:
+                reason += f" only {already_filled_count} fields filled (need at least 5)"
+            
+            await send_log(session_id, f"⚠️ {reason} - ignoring false success, continuing workflow...", "warning")
+            # Don't mark as completed, continue workflow
+            return {
+                "current_step": "execute_action",
+                "progress": min(state.get("progress", 30) + 5, 90),
+            }
+        else:
+            # ALL conditions met - this is a real completion!
+            await send_log(session_id, "✅ Registration completed successfully!", "success")
+            # Update phase to completed
+            try:
+                import json
+                graph_state = {
+                    "current_phase": "completed",
+                    "registration_completed": True,
+                    "login_completed": True,
+                    "form_filling_progress": {"completed": True}
+                }
+                await update_session(session_id, graph_state=graph_state)
+            except Exception as e:
+                await send_log(session_id, f"⚠️ Failed to save completion: {e}", "warning")
+            
+            return {
+                "current_step": "execute_action",
+                "status": "completed",
+                "progress": 100,
+                "current_phase": "completed",
+            }
     
     if action_type == "error":
         await send_log(session_id, f"❌ Error: {decision.error_message}", "error")
@@ -310,10 +630,72 @@ async def execute_single_action_node(state: GraphState) -> dict:
     if action_type == "retry":
         await send_log(session_id, "🔄 Retrying...", "info")
         retry_count = state.get("retry_count", 0) + 1
+        max_retries = state.get("max_retries", 5)  # Increased from 3 to 5 for LLM timeouts
+        
+        # If we've exceeded max retries, don't continue
+        if retry_count >= max_retries:
+            await send_log(session_id, f"❌ Max retries ({max_retries}) exceeded - stopping workflow", "error")
+            return {
+                "current_step": "execute_action",
+                "status": "failed",
+                "retry_count": retry_count,
+                "last_error": "Max retries exceeded - LLM analysis failed repeatedly"
+            }
+        
         return {
             "current_step": "execute_action",
             "retry_count": retry_count,
         }
+    
+    # Prevent going back to registration if account creation is complete
+    account_creation_complete = state.get("account_creation_complete", False)
+    if account_creation_complete and action_type == "click_button":
+        if decision.button_text and any(keyword in decision.button_text.lower() for keyword in [
+            "create account", "register", "sign up", "new registration"
+        ]):
+            await send_log(session_id, "🚫 Blocked: Cannot go back to registration after login", "warning")
+            return {
+                "current_step": "execute_action",
+                "account_creation_complete": account_creation_complete,
+            }
+    
+    # ========== DETECT EMAIL ERROR FROM LLM DECISION ==========
+    # Check if LLM detected "Email Id Already Exists" in reasoning BEFORE executing action
+    email_already_registered_detected = state.get("email_already_registered_detected", False)
+    decision_reasoning_lower = (decision.reasoning or "").lower()
+    
+    if not email_already_registered_detected and any(keyword in decision_reasoning_lower for keyword in [
+        "email id already exists",
+        "email already exists",
+        "email already registered",
+        "already registered",
+        "email id exists",
+    ]):
+        email_already_registered_detected = True
+        await send_log(session_id, "🔥 LLM DETECTED: Email already exists error in popup - navigating to login", "critical")
+        
+        # Navigate to login immediately
+        exam_url = state.get("exam_url")
+        if exam_url:
+            await send_log(session_id, f"🔄 Navigating to login: {exam_url}", "info")
+            nav_result = await call_stagehand("execute", {
+                "sessionId": session_id,
+                "action": "act",
+                "prompt": f"Navigate to this URL: {exam_url}"
+            }, timeout=60.0)
+            
+            if nav_result.get("success"):
+                await send_log(session_id, "✅ Navigated to exam URL", "success")
+                # Get screenshot after navigation
+                result = await call_stagehand("screenshot", {"sessionId": session_id})
+                if result.get("success"):
+                    await forward_screenshot(session_id, result, "execute")
+                    return {
+                        "current_step": "execute_action",
+                        "email_already_registered_detected": True,
+                        "screenshot_base64": result.get("screenshot"),
+                        "already_filled_fields": [],  # Clear filled fields for login flow
+                    }
     
     # For click_checkbox, fill_field, click_button - execute via Stagehand
     stagehand_prompt = decision.stagehand_prompt
@@ -323,6 +705,11 @@ async def execute_single_action_node(state: GraphState) -> dict:
         return {"current_step": "execute_action", "last_error": "Empty prompt"}
     
     await send_log(session_id, f"🎬 Executing: {stagehand_prompt[:60]}...", "info")
+    
+    # Track page state BEFORE action (for loop detection)
+    previous_page_url = state.get("page_url", "")
+    previous_page_text = state.get("screenshot_base64", "")  # We'll use page_text from result instead
+    previous_page_text_hash = state.get("previous_page_text_hash", "")
     
     # Execute via Stagehand
     result = await call_stagehand("execute", {
@@ -334,6 +721,113 @@ async def execute_single_action_node(state: GraphState) -> dict:
     # Forward screenshot
     await forward_screenshot(session_id, result, "execute")
     
+    # ========== DETECT PAGE CHANGE AFTER BUTTON CLICK ==========
+    page_changed = False
+    previous_page_url = state.get("page_url", "")
+    previous_page_text_hash = state.get("previous_page_text_hash", "")
+    repeated_action_count = state.get("repeated_action_count", 0)
+    
+    current_page_url = result.get("pageUrl", "") or previous_page_url
+    current_page_text = result.get("page_text", "")
+    
+    # Create hash of page text for comparison
+    import hashlib
+    if current_page_text:
+        current_page_text_hash = hashlib.md5(current_page_text.encode()).hexdigest()[:16]
+    else:
+        current_page_text_hash = ""
+    
+    # Check if page changed (URL or content)
+    if action_type == "click_button":
+        if current_page_url != previous_page_url and current_page_url:
+            page_changed = True
+            await send_log(session_id, f"✅ Page navigated: {current_page_url[:80]}", "success")
+        elif current_page_text_hash and current_page_text_hash != previous_page_text_hash:
+            page_changed = True
+            await send_log(session_id, "✅ Page content changed", "success")
+        else:
+            # Page didn't change - might be stuck
+            button_text = (decision.button_text or "").lower()
+            
+            # Check if this is the same button being clicked repeatedly
+            if "proceed for universal registration" in button_text:
+                repeated_action_count += 1
+                await send_log(session_id, f"⚠️ Button clicked but page didn't change (attempt {repeated_action_count})", "warning")
+                
+                # If stuck for 3+ times, try alternative navigation
+                if repeated_action_count >= 3:
+                    await send_log(session_id, "🔄 Stuck in loop - trying alternative navigation...", "warning")
+                    
+                    # Try navigating directly to form page or clicking different element
+                    alternative_result = await call_stagehand("execute", {
+                        "sessionId": session_id,
+                        "action": "act",
+                        "prompt": "Look for any link or button that says 'Identity Profile', 'Personal Details', 'Registration Form', or 'Fill Form'. Click on it. If not found, try clicking on any menu item in the sidebar."
+                    }, timeout=30.0)
+                    
+                    if alternative_result.get("success"):
+                        await send_log(session_id, "✅ Alternative navigation attempted", "info")
+                        result = alternative_result  # Use alternative result
+                        # Reset counter if alternative worked
+                        if alternative_result.get("pageUrl") != previous_page_url:
+                            repeated_action_count = 0
+                    else:
+                        # Still stuck - request human intervention
+                        await send_log(session_id, "🚨 Stuck in navigation loop - requesting human assistance", "error")
+                        await send_status(session_id, "waiting_input", state.get("progress", 50), "Navigation stuck - need help")
+                        await request_custom_input(
+                            session_id,
+                            field_id="navigation_help",
+                            label="Navigation Assistance",
+                            field_type="text",
+                            suggestions=["Navigate manually to form page", "Click specific link", "Cancel automation"]
+                        )
+                        return {
+                            "current_step": "execute_action",
+                            "status": "waiting_input",
+                            "waiting_for_input_type": "custom",
+                            "repeated_action_count": repeated_action_count,
+                        }
+            else:
+                # Different button - reset counter
+                repeated_action_count = 0
+    else:
+        # Not a button click - reset counter
+        repeated_action_count = 0
+    
+    # Update page state tracking
+    if page_changed:
+        repeated_action_count = 0  # Reset counter on successful navigation
+    
+    # Reset retry_count on successful actions (non-retry actions)
+    if action_type != "retry" and result.get("success"):
+        retry_count = 0  # Reset retry count on successful action
+    else:
+        # Preserve retry_count if it's a retry action or failed action
+        retry_count = state.get("retry_count", 0)
+    
+    # ========== UI-BASED EMAIL ERROR DETECTION AFTER ACTION ==========
+    # Check page_text from result (if available) for immediate error detection
+    # NOTE: Navigation is handled in capture_screenshot_node to avoid duplicate navigation
+    if result.get("success") and result.get("page_text"):
+        page_text = result.get("page_text", "")
+        if page_text:
+            page_text_lower = page_text.lower()
+            # HARD UI-BASED DETECTION - NO LLM REASONING
+            if any(keyword in page_text_lower for keyword in [
+                "already registered",
+                "email already",
+                "email id already registered",
+                "email id already exists",
+                "email already exists",
+                "already registered with",
+                "use another email",
+                "email id exists",
+            ]):
+                # Just set the flag - navigation will happen in capture_screenshot_node
+                email_already_registered_detected = True
+                await send_log(session_id, "🔥 UI DETECTED: Email already registered (after action) - will navigate to login on next cycle", "critical")
+    
     if not result.get("success"):
         await send_log(session_id, f"Action failed: {result.get('error')}", "warning")
     else:
@@ -344,15 +838,137 @@ async def execute_single_action_node(state: GraphState) -> dict:
     import asyncio
     await asyncio.sleep(2.0)  # 2 second delay for popups
     
+    # ========== DETECT SUCCESSFUL LOGIN ==========
+    account_creation_complete = state.get("account_creation_complete", False)
+    if result.get("success") and result.get("page_text"):
+        page_text = result.get("page_text", "")
+        if page_text:
+            page_text_lower = page_text.lower()
+            # Check if login was successful (no login form, has dashboard/success indicators)
+            email_already_registered = state.get("email_already_registered_detected", False)
+            # Only check for login success ONCE - when we actually click the login button
+            # and we're in login phase (not form_filling phase)
+            current_phase = state.get("current_phase", "registration")
+            login_completed = state.get("login_completed", False)
+            
+            if email_already_registered and action_type == "click_button" and not login_completed:
+                # Check if this is the login button click (button text contains "sign in", "login", etc.)
+                button_text_lower = (decision.button_text or "").lower()
+                is_login_button = any(keyword in button_text_lower for keyword in [
+                    "sign in", "login", "log in", "submit"
+                ])
+                
+                if is_login_button:
+                    # After clicking login button, check if we're no longer on login page
+                    if any(keyword in page_text_lower for keyword in [
+                        "dashboard", "welcome", "profile", "home", "application",
+                        "successfully logged in", "login successful", "logged in"
+                    ]) or ("password" not in page_text_lower and "email" not in page_text_lower and "login" not in page_text_lower):
+                        # Login successful - update phase
+                        account_creation_complete = True
+                        login_completed = True
+                        current_phase = "form_filling"
+                        
+                        await send_log(session_id, "✅ Login successful - moving to form filling phase!", "success")
+                        
+                        # Update state variables for return
+                        state["login_completed"] = True
+                        state["current_phase"] = "form_filling"
+                        state["registration_completed"] = True  # Registration was skipped (email already registered)
+                        
+                        # Save phase to database
+                        try:
+                            import json
+                            graph_state = {
+                                "current_phase": current_phase,
+                                "registration_completed": True,  # Registration was skipped (email already registered)
+                                "login_completed": True,
+                                "form_filling_progress": {}
+                            }
+                            await update_session(session_id, graph_state=graph_state)
+                        except Exception as e:
+                            await send_log(session_id, f"⚠️ Failed to save phase: {e}", "warning")
+                    
+                    # Update password in database
+                    user_id = state.get("user_id")
+                    user_data = state.get("user_data", {})
+                    entered_password = user_data.get("password")
+                    if user_id and entered_password:
+                        try:
+                            from app.services.database import execute
+                            # Convert user_id to int if it's a string
+                            user_id_int = int(user_id) if isinstance(user_id, str) else user_id
+                            await execute(
+                                "UPDATE users SET automation_password = $1 WHERE id = $2",
+                                entered_password,
+                                user_id_int
+                            )
+                            await send_log(session_id, f"✅ Password saved to database", "success")
+                        except Exception as e:
+                            await send_log(session_id, f"⚠️ Failed to save password: {e}", "warning")
+    
     # Track filled fields if it was a fill action
     already_filled = list(state.get("already_filled_fields", []))
     if action_type == "fill_field" and decision.field_name and result.get("success"):
-        already_filled.append(decision.field_name)
+        # Normalize field name for better matching (lowercase, remove extra spaces)
+        field_name_normalized = decision.field_name.lower().strip()
+        # Check if already filled (case-insensitive)
+        if field_name_normalized not in [f.lower().strip() for f in already_filled]:
+            already_filled.append(decision.field_name)
+            await send_log(session_id, f"✅ Field '{decision.field_name}' marked as filled", "info")
+        else:
+            await send_log(session_id, f"⚠️ Field '{decision.field_name}' was already filled - skipping duplicate", "warning")
+    
+    # Save form filling progress to database periodically (every 5 fields or on phase change)
+    current_phase = state.get("current_phase", "registration")
+    if current_phase == "form_filling" and len(already_filled) > 0:
+        # Save every 5 fields or if this is a significant action
+        should_save_progress = (
+            len(already_filled) % 5 == 0 or  # Every 5 fields
+            action_type == "click_button" or  # On navigation/submit
+            len(already_filled) == 1  # First field filled
+        )
+        
+        if should_save_progress:
+            try:
+                import json
+                graph_state = {
+                    "current_phase": current_phase,
+                    "registration_completed": state.get("registration_completed", False),
+                    "login_completed": state.get("login_completed", False),
+                    "form_filling_progress": {
+                        "already_filled_fields": already_filled,
+                        "last_field_filled": decision.field_name if action_type == "fill_field" else None,
+                        "progress_count": len(already_filled)
+                    }
+                }
+                await update_session(session_id, graph_state=graph_state)
+                await send_log(session_id, f"💾 Saved form progress: {len(already_filled)} fields filled", "info")
+            except Exception as e:
+                await send_log(session_id, f"⚠️ Failed to save form progress: {e}", "warning")
+    
+    # PRESERVE FLAG FROM STATE (set by UI detection in capture_screenshot_node)
+    email_error_detected = state.get("email_already_registered_detected", False)
+    
+    # Get current phase from state (may have been updated above)
+    current_phase = state.get("current_phase", "registration")
+    login_completed_state = state.get("login_completed", False)
+    registration_completed_state = state.get("registration_completed", False)
     
     return {
         "current_step": "execute_action",
         "screenshot_base64": result.get("screenshot"),
         "already_filled_fields": already_filled,
+        "email_already_registered_detected": email_error_detected,  # Preserve flag from UI detection
+        "account_creation_complete": account_creation_complete,  # Track if login/registration is complete
+        "current_phase": current_phase,  # Preserve/update phase
+        "login_completed": login_completed_state,  # Preserve login completion status
+        "registration_completed": registration_completed_state,  # Preserve registration completion status
+        "page_url": current_page_url,  # Update page URL
+        "previous_page_url": previous_page_url,  # Track previous URL
+        "previous_page_text_hash": current_page_text_hash if current_page_text else previous_page_text_hash,  # Track page content hash
+        "repeated_action_count": repeated_action_count,  # Track loop attempts
+        "retry_count": retry_count,  # Preserve or reset retry count
         "progress": min(state.get("progress", 30) + 5, 90),
         "action_history": state.get("action_history", []) + [{
             "action": action_type,

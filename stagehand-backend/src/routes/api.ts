@@ -157,10 +157,21 @@ router.post("/execute", async (req: Request, res: Response) => {
 
         const screenshot = await captureAndBroadcast(sessionId, action);
 
+        // GET PAGE TEXT FROM DOM - UI-BASED DETECTION
+        const page = stagehand.context.pages()[0];
+        const page_text = await page.evaluate(() => {
+            return document.body.innerText || document.body.textContent || "";
+        });
+        
+        // Get current page URL for navigation detection
+        const pageUrl = page.url();
+
         res.json({
             success: true,
             result,
             screenshot,
+            page_text,  // Return page text for UI-based error detection
+            pageUrl,    // Return page URL for navigation detection
         });
     } catch (error) {
         console.error("[execute] Error:", error);
@@ -433,15 +444,28 @@ router.post("/analyze", async (req: Request, res: Response) => {
 router.post("/screenshot", async (req: Request, res: Response) => {
     try {
         const { sessionId } = CloseRequestSchema.parse(req.body);
+        const stagehand = sessionManager.get(sessionId);
+        
+        if (!stagehand) {
+            return res.status(404).json({ success: false, error: "Session not found" });
+        }
+        
         const screenshot = await captureAndBroadcast(sessionId, "manual");
 
         if (!screenshot) {
             return res.status(404).json({ success: false, error: "Session not found" });
         }
 
+        // GET PAGE TEXT FROM DOM - UI-BASED DETECTION
+        const page = stagehand.context.pages()[0];
+        const page_text = await page.evaluate(() => {
+            return document.body.innerText || document.body.textContent || "";
+        });
+
         res.json({
             success: true,
             screenshot,
+            page_text,  // Return page text for UI-based error detection
         });
     } catch (error) {
         console.error("[screenshot] Error:", error);

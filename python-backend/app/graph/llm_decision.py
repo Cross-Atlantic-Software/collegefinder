@@ -235,17 +235,24 @@ BEFORE clicking Submit/Get OTP/Continue:
 - Double-check that the captcha field has text in it
 - If ANY field is empty, fill it first instead of clicking submit!
 
-### 7. SUCCESS DETECTION - BE VERY CAREFUL
-ONLY return "success" if you see FINAL confirmation like:
-- "Registration successful"
-- "Application submitted successfully" 
-- "Your registration is complete"
+### 7. SUCCESS DETECTION - BE VERY STRICT!
+ONLY return "success" if you see EXPLICIT FINAL confirmation like:
+- "Registration successful" or "Registration completed successfully"
+- "Application submitted successfully" or "Your application has been submitted"
+- "Your registration is complete" or "Registration form submitted"
+- "Thank you for submitting your application"
+- A final confirmation page with a success message
 
-DO NOT confuse these with success:
+⚠️ CRITICAL: DO NOT return "success" for:
 - "OTP sent successfully" → This is NOT final success, it means wait for OTP
 - "Captcha verified" → This is NOT final success
-- Just clicking something → NOT success
+- Just clicking a button → NOT success
+- Filling a few fields → NOT success (form is still incomplete)
 - Error messages like "Invalid captcha" → Need to re-solve captcha!
+- "Step completed" or "Page loaded" → NOT final success
+- Any intermediate step → NOT final success
+
+⚠️ ONLY return "success" when you see a CLEAR, EXPLICIT final confirmation message that the ENTIRE registration/application process is complete!
 
 ## Stagehand Prompt Guidelines
 - For click_button: "Click the 'OK' button" or "Click the 'Submit' button"
@@ -269,7 +276,8 @@ async def decide_next_action(
     already_filled: list[str],
     page_url: str = "",
     retry_count: int = 0,
-    captcha_fail_count: int = 0
+    captcha_fail_count: int = 0,
+    account_creation_complete: bool = False
 ) -> ActionDecision:
     """
     Analyze screenshot and decide the next action.
@@ -302,6 +310,10 @@ async def decide_next_action(
     if "captcha" in already_filled:
         captcha_filled_note = "\n\n✅ CAPTCHA WAS ALREADY FILLED - DO NOT FILL IT AGAIN! Even if the field looks empty, you already filled it. Move on to clicking the submit button!"
     
+    account_note = ""
+    if account_creation_complete:
+        account_note = "\n⚠️ CRITICAL: Account creation/login is COMPLETE. DO NOT click 'Create Account', 'Register', or 'Sign Up' buttons. Continue with form filling on the current page."
+    
     user_context = f"""
 ## User Data to Fill
 Already filled: {already_filled if already_filled else "None yet"}
@@ -310,11 +322,15 @@ Remaining to fill: {json.dumps(remaining_fields, indent=2)}{captcha_filled_note}
 ## Current State  
 Page URL: {page_url or "Unknown"}
 Retry count: {retry_count}
-Captcha failures: {captcha_fail_count}{captcha_note}
+Captcha failures: {captcha_fail_count}{captcha_note}{account_note}
 
-## CRITICAL RULE
-If a field is in "Already filled" list above, DO NOT try to fill it again!
-If "captcha" is in Already filled along with other fields, click the submit button instead of filling captcha again.
+## CRITICAL RULES
+1. If a field is in "Already filled" list above, DO NOT try to fill it again!
+   - Check field names case-insensitively (e.g., "First Name" = "first name" = "FIRST NAME")
+   - Check for variations (e.g., "Confirm Mother's full name" = "confirm mother's full name" = "mother's full name")
+2. If "captcha" is in Already filled along with other fields, click the submit button instead of filling captcha again.
+3. If account creation is complete, DO NOT go back to registration - continue with current page.
+4. When checking if a field is already filled, normalize the field name (lowercase, remove extra spaces) before comparing.
 
 ## Task
 Analyze the screenshot and decide the SINGLE next action to take.
@@ -354,10 +370,10 @@ If all fields are filled (including captcha in Already filled list), click the s
                         )
                     )
                 ),
-                timeout=60.0  # 60 second timeout
+                timeout=45.0  # 45 second timeout (reduced from 60s for faster retries)
             )
         except asyncio.TimeoutError:
-            print("[LLM] Gemini API call timed out after 60s")
+            print("[LLM] Gemini API call timed out after 45s")
             return ActionDecision(
                 action_type="retry",
                 stagehand_prompt="",

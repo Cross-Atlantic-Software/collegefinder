@@ -6,7 +6,6 @@ import {
   MdSchool,
   MdCheckCircle,
   MdHourglassTop,
-  MdOutlineArrowForwardIos,
   MdAdd,
   MdRefresh,
   MdError,
@@ -210,7 +209,7 @@ export default function ApplicationsPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
-      });
+      } as RequestInit);
 
       if (!response.ok) {
         throw new Error('Failed to fetch applications');

@@ -295,3 +295,17 @@ export {
   deleteCoachingCourse,
 } from './coaching-courses';
 export type { CoachingCourse } from './coaching-courses';
+
+// Export automation exams management APIs
+export {
+  getAllAutomationExams,
+  getAutomationExamById,
+  createAutomationExam,
+  updateAutomationExam,
+  deleteAutomationExam,
+} from './automation-exams';
+export type {
+  AutomationExam,
+  CreateAutomationExamData,
+  UpdateAutomationExamData,
+} from './automation-exams';

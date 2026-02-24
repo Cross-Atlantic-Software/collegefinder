@@ -452,11 +452,11 @@ async def handle_custom_submit(session_id: str, payload: dict):
         "payload": {"message": f"Input received for {field_id}, continuing...", "level": "success"}
     })
     
-    # Resume LangGraph workflow with the custom input value
-    asyncio.create_task(resume_workflow_task(session_id, value))
+    # Resume LangGraph workflow with the custom input value and field_id
+    asyncio.create_task(resume_workflow_task(session_id, value, field_id))
 
 
-async def resume_workflow_task(session_id: str, user_input: Any):
+async def resume_workflow_task(session_id: str, user_input: Any, field_id: str = None):
     """
     Resume a paused LangGraph workflow with user input.
     This is called after user provides OTP, captcha, or custom input.
@@ -464,7 +464,7 @@ async def resume_workflow_task(session_id: str, user_input: Any):
     from app.graph.builder import resume_workflow
     
     try:
-        result = await resume_workflow(session_id, user_input)
+        result = await resume_workflow(session_id, user_input, field_id)
         
         # Update session with result if workflow completed
         if result.get("status") in ["success", "failed", "completed"]:
