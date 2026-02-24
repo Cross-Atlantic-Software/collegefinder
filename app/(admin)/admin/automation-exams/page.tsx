@@ -704,7 +704,7 @@ export default function AutomationExamsPage() {
         message="Are you sure you want to delete this exam? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        isDeleting={isDeleting}
+        isLoading={isDeleting}
       />
     </div>
   );
