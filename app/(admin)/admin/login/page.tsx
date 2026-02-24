@@ -29,11 +29,14 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_user', JSON.stringify(response.data.admin));
 
-        // Also set cookie for server-side access
+        // Also set cookie for server-side access (required for server components / requireAdmin)
         document.cookie = `admin_token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
-        router.push('/admin/site-users');
+        // Full page navigation so the next request includes the new cookie; router.push()
+        // can trigger RSC fetch before the cookie is sent, causing server to redirect back to login.
+        window.location.href = '/admin/site-users';
+        return;
       } else {
         setError(response.message || 'Invalid email or password');
       }
