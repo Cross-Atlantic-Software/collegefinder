@@ -20,15 +20,25 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      // Use same-origin /api so nginx (or Next rewrites) proxy to backend
+      const apiBase = typeof window !== 'undefined' ? window.location.origin : '';
+      const res = await fetch(`${apiBase}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: { success?: boolean; message?: string; data?: { token?: string; admin?: unknown } } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setError('Invalid response from server. Please try again.');
+        return;
+      }
 
-      if (res.ok && data.success && data.data) {
+      if (res.ok && data.success && data.data?.token && data.data?.admin) {
         const { token, admin } = data.data;
 
         localStorage.setItem('admin_token', token);
@@ -45,7 +55,7 @@ export default function AdminLoginPage() {
       }
     } catch (err) {
       console.error('Admin login error:', err);
-      setError('An error occurred. Please try again.');
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
