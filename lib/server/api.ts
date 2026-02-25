@@ -1,8 +1,10 @@
 /**
  * Server-side API utilities
+ * Uses API_INTERNAL_URL for server-to-server calls (avoids NAT hairpinning on EC2)
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL =
+  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 /**
  * Make authenticated API request on the server
