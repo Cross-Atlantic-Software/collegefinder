@@ -60,6 +60,7 @@ export function StudentWorkflowModal({
         return () => {
             if (wsRef.current) {
                 wsRef.current.close();
+                wsRef.current = null;
             }
         };
     }, []);

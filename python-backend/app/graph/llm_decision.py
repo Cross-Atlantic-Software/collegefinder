@@ -229,6 +229,21 @@ If you see password or confirm password fields:
 - DO NOT click submit!
 - READ the captcha image and FILL the captcha field first
 
+### 5b. DATE PICKER / CALENDAR (Avoid getting stuck!)
+When you see a date-of-birth or date field with a calendar widget (month/year dropdowns and a grid of days):
+- User's DOB is in dateOfBirth as DD/MM/YYYY (e.g. 15/06/2006 → year 2006, month June, day 15).
+- If the calendar is open but shows the WRONG year (e.g. "2011" when user's year is 2006):
+  - First action: OPEN the year selector. The prompt must ask to open the dropdown/list, not to "select" the displayed year.
+  - Good: "Click on the year text at the top of the calendar (e.g. '2011') to open the year dropdown or year selection list."
+  - Bad: "Click the '2011' button to select the year" (2011 is already shown; clicking it often does nothing or reopens the same view).
+- After the year list is open: the dropdown may appear in an unexpected place (to the right, above, or overlapping the calendar). Your prompt must target the LIST, not the header.
+  - Good: "Find the year selection list (the list showing years like 2004, 2005, 2006 — it may be to the right of or above the calendar) and click the year 2006."
+  - Good: "In the year dropdown that opened (wherever it is on the page), click the option 2006."
+  - Bad: "Click 2011" or "Click the year at the top" (that is the header, not the list; the list may be elsewhere).
+- Then select month (e.g. June), then day (e.g. 15) as needed.
+- If the calendar shows the correct year but wrong month: click the month dropdown/label to open month list, then click the correct month.
+- One step at a time: open dropdown first, then choose value in the next action.
+
 ### 6. SUBMIT BUTTON - ONLY if ALL fields are FILLED!
 BEFORE clicking Submit/Get OTP/Continue:
 - Double-check all required fields are filled
@@ -259,6 +274,7 @@ ONLY return "success" if you see EXPLICIT FINAL confirmation like:
 - For fill_field: "Find the email field and type 'test@email.com'"
 - For wait_for_human: stagehand_prompt can be empty or describe what's needed
 - For click_checkbox: "Click the checkbox next to 'I hereby declare...'"
+- For date picker when year is wrong: First say "Click on the year label at the top of the calendar to open the year selection list". After the list is open, say "Find the year selection list (it may be to the right of or above the calendar) and click the year 2006" — target the list of years by description, not the header, since the dropdown often opens in a different position.
 
 ## Output Format
 Return a JSON object with:
@@ -336,6 +352,7 @@ Captcha failures: {captcha_fail_count}{captcha_note}{account_note}
 Analyze the screenshot and decide the SINGLE next action to take.
 If there's an unchecked checkbox visible, click it first.
 If there are form fields, fill the next unfilled one from the remaining fields.
+If the Date of Birth field has a calendar open but shows the wrong year: first open the year selector (click the year label to open dropdown/list), then on the next step select the correct year from dateOfBirth.
 If all fields are filled (including captcha in Already filled list), click the submit button.
 """
 
@@ -371,7 +388,7 @@ If all fields are filled (including captcha in Already filled list), click the s
             genai.types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
         ]
         
-        print(f"[LLM] Calling Gemini 2.0 Flash (faster) with optimized image...")
+        print(f"[LLM] Calling Gemini (gemini-2.5-flash) with optimized image...")
         
         # Generate response with timeout using new client API
         import asyncio
@@ -382,7 +399,7 @@ If all fields are filled (including captcha in Already filled list), click the s
                 loop.run_in_executor(
                     None, 
                     lambda: client.models.generate_content(
-                        model="gemini-2.0-flash-exp",  # Changed to faster 2.0 model
+                        model="gemini-2.5-flash",  # Supported model with vision (gemini-1.5-flash can 404)
                         contents=contents,
                         config=genai.types.GenerateContentConfig(
                             temperature=0.1,

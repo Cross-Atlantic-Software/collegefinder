@@ -52,7 +52,8 @@ class ConnectionManager:
         if websocket in self.connection_sessions:
             del self.connection_sessions[websocket]
         
-        print(f"❌ WebSocket disconnected: {session_id or 'unknown'}")
+        label = session_id if session_id else "no session yet (client closed before START_WORKFLOW)"
+        print(f"❌ WebSocket disconnected: {label}")
     
     async def send_personal(self, websocket: WebSocket, message: dict):
         """Send a message to a specific connection."""

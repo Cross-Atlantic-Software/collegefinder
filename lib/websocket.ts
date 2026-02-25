@@ -19,7 +19,8 @@ interface WebSocketMessage {
     };
 }
 
-const WS_URL = process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8000/ws';
+// No trailing slash - we append /workflow or /workflow/:id
+const WS_BASE = (process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8000/ws').replace(/\/$/, '');
 
 export interface WorkflowHandlers {
     onLog: (message: string, level: 'info' | 'success' | 'warning' | 'error') => void;
@@ -42,9 +43,12 @@ export function connectToWorkflow(
     userId: string,
     handlers: Partial<WorkflowHandlers>
 ): WebSocket {
-    const ws = new WebSocket(`${WS_URL}/workflow`);
+    const url = `${WS_BASE}/workflow`;
+    const ws = new WebSocket(url);
+    let opened = false;
 
     ws.onopen = () => {
+        opened = true;
         console.log('[WebSocket] Connected to workflow');
 
         // Send start workflow message
@@ -63,13 +67,21 @@ export function connectToWorkflow(
         }
     };
 
-    ws.onerror = (error) => {
-        console.error('[WebSocket] Error:', error);
-        handlers.onError?.('WebSocket connection error');
+    ws.onerror = () => {
+        if (!opened) {
+            handlers.onError?.(
+                'Cannot reach automation server. Make sure the Python backend is running on port 8000 (e.g. cd python-backend && uvicorn app.main:app --host 0.0.0.0 --port 8000).'
+            );
+        }
     };
 
-    ws.onclose = () => {
-        console.log('[WebSocket] Disconnected');
+    ws.onclose = (event) => {
+        console.log('[WebSocket] Disconnected', event.code, event.reason);
+        if (!opened && event.code !== 1000) {
+            handlers.onError?.(
+                'Connection failed. Start the automation server: in python-backend run `uvicorn app.main:app --host 0.0.0.0 --port 8000`.'
+            );
+        }
         handlers.onClose?.();
     };
 
@@ -83,9 +95,11 @@ export function connectToSession(
     sessionId: string,
     handlers: Partial<WorkflowHandlers>
 ): WebSocket {
-    const ws = new WebSocket(`${WS_URL}/workflow/${sessionId}`);
+    const ws = new WebSocket(`${WS_BASE}/workflow/${sessionId}`);
+    let opened = false;
 
     ws.onopen = () => {
+        opened = true;
         console.log(`[WebSocket] Connected to session: ${sessionId}`);
     };
 
@@ -98,13 +112,13 @@ export function connectToSession(
         }
     };
 
-    ws.onerror = (error) => {
-        console.error('[WebSocket] Error:', error);
-        handlers.onError?.('WebSocket connection error');
+    ws.onerror = () => {
+        if (!opened) handlers.onError?.('Cannot reach automation server. Is the Python backend running on port 8000?');
     };
 
-    ws.onclose = () => {
-        console.log('[WebSocket] Disconnected');
+    ws.onclose = (event) => {
+        console.log('[WebSocket] Disconnected', event.code);
+        if (!opened && event.code !== 1000) handlers.onError?.('Connection failed. Is the Python backend running on port 8000?');
         handlers.onClose?.();
     };
 

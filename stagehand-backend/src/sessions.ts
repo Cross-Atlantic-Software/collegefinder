@@ -37,12 +37,18 @@ class SessionManager {
         }
 
         // Stagehand v3 configuration for LOCAL mode with Gemini
+        // headless: true = run in background (no visible window); set to false to see the browser
+        const headless = process.env.BROWSER_HEADLESS !== "false";
         const stagehand = new Stagehand({
             env: "LOCAL",
-            // For Gemini, use model config
             model: geminiKey ? "google/gemini-2.5-flash" : "openai/gpt-4o",
             localBrowserLaunchOptions: {
-                headless: false,
+                headless,
+                args: [
+                    "--start-maximized",
+                    "--window-size=1920,1080",
+                    "--no-sandbox",
+                ],
             },
             verbose: 1,
         });

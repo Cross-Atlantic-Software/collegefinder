@@ -17,6 +17,9 @@ pydantic-settings>=2.1.0
 # Google GenAI (Gemini 3.0)
 google-genai>=1.0.0
 
+# Image processing for screenshot analysis
+Pillow>=10.0.0
+
 # HTTP Client (to call TypeScript Stagehand backend)
 httpx>=0.26.0
 

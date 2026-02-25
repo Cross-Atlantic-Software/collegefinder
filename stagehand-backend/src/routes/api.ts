@@ -97,6 +97,9 @@ router.post("/init", async (req: Request, res: Response) => {
         const stagehand = await sessionManager.create(sessionId);
         const page = stagehand.context.pages()[0];
 
+        // Full-screen viewport before navigation (runs in background when headless)
+        await page.setViewportSize({ width: 1920, height: 1080 });
+
         wsManager.broadcastLog(sessionId, `Navigating to ${examUrl}`, "info");
         // Use longer timeout for slow government sites
         await page.goto(examUrl, {
