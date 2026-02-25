@@ -4,6 +4,8 @@ import AdminHeader from '@/components/admin/layout/AdminHeader';
 import SimplifiedUsersTable from '@/components/admin/tables/SimplifiedUsersTable';
 import { getAllUsersBasicInfo } from '@/lib/server/adminData';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SiteUsersPage() {
   // Check authentication - redirects to login if not authenticated
   const { requireAdmin } = await import('@/lib/server/adminAuth');
