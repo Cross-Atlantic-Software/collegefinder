@@ -432,6 +432,7 @@ async def llm_decide_node(state: GraphState) -> dict:
     """
     LLM Vision analyzes the screenshot and decides the SINGLE next action.
     This is the brain of the new workflow.
+    OPTIMIZED: Skips LLM call if page hasn't changed and we have a cached decision.
     """
     session_id = state["session_id"]
     screenshot = state.get("screenshot_base64", "")
@@ -448,6 +449,53 @@ async def llm_decide_node(state: GraphState) -> dict:
             "llm_decision": None,
             "last_error": "No screenshot"
         }
+    
+    # OPTIMIZATION: Check if page has changed since last LLM call
+    import hashlib
+    screenshot_hash = hashlib.md5(screenshot.encode()).hexdigest()[:16]
+    last_screenshot_hash = state.get("last_screenshot_hash", "")
+    consecutive_no_change = state.get("consecutive_no_change", 0)
+    
+    # If screenshot is identical and we just executed an action that might not have changed the page
+    # (e.g., typing in a field), and we have remaining fields, skip LLM and fill next field
+    page_unchanged = (screenshot_hash == last_screenshot_hash)
+    last_action = state.get("last_action_type", "")
+    
+    if page_unchanged and consecutive_no_change < 2 and last_action == "fill_field":
+        # Page hasn't changed after fill - likely can continue filling without LLM
+        remaining_fields = {k: v for k, v in user_data.items() if k not in already_filled and v}
+        if remaining_fields:
+            # Pick next field to fill
+            next_field_key = list(remaining_fields.keys())[0]
+            next_field_value = remaining_fields[next_field_key]
+            
+            await send_log(session_id, f"⚡ Fast path: Filling next field without LLM (page unchanged)", "info")
+            
+            # Create a fill_field decision without LLM call
+            from app.graph.llm_decision import ActionDecision, build_fill_prompt
+            decision = ActionDecision(
+                action_type="fill_field",
+                field_name=next_field_key,
+                field_value=str(next_field_value),
+                stagehand_prompt=build_fill_prompt(next_field_key, str(next_field_value)),
+                reasoning=f"Fast path: Page unchanged, filling next field {next_field_key}"
+            )
+            
+            email_already_registered_detected = state.get("email_already_registered_detected", False)
+            account_creation_complete = state.get("account_creation_complete", False)
+            
+            return {
+                "current_step": "llm_decide",
+                "llm_decision": decision.model_dump(),
+                "progress": 25,
+                "last_screenshot_hash": screenshot_hash,
+                "consecutive_no_change": consecutive_no_change + 1,
+                "email_already_registered_detected": email_already_registered_detected,
+                "account_creation_complete": account_creation_complete,
+            }
+    
+    # Reset counter if we're doing a full LLM call
+    consecutive_no_change = 0
     
     await send_log(session_id, "🤖 LLM analyzing page...", "info")
     await send_status(session_id, "llm_decide", state.get("progress", 20), "AI analyzing page...")
@@ -507,8 +555,10 @@ async def llm_decide_node(state: GraphState) -> dict:
         "current_step": "llm_decide",
         "llm_decision": decision.model_dump(),
         "progress": 25,
-        "email_already_registered_detected": email_already_registered_detected,  # PRESERVE FLAG
-        "account_creation_complete": account_creation_complete,  # PRESERVE FLAG
+        "last_screenshot_hash": screenshot_hash,
+        "consecutive_no_change": consecutive_no_change,
+        "email_already_registered_detected": email_already_registered_detected,
+        "account_creation_complete": account_creation_complete,
     }
 
 
@@ -970,6 +1020,7 @@ async def execute_single_action_node(state: GraphState) -> dict:
         "repeated_action_count": repeated_action_count,  # Track loop attempts
         "retry_count": retry_count,  # Preserve or reset retry count
         "progress": min(state.get("progress", 30) + 5, 90),
+        "last_action_type": action_type,  # Track action type for LLM optimization
         "action_history": state.get("action_history", []) + [{
             "action": action_type,
             "target": decision.field_name or decision.checkbox_label or decision.button_text,

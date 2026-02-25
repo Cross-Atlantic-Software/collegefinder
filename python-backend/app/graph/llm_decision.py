@@ -343,14 +343,35 @@ If all fields are filled (including captcha in Already filled list), click the s
         # Decode image for Gemini
         image_data = base64.b64decode(screenshot_base64)
         
+        # OPTIMIZATION: Resize image to reduce payload and speed up LLM call
+        from PIL import Image
+        import io
+        
+        original_size = len(image_data)
+        img = Image.open(io.BytesIO(image_data))
+        
+        # Resize to max dimension of 1280px (good balance of detail vs speed)
+        max_dimension = 1280
+        if max(img.width, img.height) > max_dimension:
+            ratio = max_dimension / max(img.width, img.height)
+            new_size = (int(img.width * ratio), int(img.height * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+        
+        # Convert to JPEG with quality 85 (smaller than PNG, still clear)
+        buffer = io.BytesIO()
+        img.convert('RGB').save(buffer, format='JPEG', quality=85, optimize=True)
+        image_data = buffer.getvalue()
+        
+        print(f"[LLM] Image optimized: {original_size} → {len(image_data)} bytes ({len(image_data)/original_size*100:.1f}%)")
+        
         # Create the content with text and image using new google-genai format
         contents = [
             SYSTEM_PROMPT,
             user_context,
-            genai.types.Part.from_bytes(data=image_data, mime_type="image/png")
+            genai.types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
         ]
         
-        print(f"[LLM] Calling Gemini 3.0 Flash with {len(image_data)} bytes image...")
+        print(f"[LLM] Calling Gemini 2.0 Flash (faster) with optimized image...")
         
         # Generate response with timeout using new client API
         import asyncio
@@ -361,7 +382,7 @@ If all fields are filled (including captcha in Already filled list), click the s
                 loop.run_in_executor(
                     None, 
                     lambda: client.models.generate_content(
-                        model="gemini-3-flash-preview",
+                        model="gemini-2.0-flash-exp",  # Changed to faster 2.0 model
                         contents=contents,
                         config=genai.types.GenerateContentConfig(
                             temperature=0.1,
@@ -370,14 +391,14 @@ If all fields are filled (including captcha in Already filled list), click the s
                         )
                     )
                 ),
-                timeout=45.0  # 45 second timeout (reduced from 60s for faster retries)
+                timeout=30.0  # Reduced to 30s since optimized image should be faster
             )
         except asyncio.TimeoutError:
-            print("[LLM] Gemini API call timed out after 45s")
+            print("[LLM] Gemini API call timed out after 30s")
             return ActionDecision(
                 action_type="retry",
                 stagehand_prompt="",
-                reasoning="LLM analysis timed out - retrying",
+                reasoning="LLM analysis timed out - retrying with optimized image",
                 error_message="Timeout"
             )
         
