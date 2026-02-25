@@ -19,7 +19,7 @@ interface WebSocketMessage {
     };
 }
 
-const WS_URL = process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8001/ws';
+const WS_URL = process.env.NEXT_PUBLIC_AUTOMATION_WS_URL || 'ws://localhost:8000/ws';
 
 export interface WorkflowHandlers {
     onLog: (message: string, level: 'info' | 'success' | 'warning' | 'error') => void;
