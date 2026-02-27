@@ -12,6 +12,8 @@
     "clear-users": "node scripts/clearUsers.js",
     "seed-career-goals": "node scripts/seedCareerGoals.js",
     "seed-exams": "node scripts/seedExams.js",
+    "seed-streams": "node scripts/seedStreams.js",
+    "migrate-exam-formats": "node scripts/migrateExamFormats.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -19,6 +21,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

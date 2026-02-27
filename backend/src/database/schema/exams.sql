@@ -5,11 +5,20 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   name VARCHAR(255) NOT NULL,
   code VARCHAR(50) NOT NULL, -- Short code like JEE_MAIN, NEET, etc.
   description TEXT,
+  format JSONB DEFAULT '{}'::jsonb, -- Format configuration including papers, sections, marking scheme
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(name),
   UNIQUE(code)
 );
+
+-- Ensure format column exists on older databases (only if table already exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'exams_taxonomies') THEN
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS format JSONB DEFAULT '{}'::jsonb;
+  END IF;
+END $$;
 
 -- Create index on name and code for faster searches
 CREATE INDEX IF NOT EXISTS idx_exams_taxonomies_name ON exams_taxonomies(name);
@@ -34,4 +43,5 @@ COMMENT ON TABLE exams_taxonomies IS 'Taxonomy table for exam options that users
 COMMENT ON COLUMN exams_taxonomies.name IS 'Display name for the exam (e.g., JEE Main, NEET, CUET)';
 COMMENT ON COLUMN exams_taxonomies.code IS 'Short code for the exam (e.g., JEE_MAIN, NEET, CUET)';
 COMMENT ON COLUMN exams_taxonomies.description IS 'Description of the exam';
+COMMENT ON COLUMN exams_taxonomies.format IS 'JSONB format configuration including papers, sections, question distribution, marking scheme, and rules';
 

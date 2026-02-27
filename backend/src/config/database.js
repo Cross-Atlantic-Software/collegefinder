@@ -47,6 +47,8 @@ const init = async () => {
       'blogs.sql',            // Blogs table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
       'exams.sql',            // Exams taxonomies table
+      'tests.sql',            // Tests table (depends on exams)
+      'questions.sql',        // Questions table (depends on exams)
       'subjects.sql',         // Subjects taxonomies table
       'streams.sql',          // Streams taxonomies table
       'careers.sql',          // Careers taxonomies table
@@ -81,6 +83,8 @@ const init = async () => {
       'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
       'user_other_info.sql',   // User other info table (depends on users, programs, exam_city)
       'user_document_vault.sql', // User document vault table (depends on users)
+      'test_attempts.sql',    // Test attempts table (depends on users, tests, exams)
+      'question_attempts.sql', // Question attempts table (depends on users, questions, test_attempts)
       // Automation tables (for python-backend PostgreSQL integration)
       'automation_exams.sql',       // Automation exam configurations
       'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
