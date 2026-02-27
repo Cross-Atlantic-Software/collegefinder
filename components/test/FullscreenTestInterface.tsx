@@ -298,58 +298,55 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
 
     try {
       setCompletingTest(true);
-      setLoading(true);
       setError(null);
       const completeResponse = await completeTest(testAttemptId);
-      if (completeResponse.success && completeResponse.data) {
-        const s = completeResponse.data.summary;
-        const summaryFromComplete = s ? {
-          total_score: s.total_score ?? 0,
-          total_questions: s.total_questions ?? 0,
-          attempted: s.attempted ?? 0,
-          correct: s.correct ?? 0,
-          incorrect: s.incorrect ?? 0,
-          skipped: s.skipped ?? 0,
-          accuracy: s.accuracy ?? 0,
-          time_taken: s.time_taken ?? 0
-        } : null;
+      const responseData = completeResponse.data ?? (completeResponse as any);
+      const summary = responseData?.summary ?? responseData;
 
-        const ta = completeResponse.data.test_attempt;
-        const summaryFromAttempt = ta ? {
-          total_score: ta.total_score ?? 0,
-          total_questions: 0,
-          attempted: ta.attempted_count ?? 0,
-          correct: ta.correct_count ?? 0,
-          incorrect: ta.incorrect_count ?? 0,
-          skipped: ta.skipped_count ?? 0,
-          accuracy: ta.accuracy_percentage ?? 0,
-          time_taken: ta.time_spent_minutes ?? 0
-        } : null;
-
-        const summary = summaryFromComplete ?? summaryFromAttempt ?? {
-          total_score: 0, total_questions: 0, attempted: 0, correct: 0,
-          incorrect: 0, skipped: 0, accuracy: 0, time_taken: 0
-        };
-
-        let questionAttempts: any[] = [];
-        const resultsResponse = await getTestResults(testAttemptId);
-        if (resultsResponse.success && resultsResponse.data?.question_attempts) {
-          questionAttempts = resultsResponse.data.question_attempts;
+      if (completeResponse.success) {
+        let question_attempts: any[] = [];
+        let test_attempt = responseData?.test_attempt;
+        try {
+          const resultsResponse = await getTestResults(testAttemptId);
+          const resultsData = resultsResponse.data ?? (resultsResponse as any);
+          question_attempts = resultsData?.question_attempts ?? [];
+          test_attempt = resultsData?.test_attempt ?? test_attempt;
+        } catch (_) {
+          // Use summary from completeResponse if getTestResults fails
         }
-
+        const s = summary;
         setTestResults({
-          summary,
-          question_attempts: questionAttempts
-        });
+            summary: s ? {
+              total_score: s.total_score ?? 0,
+              total_questions: s.total_questions ?? 0,
+              attempted: s.attempted ?? 0,
+              correct: s.correct ?? 0,
+              incorrect: s.incorrect ?? 0,
+              skipped: s.skipped ?? 0,
+              accuracy: s.accuracy ?? 0,
+              time_taken: s.time_taken ?? 0
+            } : {
+              total_score: test_attempt?.total_score ?? 0,
+              total_questions: 0,
+              attempted: test_attempt?.attempted_count ?? 0,
+              correct: test_attempt?.correct_count ?? 0,
+              incorrect: test_attempt?.incorrect_count ?? 0,
+              skipped: test_attempt?.skipped_count ?? 0,
+              accuracy: test_attempt?.accuracy_percentage ?? 0,
+              time_taken: test_attempt?.time_spent_minutes ?? 0
+            },
+            question_attempts: question_attempts ?? []
+          });
         setTestCompleted(true);
       } else {
-        setError(completeResponse.message || 'Failed to complete test. You can leave the test using "Back to Exams" below.');
+        setError(completeResponse.message || 'Failed to complete test.');
+        onExit();
       }
     } catch (error) {
       console.error('Error completing test:', error);
-      setError('Failed to complete test. You can leave the test using "Back to Exams" below.');
+      setError('Failed to complete test. Returning to exams.');
+      onExit();
     } finally {
-      setLoading(false);
       setCompletingTest(false);
       setShowEndTestConfirm(false);
     }
@@ -501,6 +498,12 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     );
   }
 
+  const handleBackToExams = () => {
+    setShowEndTestConfirm(false);
+    setError(null);
+    onExit();
+  };
+
   // End Test confirmation modal
   if (showEndTestConfirm) {
     return fullscreenOverlay(
@@ -510,35 +513,33 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
           <p className="text-slate-300 text-sm mb-6">
             Are you sure you want to end the test? Your submitted answers will be saved and you will see your results.
           </p>
-          <div className="flex flex-col gap-3">
-            {error && (
-              <p className="text-red-400 text-sm">{error}</p>
-            )}
-            <div className="flex gap-3 justify-between">
+          {error && (
+            <p className="text-red-400 text-sm mb-4">{error}</p>
+          )}
+          <div className="flex flex-wrap gap-3 justify-between">
+            <Button
+              onClick={handleBackToExams}
+              variant="themeButtonOutline"
+              disabled={completingTest}
+            >
+              Back to Exams
+            </Button>
+            <div className="flex gap-3">
               <Button
-                onClick={onExit}
+                onClick={() => setShowEndTestConfirm(false)}
                 variant="themeButtonOutline"
                 disabled={completingTest}
               >
-                Back to Exams (leave test)
+                Cancel
               </Button>
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => setShowEndTestConfirm(false)}
-                  variant="themeButtonOutline"
-                  disabled={completingTest}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCompleteTest}
-                  variant="themeButton"
-                  disabled={completingTest}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  {completingTest ? 'Ending...' : 'Yes, End Test'}
-                </Button>
-              </div>
+              <Button
+                onClick={handleCompleteTest}
+                variant="themeButton"
+                disabled={completingTest}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {completingTest ? 'Ending...' : 'Yes, End Test'}
+              </Button>
             </div>
           </div>
         </div>
@@ -565,6 +566,14 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
           </div>
           
           <div className="flex items-center space-x-4">
+            <Button
+              onClick={handleBackToExams}
+              size="sm"
+              variant="themeButtonOutline"
+              disabled={completingTest}
+            >
+              Back to Exams
+            </Button>
             <div className="text-sm text-slate-400">
               Time Remaining: <span className="text-pink-400 font-mono">{formatTime(timeRemaining)}</span>
             </div>
@@ -574,14 +583,6 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
                 Enter Fullscreen
               </Button>
             )}
-            
-            <Button
-              onClick={onExit}
-              size="sm"
-              variant="themeButtonOutline"
-            >
-              Back to Exams
-            </Button>
             
             <Button
               onClick={() => setShowEndTestConfirm(true)}
