@@ -122,7 +122,8 @@ const init = async () => {
 const runMigrations = async () => {
   const migrationsDir = path.join(__dirname, '../database/migrations');
   const migrationFiles = [
-    'update_government_identification_apaar_id.sql'
+    'update_government_identification_apaar_id.sql',
+    'add_questions_image_url.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

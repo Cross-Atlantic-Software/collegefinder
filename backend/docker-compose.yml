@@ -6,7 +6,7 @@
 #
 # Usage:
 #   Development (default):
-#     docker-compose up
+#     docker-compose up --build   # use --build so backend is built locally, not pulled
 #
 #   With pgAdmin (optional database viewer):
 #     docker-compose --profile pgadmin up

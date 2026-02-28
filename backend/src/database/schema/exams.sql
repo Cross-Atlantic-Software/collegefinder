@@ -45,3 +45,31 @@ COMMENT ON COLUMN exams_taxonomies.code IS 'Short code for the exam (e.g., JEE_M
 COMMENT ON COLUMN exams_taxonomies.description IS 'Description of the exam';
 COMMENT ON COLUMN exams_taxonomies.format IS 'JSONB format configuration including papers, sections, question distribution, marking scheme, and rules';
 
+-- Seed default exams (name, code, description). Run `npm run seed-exams` for full format configs (JEE Main, NEET, etc.)
+INSERT INTO exams_taxonomies (name, code, description, format) VALUES
+  ('JEE Main', 'JEE_MAIN', 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges', '{}'::jsonb),
+  ('JEE Advanced', 'JEE_ADVANCED', 'Joint Entrance Examination Advanced - for admission to IITs', '{}'::jsonb),
+  ('NEET', 'NEET', 'National Eligibility cum Entrance Test - for admission to medical and dental colleges', '{}'::jsonb),
+  ('CUET', 'CUET', 'Common University Entrance Test - for admission to central universities', '{}'::jsonb),
+  ('CLAT', 'CLAT', 'Common Law Admission Test - for admission to NLUs and other law colleges', '{}'::jsonb),
+  ('AILET', 'AILET', 'All India Law Entrance Test - for admission to NLU Delhi', '{}'::jsonb),
+  ('NATA', 'NATA', 'National Aptitude Test in Architecture - for admission to architecture colleges', '{}'::jsonb),
+  ('BITSAT', 'BITSAT', 'Birla Institute of Technology and Science Admission Test', '{}'::jsonb),
+  ('VITEEE', 'VITEEE', 'VIT Engineering Entrance Examination', '{}'::jsonb),
+  ('SRMJEEE', 'SRMJEEE', 'SRM Joint Engineering Entrance Examination', '{}'::jsonb),
+  ('WBJEE', 'WBJEE', 'West Bengal Joint Entrance Examination', '{}'::jsonb),
+  ('MHT CET', 'MHT_CET', 'Maharashtra Common Entrance Test', '{}'::jsonb),
+  ('KCET', 'KCET', 'Karnataka Common Entrance Test', '{}'::jsonb),
+  ('TNEA', 'TNEA', 'Tamil Nadu Engineering Admission', '{}'::jsonb),
+  ('AP EAMCET', 'AP_EAMCET', 'Andhra Pradesh Engineering, Agriculture and Medical Common Entrance Test', '{}'::jsonb),
+  ('TS EAMCET', 'TS_EAMCET', 'Telangana State Engineering, Agriculture and Medical Common Entrance Test', '{}'::jsonb),
+  ('Gujarat CET', 'GUJCET', 'Gujarat Common Entrance Test', '{}'::jsonb),
+  ('Rajasthan JEE', 'RJEE', 'Rajasthan Joint Entrance Examination', '{}'::jsonb),
+  ('UPSEE', 'UPSEE', 'Uttar Pradesh State Entrance Examination', '{}'::jsonb),
+  ('COMEDK', 'COMEDK', 'Consortium of Medical, Engineering and Dental Colleges of Karnataka', '{}'::jsonb),
+  ('KIITEE', 'KIITEE', 'KIIT Entrance Examination', '{}'::jsonb),
+  ('JIPMER', 'JIPMER', 'Jawaharlal Institute of Postgraduate Medical Education and Research Entrance Exam', '{}'::jsonb),
+  ('AIIMS', 'AIIMS', 'All India Institute of Medical Sciences Entrance Exam', '{}'::jsonb),
+  ('NEST', 'NEST', 'National Entrance Screening Test - for admission to NISER and CEBS', '{}'::jsonb),
+  ('IISER Aptitude Test', 'IISER_APTITUDE', 'Indian Institutes of Science Education and Research Aptitude Test', '{}'::jsonb)
+ON CONFLICT (code) DO NOTHING;

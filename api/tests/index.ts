@@ -66,6 +66,8 @@ export interface Question {
   topic: string;
   question_type: 'mcq' | 'numerical';
   negative_marks: number;
+  /** Optional diagram/figure image URL for image-based questions (e.g. JEE Physics) */
+  image_url?: string | null;
 }
 
 export interface TestAttempt {
@@ -387,6 +389,8 @@ export async function getSectionQuestion(
     section_type?: 'MCQ' | 'Numerical';
     topic?: string;
     question_type?: 'mcq' | 'numerical';
+    /** When true, backend generates a diagram-based question (e.g. circuit) for testing image flow */
+    force_diagram?: boolean;
   }
 ): Promise<ApiResponse<{ question: Question }>> {
   return apiRequest<{ question: Question }>(

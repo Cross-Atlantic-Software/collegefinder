@@ -317,46 +317,58 @@ class TestController {
       const attemptedQuestions = await QuestionAttempt.findByTestAttemptId(parseInt(testAttemptId));
       const attemptedQuestionIds = attemptedQuestions.map(qa => qa.question_id);
 
-      // Try to find existing question first (excluding already attempted ones)
-      const filters = {
+      let selectedQuestion = null;
+
+      // 1) First: any existing unattempted question for this exam + subject + section (any difficulty)
+      const anyDifficultyFilters = {
         exam_id,
         subject,
-        difficulty,
-        topic,
         question_type,
         limit: 10
       };
+      if (section_name) anyDifficultyFilters.section_name = section_name;
+      if (section_type) anyDifficultyFilters.section_type = section_type;
 
-      // Add section filters if provided (for format-based tests)
-      if (section_name) {
-        filters.section_name = section_name;
-      }
-      if (section_type) {
-        filters.section_type = section_type;
-      }
-
-      let questions = await Question.findByFilters(filters);
-
-      // Filter out already attempted questions
+      let questions = await Question.findByFilters(anyDifficultyFilters);
       questions = questions.filter(q => !attemptedQuestionIds.includes(q.id));
 
-      // If no questions found with section filters, try without them (use questions that may have NULL section_name/section_type)
-      if (questions.length === 0 && (section_name || section_type)) {
-        const relaxedFilters = { exam_id, subject, difficulty, topic, question_type, limit: 10 };
-        const relaxedQuestions = await Question.findByFilters(relaxedFilters);
-        questions = relaxedQuestions.filter(q => !attemptedQuestionIds.includes(q.id));
+      if (questions.length > 0) {
+        selectedQuestion = questions[0];
+        console.log(`✅ Using existing unattempted question (ID: ${selectedQuestion.id}) for ${subject} - ${selectedQuestion.difficulty} (any difficulty)`);
+      }
+
+      // 2) If none found, try matching requested difficulty (and topic/section) as before
+      if (!selectedQuestion) {
+        const filters = {
+          exam_id,
+          subject,
+          difficulty,
+          topic,
+          question_type,
+          limit: 10
+        };
+        if (section_name) filters.section_name = section_name;
+        if (section_type) filters.section_type = section_type;
+
+        questions = await Question.findByFilters(filters);
+        questions = questions.filter(q => !attemptedQuestionIds.includes(q.id));
+
+        if (questions.length === 0 && (section_name || section_type)) {
+          const relaxedFilters = { exam_id, subject, difficulty, topic, question_type, limit: 10 };
+          const relaxedQuestions = await Question.findByFilters(relaxedFilters);
+          questions = relaxedQuestions.filter(q => !attemptedQuestionIds.includes(q.id));
+          if (questions.length > 0) {
+            console.log(`✅ Found ${questions.length} existing question(s) without section match - using for ${subject}`);
+          }
+        }
+
         if (questions.length > 0) {
-          console.log(`✅ Found ${questions.length} existing question(s) without section match - using for ${subject}`);
+          selectedQuestion = questions[0];
+          console.log(`✅ Found existing question (ID: ${selectedQuestion.id}) for ${subject} - ${difficulty}`);
         }
       }
 
-      let selectedQuestion = null;
-
-      if (questions.length > 0) {
-        // Select the least used question for better distribution
-        selectedQuestion = questions[0];
-        console.log(`✅ Found existing question (ID: ${selectedQuestion.id}) for ${subject} - ${difficulty}`);
-      } else {
+      if (!selectedQuestion) {
         // Generate new question using Gemini
         try {
           console.log(`🤖 No existing questions found, generating new question for ${subject} - ${difficulty}`);
@@ -428,7 +440,8 @@ class TestController {
         subject: selectedQuestion.subject,
         topic: selectedQuestion.topic,
         question_type: selectedQuestion.question_type,
-        negative_marks: selectedQuestion.negative_marks
+        negative_marks: selectedQuestion.negative_marks,
+        image_url: selectedQuestion.image_url || null
       };
 
       res.json({

@@ -101,20 +101,23 @@ class Question {
     const {
       exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
       question_type, question_text, options, correct_option, solution_text,
-      marks, negative_marks, source, generation_prompt_version
+      marks, negative_marks, source, generation_prompt_version,
+      section_name, section_type, image_url
     } = data;
 
     const result = await db.query(`
       INSERT INTO questions (
         exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
         question_type, question_text, options, correct_option, solution_text,
-        marks, negative_marks, source, generation_prompt_version
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        marks, negative_marks, source, generation_prompt_version,
+        section_name, section_type, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *
     `, [
       exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
       question_type, question_text, JSON.stringify(options), correct_option,
-      solution_text, marks, negative_marks, source, generation_prompt_version
+      solution_text, marks, negative_marks, source, generation_prompt_version,
+      section_name || null, section_type || null, image_url || null
     ]);
 
     return result.rows[0];

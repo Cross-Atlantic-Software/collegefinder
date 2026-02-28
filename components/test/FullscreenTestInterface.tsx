@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/shared";
 import { 
@@ -25,6 +25,8 @@ interface Question {
   negative_marks: number;
   section_name?: string;
   section_type?: string;
+  /** Diagram/figure image for image-based questions (e.g. JEE Physics) */
+  image_url?: string | null;
 }
 
 interface FullscreenTestInterfaceProps {
@@ -47,13 +49,22 @@ interface SectionProgress {
   };
 }
 
+type QuestionStatus = 'not_visited' | 'not_answered' | 'answered';
+interface QuestionEntry {
+  question: Question;
+  status: QuestionStatus;
+  savedOption: string;
+}
+
 export default function FullscreenTestInterface({ exam, format, onExit }: FullscreenTestInterfaceProps) {
   const [currentSection, setCurrentSection] = useState<string>(Object.keys(format.sections)[0]);
   const [currentSubsection, setCurrentSubsection] = useState<'section_a' | 'section_b'>('section_a');
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>('');
+  const [questionNumber, setQuestionNumber] = useState(0);
+  // sectionMaps: per-section question cache, keyed by sectionKey then 1-based question number
+  const [sectionMaps, setSectionMaps] = useState<Record<string, Record<number, QuestionEntry>>>({});
   const [testAttemptId, setTestAttemptId] = useState<number | null>(null);
-  const [questionNumber, setQuestionNumber] = useState(1);
   const [timeRemaining, setTimeRemaining] = useState(format.duration_minutes * 60); // in seconds
   const [sectionProgress, setSectionProgress] = useState<SectionProgress>({});
   const [loading, setLoading] = useState(false);
@@ -76,6 +87,19 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       is_correct: boolean;
     }>;
   } | null>(null);
+
+  const instructionsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Request browser fullscreen when instructions screen is shown (when user hits an exam)
+  useEffect(() => {
+    if (testAttemptId !== null) return;
+    const el = instructionsContainerRef.current;
+    if (!el) return;
+    el.requestFullscreen?.().catch(() => {});
+    return () => {
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    };
+  }, [testAttemptId]);
 
   // Tab change detection
   useEffect(() => {
@@ -165,7 +189,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
         const attemptId = response.data.test_attempt_id;
         setTestAttemptId(attemptId);
         await enterFullscreen();
-        await loadNextQuestion(attemptId);
+        await loadQuestionForNumber(1, attemptId);
       } else {
         setError(response.message || 'Failed to start test');
       }
@@ -193,10 +217,28 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     return 'hard';
   };
 
-  const loadNextQuestion = async (attemptId?: number) => {
-    const idToUse = attemptId ?? testAttemptId;
-    if (!idToUse) return;
+  // Total questions in the currently active section
+  const totalQuestionsInSection = Object.values(format.sections[currentSection]?.subsections ?? {})
+    .reduce((s: number, sub: any) => s + (sub?.questions ?? 0), 0);
 
+  // Current section's question map
+  const currentSectionMap = sectionMaps[currentSection] || {};
+
+  /** Load question for a specific 1-based number. If cached, restore it; otherwise fetch from server. */
+  const loadQuestionForNumber = async (num: number, attemptId?: number) => {
+    const idToUse = attemptId ?? testAttemptId;
+    if (!idToUse || num < 1 || num > totalQuestionsInSection) return;
+
+    // Restore cached question
+    const cached = (sectionMaps[currentSection] || {})[num];
+    if (cached) {
+      setCurrentQuestion(cached.question);
+      setSelectedOption(cached.savedOption);
+      setQuestionNumber(num);
+      return;
+    }
+
+    // Fetch new question from server
     try {
       setLoading(true);
       setError(null);
@@ -217,23 +259,32 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       });
 
       if (response.success && response.data) {
-        setCurrentQuestion(response.data.question);
+        const q = response.data.question;
+        setSectionMaps(prev => ({
+          ...prev,
+          [currentSection]: {
+            ...prev[currentSection],
+            [num]: { question: q, status: 'not_answered', savedOption: '' }
+          }
+        }));
+        setCurrentQuestion(q);
+        setQuestionNumber(num);
         await updateProgress();
       } else {
         setError(response.message || 'Failed to load question');
       }
-    } catch (error) {
-      console.error('Error loading question:', error);
+    } catch (err) {
+      console.error('Error loading question:', err);
       setError('An error occurred while loading the question');
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-load first question when test starts or section changes
+  // Auto-load question 1 when test starts or section changes
   useEffect(() => {
     if (testAttemptId && !currentQuestion && !loading) {
-      loadNextQuestion();
+      loadQuestionForNumber(1);
     }
   }, [testAttemptId, currentSection, currentSubsection]);
 
@@ -250,10 +301,22 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       });
 
       if (response.success) {
+        // Mark this question as answered in the palette map
+        const answeredNum = questionNumber;
+        setSectionMaps(prev => ({
+          ...prev,
+          [currentSection]: {
+            ...prev[currentSection],
+            [answeredNum]: { question: currentQuestion, status: 'answered', savedOption: selectedOption }
+          }
+        }));
         await updateProgress();
         setCurrentQuestion(null);
         setSelectedOption('');
-        await loadNextQuestion();
+        // Move to next question in sequence
+        if (answeredNum < totalQuestionsInSection) {
+          await loadQuestionForNumber(answeredNum + 1);
+        }
       } else {
         setError(response.message || 'Failed to submit answer');
       }
@@ -262,6 +325,25 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       setError('An error occurred while submitting the answer');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (currentQuestion) {
+      // Mark as not_answered (seen but skipped)
+      const skippedNum = questionNumber;
+      setSectionMaps(prev => ({
+        ...prev,
+        [currentSection]: {
+          ...prev[currentSection],
+          [skippedNum]: { question: currentQuestion, status: 'not_answered', savedOption: '' }
+        }
+      }));
+      setCurrentQuestion(null);
+      setSelectedOption('');
+      if (skippedNum < totalQuestionsInSection) {
+        await loadQuestionForNumber(skippedNum + 1);
+      }
     }
   };
 
@@ -285,12 +367,15 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     setCurrentSubsection(firstSubsection);
     setCurrentQuestion(null);
     setSelectedOption('');
+    setQuestionNumber(0);
+    // sectionMaps is preserved so the user can return to this section and see cached questions
   };
 
   const handleSubsectionChange = (subsection: 'section_a' | 'section_b') => {
     setCurrentSubsection(subsection);
     setCurrentQuestion(null);
     setSelectedOption('');
+    setQuestionNumber(0);
   };
 
   const handleCompleteTest = async () => {
@@ -398,7 +483,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     );
   }
 
-  // Instruction page - standalone fullscreen overlay (no sidebar/header)
+  // Instruction page - standalone fullscreen overlay (browser fullscreen when shown)
   if (!testAttemptId) {
     const formatRules = {
       format,
@@ -407,14 +492,22 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       sections: format.sections || {}
     };
 
+    const handleBackFromInstructions = () => {
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+      onExit();
+    };
+
     return fullscreenOverlay(
-      <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-y-auto">
+      <div
+        ref={instructionsContainerRef}
+        className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-y-auto"
+      >
         <div className="min-h-full flex flex-col items-center py-8 px-4">
           <TestRules
             examName={exam.name}
             formatRules={formatRules}
             onStartTest={startTest}
-            onBack={onExit}
+            onBack={handleBackFromInstructions}
             backLabel="Back to Exams"
             loading={loading}
           />
@@ -558,11 +651,20 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
           </div>
         )}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold text-white">{exam.name} - {format.name}</h1>
-            <div className="text-sm text-slate-400">
-              Question {questionNumber}
-            </div>
+            {currentQuestion && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700/80 border border-slate-600">
+                <span className="text-slate-400 text-sm">Question</span>
+                <span className="text-white font-semibold tabular-nums">
+                  {questionNumber}
+                </span>
+                <span className="text-slate-500 text-sm">of</span>
+                <span className="text-slate-300 font-medium tabular-nums">
+                  {Object.values(format.sections[currentSection]?.subsections ?? {}).reduce((s: number, sub: any) => s + (sub?.questions ?? 0), 0)}
+                </span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center space-x-4">
@@ -598,156 +700,134 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Section Navigation Sidebar */}
-        <div className="w-80 bg-slate-800 border-r border-slate-700 p-4 overflow-y-auto">
-          <div className="space-y-4">
-            <h3 className="font-semibold text-white">Sections</h3>
-            
-            {Object.entries(format.sections).map(([sectionKey, section]: [string, any]) => (
-              <div key={sectionKey} className="space-y-2">
-                <button
-                  onClick={() => handleSectionChange(sectionKey)}
-                  className={`w-full text-left p-3 rounded-lg transition ${
-                    currentSection === sectionKey 
-                      ? 'bg-pink-600 text-white' 
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  <div className="font-medium">{section.name}</div>
-                  <div className="text-sm opacity-75">
-                    {sectionProgress[sectionKey]?.attempted || 0} / {
-                      Object.values(section.subsections).reduce((sum: number, sub: any) => sum + sub.questions, 0)
-                    } attempted
-                  </div>
-                </button>
-                
-                {currentSection === sectionKey && (
-                  <div className="ml-4 space-y-1">
-                    {Object.entries(section.subsections).map(([subKey, subsection]: [string, any]) => (
-                      <button
-                        key={subKey}
-                        onClick={() => handleSubsectionChange(subKey as 'section_a' | 'section_b')}
-                        className={`w-full text-left p-2 rounded text-sm transition ${
-                          currentSubsection === subKey
-                            ? 'bg-pink-500 text-white'
-                            : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
-                        }`}
-                      >
-                        Section {subKey.split('_')[1]?.toUpperCase()} ({subsection.type})
-                        <div className="text-xs opacity-75">{subsection.questions} questions</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+        {/* Left Sidebar — Section Navigation */}
+        <div className="w-52 bg-slate-800 border-r border-slate-700 flex flex-col overflow-y-auto shrink-0">
+          <div className="p-3 border-b border-slate-700">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sections</h3>
+          </div>
+          <div className="p-3 space-y-1 flex-1">
+            {Object.entries(format.sections).map(([sectionKey, section]: [string, any]) => {
+              const total = Object.values(section.subsections).reduce((s: number, sub: any) => s + sub.questions, 0);
+              const attempted = sectionProgress[sectionKey]?.attempted || 0;
+              return (
+                <div key={sectionKey}>
+                  <button
+                    onClick={() => handleSectionChange(sectionKey)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg transition text-sm ${
+                      currentSection === sectionKey
+                        ? 'bg-pink-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <div className="font-medium">{section.name}</div>
+                    <div className="text-xs mt-0.5 opacity-75">{attempted}/{total} attempted</div>
+                  </button>
+                  {currentSection === sectionKey && Object.entries(section.subsections).map(([subKey, subsection]: [string, any]) => (
+                    <button
+                      key={subKey}
+                      onClick={() => handleSubsectionChange(subKey as 'section_a' | 'section_b')}
+                      className={`w-full text-left pl-5 pr-3 py-2 rounded text-xs mt-1 transition ${
+                        currentSubsection === subKey
+                          ? 'bg-pink-500/30 text-pink-300'
+                          : 'text-slate-400 hover:bg-slate-700'
+                      }`}
+                    >
+                      Sec {subKey.split('_')[1]?.toUpperCase()} · {subsection.type} · {subsection.questions}Q
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        {/* Center — Question Area */}
+        <div className="flex-1 flex flex-col min-w-0">
           {currentQuestion ? (
             <div className="flex-1 p-6 overflow-y-auto">
-              <div className="max-w-4xl mx-auto space-y-6">
-                {/* Question Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm bg-pink-600/20 text-pink-300 px-3 py-1 rounded">
-                      {currentQuestion.subject}
-                    </span>
-                    <span className="text-sm bg-blue-600/20 text-blue-300 px-3 py-1 rounded">
-                      {currentQuestion.difficulty}
-                    </span>
-                    <span className="text-sm text-slate-400">
-                      +{currentQuestion.marks} marks
-                    </span>
-                  </div>
+              <div className="max-w-3xl mx-auto space-y-5">
+                {/* Question meta */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs font-semibold bg-pink-600/20 text-pink-300 px-2.5 py-1 rounded-full">
+                    {currentQuestion.subject}
+                  </span>
+                  <span className="text-xs bg-blue-600/20 text-blue-300 px-2.5 py-1 rounded-full capitalize">
+                    {currentQuestion.difficulty}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    +{currentQuestion.marks} marks · -{currentQuestion.negative_marks} neg
+                  </span>
+                  {currentSectionMap[questionNumber]?.status === 'answered' && (
+                    <span className="text-xs text-green-400 bg-green-400/10 px-2.5 py-1 rounded-full">✓ Answered</span>
+                  )}
+                  {currentSectionMap[questionNumber]?.status === 'not_answered' && (
+                    <span className="text-xs text-red-400 bg-red-400/10 px-2.5 py-1 rounded-full">Skipped</span>
+                  )}
                 </div>
 
-                {/* Question Text */}
-                <div className="bg-white/10 rounded-lg p-6">
-                  <div className="text-white text-lg leading-relaxed">
-                    {currentQuestion.question_text}
+                {/* Diagram image */}
+                {currentQuestion.image_url && (
+                  <div className="rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                    <img src={currentQuestion.image_url} alt="Question diagram" className="w-full max-h-72 object-contain" />
                   </div>
+                )}
+
+                {/* Question text */}
+                <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+                  <p className="text-white text-base leading-relaxed">{currentQuestion.question_text}</p>
                 </div>
 
-                {/* Options or Numerical Input */}
+                {/* Options / Numerical */}
                 {currentQuestion.question_type === 'mcq' ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {currentQuestion.options.map((option) => (
                       <label
                         key={option.key}
-                        className={`block p-4 rounded-lg border-2 cursor-pointer transition ${
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition select-none ${
                           selectedOption === option.key
                             ? 'border-pink-500 bg-pink-500/10'
-                            : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                            : 'border-slate-700 bg-slate-800/60 hover:border-slate-500'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name="answer"
-                          value={option.key}
-                          checked={selectedOption === option.key}
-                          onChange={(e) => setSelectedOption(e.target.value)}
-                          className="sr-only"
-                        />
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedOption === option.key
-                              ? 'border-pink-500 bg-pink-500'
-                              : 'border-slate-500'
-                          }`}>
-                            {selectedOption === option.key && (
-                              <div className="w-2 h-2 bg-white rounded-full shrink-0"></div>
-                            )}
-                          </div>
-                          <span className="font-medium text-slate-300">{option.key}.</span>
-                          <span className="text-white">{option.text}</span>
-                        </div>
+                        <input type="radio" name="answer" value={option.key} checked={selectedOption === option.key}
+                          onChange={(e) => setSelectedOption(e.target.value)} className="sr-only" />
+                        <div className={`w-8 h-8 shrink-0 rounded-full border-2 flex items-center justify-center font-bold text-sm ${
+                          selectedOption === option.key ? 'border-pink-500 bg-pink-500 text-white' : 'border-slate-500 text-slate-400'
+                        }`}>{option.key}</div>
+                        <span className="text-white text-sm leading-relaxed">{option.text}</span>
                       </label>
                     ))}
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-slate-300">
-                      Enter your numerical answer (0-9999):
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="9999"
-                      value={selectedOption}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-300">Enter numerical answer (0–9999):</label>
+                    <input type="number" min="0" max="9999" value={selectedOption}
                       onChange={(e) => setSelectedOption(e.target.value)}
-                      className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
-                      placeholder="Enter answer..."
-                    />
+                      className="w-full p-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+                      placeholder="Enter answer..." />
                   </div>
                 )}
 
-                {/* Action Buttons - no answer shown until test complete */}
-                <div className="flex justify-between items-center pt-4">
-                  <Button
-                    onClick={() => setCurrentQuestion(null)}
-                    variant="themeButtonOutline"
-                    disabled={loading}
-                  >
-                    Back to Sections
-                  </Button>
-                  
-                  <div className="space-x-3">
-                    <Button
-                      onClick={() => { setCurrentQuestion(null); setSelectedOption(''); loadNextQuestion(); }}
-                      variant="themeButtonOutline"
-                      disabled={loading}
-                    >
-                      Skip
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+                  <div className="flex gap-2">
+                    {questionNumber > 1 && (
+                      <Button onClick={() => loadQuestionForNumber(questionNumber - 1)} variant="themeButtonOutline" disabled={loading} size="sm">
+                        ← Prev
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button onClick={handleSkip} variant="themeButtonOutline" disabled={loading} size="sm">
+                      Skip →
                     </Button>
                     <Button
                       onClick={handleSubmitAnswer}
                       variant="themeButton"
-                      disabled={!selectedOption || loading}
+                      disabled={!selectedOption || loading || currentSectionMap[questionNumber]?.status === 'answered'}
+                      size="sm"
                     >
-                      {loading ? 'Submitting...' : 'Submit & Next'}
+                      {loading ? 'Saving…' : currentSectionMap[questionNumber]?.status === 'answered' ? 'Answered ✓' : 'Save & Next →'}
                     </Button>
                   </div>
                 </div>
@@ -758,33 +838,94 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
               <div className="text-center space-y-4">
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-                    <p className="text-slate-300">Loading question...</p>
-                    <p className="text-sm text-slate-500">Using saved questions first, then generating if needed</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
+                    <p className="text-slate-300">Loading question…</p>
+                    <p className="text-xs text-slate-500">Using saved questions first, then generating if needed</p>
                   </>
                 ) : error ? (
                   <>
                     <div className="text-red-400 mb-4">{error}</div>
-                    <Button onClick={() => loadNextQuestion()} variant="themeButton">
-                      Retry
-                    </Button>
+                    <Button onClick={() => loadQuestionForNumber(questionNumber || 1)} variant="themeButton">Retry</Button>
                   </>
                 ) : (
-                  <>
-                    <div className="text-slate-400">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <p className="text-lg font-medium mb-2">Select a section to begin</p>
-                      <p className="text-sm">Choose a section from the sidebar to start answering questions</p>
-                    </div>
-                  </>
+                  <div className="text-slate-400 text-sm">Select a section to begin</div>
                 )}
               </div>
             </div>
           )}
+        </div>
+
+        {/* Right Sidebar — Question Palette */}
+        <div className="w-60 bg-slate-800 border-l border-slate-700 flex flex-col shrink-0">
+          <div className="p-3 border-b border-slate-700">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Question Palette</h3>
+          </div>
+
+          {/* Legend */}
+          <div className="px-3 py-2.5 border-b border-slate-700 space-y-1.5">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="w-5 h-5 rounded bg-slate-600 border border-slate-500 shrink-0" />
+              Not Visited
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="w-5 h-5 rounded bg-red-600 shrink-0" />
+              Not Answered
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="w-5 h-5 rounded bg-green-600 shrink-0" />
+              Answered
+            </div>
+          </div>
+
+          {/* Question number grid */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <div className="grid grid-cols-5 gap-1.5">
+              {Array.from({ length: totalQuestionsInSection }, (_, i) => i + 1).map((num) => {
+                const entry = currentSectionMap[num];
+                const status: QuestionStatus = entry ? entry.status : 'not_visited';
+                const isCurrent = num === questionNumber;
+                return (
+                  <button
+                    key={num}
+                    onClick={() => loadQuestionForNumber(num)}
+                    disabled={loading}
+                    title={`Question ${num}: ${status.replace('_', ' ')}`}
+                    className={[
+                      'w-full aspect-square rounded text-xs font-semibold transition',
+                      isCurrent ? 'ring-2 ring-pink-400 ring-offset-1 ring-offset-slate-800' : '',
+                      status === 'not_visited' ? 'bg-slate-600 hover:bg-slate-500 text-slate-200' : '',
+                      status === 'not_answered' ? 'bg-red-600 hover:bg-red-500 text-white' : '',
+                      status === 'answered' ? 'bg-green-600 hover:bg-green-500 text-white' : '',
+                    ].join(' ')}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Counts summary */}
+          <div className="p-3 border-t border-slate-700 space-y-1 text-xs">
+            <div className="flex justify-between text-slate-400">
+              <span>Answered</span>
+              <span className="text-green-400 font-semibold">
+                {Object.values(currentSectionMap).filter(e => e.status === 'answered').length}
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-400">
+              <span>Not Answered</span>
+              <span className="text-red-400 font-semibold">
+                {Object.values(currentSectionMap).filter(e => e.status === 'not_answered').length}
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-400">
+              <span>Not Visited</span>
+              <span className="text-slate-300 font-semibold">
+                {totalQuestionsInSection - Object.keys(currentSectionMap).length}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
