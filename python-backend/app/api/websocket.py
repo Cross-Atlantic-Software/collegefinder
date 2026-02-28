@@ -80,6 +80,15 @@ class ConnectionManager:
 # Global connection manager
 manager = ConnectionManager()
 
+# Running workflow tasks and cancelled sessions (so no API calls run after stop)
+_running_workflow_tasks: dict[str, asyncio.Task] = {}
+_cancelled_sessions: set[str] = set()
+
+
+def is_session_cancelled(session_id: str) -> bool:
+    """True if user requested stop for this session. Nodes must check this before any external API call."""
+    return session_id in _cancelled_sessions
+
 
 # ============= Message Types =============
 
@@ -92,6 +101,7 @@ class MessageTypes:
     CUSTOM_SUBMIT = "CUSTOM_INPUT_SUBMIT"
     PAUSE_WORKFLOW = "PAUSE_WORKFLOW"
     RESUME_WORKFLOW = "RESUME_WORKFLOW"
+    STOP_WORKFLOW = "STOP_WORKFLOW"
     
     # Server -> Client
     LOG = "LOG"
@@ -265,6 +275,9 @@ async def handle_client_message(websocket: WebSocket, session_id: str, message: 
     elif msg_type == MessageTypes.RESUME_WORKFLOW:
         await handle_resume_workflow(session_id)
     
+    elif msg_type == MessageTypes.STOP_WORKFLOW:
+        await handle_stop_workflow(session_id)
+    
     else:
         await manager.send_personal(websocket, {
             "type": "ERROR",
@@ -280,14 +293,16 @@ async def handle_start_workflow(websocket: WebSocket, message: dict) -> Optional
     payload = message.get("payload", {})
     exam_id = payload.get("examId")
     user_id = payload.get("userId")
-    
+    start_from_step = payload.get("startFromStep")
+    resume_session_id = payload.get("sessionId")  # when retrying, reuse this session
+
     if not exam_id or not user_id:
         await manager.send_personal(websocket, {
             "type": "ERROR",
             "payload": {"message": "Missing examId or userId"}
         })
         return None
-    
+
     # Convert to int for PostgreSQL
     try:
         exam_id_int = int(exam_id)
@@ -298,30 +313,32 @@ async def handle_start_workflow(websocket: WebSocket, message: dict) -> Optional
             "payload": {"message": "Invalid examId or userId format"}
         })
         return None
-    
+
     # Get exam and user data from PostgreSQL
     exam = await fetch_one("SELECT * FROM automation_exams WHERE id = $1", exam_id_int)
     user = await fetch_one("SELECT * FROM users WHERE id = $1", user_id_int)
-    
+
     if not exam:
         await manager.send_personal(websocket, {
             "type": "ERROR",
             "payload": {"message": f"Exam not found: {exam_id}"}
         })
         return None
-    
+
     if not user:
         await manager.send_personal(websocket, {
             "type": "ERROR",
             "payload": {"message": f"User not found: {user_id}"}
         })
         return None
-    
-    # Create workflow session
-    session_id = await create_session(exam_id_int, user_id_int)
-    
-    # Add initial log
-    await add_session_log(session_id, "Workflow session created", level="info")
+
+    # Reuse existing session when retrying from a step (reload current URL only)
+    if start_from_step is not None and resume_session_id:
+        session_id = str(resume_session_id)
+        await add_session_log(session_id, "Resuming session — will reload current page", level="info")
+    else:
+        session_id = await create_session(exam_id_int, user_id_int)
+        await add_session_log(session_id, "Workflow session created", level="info")
     
     # Send confirmation
     await manager.send_personal(websocket, {
@@ -339,21 +356,29 @@ async def handle_start_workflow(websocket: WebSocket, message: dict) -> Optional
     user_flat = await get_user_flat(user_id_int)
     user_data = user_flat.data
     
-    # Start LangGraph workflow in background task
-    from app.graph.builder import run_workflow
+    # Pass start_from_step if provided (for retry/debug from a specific step)
+    if start_from_step is not None:
+        try:
+            user_data["_debug_start_from_step"] = int(start_from_step)
+        except (ValueError, TypeError):
+            pass
     
-    asyncio.create_task(
+    # Start workflow in background task
+    _cancelled_sessions.discard(session_id)
+    exam_slug = exam.get("slug", "")
+    task = asyncio.create_task(
         execute_workflow(
             session_id=session_id,
             exam_id=exam_id_int,
             user_id=user_id_int,
             exam_url=exam["url"],
             exam_name=exam["name"],
+            exam_slug=exam_slug,
             field_mappings=exam.get("field_mappings", {}),
             user_data=user_data,
         )
     )
-    
+    _running_workflow_tasks[session_id] = task
     return session_id
 
 
@@ -363,27 +388,44 @@ async def execute_workflow(
     user_id: int,
     exam_url: str,
     exam_name: str,
+    exam_slug: str,
     field_mappings: dict,
     user_data: dict,
 ):
     """
-    Execute the LangGraph workflow.
-    Runs in a background task.
+    Execute the workflow. Uses a deterministic playbook if one exists for
+    the exam, otherwise falls back to the LLM-driven LangGraph approach.
     """
-    from app.graph.builder import run_workflow
-    
     try:
-        result = await run_workflow(
-            session_id=session_id,
-            exam_id=str(exam_id),
-            user_id=str(user_id),
-            exam_url=exam_url,
-            exam_name=exam_name,
-            field_mappings=field_mappings,
-            user_data=user_data,
-        )
-        
-        # Update session with final result
+        # Try playbook first
+        from app.graph.playbook_executor import load_playbook, run_playbook
+        playbook = load_playbook(exam_slug)
+
+        if playbook:
+            await send_log(session_id, f"📖 Found playbook for {exam_name}", "info")
+            
+            # Check if user wants to debug from a specific step
+            start_from_step = user_data.get("_debug_start_from_step")
+            if start_from_step:
+                await send_log(session_id, f"🔧 DEBUG: Starting from step {start_from_step}", "warning")
+            
+            result = await run_playbook(session_id, playbook, user_data, start_from_step=start_from_step)
+        else:
+            await send_log(session_id, f"🤖 No playbook — using AI-driven workflow", "info")
+            from app.graph.builder import run_workflow
+            result = await run_workflow(
+                session_id=session_id,
+                exam_id=str(exam_id),
+                user_id=str(user_id),
+                exam_url=exam_url,
+                exam_name=exam_name,
+                field_mappings=field_mappings,
+                user_data=user_data,
+            )
+
+        if is_session_cancelled(session_id):
+            return
+
         status = result.get("status", "completed")
         await update_session(
             session_id,
@@ -392,40 +434,46 @@ async def execute_workflow(
             result_message=result.get("result_message"),
             completed_at=datetime.utcnow()
         )
-            
+
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
-        # Handle errors
-        await send_log(session_id, f"Workflow error: {str(e)}", "error")
-        await send_result(session_id, False, f"Workflow failed: {str(e)}")
-        
-        await update_session(
-            session_id,
-            status="failed",
-            success=False,
-            error=str(e),
-            completed_at=datetime.utcnow()
-        )
+        if not is_session_cancelled(session_id):
+            await send_log(session_id, f"Workflow error: {str(e)}", "error")
+            await send_result(session_id, False, f"Workflow failed: {str(e)}")
+            await update_session(
+                session_id,
+                status="failed",
+                success=False,
+                error=str(e),
+                completed_at=datetime.utcnow()
+            )
+    finally:
+        _running_workflow_tasks.pop(session_id, None)
 
 
 async def handle_otp_submit(session_id: str, payload: dict):
-    """Handle OTP submission from user. Resumes LangGraph workflow."""
+    """Handle OTP submission from user."""
     otp = payload.get("otp")
     
     await add_session_log(session_id, "OTP received from user", level="info")
     await update_session(session_id, pending_input=None)
     
-    # Notify client
     await manager.send_to_session(session_id, {
         "type": MessageTypes.LOG,
         "payload": {"message": "OTP received, continuing...", "level": "success"}
     })
     
-    # Resume LangGraph workflow with the OTP value
-    asyncio.create_task(resume_workflow_task(session_id, otp))
+    # Route to playbook or LangGraph
+    from app.graph.playbook_executor import has_pending_playbook_input, resolve_human_input
+    if has_pending_playbook_input(session_id):
+        resolve_human_input(session_id, otp)
+    else:
+        asyncio.create_task(resume_workflow_task(session_id, otp))
 
 
 async def handle_captcha_submit(session_id: str, payload: dict):
-    """Handle captcha solution submission from user. Resumes LangGraph workflow."""
+    """Handle captcha solution submission from user."""
     solution = payload.get("solution")
     
     await add_session_log(session_id, "Captcha solution received from user", level="info")
@@ -436,12 +484,15 @@ async def handle_captcha_submit(session_id: str, payload: dict):
         "payload": {"message": "Captcha solution received, continuing...", "level": "success"}
     })
     
-    # Resume LangGraph workflow with the captcha solution
-    asyncio.create_task(resume_workflow_task(session_id, solution))
+    from app.graph.playbook_executor import has_pending_playbook_input, resolve_human_input
+    if has_pending_playbook_input(session_id):
+        resolve_human_input(session_id, solution)
+    else:
+        asyncio.create_task(resume_workflow_task(session_id, solution))
 
 
 async def handle_custom_submit(session_id: str, payload: dict):
-    """Handle custom field submission from user. Resumes LangGraph workflow."""
+    """Handle custom field submission from user."""
     field_id = payload.get("fieldId")
     value = payload.get("value")
     
@@ -453,8 +504,11 @@ async def handle_custom_submit(session_id: str, payload: dict):
         "payload": {"message": f"Input received for {field_id}, continuing...", "level": "success"}
     })
     
-    # Resume LangGraph workflow with the custom input value and field_id
-    asyncio.create_task(resume_workflow_task(session_id, value, field_id))
+    from app.graph.playbook_executor import has_pending_playbook_input, resolve_human_input
+    if has_pending_playbook_input(session_id):
+        resolve_human_input(session_id, value, field_id)
+    else:
+        asyncio.create_task(resume_workflow_task(session_id, value, field_id))
 
 
 async def resume_workflow_task(session_id: str, user_input: Any, field_id: str = None):
@@ -508,6 +562,41 @@ async def handle_resume_workflow(session_id: str):
             "type": MessageTypes.STATUS,
             "payload": {"step": session.get("current_step"), "status": "running", "message": "Workflow resumed"}
         })
+
+
+async def handle_stop_workflow(session_id: str):
+    """Stop the running workflow: set cancelled flag, update DB, send result, cancel task. No API calls after this."""
+    _cancelled_sessions.add(session_id)
+
+    # Unblock any playbook wait (OTP/captcha) so the task can be cancelled cleanly
+    from app.graph.playbook_executor import resolve_human_input, has_pending_playbook_input
+    if has_pending_playbook_input(session_id):
+        resolve_human_input(session_id, "")
+
+    await update_session(
+        session_id,
+        status="stopped",
+        success=False,
+        result_message="Stopped by user",
+        completed_at=datetime.utcnow()
+    )
+    await add_session_log(session_id, "Workflow stopped by user", level="warning")
+    await manager.send_to_session(session_id, {
+        "type": MessageTypes.LOG,
+        "payload": {"message": "Workflow stopped by user", "level": "warning"}
+    })
+    await manager.send_to_session(session_id, {
+        "type": MessageTypes.RESULT,
+        "payload": {"success": False, "message": "Workflow stopped by user"}
+    })
+    
+    task = _running_workflow_tasks.pop(session_id, None)
+    if task and not task.done():
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 # ============= Helper Functions for Graph Nodes =============

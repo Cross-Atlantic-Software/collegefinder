@@ -47,7 +47,7 @@ export function buildCheckboxPrompt(checkboxLabel: string): string {
  * Build a robust prompt for typing into OTP field
  */
 export function buildOtpPrompt(otp: string): string {
-    return `Find the OTP input field (it may be labeled "OTP", "Verification Code", "One Time Password", or be a series of single-digit input boxes) and enter "${otp}". If there are multiple single-digit boxes, enter each digit in sequence.`;
+    return `Find the OTP verification area. There are 6 separate input boxes for the 6-digit OTP. Enter the 6-digit OTP "${otp}" by typing each digit into each box in order from left to right (first digit in first box, second in second box, and so on).`;
 }
 
 /**

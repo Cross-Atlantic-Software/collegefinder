@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import Optional, Any
 from datetime import datetime, date
 
-from app.services.database import fetch_one, fetch_all
+from app.services.database import fetch_one, fetch_all, execute
 
 
 router = APIRouter()
@@ -59,11 +59,12 @@ class UserAcademicData(BaseModel):
 
 
 class UserAddressData(BaseModel):
-    """Address data for a user."""
+    """Address data for a user (from user_address table)."""
     correspondence_address_line1: Optional[str] = None
     correspondence_address_line2: Optional[str] = None
     city_town_village: Optional[str] = None
     state: Optional[str] = None
+    district: Optional[str] = None
     pincode: Optional[str] = None
 
 
@@ -102,6 +103,34 @@ def format_date(d: Optional[date]) -> Optional[str]:
     if d:
         return d.strftime("%d/%m/%Y")
     return None
+
+
+def _generate_automation_password(
+    name: Optional[str],
+    first_name: Optional[str],
+    phone_number: Optional[str],
+    date_of_birth: Optional[date],
+) -> str:
+    """Generate a deterministic password from name + last4 phone + DOB (DDMMYY)."""
+    # Name: first name or first word of name, no spaces
+    name_part = (first_name or "").strip() or (name or "").strip()
+    if name_part:
+        name_part = name_part.split()[0] if name_part.split() else "User"
+    else:
+        name_part = "User"
+    name_part = "".join(c for c in name_part if c.isalnum())
+
+    # Last 4 digits of phone
+    digits = "".join(c for c in (phone_number or "") if c.isdigit())
+    last4 = digits[-4:] if len(digits) >= 4 else digits.zfill(4)[:4]
+
+    # DOB as DDMMYY
+    if date_of_birth:
+        ddmmyy = date_of_birth.strftime("%d%m%y")
+    else:
+        ddmmyy = "010100"
+
+    return f"{name_part}@{last4}@{ddmmyy}"
 
 
 async def get_user_academics(user_id: int) -> Optional[dict]:
@@ -240,8 +269,24 @@ async def get_user_flat(user_id: int):
     flat["guardianName"] = user.guardian_name
     flat["guardianPhone"] = user.alternate_mobile_number
     flat["nationality"] = user.nationality
-    flat["password"] = user.automation_password  # UUID password for form automation
-    
+
+    # Password: use stored automation_password or generate from name + last4 phone + DOB and save to users table
+    if user.automation_password and str(user.automation_password).strip():
+        flat["password"] = user.automation_password
+    else:
+        generated = _generate_automation_password(
+            user.name,
+            user.first_name,
+            user.phone_number,
+            user.date_of_birth,
+        )
+        flat["password"] = generated
+        await execute(
+            "UPDATE users SET automation_password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            generated,
+            user.id,
+        )
+
     # Academic fields
     if complete.academics:
         acad = complete.academics
@@ -257,13 +302,14 @@ async def get_user_flat(user_id: int):
         flat["board"] = acad.postmatric_board or acad.matric_board
         flat["currentClass"] = "12" if acad.postmatric_board else "10"
     
-    # Address fields
+    # Address fields (from user_address table; district from here, not users)
     if complete.address:
         addr = complete.address
         flat["address"] = addr.correspondence_address_line1
         flat["addressLine2"] = addr.correspondence_address_line2
         flat["city"] = addr.city_town_village
         flat["state"] = addr.state
+        flat["district"] = addr.district
         flat["pincode"] = addr.pincode
     
     # Category fields

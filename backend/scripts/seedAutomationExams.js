@@ -51,7 +51,7 @@ const automationExams = [
         name: 'NEET UG Registration',
         slug: 'neet-ug',
         url: 'https://neet.nta.nic.in/',
-        description: 'National Eligibility cum Entrance Test for medical admissions',
+        description: 'National Eligibility cum Entrance Test for medical admissions (official NTA portal)',
         field_mappings: {
             fullName: 'applicant_name',
             email: 'email',
@@ -66,7 +66,7 @@ const automationExams = [
     {
         name: 'CUET UG Registration',
         slug: 'cuet-ug',
-        url: 'https://cuet.samarth.ac.in/',
+        url: 'https://cuet.nta.nic.in/',
         description: 'Common University Entrance Test for central university admissions',
         field_mappings: {
             fullName: 'name',

@@ -42,6 +42,7 @@ app.get("/", (_req, res) => {
             "POST /api/submit": "Submit form",
             "POST /api/input": "Enter OTP/captcha",
             "POST /api/analyze": "Analyze page",
+            "POST /api/scroll": "Scroll page by pixels",
             "POST /api/screenshot": "Capture screenshot",
             "POST /api/close": "Close session",
             "GET /api/health": "Health check",

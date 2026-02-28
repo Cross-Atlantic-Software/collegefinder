@@ -16,8 +16,8 @@ class SessionManager {
     private cleanupInterval: NodeJS.Timeout | null = null;
 
     constructor() {
-        // Clean up stale sessions every 5 minutes
-        this.cleanupInterval = setInterval(() => this.cleanupStaleSessions(), 5 * 60 * 1000);
+        // Clean up stale sessions every 10 minutes (increased for long form fills)
+        this.cleanupInterval = setInterval(() => this.cleanupStaleSessions(), 10 * 60 * 1000);
     }
 
     async create(sessionId: string): Promise<Stagehand> {
@@ -36,24 +36,49 @@ class SessionManager {
             console.warn("[Warning] No API key found. Add OPENAI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY to .env");
         }
 
-        // Stagehand v3 configuration for LOCAL mode with Gemini
-        // headless: true = run in background (no visible window); set to false to see the browser
+        // Stagehand v3 – use Gemini Pro for best quality (override with STAGEHAND_MODEL env var)
         const headless = process.env.BROWSER_HEADLESS !== "false";
+        const model = process.env.STAGEHAND_MODEL
+            || (geminiKey ? "google/gemini-2.5-pro" : "openai/gpt-4o");
         const stagehand = new Stagehand({
             env: "LOCAL",
-            model: geminiKey ? "google/gemini-2.5-flash" : "openai/gpt-4o",
+            model,
             localBrowserLaunchOptions: {
                 headless,
                 args: [
                     "--start-maximized",
                     "--window-size=1920,1080",
                     "--no-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--disable-setuid-sandbox",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 ],
             },
             verbose: 1,
         });
 
         await stagehand.init();
+        
+        // Additional anti-detection: Override navigator.webdriver and other automation markers
+        const page = stagehand.context.pages()[0];
+        await page.addInitScript(() => {
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => false,
+            });
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5],
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en'],
+            });
+            (window as any).chrome = {
+                runtime: {},
+            };
+        });
+        
         console.log(`[Session ${sessionId}] Stagehand v3 initialized successfully`);
 
         this.sessions.set(sessionId, {
@@ -96,7 +121,7 @@ class SessionManager {
 
     private async cleanupStaleSessions(): Promise<void> {
         const now = new Date();
-        const maxAge = 30 * 60 * 1000; // 30 minutes
+        const maxAge = 60 * 60 * 1000; // 60 minutes (increased for long automation flows)
 
         for (const [sessionId, session] of this.sessions) {
             const age = now.getTime() - session.lastActivity.getTime();

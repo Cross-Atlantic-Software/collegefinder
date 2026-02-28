@@ -41,7 +41,8 @@ export interface WorkflowHandlers {
 export function connectToWorkflow(
     examId: string,
     userId: string,
-    handlers: Partial<WorkflowHandlers>
+    handlers: Partial<WorkflowHandlers>,
+    options?: { startFromStep?: number; sessionId?: string }
 ): WebSocket {
     const url = `${WS_BASE}/workflow`;
     const ws = new WebSocket(url);
@@ -51,10 +52,17 @@ export function connectToWorkflow(
         opened = true;
         console.log('[WebSocket] Connected to workflow');
 
-        // Send start workflow message
+        const payload: Record<string, unknown> = { examId, userId };
+        if (options?.startFromStep) {
+            payload.startFromStep = options.startFromStep;
+        }
+        if (options?.sessionId) {
+            payload.sessionId = options.sessionId;
+        }
+
         ws.send(JSON.stringify({
             type: 'START_WORKFLOW',
-            payload: { examId, userId }
+            payload
         }));
     };
 

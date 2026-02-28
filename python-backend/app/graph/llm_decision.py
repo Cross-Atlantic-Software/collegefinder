@@ -216,6 +216,13 @@ BEFORE clicking submit, carefully scan the ENTIRE page for ANY empty input field
 - An empty captcha field means the previous captcha was WRONG - solve it again!
 - Fill unfilled fields ONE AT A TIME
 
+⚠️ ONLY FILL EMPTY FIELDS - NEVER RE-FILL FILLED ONES!
+- Look at the screenshot: if an input ALREADY HAS TEXT in it, do NOT suggest filling it.
+- Example: If "Email ID" already shows an email address, do NOT return fill_field for "Email ID". Only suggest filling "Confirm Email ID" if THAT field is empty.
+- Only return fill_field for fields that appear visually EMPTY (no text, or placeholder only).
+- If "Already filled" list includes a field (e.g. "email", "Email ID"), do NOT suggest filling it again.
+- One field per action: fill only the next EMPTY field you see.
+
 ### 5a. PASSWORD FIELDS (CRITICAL!)
 If you see password or confirm password fields:
 - Use the "password" value from user data for BOTH password and confirm password fields
@@ -271,7 +278,9 @@ ONLY return "success" if you see EXPLICIT FINAL confirmation like:
 
 ## Stagehand Prompt Guidelines
 - For click_button: "Click the 'OK' button" or "Click the 'Submit' button"
+- For LONG links (e.g. notice/announcement text like "Re-opening of Online Application Portal for Common University... – 2026 – reg."): Do NOT put the full link text in the prompt — it often fails. Instead use: "Click the link that contains 'Re-opening of Online Application Portal' and '2026'" or "Click the first link under LATEST NEWS that mentions CUET UG 2026 application". Use short, unique key phrases so the tool can find the element.
 - For fill_field: "Find the email field and type 'test@email.com'"
+- For "Confirm Email ID" / "Re-enter Email" / "Confirm Email": Use a SHORT, clear prompt so the automation does not fail. Example: "Find the input labeled 'Confirm Email ID' (the second email box below the first) and type 'user@example.com' into it" — use the FULL email from user_data, no truncation. Keep the sentence simple so the tool can parse it.
 - For wait_for_human: stagehand_prompt can be empty or describe what's needed
 - For click_checkbox: "Click the checkbox next to 'I hereby declare...'"
 - For date picker when year is wrong: First say "Click on the year label at the top of the calendar to open the year selection list". After the list is open, say "Find the year selection list (it may be to the right of or above the calendar) and click the year 2006" — target the list of years by description, not the header, since the dropdown often opens in a different position.
@@ -452,7 +461,11 @@ def build_fill_prompt(field_name: str, value: str) -> str:
     """Build a specific fill prompt based on field type."""
     field_lower = field_name.lower()
     
-    # Handle confirm/re-enter fields
+    # Handle confirm/re-enter email (short prompt to avoid Stagehand parse errors)
+    if ("confirm" in field_lower or "re-enter" in field_lower or "retype" in field_lower) and "email" in field_lower:
+        return f"Find the input labeled 'Confirm Email ID' (the second email box) and type '{value}' into it"
+    
+    # Handle other confirm/re-enter fields
     if "confirm" in field_lower or "re-enter" in field_lower or "retype" in field_lower:
         return f"Find the confirmation/re-enter field for {field_name.replace('confirm', '').strip()} and type '{value}' into it"
     

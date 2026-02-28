@@ -30,10 +30,24 @@ const InitRequestSchema = z.object({
     examUrl: z.string().url(),
 });
 
+const ReloadRequestSchema = z.object({
+    sessionId: z.string(),
+});
+
+const CachedActionSchema = z.object({
+    selector: z.string(),
+    description: z.string(),
+    method: z.string(),
+    arguments: z.array(z.union([z.string(), z.number(), z.boolean()])).default([]),
+});
+
 const ExecuteRequestSchema = z.object({
     sessionId: z.string(),
-    action: z.enum(["act", "observe", "extract"]),
-    prompt: z.string(),
+    action: z.enum(["act", "observe", "extract", "actCached"]),
+    prompt: z.string().optional(),
+    actions: z.array(CachedActionSchema).optional(),
+    /** For actCached: override arguments (e.g. new field value) for the first action */
+    argumentsOverride: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
 const FillFormRequestSchema = z.object({
@@ -62,16 +76,21 @@ const CloseRequestSchema = z.object({
     sessionId: z.string(),
 });
 
+const ScrollRequestSchema = z.object({
+    sessionId: z.string(),
+    direction: z.enum(["down", "up"]).optional().default("down"),
+    pixels: z.number().optional().default(800),
+});
+
 // ==================== Helper Functions ====================
 
-async function captureAndBroadcast(sessionId: string, step: string): Promise<string | null> {
+async function captureAndBroadcast(sessionId: string, step: string, page?: { screenshot(): Promise<Buffer> }): Promise<string | null> {
     const stagehand = sessionManager.get(sessionId);
-    if (!stagehand) return null;
+    const targetPage = page ?? stagehand?.context?.pages()[0];
+    if (!targetPage) return null;
 
     try {
-        const page = stagehand.context.pages()[0];
-        // Playwright screenshot returns Buffer, convert to base64
-        const buffer = await page.screenshot();
+        const buffer = await targetPage.screenshot();
         const screenshot = buffer.toString("base64");
         wsManager.broadcastScreenshot(sessionId, screenshot, step);
         return screenshot;
@@ -79,6 +98,48 @@ async function captureAndBroadcast(sessionId: string, step: string): Promise<str
         console.error(`[${sessionId}] Failed to capture screenshot:`, error);
         return null;
     }
+}
+
+/**
+ * If the action opened a new tab, wait for it, switch to it (close old tab)
+ * so future actions run on the new page. Polls up to 8 seconds for the new tab.
+ */
+async function switchToNewTabIfOpened(stagehand: { context: { pages: () => unknown[] } | null }) {
+    type PW = { url: () => string; close: () => Promise<void>; screenshot: () => Promise<Buffer>; evaluate: (fn: () => string) => Promise<string>; waitForLoadState: (s: string) => Promise<void> };
+
+    if (!stagehand.context) {
+        console.warn("[switchTab] stagehand.context is null — browser may have crashed");
+        return { page: null, pageUrl: "" };
+    }
+
+    // Poll for a new tab (link may open it asynchronously after click)
+    let pages = stagehand.context.pages() as PW[];
+    for (let i = 0; i < 16 && pages.length <= 1; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        if (!stagehand.context) return { page: null, pageUrl: "" };
+        pages = stagehand.context.pages() as PW[];
+    }
+
+    if (pages.length <= 1) {
+        const p = pages[0];
+        return { page: p, pageUrl: p.url() };
+    }
+
+    console.log(`[switchTab] Found ${pages.length} tabs — switching to newest`);
+    const oldPage = pages[0];
+    const newPage = pages[pages.length - 1];
+
+    // Wait for the new page to finish loading
+    try {
+        await newPage.waitForLoadState("domcontentloaded");
+    } catch (_) { /* ignore timeout */ }
+    await new Promise((r) => setTimeout(r, 1000));
+
+    const newUrl = newPage.url();
+    console.log(`[switchTab] New tab URL: ${newUrl}`);
+
+    await oldPage.close();
+    return { page: newPage, pageUrl: newUrl };
 }
 
 // ==================== Endpoints ====================
@@ -131,50 +192,112 @@ router.post("/init", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/execute
- * Execute a raw Stagehand action (act/observe/extract)
- * Used for custom prompts from LangGraph
+ * POST /api/reload
+ * Reload the current page in an existing session (for retry from step N).
  */
-router.post("/execute", async (req: Request, res: Response) => {
+router.post("/reload", async (req: Request, res: Response) => {
     try {
-        const { sessionId, action, prompt } = ExecuteRequestSchema.parse(req.body);
+        const { sessionId } = ReloadRequestSchema.parse(req.body);
         const stagehand = sessionManager.get(sessionId);
 
         if (!stagehand) {
             return res.status(404).json({ success: false, error: "Session not found" });
         }
 
-        wsManager.broadcastLog(sessionId, `Executing: ${action}`, "info");
-        console.log(`[${sessionId}] Executing ${action}: ${prompt.substring(0, 100)}...`);
+        if (!stagehand.context) {
+            return res.status(400).json({ success: false, error: "Browser context not available" });
+        }
+
+        const pages = stagehand.context.pages();
+        const page = pages[pages.length - 1];
+        if (!page) {
+            return res.status(400).json({ success: false, error: "No page to reload" });
+        }
+
+        wsManager.broadcastLog(sessionId, "Reloading current page...", "info");
+        await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 60000 });
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const screenshot = await captureAndBroadcast(sessionId, "reload", page);
+
+        res.json({
+            success: true,
+            sessionId,
+            screenshot,
+            pageUrl: page.url(),
+        });
+    } catch (error) {
+        console.error("[reload] Error:", error);
+        res.json({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+/**
+ * POST /api/execute
+ * Execute a raw Stagehand action (act/observe/extract)
+ * Used for custom prompts from LangGraph
+ */
+router.post("/execute", async (req: Request, res: Response) => {
+    try {
+        const body = ExecuteRequestSchema.parse(req.body);
+        const { sessionId, action, prompt, actions: cachedActions } = body;
+        const stagehand = sessionManager.get(sessionId);
+
+        if (!stagehand) {
+            return res.status(404).json({ success: false, error: "Session not found" });
+        }
 
         let result: unknown;
 
-        // Stagehand v3 API - simple string parameters
-        if (action === "act") {
-            result = await stagehand.act(prompt);
-        } else if (action === "observe") {
-            result = await stagehand.observe(prompt);
-        } else if (action === "extract") {
-            result = await stagehand.extract(prompt);
+        if (action === "actCached" && cachedActions?.length) {
+            // Deterministic execution: no LLM call — use cached selector from previous run
+            const first = { ...cachedActions[0] };
+            if (body.argumentsOverride && body.argumentsOverride.length > 0) {
+                first.arguments = body.argumentsOverride;
+            }
+            wsManager.broadcastLog(sessionId, "Executing cached action (no LLM)", "info");
+            console.log(`[${sessionId}] actCached: ${first.method} on selector`);
+            result = await stagehand.act(first);
+        } else {
+            const promptStr = prompt ?? "";
+            wsManager.broadcastLog(sessionId, `Executing: ${action}`, "info");
+            console.log(`[${sessionId}] Executing ${action}: ${promptStr.substring(0, 100)}...`);
+
+            if (action === "act") {
+                result = await stagehand.act(promptStr);
+            } else if (action === "observe") {
+                result = await stagehand.observe(promptStr);
+            } else if (action === "extract") {
+                result = await stagehand.extract(promptStr);
+            } else {
+                return res.status(400).json({ success: false, error: "Missing prompt or invalid action" });
+            }
         }
 
-        const screenshot = await captureAndBroadcast(sessionId, action);
+        // If a new tab was opened (e.g. CUET registration link), switch to it
+        const { page: activePage, pageUrl } = await switchToNewTabIfOpened(stagehand);
+
+        const screenshot = await captureAndBroadcast(sessionId, action, activePage ?? undefined);
 
         // GET PAGE TEXT FROM DOM - UI-BASED DETECTION
-        const page = stagehand.context.pages()[0];
-        const page_text = await page.evaluate(() => {
-            return document.body.innerText || document.body.textContent || "";
-        });
-        
-        // Get current page URL for navigation detection
-        const pageUrl = page.url();
+        let page_text = "";
+        if (activePage) {
+            try {
+                page_text = await (activePage as unknown as import("playwright").Page).evaluate(() => {
+                    return document.body.innerText || document.body.textContent || "";
+                });
+            } catch (_) { /* page may not support evaluate after tab switch */ }
+        }
 
         res.json({
             success: true,
             result,
             screenshot,
-            page_text,  // Return page text for UI-based error detection
-            pageUrl,    // Return page URL for navigation detection
+            page_text,
+            pageUrl,
         });
     } catch (error) {
         console.error("[execute] Error:", error);
@@ -286,18 +409,27 @@ router.post("/click", async (req: Request, res: Response) => {
         // Stagehand v3 - just pass string
         await stagehand.act(prompt);
 
-        // Wait for potential navigation
-        const page = await stagehand.context.awaitActivePage();
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        let page: unknown = null;
+        let pageUrl = "";
 
-        const screenshot = await captureAndBroadcast(sessionId, "click");
+        // Only check for new tabs on links/buttons, never on checkboxes
+        if (type !== "checkbox") {
+            const tabResult = await switchToNewTabIfOpened(stagehand);
+            page = tabResult.page;
+            pageUrl = tabResult.pageUrl;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        const screenshot = await captureAndBroadcast(sessionId, "click", (page as { screenshot(): Promise<Buffer> }) ?? undefined);
 
         wsManager.broadcastLog(sessionId, `Clicked: ${target}`, "success");
 
         res.json({
             success: true,
             screenshot,
-            pageUrl: page.url(),
+            pageUrl,
         });
     } catch (error) {
         console.error("[click] Error:", error);
@@ -434,6 +566,44 @@ router.post("/analyze", async (req: Request, res: Response) => {
     } catch (error) {
         console.error("[analyze] Error:", error);
         res.json({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+/**
+ * POST /api/scroll
+ * Scroll the page by a fixed number of pixels (deterministic, no AI)
+ */
+router.post("/scroll", async (req: Request, res: Response) => {
+    try {
+        const { sessionId, direction, pixels } = ScrollRequestSchema.parse(req.body);
+        const stagehand = sessionManager.get(sessionId);
+
+        if (!stagehand) {
+            return res.status(404).json({ success: false, error: "Session not found" });
+        }
+
+        const page = stagehand.context.pages()[0];
+        const delta = direction === "up" ? -pixels : pixels;
+        await page.evaluate((dy) => {
+            window.scrollBy({ top: dy, left: 0, behavior: "auto" });
+        }, delta);
+
+        await new Promise((r) => setTimeout(r, 300));
+
+        const screenshot = await captureAndBroadcast(sessionId, "scroll");
+        const pageUrl = page.url();
+
+        res.json({
+            success: true,
+            screenshot,
+            pageUrl,
+        });
+    } catch (error) {
+        console.error("[scroll] Error:", error);
+        res.status(500).json({
             success: false,
             error: error instanceof Error ? error.message : "Unknown error",
         });

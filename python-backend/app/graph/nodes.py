@@ -22,6 +22,7 @@ from app.api.websocket import (
     request_custom_input,
     send_result,
     update_session,
+    is_session_cancelled,
 )
 
 
@@ -63,6 +64,8 @@ async def init_browser_node(state: GraphState) -> dict:
     SKIPS if browser already initialized (resuming from waiting state).
     """
     session_id = state["session_id"]
+    if is_session_cancelled(session_id):
+        return {"status": "stopped", "current_step": "init_browser"}
     exam_url = state["exam_url"]
     max_init_retries = 3
     
@@ -153,6 +156,8 @@ async def capture_screenshot_node(state: GraphState) -> dict:
     Also handles entering user input (OTP/captcha) after resume.
     """
     session_id = state["session_id"]
+    if is_session_cancelled(session_id):
+        return {"status": "stopped", "current_step": "capture_screenshot"}
     
     # Check if we have pending human input to enter (after resume)
     human_input = state.get("human_input_value")
@@ -375,29 +380,53 @@ async def capture_screenshot_node(state: GraphState) -> dict:
                                 }, timeout=30.0)
                                 
                                 if fill_email_result.get("success"):
-                                    await send_log(session_id, "✅ Email filled in login form - requesting password", "success")
+                                    await send_log(session_id, "✅ Email filled in login form", "success")
+                                    user_password = state.get("user_data", {}).get("password", "").strip()
+                                    # Autofill password from DB/generated logic; only ask user if missing
+                                    if user_password:
+                                        await send_log(session_id, "🔐 Auto-filling login password from user data", "info")
+                                        fill_pwd_result = await call_stagehand("execute", {
+                                            "sessionId": session_id,
+                                            "action": "act",
+                                            "prompt": f"Find the password field in the login form (the one next to the email field) and type '{user_password}' into it"
+                                        }, timeout=30.0)
+                                        if fill_pwd_result.get("success"):
+                                            await send_log(session_id, "✅ Login password filled", "success")
+                                        else:
+                                            await send_log(session_id, f"⚠️ Could not auto-fill password: {fill_pwd_result.get('error', '')}", "warning")
+                                    else:
+                                        await send_log(session_id, "🔐 No password in user data - requesting login password", "warning")
+                                        await send_status(session_id, "waiting_input", state.get("progress", 50), "Waiting for password...")
+                                        await request_custom_input(
+                                            session_id,
+                                            field_id="login_password",
+                                            label="Login Password Required",
+                                            field_type="password",
+                                            suggestions=["Enter your login password", "Use 'Forgot Password' if available", "Cancel automation"]
+                                        )
+                                        result = await call_stagehand("screenshot", {"sessionId": session_id})
+                                        if result.get("success"):
+                                            await forward_screenshot(session_id, result, "capture")
+                                        return {
+                                            **clear_input,
+                                            "current_step": "capture_screenshot",
+                                            "status": "waiting_input",
+                                            "waiting_for_input_type": "custom",
+                                            "email_already_registered_detected": email_already_registered_detected,
+                                            "already_filled_fields": ["email"],
+                                            "waiting_for_login_password": True,
+                                        }
+                                    # After autofill, take new screenshot and continue flow
                                     result = await call_stagehand("screenshot", {"sessionId": session_id})
                                     if result.get("success"):
                                         await forward_screenshot(session_id, result, "capture")
-                                    
-                                    # Request password immediately
-                                    await send_log(session_id, "🔐 Requesting login password", "warning")
-                                    await send_status(session_id, "waiting_input", state.get("progress", 50), "Waiting for password...")
-                                    await request_custom_input(
-                                        session_id,
-                                        field_id="login_password",  # Special field_id to identify login password
-                                        label="Login Password Required",
-                                        field_type="password",
-                                        suggestions=["Enter your login password", "Use 'Forgot Password' if available", "Cancel automation"]
-                                    )
                                     return {
                                         **clear_input,
                                         "current_step": "capture_screenshot",
-                                        "status": "waiting_input",
-                                        "waiting_for_input_type": "custom",
+                                        "screenshot_base64": result.get("screenshot"),
                                         "email_already_registered_detected": email_already_registered_detected,
-                                        "already_filled_fields": ["email"],  # Mark email as filled for login
-                                        "waiting_for_login_password": True,  # Flag to track we're waiting for login password
+                                        "already_filled_fields": ["email"],
+                                        "page_url": state.get("page_url", ""),
                                     }
                     else:
                         await send_log(session_id, f"⚠️ Could not click login: {login_result.get('error')}", "warning")
@@ -435,6 +464,8 @@ async def llm_decide_node(state: GraphState) -> dict:
     OPTIMIZED: Skips LLM call if page hasn't changed and we have a cached decision.
     """
     session_id = state["session_id"]
+    if is_session_cancelled(session_id):
+        return {"status": "stopped", "current_step": "llm_decide"}
     screenshot = state.get("screenshot_base64", "")
     user_data = state.get("user_data", {})
     already_filled = state.get("already_filled_fields", [])
@@ -568,6 +599,8 @@ async def execute_single_action_node(state: GraphState) -> dict:
     Only executes ONE action at a time, then returns to capture/decide.
     """
     session_id = state["session_id"]
+    if is_session_cancelled(session_id):
+        return {"status": "stopped", "current_step": "execute_action"}
     decision_dict = state.get("llm_decision")
     
     if not decision_dict:
@@ -749,6 +782,45 @@ async def execute_single_action_node(state: GraphState) -> dict:
     
     # For click_checkbox, fill_field, click_button - execute via Stagehand
     stagehand_prompt = decision.stagehand_prompt
+
+    # Shorten long link-click prompts so Stagehand can reliably find and click (long notice/announcement text often fails)
+    if action_type == "click_button" and stagehand_prompt and len(stagehand_prompt) > 100:
+        low = stagehand_prompt.lower()
+        if "click the link" in low or "click the" in low:
+            import re
+            # Extract first meaningful phrase (e.g. "Re-opening of Online Application Portal") and optional year
+            match = re.search(r"click the link\s+['\"]([^'\"]{20,})['\"]", stagehand_prompt, re.I)
+            if match:
+                full_text = match.group(1)
+                year_match = re.search(r"\b(20\d{2})\b", full_text)
+                year = year_match.group(1) if year_match else None
+                first_phrase = full_text[:45].strip()
+                if len(full_text) > 45:
+                    first_phrase = first_phrase.rsplit(" ", 1)[0] if " " in first_phrase else first_phrase
+                first_phrase = first_phrase or full_text.split("–")[0].strip()[:40]  # fallback: text before en-dash
+                short = f"Click the link that contains '{first_phrase}'"
+                if year:
+                    short += f" and '{year}'"
+                stagehand_prompt = short
+
+    # For notice/announcement links: if we're clicking the same link 3+ times without page change, try scrolling or simpler phrasing
+    last_action_history = state.get("action_history", [])[-3:] if state.get("action_history") else []
+    if action_type == "click_button" and decision.button_text and len(last_action_history) >= 3:
+        last_3_targets = [a.get("target") for a in last_action_history if a.get("action") == "click_button"]
+        if last_3_targets and all(t == last_3_targets[0] for t in last_3_targets) and decision.button_text == last_3_targets[0]:
+            await send_log(session_id, f"⚠️ Stuck clicking same link 3+ times: '{decision.button_text[:60]}' - trying alternative", "warning")
+            if "link" in stagehand_prompt.lower() and ("re-opening" in stagehand_prompt.lower() or "application" in stagehand_prompt.lower()):
+                stagehand_prompt = "Scroll down to find and click the first blue link in the LATEST NEWS or Public Notice section that mentions 'Re-opening' or '2026 Examination' or 'CUET UG'"
+                await send_log(session_id, f"🔄 Rewritten prompt: {stagehand_prompt}", "info")
+
+    # Use a short, explicit prompt for Confirm Email ID to avoid Stagehand "Invalid JSON" / multiple attempts
+    if action_type == "fill_field" and decision.field_name:
+        field_lower = (decision.field_name or "").lower()
+        if ("confirm" in field_lower or "re-enter" in field_lower) and "email" in field_lower:
+            from app.graph.llm_decision import build_fill_prompt
+            ud = state.get("user_data", {})
+            email_value = ud.get("email") or ud.get("mobileNumber") or (decision.field_value or "")
+            stagehand_prompt = build_fill_prompt(decision.field_name, str(email_value))
     
     if not stagehand_prompt:
         await send_log(session_id, "No Stagehand prompt provided", "error")
