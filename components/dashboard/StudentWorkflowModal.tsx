@@ -39,6 +39,7 @@ export function StudentWorkflowModal({
     const [screenshot, setScreenshot] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [userData, setUserData] = useState<Record<string, unknown> | null>(null);
 
     // Input modals
     const [showOtpModal, setShowOtpModal] = useState(false);
@@ -90,6 +91,7 @@ export function StudentWorkflowModal({
         if (!startFromStep) {
             setLogs([]);
             setScreenshot(null);
+            setUserData(null);
         }
         setProgress(0);
         addLog(startFromStep ? `Resuming from step ${startFromStep} (reloading current page)...` : 'Connecting to automation server...', 'info');
@@ -134,6 +136,7 @@ export function StudentWorkflowModal({
                 setStatus(success ? 'success' : 'failed');
                 addLog(message, success ? 'success' : 'error');
             },
+            onUserData: (data) => setUserData(data),
             onError: (message) => addLog(`Error: ${message}`, 'error'),
             onClose: () => {
                 if (status === 'running') {
@@ -283,13 +286,25 @@ export function StudentWorkflowModal({
                         </div>
                     </div>
 
-                    {/* ─── Activity Log (commented out for now) ─── */}
-                    {/* <div className="w-[340px] border-l border-gray-800/40 flex flex-col bg-gray-950/30">
-                        <div className="px-4 pt-4 pb-2">
+                    {/* ─── Activity Log & Dictionary (user data) - commented out
+                    <div className="w-[340px] border-l border-gray-800/40 flex flex-col bg-gray-950/30 min-w-0">
+                        <div className="px-4 pt-4 pb-2 shrink-0">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity Log</h3>
                         </div>
-                        <div className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-                            {logs.length === 0 ? (
+                        <div className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent min-h-0">
+                            {userData && (
+                                <div className="mb-3 rounded-lg border border-gray-700/50 bg-gray-900/50 overflow-hidden">
+                                    <details className="group" open={false}>
+                                        <summary className="px-3 py-2 text-xs font-medium text-gray-400 cursor-pointer hover:text-gray-300 select-none">
+                                            📋 User data for this run
+                                        </summary>
+                                        <pre className="px-3 py-2 text-[10px] text-gray-400 overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap break-all border-t border-gray-700/50">
+                                            {JSON.stringify(userData, null, 2)}
+                                        </pre>
+                                    </details>
+                                </div>
+                            )}
+                            {logs.length === 0 && !userData ? (
                                 <div className="flex items-center justify-center h-full">
                                     <p className="text-gray-600 text-sm">Waiting for activity...</p>
                                 </div>
@@ -316,7 +331,8 @@ export function StudentWorkflowModal({
                                 </div>
                             )}
                         </div>
-                    </div> */}
+                    </div>
+                    */}
                 </div>
 
                 {/* ─── Footer ─── */}

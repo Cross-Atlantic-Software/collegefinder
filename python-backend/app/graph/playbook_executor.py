@@ -521,8 +521,9 @@ async def _exec_click_checkbox(session_id: str, step: dict, exam_slug: str = Non
     target = step["target"]
     step_name = step.get("name", "")
     fallback_prompt = step.get("prompt") or f"Click the checkbox next to '{target}'"
+    disable_cache = bool(step.get("disable_cache"))
     cached_actions = []
-    if prompt_cache and exam_slug:
+    if (not disable_cache) and prompt_cache and exam_slug:
         cached = (prompt_cache.get("steps") or {}).get(step_name, {})
         if cached.get("actions"):
             cached_actions = cached["actions"]
@@ -556,35 +557,21 @@ async def _exec_click_checkbox(session_id: str, step: dict, exam_slug: str = Non
             used_cached = False
 
     if not used_cached:
-        # If playbook has an explicit prompt (e.g. with Hindi / scroll instruction), use it first
-        if step.get("prompt"):
+        # Prefer deterministic checkbox click endpoint first, then fallback to LLM prompt.
+        result = await _stagehand("click", {
+            "sessionId": session_id,
+            "target": target,
+            "type": "checkbox",
+        })
+        if not result.get("success"):
+            await send_log(session_id, f"  ⚠️ Checkbox click failed, trying prompt fallback...", "warning")
             result = await _stagehand("execute", {
                 "sessionId": session_id,
                 "action": "act",
                 "prompt": fallback_prompt,
             })
-            if not result.get("success"):
-                await send_log(session_id, f"  ⚠️ Checkbox step failed, trying generic click...", "warning")
-                result = await _stagehand("click", {
-                    "sessionId": session_id,
-                    "target": target,
-                    "type": "checkbox",
-                })
-        else:
-            result = await _stagehand("click", {
-                "sessionId": session_id,
-                "target": target,
-                "type": "checkbox",
-            })
-            if not result.get("success"):
-                await send_log(session_id, f"  ⚠️ Checkbox click failed, trying fallback...", "warning")
-                result = await _stagehand("execute", {
-                    "sessionId": session_id,
-                    "action": "act",
-                    "prompt": fallback_prompt,
-                })
 
-    if result.get("success") and exam_slug and prompt_cache is not None:
+    if (not disable_cache) and result.get("success") and exam_slug and prompt_cache is not None:
         actions = _extract_actions_from_result(result)
         entry = {
             "action": "execute",
@@ -596,7 +583,7 @@ async def _exec_click_checkbox(session_id: str, step: dict, exam_slug: str = Non
             entry["prompt"] = fallback_prompt
         prompt_cache.setdefault("steps", {})[step_name] = entry
         _save_prompt_cache(exam_slug, prompt_cache)
-    elif not result.get("success") and exam_slug and prompt_cache is not None and step_name in (prompt_cache.get("steps") or {}):
+    elif (not disable_cache) and (not result.get("success")) and exam_slug and prompt_cache is not None and step_name in (prompt_cache.get("steps") or {}):
         prompt_cache.setdefault("steps", {}).pop(step_name, None)
         _save_prompt_cache(exam_slug, prompt_cache)
         await send_log(session_id, f"  🔄 Cache invalidated for '{step_name}' — will re-learn on next run", "warning")
@@ -643,8 +630,9 @@ async def _exec_fill_form(session_id: str, step: dict, user_data: dict, exam_slu
 
         prompt = _build_prompt(field, value)
         ckey = _cache_key(step_name, field["label"])
+        disable_cache = bool(field.get("disable_cache")) or bool(step.get("disable_cache"))
         cached_actions = []
-        if prompt_cache and exam_slug:
+        if (not disable_cache) and prompt_cache and exam_slug:
             cached = (prompt_cache.get("steps") or {}).get(ckey, {})
             if cached.get("actions"):
                 cached_actions = cached["actions"]
@@ -693,13 +681,13 @@ async def _exec_fill_form(session_id: str, step: dict, user_data: dict, exam_slu
 
         if not field_success:
             await send_log(session_id, f"  ⚠️ {field['label']} failed: {result.get('error','')}", "warning")
-            if exam_slug and prompt_cache is not None and ckey in (prompt_cache.get("steps") or {}):
+            if (not disable_cache) and exam_slug and prompt_cache is not None and ckey in (prompt_cache.get("steps") or {}):
                 prompt_cache.setdefault("steps", {}).pop(ckey, None)
                 _save_prompt_cache(exam_slug, prompt_cache)
                 await send_log(session_id, f"  🔄 Cache invalidated for '{field['label']}' — will re-learn on next run", "warning")
         else:
             filled += 1
-            if exam_slug and prompt_cache is not None:
+            if (not disable_cache) and exam_slug and prompt_cache is not None:
                 actions = _extract_actions_from_result(result)
                 entry = {
                     "action": "execute",
@@ -716,9 +704,13 @@ async def _exec_fill_form(session_id: str, step: dict, user_data: dict, exam_slu
         field_name = field["label"].replace(" ", "_").replace("/", "_").lower()
         await _screenshot(session_id, f"field_{field_name}")
 
-        # Minimal delay — just enough for the UI to settle
-        delay = 0.5 if field.get("type") == "select" else 0.15
-        await asyncio.sleep(delay)
+        # Delay after field — use delay_after_ms if set (e.g. for dropdowns that need time to open/filter)
+        delay_after_ms = field.get("delay_after_ms")
+        if delay_after_ms is not None:
+            await asyncio.sleep(delay_after_ms / 1000.0)
+        else:
+            delay = 0.5 if field.get("type") == "select" else 0.15
+            await asyncio.sleep(delay)
 
     await send_log(session_id, f"  ✅ Filled {filled}/{len(fields)} fields", "success")
 

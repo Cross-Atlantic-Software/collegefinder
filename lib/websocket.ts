@@ -16,6 +16,7 @@ interface WebSocketMessage {
         label?: string;
         type?: string;
         success?: boolean;
+        userData?: Record<string, unknown>;
     };
 }
 
@@ -31,6 +32,7 @@ export interface WorkflowHandlers {
     onRequestCustomInput: (fieldId: string, label: string, type: string) => void;
     onResult: (success: boolean, message: string) => void;
     onSessionCreated: (sessionId: string) => void;
+    onUserData: (userData: Record<string, unknown>) => void;
     onError: (message: string) => void;
     onClose: () => void;
 }
@@ -146,6 +148,12 @@ function handleMessage(message: WebSocketMessage, handlers: Partial<WorkflowHand
 
         case 'LOG':
             handlers.onLog?.(payload?.message || '', payload?.level || 'info');
+            break;
+
+        case 'USER_DATA':
+            if (payload?.userData && typeof payload.userData === 'object') {
+                handlers.onUserData?.(payload.userData as Record<string, unknown>);
+            }
             break;
 
         case 'SCREENSHOT':

@@ -349,10 +349,6 @@ async def get_user_flat(user_id: int):
     except Exception:
         pass  # Table may not exist yet
     
-    # District from user or address (fallback)
-    if not flat.get("district"):
-        flat["district"] = user.district
-    
     # Country default
     flat["country"] = "India"
     

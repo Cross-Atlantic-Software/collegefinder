@@ -103,10 +103,10 @@
       "scroll_pixels": 400,
       "fields": [
         { "label": "Premises No/ Name", "user_data_key": "address", "type": "text", "prompt": "Under the Present Address section, find the FIRST text input next to 'पता – पंक्ति 1 (Address Line 1)' and type '{value}'" },
-        { "label": "Locality", "user_data_key": "city", "type": "text", "prompt": "Under the Present Address section, find the SECOND text input next to 'पता – पंक्ति 2 (Address Line 2)(Optional):' and type '{value}'" },
-        { "label": "Country", "user_data_key": "_static:India", "type": "select", "prompt": "Under the Present Address section, find the row 'देश (Country)' which currently shows '--Select--'. Click on that '--Select--' text to open the dropdown, then click 'India' from the list.", "max_retries": 2 },
-        { "label": "State", "user_data_key": "state", "type": "select", "prompt": "Under the Present Address section, find the row 'राज्य (State)' which currently shows '--Select--'. Click on that '--Select--' text to open the dropdown list. Then scroll through the list and click on '{value}' to select it.", "max_retries": 2 },
-        { "label": "District", "user_data_key": "district", "type": "select", "prompt": "Under the Present Address section, find the row 'जिला (District)' which currently shows '--Select--'. Click on that '--Select--' text to open the dropdown. Inside the dropdown there is a small search/filter text box — click into it, type '{value}', then click the matching option '{value}' from the filtered results.", "max_retries": 3 },
+        { "label": "Locality", "user_data_key": "addressLine2", "type": "text", "prompt": "Under the Present Address section, find the SECOND text input next to 'पता – पंक्ति 2 (Address Line 2)(Optional):' and type '{value}'" },
+        { "label": "Country", "user_data_key": "_static:India", "type": "select", "prompt": "Under the Present Address section, find 'देश (Country)' showing '--Select--'. Click it to open the dropdown. Do NOT scroll. Find the search or filter input inside the dropdown, click into it, type 'India', then click the option 'India' from the filtered list.", "max_retries": 3, "delay_after_ms": 2500, "disable_cache": true },
+        { "label": "State", "user_data_key": "state", "type": "select", "prompt": "Under the Present Address section, find 'राज्य (State)' showing '--Select--'. Click it to open the dropdown. Do NOT scroll the list. Find the search or filter input inside the dropdown, click into it, type '{value}', then click the matching option '{value}' from the filtered/suggested list.", "max_retries": 4, "delay_after_ms": 2500, "disable_cache": true },
+        { "label": "District", "user_data_key": "district", "type": "select", "prompt": "Under the Present Address section, find 'जिला (District)' showing '--Select--'. Click it to open the dropdown. Do NOT scroll. Find the search or filter input inside the dropdown, click into it, type '{value}', then click the matching option '{value}' from the filtered list.", "max_retries": 4, "delay_after_ms": 2500, "disable_cache": true },
         { "label": "PIN Code", "user_data_key": "pincode", "type": "text", "prompt": "Under the Present Address section, find the text input next to 'पिन कोड (PIN Code)' and type '{value}'" }
       ]
     },
@@ -130,10 +130,9 @@
       "action": "click_checkbox",
       "description": "Check 'Same As Present Address' for permanent address",
       "target": "Same As Present Address",
-      "prompt": "Look for a row that says 'वर्तमान पते के समान (Same As Present Address)' with a checkbox on the left side. Click DIRECTLY on the small square checkbox (the input element) to the left of that text. Do NOT click the text itself.",
-      "scroll_first": true,
-      "scroll_pixels": 800,
-      "scroll_direction": "down",
+      "prompt": "Do not scroll. In the 'स्थायी पता (Permanent Address)' section, find the single checkbox whose label is 'वर्तमान पते के समान (Same As Present Address)'. Click directly on that checkbox (the small square input), not on the label text, to check it.",
+      "scroll_first": false,
+      "disable_cache": true,
       "wait_after_ms": 2000,
       "max_retries": 3
     },

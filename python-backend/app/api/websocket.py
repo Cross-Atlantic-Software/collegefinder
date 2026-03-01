@@ -105,6 +105,7 @@ class MessageTypes:
     
     # Server -> Client
     LOG = "LOG"
+    USER_DATA = "USER_DATA"
     SCREENSHOT = "SCREENSHOT"
     REQUEST_OTP = "REQUEST_OTP"
     REQUEST_CAPTCHA = "REQUEST_CAPTCHA"
@@ -397,6 +398,9 @@ async def execute_workflow(
     the exam, otherwise falls back to the LLM-driven LangGraph approach.
     """
     try:
+        # Send user data dict to client so they can see it in the activity log
+        await send_user_data(session_id, user_data)
+
         # Try playbook first
         from app.graph.playbook_executor import load_playbook, run_playbook
         playbook = load_playbook(exam_slug)
@@ -618,6 +622,14 @@ async def send_log(session_id: str, message: str, level: str = "info"):
     await manager.send_to_session(session_id, {
         "type": MessageTypes.LOG,
         "payload": {"message": message, "level": level}
+    })
+
+
+async def send_user_data(session_id: str, user_data: dict):
+    """Send the user data dictionary to the client for display on each run."""
+    await manager.send_to_session(session_id, {
+        "type": MessageTypes.USER_DATA,
+        "payload": {"userData": user_data}
     })
 
 

@@ -100,6 +100,81 @@ async function captureAndBroadcast(sessionId: string, step: string, page?: { scr
     }
 }
 
+async function clickCheckboxByTargetText(
+    page: import("playwright").Page,
+    target: string,
+): Promise<{ matched: boolean; clicked: boolean; checked: boolean; info: string }> {
+    return await page.evaluate((rawTarget) => {
+        const normalize = (s: string | null | undefined) =>
+            (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+        const targetNorm = normalize(rawTarget);
+        const hints = [targetNorm, "same as present address", "वर्तमान पते के समान"].filter(Boolean);
+
+        const scoreText = (txt: string) => {
+            const n = normalize(txt);
+            let score = 0;
+            for (const h of hints) {
+                if (n.includes(h)) score += h === targetNorm ? 5 : 2;
+            }
+            return score;
+        };
+
+        const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[];
+        let best: { el: HTMLInputElement; score: number } | null = null;
+
+        for (const cb of checkboxes) {
+            let ctx = "";
+            if (cb.id) {
+                const lbl = document.querySelector(`label[for="${cb.id}"]`);
+                if (lbl) ctx += " " + ((lbl as HTMLElement).innerText || lbl.textContent || "");
+            }
+            const near = cb.closest("tr, td, div, li, label");
+            if (near) ctx += " " + ((near as HTMLElement).innerText || near.textContent || "");
+            if (cb.parentElement) ctx += " " + (cb.parentElement.innerText || cb.parentElement.textContent || "");
+
+            const score = scoreText(ctx);
+            if (score > 0 && (!best || score > best.score)) {
+                best = { el: cb, score };
+            }
+        }
+
+        if (!best) {
+            // Fallback: locate a container/label text first, then find nearest checkbox.
+            const allNodes = Array.from(document.querySelectorAll("label, td, tr, div, span")) as HTMLElement[];
+            let bestNode: { el: HTMLElement; score: number } | null = null;
+            for (const n of allNodes) {
+                const txt = (n.innerText || n.textContent || "").trim();
+                if (!txt) continue;
+                const score = scoreText(txt);
+                if (score > 0 && (!bestNode || score > bestNode.score)) bestNode = { el: n, score };
+            }
+            if (!bestNode) {
+                return { matched: false, clicked: false, checked: false, info: "no matching checkbox found" };
+            }
+
+            const container = bestNode.el.closest("tr, td, div, label, li") || bestNode.el;
+            const nearby = (container.querySelector('input[type="checkbox"]') ||
+                container.parentElement?.querySelector('input[type="checkbox"]')) as HTMLInputElement | null;
+            if (!nearby) {
+                return { matched: false, clicked: false, checked: false, info: "matched text but no nearby checkbox" };
+            }
+            if (!nearby.checked) {
+                (nearby as HTMLElement).click();
+                nearby.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            return { matched: true, clicked: true, checked: !!nearby.checked, info: `text-fallback score:${bestNode.score}` };
+        }
+
+        const el = best.el;
+        if (!el.checked) {
+            (el as HTMLElement).click();
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        return { matched: true, clicked: true, checked: !!el.checked, info: `score:${best.score}` };
+    }, target);
+}
+
 /**
  * If the action opened a new tab, wait for it, switch to it (close old tab)
  * so future actions run on the new page. Polls up to 8 seconds for the new tab.
@@ -405,9 +480,40 @@ router.post("/click", async (req: Request, res: Response) => {
             prompt = buildClickButtonPrompt(target);
         }
 
-        console.log(`[${sessionId}] Click prompt: ${prompt}`);
-        // Stagehand v3 - just pass string
-        await stagehand.act(prompt);
+        let checkboxHandled = false;
+        if (type === "checkbox" && stagehand.context) {
+            const pages = stagehand.context.pages() as import("playwright").Page[];
+            const currentPage = pages[pages.length - 1];
+            if (currentPage) {
+                const direct = await clickCheckboxByTargetText(currentPage, target);
+                if (direct.checked) {
+                    checkboxHandled = true;
+                    wsManager.broadcastLog(sessionId, `Checked checkbox directly: ${target}`, "success");
+                } else {
+                    wsManager.broadcastLog(sessionId, `Direct checkbox click failed, trying AI fallback...`, "warning");
+                }
+            }
+        }
+
+        if (!checkboxHandled) {
+            console.log(`[${sessionId}] Click prompt: ${prompt}`);
+            // Stagehand v3 - just pass string
+            await stagehand.act(prompt);
+
+            // For checkboxes, verify and force-check once more via deterministic DOM path
+            if (type === "checkbox" && stagehand.context) {
+                const pages = stagehand.context.pages() as import("playwright").Page[];
+                const currentPage = pages[pages.length - 1];
+                if (currentPage) {
+                    const verify = await clickCheckboxByTargetText(currentPage, target);
+                // Only fail if we could match the intended checkbox but it's still unchecked.
+                // If no match is found (label text variations), don't convert a successful UI click into a false failure.
+                if (verify.matched && !verify.checked) {
+                        throw new Error(`Checkbox '${target}' could not be checked`);
+                    }
+                }
+            }
+        }
 
         let page: unknown = null;
         let pageUrl = "";
