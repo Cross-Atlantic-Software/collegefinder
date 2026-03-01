@@ -30,10 +30,24 @@ const InitRequestSchema = z.object({
     examUrl: z.string().url(),
 });
 
+const ReloadRequestSchema = z.object({
+    sessionId: z.string(),
+});
+
+const CachedActionSchema = z.object({
+    selector: z.string(),
+    description: z.string(),
+    method: z.string(),
+    arguments: z.array(z.union([z.string(), z.number(), z.boolean()])).default([]),
+});
+
 const ExecuteRequestSchema = z.object({
     sessionId: z.string(),
-    action: z.enum(["act", "observe", "extract"]),
-    prompt: z.string(),
+    action: z.enum(["act", "observe", "extract", "actCached"]),
+    prompt: z.string().optional(),
+    actions: z.array(CachedActionSchema).optional(),
+    /** For actCached: override arguments (e.g. new field value) for the first action */
+    argumentsOverride: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
 const FillFormRequestSchema = z.object({
@@ -62,16 +76,21 @@ const CloseRequestSchema = z.object({
     sessionId: z.string(),
 });
 
+const ScrollRequestSchema = z.object({
+    sessionId: z.string(),
+    direction: z.enum(["down", "up"]).optional().default("down"),
+    pixels: z.number().optional().default(800),
+});
+
 // ==================== Helper Functions ====================
 
-async function captureAndBroadcast(sessionId: string, step: string): Promise<string | null> {
+async function captureAndBroadcast(sessionId: string, step: string, page?: { screenshot(): Promise<Buffer> }): Promise<string | null> {
     const stagehand = sessionManager.get(sessionId);
-    if (!stagehand) return null;
+    const targetPage = page ?? stagehand?.context?.pages()[0];
+    if (!targetPage) return null;
 
     try {
-        const page = stagehand.context.pages()[0];
-        // Playwright screenshot returns Buffer, convert to base64
-        const buffer = await page.screenshot();
+        const buffer = await targetPage.screenshot();
         const screenshot = buffer.toString("base64");
         wsManager.broadcastScreenshot(sessionId, screenshot, step);
         return screenshot;
@@ -79,6 +98,123 @@ async function captureAndBroadcast(sessionId: string, step: string): Promise<str
         console.error(`[${sessionId}] Failed to capture screenshot:`, error);
         return null;
     }
+}
+
+async function clickCheckboxByTargetText(
+    page: import("playwright").Page,
+    target: string,
+): Promise<{ matched: boolean; clicked: boolean; checked: boolean; info: string }> {
+    return await page.evaluate((rawTarget) => {
+        const normalize = (s: string | null | undefined) =>
+            (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+        const targetNorm = normalize(rawTarget);
+        const hints = [targetNorm, "same as present address", "वर्तमान पते के समान"].filter(Boolean);
+
+        const scoreText = (txt: string) => {
+            const n = normalize(txt);
+            let score = 0;
+            for (const h of hints) {
+                if (n.includes(h)) score += h === targetNorm ? 5 : 2;
+            }
+            return score;
+        };
+
+        const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[];
+        let best: { el: HTMLInputElement; score: number } | null = null;
+
+        for (const cb of checkboxes) {
+            let ctx = "";
+            if (cb.id) {
+                const lbl = document.querySelector(`label[for="${cb.id}"]`);
+                if (lbl) ctx += " " + ((lbl as HTMLElement).innerText || lbl.textContent || "");
+            }
+            const near = cb.closest("tr, td, div, li, label");
+            if (near) ctx += " " + ((near as HTMLElement).innerText || near.textContent || "");
+            if (cb.parentElement) ctx += " " + (cb.parentElement.innerText || cb.parentElement.textContent || "");
+
+            const score = scoreText(ctx);
+            if (score > 0 && (!best || score > best.score)) {
+                best = { el: cb, score };
+            }
+        }
+
+        if (!best) {
+            // Fallback: locate a container/label text first, then find nearest checkbox.
+            const allNodes = Array.from(document.querySelectorAll("label, td, tr, div, span")) as HTMLElement[];
+            let bestNode: { el: HTMLElement; score: number } | null = null;
+            for (const n of allNodes) {
+                const txt = (n.innerText || n.textContent || "").trim();
+                if (!txt) continue;
+                const score = scoreText(txt);
+                if (score > 0 && (!bestNode || score > bestNode.score)) bestNode = { el: n, score };
+            }
+            if (!bestNode) {
+                return { matched: false, clicked: false, checked: false, info: "no matching checkbox found" };
+            }
+
+            const container = bestNode.el.closest("tr, td, div, label, li") || bestNode.el;
+            const nearby = (container.querySelector('input[type="checkbox"]') ||
+                container.parentElement?.querySelector('input[type="checkbox"]')) as HTMLInputElement | null;
+            if (!nearby) {
+                return { matched: false, clicked: false, checked: false, info: "matched text but no nearby checkbox" };
+            }
+            if (!nearby.checked) {
+                (nearby as HTMLElement).click();
+                nearby.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            return { matched: true, clicked: true, checked: !!nearby.checked, info: `text-fallback score:${bestNode.score}` };
+        }
+
+        const el = best.el;
+        if (!el.checked) {
+            (el as HTMLElement).click();
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        return { matched: true, clicked: true, checked: !!el.checked, info: `score:${best.score}` };
+    }, target);
+}
+
+/**
+ * If the action opened a new tab, wait for it, switch to it (close old tab)
+ * so future actions run on the new page. Polls up to 8 seconds for the new tab.
+ */
+async function switchToNewTabIfOpened(stagehand: { context: { pages: () => unknown[] } | null }) {
+    type PW = { url: () => string; close: () => Promise<void>; screenshot: () => Promise<Buffer>; evaluate: (fn: () => string) => Promise<string>; waitForLoadState: (s: string) => Promise<void> };
+
+    if (!stagehand.context) {
+        console.warn("[switchTab] stagehand.context is null — browser may have crashed");
+        return { page: null, pageUrl: "" };
+    }
+
+    // Poll for a new tab (link may open it asynchronously after click)
+    let pages = stagehand.context.pages() as PW[];
+    for (let i = 0; i < 16 && pages.length <= 1; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        if (!stagehand.context) return { page: null, pageUrl: "" };
+        pages = stagehand.context.pages() as PW[];
+    }
+
+    if (pages.length <= 1) {
+        const p = pages[0];
+        return { page: p, pageUrl: p.url() };
+    }
+
+    console.log(`[switchTab] Found ${pages.length} tabs — switching to newest`);
+    const oldPage = pages[0];
+    const newPage = pages[pages.length - 1];
+
+    // Wait for the new page to finish loading
+    try {
+        await newPage.waitForLoadState("domcontentloaded");
+    } catch (_) { /* ignore timeout */ }
+    await new Promise((r) => setTimeout(r, 1000));
+
+    const newUrl = newPage.url();
+    console.log(`[switchTab] New tab URL: ${newUrl}`);
+
+    await oldPage.close();
+    return { page: newPage, pageUrl: newUrl };
 }
 
 // ==================== Endpoints ====================
@@ -96,6 +232,9 @@ router.post("/init", async (req: Request, res: Response) => {
 
         const stagehand = await sessionManager.create(sessionId);
         const page = stagehand.context.pages()[0];
+
+        // Full-screen viewport before navigation (runs in background when headless)
+        await page.setViewportSize({ width: 1920, height: 1080 });
 
         wsManager.broadcastLog(sessionId, `Navigating to ${examUrl}`, "info");
         // Use longer timeout for slow government sites
@@ -128,50 +267,112 @@ router.post("/init", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/execute
- * Execute a raw Stagehand action (act/observe/extract)
- * Used for custom prompts from LangGraph
+ * POST /api/reload
+ * Reload the current page in an existing session (for retry from step N).
  */
-router.post("/execute", async (req: Request, res: Response) => {
+router.post("/reload", async (req: Request, res: Response) => {
     try {
-        const { sessionId, action, prompt } = ExecuteRequestSchema.parse(req.body);
+        const { sessionId } = ReloadRequestSchema.parse(req.body);
         const stagehand = sessionManager.get(sessionId);
 
         if (!stagehand) {
             return res.status(404).json({ success: false, error: "Session not found" });
         }
 
-        wsManager.broadcastLog(sessionId, `Executing: ${action}`, "info");
-        console.log(`[${sessionId}] Executing ${action}: ${prompt.substring(0, 100)}...`);
+        if (!stagehand.context) {
+            return res.status(400).json({ success: false, error: "Browser context not available" });
+        }
+
+        const pages = stagehand.context.pages();
+        const page = pages[pages.length - 1];
+        if (!page) {
+            return res.status(400).json({ success: false, error: "No page to reload" });
+        }
+
+        wsManager.broadcastLog(sessionId, "Reloading current page...", "info");
+        await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 60000 });
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const screenshot = await captureAndBroadcast(sessionId, "reload", page);
+
+        res.json({
+            success: true,
+            sessionId,
+            screenshot,
+            pageUrl: page.url(),
+        });
+    } catch (error) {
+        console.error("[reload] Error:", error);
+        res.json({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+/**
+ * POST /api/execute
+ * Execute a raw Stagehand action (act/observe/extract)
+ * Used for custom prompts from LangGraph
+ */
+router.post("/execute", async (req: Request, res: Response) => {
+    try {
+        const body = ExecuteRequestSchema.parse(req.body);
+        const { sessionId, action, prompt, actions: cachedActions } = body;
+        const stagehand = sessionManager.get(sessionId);
+
+        if (!stagehand) {
+            return res.status(404).json({ success: false, error: "Session not found" });
+        }
 
         let result: unknown;
 
-        // Stagehand v3 API - simple string parameters
-        if (action === "act") {
-            result = await stagehand.act(prompt);
-        } else if (action === "observe") {
-            result = await stagehand.observe(prompt);
-        } else if (action === "extract") {
-            result = await stagehand.extract(prompt);
+        if (action === "actCached" && cachedActions?.length) {
+            // Deterministic execution: no LLM call — use cached selector from previous run
+            const first = { ...cachedActions[0] };
+            if (body.argumentsOverride && body.argumentsOverride.length > 0) {
+                first.arguments = body.argumentsOverride;
+            }
+            wsManager.broadcastLog(sessionId, "Executing cached action (no LLM)", "info");
+            console.log(`[${sessionId}] actCached: ${first.method} on selector`);
+            result = await stagehand.act(first);
+        } else {
+            const promptStr = prompt ?? "";
+            wsManager.broadcastLog(sessionId, `Executing: ${action}`, "info");
+            console.log(`[${sessionId}] Executing ${action}: ${promptStr.substring(0, 100)}...`);
+
+            if (action === "act") {
+                result = await stagehand.act(promptStr);
+            } else if (action === "observe") {
+                result = await stagehand.observe(promptStr);
+            } else if (action === "extract") {
+                result = await stagehand.extract(promptStr);
+            } else {
+                return res.status(400).json({ success: false, error: "Missing prompt or invalid action" });
+            }
         }
 
-        const screenshot = await captureAndBroadcast(sessionId, action);
+        // If a new tab was opened (e.g. CUET registration link), switch to it
+        const { page: activePage, pageUrl } = await switchToNewTabIfOpened(stagehand);
+
+        const screenshot = await captureAndBroadcast(sessionId, action, activePage ?? undefined);
 
         // GET PAGE TEXT FROM DOM - UI-BASED DETECTION
-        const page = stagehand.context.pages()[0];
-        const page_text = await page.evaluate(() => {
-            return document.body.innerText || document.body.textContent || "";
-        });
-        
-        // Get current page URL for navigation detection
-        const pageUrl = page.url();
+        let page_text = "";
+        if (activePage) {
+            try {
+                page_text = await (activePage as unknown as import("playwright").Page).evaluate(() => {
+                    return document.body.innerText || document.body.textContent || "";
+                });
+            } catch (_) { /* page may not support evaluate after tab switch */ }
+        }
 
         res.json({
             success: true,
             result,
             screenshot,
-            page_text,  // Return page text for UI-based error detection
-            pageUrl,    // Return page URL for navigation detection
+            page_text,
+            pageUrl,
         });
     } catch (error) {
         console.error("[execute] Error:", error);
@@ -279,22 +480,62 @@ router.post("/click", async (req: Request, res: Response) => {
             prompt = buildClickButtonPrompt(target);
         }
 
-        console.log(`[${sessionId}] Click prompt: ${prompt}`);
-        // Stagehand v3 - just pass string
-        await stagehand.act(prompt);
+        let checkboxHandled = false;
+        if (type === "checkbox" && stagehand.context) {
+            const pages = stagehand.context.pages() as import("playwright").Page[];
+            const currentPage = pages[pages.length - 1];
+            if (currentPage) {
+                const direct = await clickCheckboxByTargetText(currentPage, target);
+                if (direct.checked) {
+                    checkboxHandled = true;
+                    wsManager.broadcastLog(sessionId, `Checked checkbox directly: ${target}`, "success");
+                } else {
+                    wsManager.broadcastLog(sessionId, `Direct checkbox click failed, trying AI fallback...`, "warning");
+                }
+            }
+        }
 
-        // Wait for potential navigation
-        const page = await stagehand.context.awaitActivePage();
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!checkboxHandled) {
+            console.log(`[${sessionId}] Click prompt: ${prompt}`);
+            // Stagehand v3 - just pass string
+            await stagehand.act(prompt);
 
-        const screenshot = await captureAndBroadcast(sessionId, "click");
+            // For checkboxes, verify and force-check once more via deterministic DOM path
+            if (type === "checkbox" && stagehand.context) {
+                const pages = stagehand.context.pages() as import("playwright").Page[];
+                const currentPage = pages[pages.length - 1];
+                if (currentPage) {
+                    const verify = await clickCheckboxByTargetText(currentPage, target);
+                // Only fail if we could match the intended checkbox but it's still unchecked.
+                // If no match is found (label text variations), don't convert a successful UI click into a false failure.
+                if (verify.matched && !verify.checked) {
+                        throw new Error(`Checkbox '${target}' could not be checked`);
+                    }
+                }
+            }
+        }
+
+        let page: unknown = null;
+        let pageUrl = "";
+
+        // Only check for new tabs on links/buttons, never on checkboxes
+        if (type !== "checkbox") {
+            const tabResult = await switchToNewTabIfOpened(stagehand);
+            page = tabResult.page;
+            pageUrl = tabResult.pageUrl;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        const screenshot = await captureAndBroadcast(sessionId, "click", (page as { screenshot(): Promise<Buffer> }) ?? undefined);
 
         wsManager.broadcastLog(sessionId, `Clicked: ${target}`, "success");
 
         res.json({
             success: true,
             screenshot,
-            pageUrl: page.url(),
+            pageUrl,
         });
     } catch (error) {
         console.error("[click] Error:", error);
@@ -431,6 +672,44 @@ router.post("/analyze", async (req: Request, res: Response) => {
     } catch (error) {
         console.error("[analyze] Error:", error);
         res.json({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+/**
+ * POST /api/scroll
+ * Scroll the page by a fixed number of pixels (deterministic, no AI)
+ */
+router.post("/scroll", async (req: Request, res: Response) => {
+    try {
+        const { sessionId, direction, pixels } = ScrollRequestSchema.parse(req.body);
+        const stagehand = sessionManager.get(sessionId);
+
+        if (!stagehand) {
+            return res.status(404).json({ success: false, error: "Session not found" });
+        }
+
+        const page = stagehand.context.pages()[0];
+        const delta = direction === "up" ? -pixels : pixels;
+        await page.evaluate((dy) => {
+            window.scrollBy({ top: dy, left: 0, behavior: "auto" });
+        }, delta);
+
+        await new Promise((r) => setTimeout(r, 300));
+
+        const screenshot = await captureAndBroadcast(sessionId, "scroll");
+        const pageUrl = page.url();
+
+        res.json({
+            success: true,
+            screenshot,
+            pageUrl,
+        });
+    } catch (error) {
+        console.error("[scroll] Error:", error);
+        res.status(500).json({
             success: false,
             error: error instanceof Error ? error.message : "Unknown error",
         });

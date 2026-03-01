@@ -51,7 +51,7 @@ const automationExams = [
         name: 'NEET UG Registration',
         slug: 'neet-ug',
         url: 'https://neet.nta.nic.in/',
-        description: 'National Eligibility cum Entrance Test for medical admissions',
+        description: 'National Eligibility cum Entrance Test for medical admissions (official NTA portal)',
         field_mappings: {
             fullName: 'applicant_name',
             email: 'email',
@@ -66,7 +66,7 @@ const automationExams = [
     {
         name: 'CUET UG Registration',
         slug: 'cuet-ug',
-        url: 'https://cuet.samarth.ac.in/',
+        url: 'https://cuet.nta.nic.in/',
         description: 'Common University Entrance Test for central university admissions',
         field_mappings: {
             fullName: 'name',
@@ -76,6 +76,58 @@ const automationExams = [
             gender: 'gender'
         },
         agent_config: { maxRetries: 3, timeout: 120, provider: 'gemini' }
+    },
+    {
+        name: 'VITEEE Registration',
+        slug: 'viteee',
+        url: 'https://viteee.vit.ac.in/',
+        description: 'VIT Engineering Entrance Examination for BTech admissions at VIT',
+        field_mappings: {
+            fullName: 'applicant_name',
+            email: 'email',
+            phone: 'mobile_number',
+            alternatePhone: 'alternate_mobile',
+            dateOfBirth: 'date_of_birth',
+            gender: 'gender',
+            fatherName: 'father_name',
+            motherName: 'mother_name',
+            guardianName: 'guardian_name',
+            nationality: 'nationality',
+            address: 'address',
+            addressLine2: 'address_line2',
+            city: 'city',
+            state: 'state',
+            pincode: 'pincode',
+            category: 'category',
+            religion: 'religion',
+            aadharNumber: 'aadhar_number',
+            matricBoard: 'class_10_board',
+            matricPercentage: 'class_10_percentage',
+            matricYear: 'class_10_year',
+            postmatricBoard: 'class_12_board',
+            postmatricPercentage: 'class_12_percentage',
+            postmatricYear: 'class_12_year',
+            stream: 'stream'
+        },
+        agent_config: {
+            maxRetries: 5,
+            timeout: 180,
+            provider: 'gemini',
+            screenshot_interval_ms: 2000,
+            human_intervention_timeout_seconds: 300,
+            success_patterns: [
+                'registration successful',
+                'application submitted',
+                'application number',
+                'registration complete'
+            ],
+            error_patterns: [
+                'registration failed',
+                'invalid details',
+                'error occurred',
+                'session expired'
+            ]
+        }
     }
 ];
 

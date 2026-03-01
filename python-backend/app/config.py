@@ -1,9 +1,37 @@
 """
 Application Configuration
 Loads environment variables and provides typed settings.
+Loads backend/.env first for DB credentials (DB_USER, DB_PASSWORD, etc.) so they match the main backend.
 """
+import os
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+# backend/.env path (repo root / backend / .env)
+_BACKEND_ENV = Path(__file__).resolve().parent.parent.parent / "backend" / ".env"
+
+
+def _load_backend_env() -> None:
+    """Load backend/.env DB_* into os.environ so credentials match the main backend."""
+    if not _BACKEND_ENV.exists():
+        print(f"⚠️  backend/.env not found at {_BACKEND_ENV} - using defaults")
+        return
+    print(f"✓ Loading DB credentials from {_BACKEND_ENV}")
+    with open(_BACKEND_ENV) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key in ("DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"):
+                os.environ[key] = value
+                print(f"  Set {key}={value if key != 'DB_PASSWORD' else '***'}")
+
+
+_load_backend_env()
 
 
 class Settings(BaseSettings):

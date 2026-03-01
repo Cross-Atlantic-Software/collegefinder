@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     print("🚀 Starting Exam Automation Platform...")
+    print(f"DB Config: {settings.db_user}@{settings.db_host}:{settings.db_port}/{settings.db_name}")
     await Database.connect()
     
     yield
