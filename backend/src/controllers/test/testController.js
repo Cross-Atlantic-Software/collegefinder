@@ -32,8 +32,14 @@ class TestController {
    */
   static async getTestById(req, res) {
     try {
-      const { id } = req.params;
-      const test = await Test.findById(parseInt(id));
+      const testId = parseInt(req.params.testId, 10);
+      if (Number.isNaN(testId) || testId < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid test ID'
+        });
+      }
+      const test = await Test.findById(testId);
       
       if (!test) {
         return res.status(404).json({
@@ -851,6 +857,241 @@ class TestController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch section progress'
+      });
+    }
+  }
+
+  /**
+   * Build format baseline (total_marks, total_questions, subjects) from test.sections and test.total_marks.
+   * Used so analytics are calculated against the standard paper format, not just attempted questions.
+   */
+  static _getFormatBaseline(test) {
+    if (!test) return null;
+    const sections = typeof test.sections === 'string' ? JSON.parse(test.sections || '{}') : (test.sections || {});
+    const totalMarks = parseInt(test.total_marks, 10) || 0;
+    if (Object.keys(sections).length === 0) return { total_marks: totalMarks, total_questions: 0, subjects: [] };
+
+    const subjects = [];
+    let totalQuestions = 0;
+    for (const [key, config] of Object.entries(sections)) {
+      const name = config?.name || key;
+      const subsections = config?.subsections || {};
+      const sectionQuestions = Object.values(subsections).reduce((sum, sub) => sum + (sub?.questions || 0), 0);
+      const sectionMarks = parseInt(config?.marks, 10) || 0;
+      subjects.push({
+        key,
+        name,
+        total_questions: sectionQuestions,
+        total_marks: sectionMarks
+      });
+      totalQuestions += sectionQuestions;
+    }
+    return {
+      total_marks: totalMarks,
+      total_questions: totalQuestions,
+      subjects
+    };
+  }
+
+  /**
+   * Get per-attempt analytics (full matrix breakdown).
+   * Uses test format (sections, total_marks) as baseline so score is "out of 300", attempt rate vs full paper, and all subjects shown.
+   */
+  static async getAttemptAnalytics(req, res) {
+    try {
+      const { testAttemptId } = req.params;
+      const userId = req.user.id;
+
+      const testAttempt = await TestAttempt.getWithDetails(parseInt(testAttemptId));
+      if (!testAttempt || testAttempt.user_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized access to test attempt'
+        });
+      }
+
+      if (!testAttempt.completed_at) {
+        return res.status(400).json({
+          success: false,
+          message: 'Test attempt is not yet completed'
+        });
+      }
+
+      const test = await Test.findById(testAttempt.test_id);
+      const formatBaseline = TestController._getFormatBaseline(test);
+
+      const [overallStats, subjectStats, topicStats, subTopicStats, negMarks] = await Promise.all([
+        QuestionAttempt.getTestAttemptStats(parseInt(testAttemptId)),
+        QuestionAttempt.getSubjectWiseStats(parseInt(testAttemptId)),
+        QuestionAttempt.getTopicWiseStats(parseInt(testAttemptId)),
+        QuestionAttempt.getSubTopicWiseStats(parseInt(testAttemptId)),
+        QuestionAttempt.getNegativeMarksStats(parseInt(testAttemptId))
+      ]);
+
+      const attempted = parseInt(overallStats.attempted_questions) || 0;
+      const correct = parseInt(overallStats.correct_answers) || 0;
+      const incorrect = parseInt(overallStats.incorrect_answers) || 0;
+      const skipped = parseInt(overallStats.skipped_questions) || 0;
+      const totalTimeSecs = parseInt(overallStats.total_time_seconds) || 0;
+      const negativeLost = parseFloat(negMarks?.total_negative_marks_lost) || 0;
+
+      const formatTotalQuestions = formatBaseline && formatBaseline.total_questions > 0
+        ? formatBaseline.total_questions
+        : parseInt(overallStats.total_questions) || 0;
+      const formatTotalMarks = formatBaseline && formatBaseline.total_marks > 0
+        ? formatBaseline.total_marks
+        : (test && parseInt(test.total_marks, 10)) || 0;
+
+      const overall = {
+        total_questions: formatTotalQuestions,
+        attempted,
+        correct,
+        incorrect,
+        skipped,
+        attempt_rate: formatTotalQuestions > 0 ? parseFloat(((attempted / formatTotalQuestions) * 100).toFixed(2)) : 0,
+        accuracy_percentage: attempted > 0 ? parseFloat(overallStats.accuracy_percentage) || 0 : 0,
+        total_score: testAttempt.total_score,
+        total_marks: formatTotalMarks,
+        percentile: parseFloat(testAttempt.percentile) || null,
+        rank_position: testAttempt.rank_position || null,
+        total_time_seconds: totalTimeSecs,
+        avg_time_per_question: attempted > 0 ? parseFloat((totalTimeSecs / attempted).toFixed(2)) : 0,
+        negative_marks_lost: negativeLost
+      };
+
+      const formatDimension = (rows, groupKey) => rows.map(r => ({
+        label: r[groupKey] || 'Unknown',
+        subject: r.subject || null,
+        topic: r.topic || null,
+        total_questions: parseInt(r.total_questions) || 0,
+        attempted: parseInt(r.attempted_questions) || 0,
+        correct: parseInt(r.correct_answers) || 0,
+        incorrect: parseInt(r.incorrect_answers) || 0,
+        skipped: parseInt(r.skipped_questions) || 0,
+        attempt_rate: parseInt(r.total_questions) > 0
+          ? parseFloat(((parseInt(r.attempted_questions) / parseInt(r.total_questions)) * 100).toFixed(2))
+          : 0,
+        accuracy_percentage: parseFloat(r.accuracy_percentage) || 0,
+        total_time_seconds: parseInt(r.total_time_seconds) || 0,
+        avg_time_per_question: parseInt(r.attempted_questions) > 0
+          ? parseFloat((parseInt(r.total_time_seconds) / parseInt(r.attempted_questions)).toFixed(2))
+          : 0,
+        negative_marks_lost: parseFloat(r.negative_marks_lost) || 0
+      }));
+
+      let bySubject = formatDimension(subjectStats, 'subject');
+      if (formatBaseline && formatBaseline.subjects && formatBaseline.subjects.length > 0) {
+        const subjectStatsByLabel = bySubject.reduce((acc, row) => {
+          acc[row.label] = row;
+          return acc;
+        }, {});
+        bySubject = formatBaseline.subjects.map(({ name, total_questions, total_marks }) => {
+          const existing = subjectStatsByLabel[name];
+          if (existing) {
+            return {
+              ...existing,
+              total_questions,
+              attempt_rate: total_questions > 0
+                ? parseFloat(((existing.attempted / total_questions) * 100).toFixed(2))
+                : 0
+            };
+          }
+          return {
+            label: name,
+            subject: name,
+            topic: null,
+            total_questions,
+            attempted: 0,
+            correct: 0,
+            incorrect: 0,
+            skipped: 0,
+            attempt_rate: 0,
+            accuracy_percentage: 0,
+            total_time_seconds: 0,
+            avg_time_per_question: 0,
+            negative_marks_lost: 0
+          };
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          attempt: {
+            id: testAttempt.id,
+            test_title: testAttempt.test_title,
+            exam_name: testAttempt.exam_name,
+            completed_at: testAttempt.completed_at,
+            duration_minutes: testAttempt.duration_minutes
+          },
+          format_baseline: formatBaseline ? {
+            total_marks: formatBaseline.total_marks,
+            total_questions: formatBaseline.total_questions
+          } : null,
+          overall,
+          by_subject: bySubject,
+          by_topic: formatDimension(topicStats, 'topic'),
+          by_sub_topic: formatDimension(subTopicStats, 'sub_topic')
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching attempt analytics:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch attempt analytics'
+      });
+    }
+  }
+
+  /**
+   * Get aggregate analytics summary for current user
+   */
+  static async getUserAnalyticsSummary(req, res) {
+    try {
+      const userId = req.user.id;
+      const { examId } = req.query;
+
+      const [aggregate, attempts] = await Promise.all([
+        TestAttempt.getUserAnalytics(userId, examId ? parseInt(examId) : null),
+        TestAttempt.findByUserId(userId, 50, 0)
+      ]);
+
+      const completedAttempts = attempts.filter(a => a.completed_at);
+
+      res.json({
+        success: true,
+        data: {
+          aggregate: {
+            total_attempts: parseInt(aggregate.total_attempts) || 0,
+            completed_attempts: parseInt(aggregate.completed_attempts) || 0,
+            avg_score: parseFloat(aggregate.avg_score) || 0,
+            best_score: parseFloat(aggregate.best_score) || 0,
+            avg_accuracy: parseFloat(aggregate.avg_accuracy) || 0,
+            avg_time_minutes: parseFloat(aggregate.avg_time) || 0
+          },
+          attempts: completedAttempts.map(a => ({
+            id: a.id,
+            test_title: a.test_title,
+            exam_name: a.exam_name,
+            total_score: a.total_score,
+            accuracy_percentage: parseFloat(a.accuracy_percentage) || 0,
+            percentile: parseFloat(a.percentile) || null,
+            rank_position: a.rank_position || null,
+            attempted_count: a.attempted_count,
+            correct_count: a.correct_count,
+            incorrect_count: a.incorrect_count,
+            skipped_count: a.skipped_count,
+            time_spent_minutes: a.time_spent_minutes,
+            subject_wise_stats: a.subject_wise_stats,
+            completed_at: a.completed_at
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching user analytics summary:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch analytics summary'
       });
     }
   }

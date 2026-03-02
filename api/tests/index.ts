@@ -102,6 +102,84 @@ export interface QuestionAttempt {
   created_at: string;
 }
 
+// Analytics interfaces
+
+export interface AnalyticsDimensionRow {
+  label: string;
+  subject: string | null;
+  topic: string | null;
+  total_questions: number;
+  attempted: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  attempt_rate: number;
+  accuracy_percentage: number;
+  total_time_seconds: number;
+  avg_time_per_question: number;
+  negative_marks_lost: number;
+}
+
+export interface AttemptOverallStats {
+  total_questions: number;
+  attempted: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  attempt_rate: number;
+  accuracy_percentage: number;
+  total_score: number;
+  /** Max marks from exam format (e.g. 300 for JEE Main) when available */
+  total_marks?: number;
+  percentile: number | null;
+  rank_position: number | null;
+  total_time_seconds: number;
+  avg_time_per_question: number;
+  negative_marks_lost: number;
+}
+
+export interface AttemptAnalytics {
+  attempt: {
+    id: number;
+    test_title: string;
+    exam_name: string;
+    completed_at: string;
+    duration_minutes: number;
+  };
+  /** Format baseline (paper structure) when test has sections; used for "score out of 300" and attempt rate vs full paper */
+  format_baseline?: { total_marks: number; total_questions: number } | null;
+  overall: AttemptOverallStats;
+  by_subject: AnalyticsDimensionRow[];
+  by_topic: AnalyticsDimensionRow[];
+  by_sub_topic: AnalyticsDimensionRow[];
+}
+
+export interface AggregateAnalytics {
+  total_attempts: number;
+  completed_attempts: number;
+  avg_score: number;
+  best_score: number;
+  avg_accuracy: number;
+  avg_time_minutes: number;
+}
+
+export interface AnalyticsSummaryAttempt {
+  id: number;
+  test_title: string;
+  exam_name: string;
+  total_score: number;
+  accuracy_percentage: number;
+  percentile: number | null;
+  rank_position: number | null;
+  attempted_count: number;
+  correct_count: number;
+  incorrect_count: number;
+  skipped_count: number;
+  time_spent_minutes: number;
+  subject_wise_stats: Record<string, any>;
+  completed_at: string;
+}
+
 // API Functions
 
 /**
@@ -427,6 +505,29 @@ export async function getSectionProgress(testAttemptId: number): Promise<ApiResp
   };
 }>> {
   return apiRequest(`/tests/attempts/${testAttemptId}/progress`);
+}
+
+/**
+ * Get per-attempt full analytics matrix
+ */
+export async function getAttemptAnalytics(testAttemptId: number): Promise<ApiResponse<AttemptAnalytics>> {
+  return apiRequest<AttemptAnalytics>(`/tests/attempts/${testAttemptId}/analytics`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Get aggregate analytics summary for the current user
+ */
+export async function getUserAnalyticsSummary(examId?: number): Promise<ApiResponse<{
+  aggregate: AggregateAnalytics;
+  attempts: AnalyticsSummaryAttempt[];
+}>> {
+  const params = examId ? `?examId=${examId}` : '';
+  return apiRequest<{ aggregate: AggregateAnalytics; attempts: AnalyticsSummaryAttempt[] }>(
+    `/tests/analytics${params}`,
+    { method: 'GET' }
+  );
 }
 
 /**

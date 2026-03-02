@@ -4,6 +4,7 @@ import { Button } from "@/components/shared";
 import { getAllExams } from "@/api";
 import { getExamFormats, getTestRules, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
+import AnalyticsTab from "@/components/test/AnalyticsTab";
 
 interface Exam {
   id: number;
@@ -392,19 +393,7 @@ export default function TestModule() {
         </div>
       )}
 
-      {activeTab === "analytics" && (
-        <div className="text-center py-12">
-          <div className="text-slate-400">
-            <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium mb-2">Performance Analytics</p>
-            <p className="text-sm">Complete some tests to see your performance insights</p>
-          </div>
-        </div>
-      )}
+      {activeTab === "analytics" && <AnalyticsTab />}
     </div>
   );
 }

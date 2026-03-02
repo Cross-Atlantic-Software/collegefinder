@@ -108,6 +108,42 @@ const validateExamId = [
 router.get('/', authenticate, TestController.getAllTests);
 
 /**
+ * @route   GET /api/tests/history
+ * @desc    Get user's test history
+ * @access  Private
+ */
+router.get('/history', authenticate, TestController.getUserTestHistory);
+
+/**
+ * @route   GET /api/tests/analytics
+ * @desc    Get aggregate analytics summary for current user
+ * @access  Private
+ */
+router.get('/analytics', authenticate, TestController.getUserAnalyticsSummary);
+
+/**
+ * @route   GET /api/tests/attempts/:testAttemptId/results
+ * @desc    Get test attempt results
+ * @access  Private
+ */
+router.get('/attempts/:testAttemptId/results',
+  authenticate,
+  validateTestAttemptId,
+  TestController.getTestResults
+);
+
+/**
+ * @route   GET /api/tests/attempts/:testAttemptId/analytics
+ * @desc    Get full matrix analytics for a specific test attempt
+ * @access  Private
+ */
+router.get('/attempts/:testAttemptId/analytics',
+  authenticate,
+  validateTestAttemptId,
+  TestController.getAttemptAnalytics
+);
+
+/**
  * @route   GET /api/tests/:testId
  * @desc    Get test by ID
  * @access  Private
@@ -178,25 +214,6 @@ router.post('/attempts/:testAttemptId/complete',
   validateTestAttemptId,
   TestController.completeTest
 );
-
-// Results and history routes
-/**
- * @route   GET /api/tests/attempts/:testAttemptId/results
- * @desc    Get test attempt results
- * @access  Private
- */
-router.get('/attempts/:testAttemptId/results',
-  authenticate,
-  validateTestAttemptId,
-  TestController.getTestResults
-);
-
-/**
- * @route   GET /api/tests/history
- * @desc    Get user's test history
- * @access  Private
- */
-router.get('/history', authenticate, TestController.getUserTestHistory);
 
 // Format-specific routes
 /**

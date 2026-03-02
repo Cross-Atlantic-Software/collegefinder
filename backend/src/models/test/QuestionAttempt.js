@@ -253,6 +253,82 @@ class QuestionAttempt {
   }
 
   /**
+   * Get topic-wise statistics for a test attempt
+   */
+  static async getTopicWiseStats(testAttemptId) {
+    const result = await db.query(`
+      SELECT 
+        q.topic,
+        q.subject,
+        COUNT(*) as total_questions,
+        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
+        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
+        COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
+        ROUND(
+          (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
+           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+        ) as accuracy_percentage
+      FROM question_attempts qa
+      JOIN questions q ON qa.question_id = q.id
+      WHERE qa.test_attempt_id = $1 AND q.topic IS NOT NULL AND q.topic != ''
+      GROUP BY q.topic, q.subject
+      ORDER BY q.subject, q.topic
+    `, [testAttemptId]);
+    return result.rows;
+  }
+
+  /**
+   * Get sub-topic-wise statistics for a test attempt
+   */
+  static async getSubTopicWiseStats(testAttemptId) {
+    const result = await db.query(`
+      SELECT 
+        q.sub_topic,
+        q.topic,
+        q.subject,
+        COUNT(*) as total_questions,
+        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
+        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
+        COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
+        ROUND(
+          (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
+           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+        ) as accuracy_percentage
+      FROM question_attempts qa
+      JOIN questions q ON qa.question_id = q.id
+      WHERE qa.test_attempt_id = $1 AND q.sub_topic IS NOT NULL AND q.sub_topic != ''
+      GROUP BY q.sub_topic, q.topic, q.subject
+      ORDER BY q.subject, q.topic, q.sub_topic
+    `, [testAttemptId]);
+    return result.rows;
+  }
+
+  /**
+   * Get overall negative marks lost for a test attempt
+   */
+  static async getNegativeMarksStats(testAttemptId) {
+    const result = await db.query(`
+      SELECT 
+        COALESCE(SUM(q.negative_marks), 0) as total_negative_marks_lost,
+        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as wrong_answers
+      FROM question_attempts qa
+      JOIN questions q ON qa.question_id = q.id
+      WHERE qa.test_attempt_id = $1
+        AND qa.is_correct = false
+        AND qa.selected_option IS NOT NULL
+    `, [testAttemptId]);
+    return result.rows[0];
+  }
+
+  /**
    * Bulk create question attempts for a test
    */
   static async bulkCreate(attempts) {
