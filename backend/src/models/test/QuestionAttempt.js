@@ -329,6 +329,46 @@ class QuestionAttempt {
   }
 
   /**
+   * Upsert a question attempt.
+   * If a row already exists for (test_attempt_id, question_id), update it (handles pre-inserted empty rows).
+   * Otherwise, insert a new row.
+   */
+  static async upsert(data) {
+    const {
+      user_id,
+      question_id,
+      test_attempt_id,
+      selected_option,
+      is_correct,
+      time_spent_seconds,
+      attempt_order
+    } = data;
+
+    const result = await db.query(`
+      INSERT INTO question_attempts (
+        user_id, question_id, test_attempt_id, selected_option,
+        is_correct, time_spent_seconds, attempt_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (test_attempt_id, question_id) DO UPDATE SET
+        selected_option = EXCLUDED.selected_option,
+        is_correct = EXCLUDED.is_correct,
+        time_spent_seconds = EXCLUDED.time_spent_seconds,
+        attempt_order = EXCLUDED.attempt_order
+      RETURNING *
+    `, [
+      user_id,
+      question_id,
+      test_attempt_id,
+      selected_option,
+      is_correct,
+      time_spent_seconds,
+      attempt_order
+    ]);
+
+    return result.rows[0];
+  }
+
+  /**
    * Bulk create question attempts for a test
    */
   static async bulkCreate(attempts) {

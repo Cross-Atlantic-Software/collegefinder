@@ -85,6 +85,8 @@ const init = async () => {
       'user_document_vault.sql', // User document vault table (depends on users)
       'test_attempts.sql',    // Test attempts table (depends on users, tests, exams)
       'question_attempts.sql', // Question attempts table (depends on users, questions, test_attempts)
+      'mock_tests.sql',       // Mock tests table (depends on exams)
+      'mock_questions.sql',   // Mock questions table (depends on mock_tests, questions)
       // Automation tables (for python-backend PostgreSQL integration)
       'automation_exams.sql',       // Automation exam configurations
       'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
@@ -123,7 +125,9 @@ const runMigrations = async () => {
   const migrationsDir = path.join(__dirname, '../database/migrations');
   const migrationFiles = [
     'update_government_identification_apaar_id.sql',
-    'add_questions_image_url.sql'
+    'add_questions_image_url.sql',
+    'add_total_mocks_generated_to_exams.sql',
+    'add_mock_test_id_to_test_attempts.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

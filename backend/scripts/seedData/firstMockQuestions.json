@@ -1,0 +1,218 @@
+[
+  {
+    "subject": "Physics",
+    "section_name": "physics",
+    "section_type": "MCQ",
+    "difficulty": "easy",
+    "question_type": "mcq",
+    "question_text": "The unit of force in SI system is",
+    "options": [
+      { "key": "A", "text": "Newton" },
+      { "key": "B", "text": "Dyne" },
+      { "key": "C", "text": "Kg-wt" },
+      { "key": "D", "text": "Pascal" }
+    ],
+    "correct_option": "A",
+    "solution_text": "In the SI system, the unit of force is Newton (N), named after Isaac Newton. 1 N = 1 kg⋅m/s².",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Physics",
+    "section_name": "physics",
+    "section_type": "MCQ",
+    "difficulty": "medium",
+    "question_type": "mcq",
+    "question_text": "A body is moving with uniform velocity. What is the net force acting on it?",
+    "options": [
+      { "key": "A", "text": "Zero" },
+      { "key": "B", "text": "Equal to weight" },
+      { "key": "C", "text": "In the direction of motion" },
+      { "key": "D", "text": "Opposite to direction of motion" }
+    ],
+    "correct_option": "A",
+    "solution_text": "By Newton's first law, if velocity is constant (uniform), acceleration is zero, so net force F = ma = 0.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Chemistry",
+    "section_name": "chemistry",
+    "section_type": "MCQ",
+    "difficulty": "easy",
+    "question_type": "mcq",
+    "question_text": "The atomic number of carbon is",
+    "options": [
+      { "key": "A", "text": "6" },
+      { "key": "B", "text": "12" },
+      { "key": "C", "text": "14" },
+      { "key": "D", "text": "8" }
+    ],
+    "correct_option": "A",
+    "solution_text": "Carbon has 6 protons in its nucleus, so its atomic number is 6. The mass number of C-12 is 12.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Chemistry",
+    "section_name": "chemistry",
+    "section_type": "MCQ",
+    "difficulty": "medium",
+    "question_type": "mcq",
+    "question_text": "Which of the following is a strong electrolyte?",
+    "options": [
+      { "key": "A", "text": "Acetic acid" },
+      { "key": "B", "text": "Sodium chloride" },
+      { "key": "C", "text": "Ammonia" },
+      { "key": "D", "text": "Water" }
+    ],
+    "correct_option": "B",
+    "solution_text": "Sodium chloride (NaCl) is a salt that completely dissociates in aqueous solution, so it is a strong electrolyte.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Mathematics",
+    "section_name": "mathematics",
+    "section_type": "MCQ",
+    "difficulty": "easy",
+    "question_type": "mcq",
+    "question_text": "If 2x + 3 = 9, then x equals",
+    "options": [
+      { "key": "A", "text": "2" },
+      { "key": "B", "text": "3" },
+      { "key": "C", "text": "4" },
+      { "key": "D", "text": "6" }
+    ],
+    "correct_option": "B",
+    "solution_text": "2x + 3 = 9 ⇒ 2x = 6 ⇒ x = 3.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Mathematics",
+    "section_name": "mathematics",
+    "section_type": "MCQ",
+    "difficulty": "medium",
+    "question_type": "mcq",
+    "question_text": "The derivative of x³ with respect to x is",
+    "options": [
+      { "key": "A", "text": "3x" },
+      { "key": "B", "text": "3x²" },
+      { "key": "C", "text": "x²" },
+      { "key": "D", "text": "2x³" }
+    ],
+    "correct_option": "B",
+    "solution_text": "d/dx(x^n) = n x^(n-1). So d/dx(x³) = 3x².",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Biology",
+    "section_name": "biology",
+    "section_type": "MCQ",
+    "difficulty": "easy",
+    "question_type": "mcq",
+    "question_text": "The powerhouse of the cell is",
+    "options": [
+      { "key": "A", "text": "Nucleus" },
+      { "key": "B", "text": "Mitochondria" },
+      { "key": "C", "text": "Ribosome" },
+      { "key": "D", "text": "Golgi body" }
+    ],
+    "correct_option": "B",
+    "solution_text": "Mitochondria are called the powerhouse of the cell because they produce ATP through cellular respiration.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Biology",
+    "section_name": "biology",
+    "section_type": "MCQ",
+    "difficulty": "medium",
+    "question_type": "mcq",
+    "question_text": "DNA replication is",
+    "options": [
+      { "key": "A", "text": "Conservative" },
+      { "key": "B", "text": "Semi-conservative" },
+      { "key": "C", "text": "Dispersive" },
+      { "key": "D", "text": "Non-conservative" }
+    ],
+    "correct_option": "B",
+    "solution_text": "Meselson and Stahl showed that DNA replication is semi-conservative: each new double helix has one old and one new strand.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "General Knowledge",
+    "section_name": "general_knowledge",
+    "section_type": "MCQ",
+    "difficulty": "easy",
+    "question_type": "mcq",
+    "question_text": "The capital of India is",
+    "options": [
+      { "key": "A", "text": "Mumbai" },
+      { "key": "B", "text": "Kolkata" },
+      { "key": "C", "text": "New Delhi" },
+      { "key": "D", "text": "Chennai" }
+    ],
+    "correct_option": "C",
+    "solution_text": "New Delhi is the capital of India. It is a part of the National Capital Territory of Delhi.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Physics",
+    "section_name": "physics",
+    "section_type": "MCQ",
+    "difficulty": "hard",
+    "question_type": "mcq",
+    "question_text": "A block of mass 2 kg is placed on a rough horizontal surface. If μ = 0.5 and g = 10 m/s², the maximum force of friction is",
+    "options": [
+      { "key": "A", "text": "5 N" },
+      { "key": "B", "text": "10 N" },
+      { "key": "C", "text": "20 N" },
+      { "key": "D", "text": "25 N" }
+    ],
+    "correct_option": "B",
+    "solution_text": "Maximum friction f_max = μN = μmg = 0.5 × 2 × 10 = 10 N.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Chemistry",
+    "section_name": "chemistry",
+    "section_type": "MCQ",
+    "difficulty": "hard",
+    "question_type": "mcq",
+    "question_text": "In the periodic table, the most electronegative element is",
+    "options": [
+      { "key": "A", "text": "Fluorine" },
+      { "key": "B", "text": "Chlorine" },
+      { "key": "C", "text": "Oxygen" },
+      { "key": "D", "text": "Nitrogen" }
+    ],
+    "correct_option": "A",
+    "solution_text": "Fluorine has the highest electronegativity (3.98 on the Pauling scale) among all elements.",
+    "marks": 1,
+    "negative_marks": 0.25
+  },
+  {
+    "subject": "Mathematics",
+    "section_name": "mathematics",
+    "section_type": "MCQ",
+    "difficulty": "hard",
+    "question_type": "mcq",
+    "question_text": "The number of distinct real roots of x² - 5|x| + 6 = 0 is",
+    "options": [
+      { "key": "A", "text": "0" },
+      { "key": "B", "text": "2" },
+      { "key": "C", "text": "3" },
+      { "key": "D", "text": "4" }
+    ],
+    "correct_option": "D",
+    "solution_text": "For x ≥ 0: x² - 5x + 6 = 0 gives x = 2, 3. For x < 0: x² + 5x + 6 = 0 gives x = -2, -3. So there are 4 distinct real roots: 2, 3, -2, -3. The equation x² - 5|x| + 6 = 0 splits into two quadratics; each gives two roots.",
+    "marks": 1,
+    "negative_marks": 0.25
+  }
+]

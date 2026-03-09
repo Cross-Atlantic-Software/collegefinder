@@ -444,6 +444,46 @@ export async function getTestRules(examId: number, formatId: string): Promise<Ap
   return apiRequest<FormatRules>(`/tests/exams/${examId}/formats/${formatId}/rules`);
 }
 
+// ─── Mock Test API ────────────────────────────────────────────────────────────
+
+export interface MockQuestion extends Question {
+  mock_question_id: number;
+  order_index: number;
+  section_name?: string;
+  section_type?: string;
+}
+
+/**
+ * Start a mock test attempt.
+ * Uses the pre-generated mock that matches the user's progression (completed mocks + 1).
+ * Also triggers background generation of the next mock.
+ */
+export async function startMockTest(examId: number): Promise<ApiResponse<{
+  test_attempt_id: number;
+  mock_test_id: number;
+  mock_number: number;
+  total_questions: number;
+  is_resume: boolean;
+  status?: string;
+  next_mock_number?: number;
+}>> {
+  return apiRequest(`/mock-tests/exams/${examId}/start`, { method: 'POST' });
+}
+
+/**
+ * Get all pre-generated questions for a mock test (no correct answers included).
+ */
+export async function getMockQuestions(mockTestId: number): Promise<ApiResponse<{
+  mock_test_id: number;
+  mock_number: number;
+  total_questions: number;
+  questions: MockQuestion[];
+}>> {
+  return apiRequest(`/mock-tests/${mockTestId}/questions`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Start a format-specific test
  */

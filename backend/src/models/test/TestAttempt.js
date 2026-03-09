@@ -14,9 +14,13 @@ class TestAttempt {
    */
   static async findByUserId(userId, limit = 20, offset = 0) {
     const result = await db.query(`
-      SELECT ta.*, t.title as test_title, e.name as exam_name
+      SELECT
+        ta.*,
+        COALESCE(t.title, CONCAT('Mock ', mt.mock_number)) as test_title,
+        e.name as exam_name
       FROM test_attempts ta
-      JOIN tests t ON ta.test_id = t.id
+      LEFT JOIN tests t ON ta.test_id = t.id
+      LEFT JOIN mock_tests mt ON ta.mock_test_id = mt.id
       JOIN exams_taxonomies e ON ta.exam_id = e.id
       WHERE ta.user_id = $1
       ORDER BY ta.created_at DESC
@@ -56,10 +60,10 @@ class TestAttempt {
    * Create a new test attempt
    */
   static async create(data) {
-    const { user_id, test_id, exam_id } = data;
+    const { user_id, test_id, exam_id, mock_test_id } = data;
     const result = await db.query(
-      'INSERT INTO test_attempts (user_id, test_id, exam_id) VALUES ($1, $2, $3) RETURNING *',
-      [user_id, test_id, exam_id]
+      'INSERT INTO test_attempts (user_id, test_id, exam_id, mock_test_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [user_id, test_id || null, exam_id, mock_test_id || null]
     );
     return result.rows[0];
   }
@@ -192,6 +196,22 @@ class TestAttempt {
   }
 
   /**
+   * Count completed mock-based attempts for a user + exam combination.
+   * Used for mock progression logic.
+   */
+  static async countCompletedMocks(userId, examId) {
+    const result = await db.query(`
+      SELECT COUNT(*) as count
+      FROM test_attempts ta
+      JOIN mock_tests mt ON ta.mock_test_id = mt.id
+      WHERE ta.user_id = $1
+        AND ta.exam_id = $2
+        AND ta.completed_at IS NOT NULL
+    `, [userId, examId]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  /**
    * Delete test attempt
    */
   static async delete(id) {
@@ -213,11 +233,15 @@ class TestAttempt {
         t.test_type,
         t.duration_minutes,
         t.total_questions as test_total_questions,
+        COALESCE(t.title, CONCAT('Mock ', mt.mock_number)) as test_title,
+        mt.mock_number,
+        mt.total_questions as mock_total_questions,
         e.name as exam_name,
         u.name as user_name,
         u.email as user_email
       FROM test_attempts ta
-      JOIN tests t ON ta.test_id = t.id
+      LEFT JOIN tests t ON ta.test_id = t.id
+      LEFT JOIN mock_tests mt ON ta.mock_test_id = mt.id
       JOIN exams_taxonomies e ON ta.exam_id = e.id
       JOIN users u ON ta.user_id = u.id
       WHERE ta.id = $1

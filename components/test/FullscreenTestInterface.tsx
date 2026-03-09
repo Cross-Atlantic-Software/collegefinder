@@ -1,15 +1,16 @@
 'use client'
-import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/shared";
 import { 
-  startFormatTest, 
-  getSectionQuestion, 
+  startMockTest,
+  getMockQuestions,
   submitAnswer, 
   getSectionProgress,
   completeTest,
   getTestResults,
-  ExamFormat 
+  ExamFormat,
+  MockQuestion,
 } from "@/api/tests";
 import TestRules from "./TestRules";
 
@@ -65,6 +66,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
   // sectionMaps: per-section question cache, keyed by sectionKey then 1-based question number
   const [sectionMaps, setSectionMaps] = useState<Record<string, Record<number, QuestionEntry>>>({});
   const [testAttemptId, setTestAttemptId] = useState<number | null>(null);
+  const [mockTestId, setMockTestId] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(format.duration_minutes * 60); // in seconds
   const [sectionProgress, setSectionProgress] = useState<SectionProgress>({});
   const [loading, setLoading] = useState(false);
@@ -173,19 +175,55 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     }
   };
 
+  /** Group a flat list of mock questions into per-section maps keyed by 1-based question number. */
+  const buildSectionMaps = (questions: MockQuestion[]): Record<string, Record<number, QuestionEntry>> => {
+    const counters: Record<string, number> = {};
+    const maps: Record<string, Record<number, QuestionEntry>> = {};
+    // questions are already sorted by order_index from the API
+    for (const q of questions) {
+      const key = q.section_name || Object.keys(format.sections)[0];
+      if (!maps[key]) maps[key] = {};
+      if (!counters[key]) counters[key] = 0;
+      counters[key]++;
+      maps[key][counters[key]] = { question: q, status: 'not_visited', savedOption: '' };
+    }
+    return maps;
+  };
+
   const startTest = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await startFormatTest(exam.id, format.format_id);
-      if (response.success && response.data) {
-        const attemptId = response.data.test_attempt_id;
-        setTestAttemptId(attemptId);
-        await enterFullscreen();
-        await loadQuestionForNumber(1, attemptId);
-      } else {
-        setError(response.message || 'Failed to start test');
+      // Start the mock test — this picks the user's next unstarted mock
+      const startRes = await startMockTest(exam.id);
+      if (!startRes.success || !startRes.data) {
+        setError(startRes.message || 'Failed to start test. Please try again shortly.');
+        return;
+      }
+
+      const { test_attempt_id, mock_test_id } = startRes.data;
+      setTestAttemptId(test_attempt_id);
+      setMockTestId(mock_test_id);
+
+      // Load all questions for this mock upfront — no per-question API calls during the test
+      const qRes = await getMockQuestions(mock_test_id);
+      if (!qRes.success || !qRes.data || qRes.data.questions.length === 0) {
+        setError(qRes.message || 'Failed to load mock questions. Please try again.');
+        return;
+      }
+
+      const builtMaps = buildSectionMaps(qRes.data.questions);
+      setSectionMaps(builtMaps);
+
+      await enterFullscreen();
+
+      // Show the first question of the first section immediately
+      const firstSection = Object.keys(format.sections)[0];
+      const firstEntry = builtMaps[firstSection]?.[1];
+      if (firstEntry) {
+        setCurrentQuestion(firstEntry.question);
+        setQuestionNumber(1);
       }
     } catch (error) {
       console.error('Error starting test:', error);
@@ -195,94 +233,34 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     }
   };
 
-  const pickDifficultyFromWeightage = (): 'easy' | 'medium' | 'hard' => {
-    const weightage = (format as any).difficulty_weightage;
-    if (!weightage || typeof weightage !== 'object') return 'medium';
-
-    const easy = Math.max(0, Number(weightage.easy) || 0);
-    const medium = Math.max(0, Number(weightage.medium) || 0);
-    const hard = Math.max(0, Number(weightage.hard) || 0);
-    const total = easy + medium + hard;
-    if (total <= 0) return 'medium';
-
-    const r = Math.random() * total;
-    if (r < easy) return 'easy';
-    if (r < easy + medium) return 'medium';
-    return 'hard';
-  };
-
-  // Total questions in the currently active section
-  const totalQuestionsInSection = Object.values(format.sections[currentSection]?.subsections ?? {})
-    .reduce((s: number, sub: any) => s + (sub?.questions ?? 0), 0);
+  // Total questions in the currently active section.
+  // Use actual loaded count from sectionMaps when available; fall back to format config.
+  const totalQuestionsInSection =
+    Object.keys(sectionMaps[currentSection] || {}).length ||
+    Object.values(format.sections[currentSection]?.subsections ?? {})
+      .reduce((s: number, sub: any) => s + (sub?.questions ?? 0), 0);
 
   // Current section's question map
   const currentSectionMap = sectionMaps[currentSection] || {};
 
-  /** Load question for a specific 1-based number. If cached, restore it; otherwise fetch from server. */
-  const loadQuestionForNumber = async (num: number, attemptId?: number) => {
-    const idToUse = attemptId ?? testAttemptId;
-    if (!idToUse || num < 1 || num > totalQuestionsInSection) return;
-
-    // Restore cached question
-    const cached = (sectionMaps[currentSection] || {})[num];
-    if (cached) {
-      setCurrentQuestion(cached.question);
-      setSelectedOption(cached.savedOption);
+  /** Navigate to a specific 1-based question number within the current section.
+   *  All questions are pre-loaded in sectionMaps — no network call needed. */
+  const loadQuestionForNumber = (num: number, _unused?: number) => {
+    if (num < 1) return;
+    const entry = (sectionMaps[currentSection] || {})[num];
+    if (entry) {
+      setCurrentQuestion(entry.question);
+      setSelectedOption(entry.savedOption);
       setQuestionNumber(num);
-      return;
-    }
-
-    // Fetch new question from server — update UI immediately so palette and main area reflect the clicked question
-    setQuestionNumber(num);
-    setCurrentQuestion(null);
-    setSelectedOption('');
-    try {
-      setLoading(true);
-      setError(null);
-
-      const sectionConfig = format.sections[currentSection];
-      const subsections = sectionConfig.subsections || {};
-      const subsectionKey = subsections[currentSubsection] ? currentSubsection : (Object.keys(subsections)[0] as 'section_a' | 'section_b');
-      const subsectionConfig = subsections[subsectionKey];
-      const difficulty = pickDifficultyFromWeightage();
-
-      const response = await getSectionQuestion(idToUse, currentSection, {
-        exam_id: exam.id,
-        subject: sectionConfig.name,
-        difficulty,
-        section_type: subsectionConfig?.type || 'MCQ',
-        question_type: (subsectionConfig?.type === 'Numerical' ? 'numerical' : 'mcq') as 'mcq' | 'numerical'
-      });
-
-      if (response.success && response.data) {
-        const q = response.data.question;
-        setSectionMaps(prev => ({
-          ...prev,
-          [currentSection]: {
-            ...prev[currentSection],
-            [num]: { question: q, status: 'not_answered', savedOption: '' }
-          }
-        }));
-        setCurrentQuestion(q);
-        setQuestionNumber(num);
-        await updateProgress();
-      } else {
-        setError(response.message || 'Failed to load question');
-      }
-    } catch (err) {
-      console.error('Error loading question:', err);
-      setError('An error occurred while loading the question');
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Auto-load question 1 when test starts or section changes
+  // When the user switches section, load question 1 of that section from sectionMaps
   useEffect(() => {
-    if (testAttemptId && !currentQuestion && !loading) {
+    if (testAttemptId && Object.keys(sectionMaps[currentSection] || {}).length > 0) {
       loadQuestionForNumber(1);
     }
-  }, [testAttemptId, currentSection, currentSubsection]);
+  }, [currentSection, currentSubsection]);
 
   const handleSubmitAnswer = async () => {
     if (!testAttemptId || !currentQuestion || !selectedOption) return;
@@ -297,7 +275,6 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
       });
 
       if (response.success) {
-        // Mark this question as answered in the palette map
         const answeredNum = questionNumber;
         setSectionMaps(prev => ({
           ...prev,
@@ -307,11 +284,12 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
           }
         }));
         await updateProgress();
-        setCurrentQuestion(null);
-        setSelectedOption('');
-        // Move to next question in sequence
+        // Move to next question; loadQuestionForNumber reads from sectionMaps (no API call)
         if (answeredNum < totalQuestionsInSection) {
-          await loadQuestionForNumber(answeredNum + 1);
+          loadQuestionForNumber(answeredNum + 1);
+        } else {
+          setCurrentQuestion(null);
+          setSelectedOption('');
         }
       } else {
         setError(response.message || 'Failed to submit answer');
@@ -324,9 +302,8 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
     if (currentQuestion) {
-      // Mark as not_answered (seen but skipped)
       const skippedNum = questionNumber;
       setSectionMaps(prev => ({
         ...prev,
@@ -335,10 +312,11 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
           [skippedNum]: { question: currentQuestion, status: 'not_answered', savedOption: '' }
         }
       }));
-      setCurrentQuestion(null);
-      setSelectedOption('');
       if (skippedNum < totalQuestionsInSection) {
-        await loadQuestionForNumber(skippedNum + 1);
+        loadQuestionForNumber(skippedNum + 1);
+      } else {
+        setCurrentQuestion(null);
+        setSelectedOption('');
       }
     }
   };

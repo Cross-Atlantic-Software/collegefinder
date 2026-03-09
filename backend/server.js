@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./src/config/database');
+const { initJobs } = require('./src/jobs/index');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/programs', require('./src/routes/public/programsRoutes'));
 app.use('/api/exam-cities', require('./src/routes/public/examCitiesRoutes'));
 app.use('/api/user', require('./src/routes/user/userAutomationRoutes'));
 app.use('/api/tests', require('./src/routes/test/testRoutes'));
+app.use('/api/mock-tests', require('./src/routes/test/mockTestRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -67,6 +69,7 @@ const PORT = process.env.PORT || 5001;
 // Initialize database and start server
 db.init()
   .then(() => {
+    initJobs();
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);

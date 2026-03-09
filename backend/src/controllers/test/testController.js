@@ -495,10 +495,12 @@ class TestController {
         });
       }
 
-      // Check if already answered
-      const existingAttempt = await QuestionAttempt.findByTestAttemptId(parseInt(testAttemptId));
-      const alreadyAnswered = existingAttempt.find(qa => qa.question_id === parseInt(questionId));
-      
+      // Check if already answered with a real answer (selected_option != null)
+      // Pre-inserted empty rows (from mock test flow) have selected_option = null and are not considered "answered"
+      const existingAttempts = await QuestionAttempt.findByTestAttemptId(parseInt(testAttemptId));
+      const existingForQuestion = existingAttempts.find(qa => qa.question_id === parseInt(questionId));
+      const alreadyAnswered = existingForQuestion && existingForQuestion.selected_option !== null;
+
       if (alreadyAnswered) {
         return res.status(400).json({
           success: false,
@@ -508,12 +510,13 @@ class TestController {
 
       // Determine if answer is correct
       const isCorrect = selected_option === question.correct_option;
-      
-      // Get attempt order
-      const attemptOrder = existingAttempt.length + 1;
 
-      // Create question attempt
-      const questionAttempt = await QuestionAttempt.create({
+      // Attempt order: use existing order if row was pre-inserted, otherwise assign next order
+      const answeredCount = existingAttempts.filter(qa => qa.selected_option !== null).length;
+      const attemptOrder = existingForQuestion ? existingForQuestion.attempt_order : answeredCount + 1;
+
+      // Upsert: updates pre-inserted empty rows OR inserts new row (old flow)
+      const questionAttempt = await QuestionAttempt.upsert({
         user_id: userId,
         question_id: parseInt(questionId),
         test_attempt_id: parseInt(testAttemptId),

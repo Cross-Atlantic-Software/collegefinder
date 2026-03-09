@@ -203,32 +203,254 @@ const aiimsFormat = {
   }
 };
 
+// CLAT Format Configuration (UG: 120 questions, 2 hours, +1/-0.25)
+const clatFormat = {
+  clat_ug: {
+    format_id: "clat_ug",
+    name: "CLAT UG Practice Test",
+    duration_minutes: 120,
+    total_marks: 120,
+    difficulty_weightage: { easy: 40, medium: 40, hard: 20 },
+    sections: {
+      english: {
+        name: "English Language",
+        marks: 24,
+        subsections: { section_a: { type: "MCQ", questions: 24, marks_per_question: 1 } }
+      },
+      gk: {
+        name: "Current Affairs & General Knowledge",
+        marks: 30,
+        subsections: { section_a: { type: "MCQ", questions: 30, marks_per_question: 1 } }
+      },
+      legal: {
+        name: "Legal Reasoning",
+        marks: 30,
+        subsections: { section_a: { type: "MCQ", questions: 30, marks_per_question: 1 } }
+      },
+      logical: {
+        name: "Logical Reasoning",
+        marks: 24,
+        subsections: { section_a: { type: "MCQ", questions: 24, marks_per_question: 1 } }
+      },
+      quantitative: {
+        name: "Quantitative Techniques",
+        marks: 12,
+        subsections: { section_a: { type: "MCQ", questions: 12, marks_per_question: 1 } }
+      }
+    },
+    marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
+    rules: [
+      "Total duration: 2 hours (120 minutes)",
+      "120 questions: English 24, GK 30, Legal Reasoning 30, Logical Reasoning 24, Quantitative 12",
+      "Correct answer: +1 mark, Incorrect: -0.25 marks",
+      "All questions are MCQ type"
+    ]
+  }
+};
+
+// CUET UG Format Configuration (per section: 50 questions, 60 min, +5/-1)
+const cuetFormat = {
+  cuet_ug: {
+    format_id: "cuet_ug",
+    name: "CUET UG Practice Test",
+    duration_minutes: 60,
+    total_marks: 250,
+    difficulty_weightage: { easy: 45, medium: 35, hard: 20 },
+    sections: {
+      domain: {
+        name: "Domain / General Test",
+        marks: 250,
+        subsections: { section_a: { type: "MCQ", questions: 50, marks_per_question: 5 } }
+      }
+    },
+    marking_scheme: { correct: 5, incorrect: -1, unattempted: 0 },
+    rules: [
+      "Duration: 60 minutes per section (50 questions)",
+      "Correct answer: +5 marks, Incorrect: -1 mark",
+      "All questions are MCQ type",
+      "Practice mode - answer at your own pace"
+    ]
+  }
+};
+
+// AILET Format Configuration (150 questions, 1.5 hours, +1/-0.25)
+const ailetFormat = {
+  ailet: {
+    format_id: "ailet",
+    name: "AILET Practice Test",
+    duration_minutes: 90,
+    total_marks: 150,
+    difficulty_weightage: { easy: 40, medium: 40, hard: 20 },
+    sections: {
+      english: {
+        name: "English",
+        marks: 35,
+        subsections: { section_a: { type: "MCQ", questions: 35, marks_per_question: 1 } }
+      },
+      gk: {
+        name: "General Knowledge",
+        marks: 35,
+        subsections: { section_a: { type: "MCQ", questions: 35, marks_per_question: 1 } }
+      },
+      legal: {
+        name: "Legal Aptitude",
+        marks: 35,
+        subsections: { section_a: { type: "MCQ", questions: 35, marks_per_question: 1 } }
+      },
+      reasoning: {
+        name: "Reasoning",
+        marks: 35,
+        subsections: { section_a: { type: "MCQ", questions: 35, marks_per_question: 1 } }
+      },
+      maths: {
+        name: "Elementary Mathematics",
+        marks: 10,
+        subsections: { section_a: { type: "MCQ", questions: 10, marks_per_question: 1 } }
+      }
+    },
+    marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
+    rules: [
+      "Total duration: 1.5 hours (90 minutes)",
+      "150 questions across English, GK, Legal Aptitude, Reasoning, and Mathematics",
+      "Correct answer: +1 mark, Incorrect: -0.25 marks",
+      "All questions are MCQ type"
+    ]
+  }
+};
+
+// NATA Format Configuration (Aptitude: 60 questions, 60 min)
+const nataFormat = {
+  nata_aptitude: {
+    format_id: "nata_aptitude",
+    name: "NATA Aptitude Practice Test",
+    duration_minutes: 60,
+    total_marks: 200,
+    difficulty_weightage: { easy: 40, medium: 40, hard: 20 },
+    sections: {
+      aptitude: {
+        name: "Aptitude",
+        marks: 200,
+        subsections: { section_a: { type: "MCQ", questions: 60, marks_per_question: 2 } }
+      }
+    },
+    marking_scheme: { correct: 2, incorrect: -0.5, unattempted: 0 },
+    rules: [
+      "Duration: 60 minutes",
+      "60 questions - Aptitude (MCQ)",
+      "Correct answer: +2 marks, Incorrect: -0.5 marks",
+      "Practice mode - answer at your own pace"
+    ]
+  }
+};
+
+// BITSAT Format Configuration (150 questions, 3 hours, +3/-1)
+const bitsatFormat = {
+  bitsat: {
+    format_id: "bitsat",
+    name: "BITSAT Practice Test",
+    duration_minutes: 180,
+    total_marks: 450,
+    difficulty_weightage: { easy: 50, medium: 30, hard: 20 },
+    sections: {
+      physics: {
+        name: "Physics",
+        marks: 150,
+        subsections: { section_a: { type: "MCQ", questions: 50, marks_per_question: 3 } }
+      },
+      chemistry: {
+        name: "Chemistry",
+        marks: 150,
+        subsections: { section_a: { type: "MCQ", questions: 50, marks_per_question: 3 } }
+      },
+      mathematics: {
+        name: "Mathematics",
+        marks: 150,
+        subsections: { section_a: { type: "MCQ", questions: 50, marks_per_question: 3 } }
+      }
+    },
+    marking_scheme: { correct: 3, incorrect: -1, unattempted: 0 },
+    rules: [
+      "Total duration: 3 hours (180 minutes)",
+      "150 questions: Physics 50, Chemistry 50, Mathematics 50",
+      "Correct answer: +3 marks, Incorrect: -1 mark",
+      "All questions are MCQ type"
+    ]
+  }
+};
+
+// Generic engineering/entrance format (duration, questions, marks) for remaining exams
+function genericExamFormat(examCode, examName, durationMinutes, totalQuestions, totalMarks, correctMark = 1, incorrectMark = -0.25) {
+  const perQuestion = totalMarks / totalQuestions;
+  return {
+    [examCode]: {
+      format_id: examCode,
+      name: `${examName} Practice Test`,
+      duration_minutes: durationMinutes,
+      total_marks: totalMarks,
+      difficulty_weightage: { easy: 50, medium: 30, hard: 20 },
+      sections: {
+        general: {
+          name: "General",
+          marks: totalMarks,
+          subsections: { section_a: { type: "MCQ", questions: totalQuestions, marks_per_question: Math.round(perQuestion * 100) / 100 } }
+        }
+      },
+      marking_scheme: { correct: correctMark, incorrect: incorrectMark, unattempted: 0 },
+      rules: [
+        `Total duration: ${durationMinutes} minutes`,
+        `${totalQuestions} questions, ${totalMarks} total marks`,
+        `Correct answer: +${correctMark} mark(s), Incorrect: ${incorrectMark} mark(s)`,
+        "Practice mode - answer questions at your own pace",
+        "Questions are AI-generated based on exam syllabus",
+        "You can exit anytime - progress is saved"
+      ]
+    }
+  };
+}
+
+const viteeeFormat = genericExamFormat("viteee", "VITEEE", 150, 125, 125, 1, -0.25);
+const srmjeeeFormat = genericExamFormat("srmjeee", "SRMJEEE", 150, 105, 105, 1, -0.25);
+const wbjeeFormat = genericExamFormat("wbjee", "WBJEE", 180, 155, 200, 1, -0.25);
+const mhtcetFormat = genericExamFormat("mht_cet", "MHT CET", 90, 150, 150, 1, 0);
+const kcetFormat = genericExamFormat("kcet", "KCET", 180, 180, 180, 1, 0);
+const tneaFormat = genericExamFormat("tnea", "TNEA", 120, 100, 100, 1, 0);
+const apeamcetFormat = genericExamFormat("ap_eamcet", "AP EAMCET", 180, 160, 160, 1, -0.25);
+const tseamcetFormat = genericExamFormat("ts_eamcet", "TS EAMCET", 180, 160, 160, 1, -0.25);
+const gujcetFormat = genericExamFormat("gujcet", "Gujarat CET", 180, 120, 120, 1, -0.25);
+const rjeeFormat = genericExamFormat("rjee", "Rajasthan JEE", 180, 100, 100, 1, -0.25);
+const upseeFormat = genericExamFormat("upsee", "UPSEE", 180, 150, 150, 1, -0.25);
+const comedkFormat = genericExamFormat("comedk", "COMEDK", 180, 180, 180, 1, -0.25);
+const kiiteeFormat = genericExamFormat("kiitee", "KIITEE", 180, 120, 120, 1, -0.25);
+const jipmerFormat = genericExamFormat("jipmer", "JIPMER", 150, 200, 200, 1, -0.25);
+const nestFormat = genericExamFormat("nest", "NEST", 180, 180, 180, 1, -0.25);
+const iiserFormat = genericExamFormat("iiser_aptitude", "IISER Aptitude Test", 180, 90, 90, 1, -0.25);
+
 const examsData = [
   { name: "JEE Main", code: "JEE_MAIN", description: "Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges", format: jeeMainFormat },
   { name: "JEE Advanced", code: "JEE_ADVANCED", description: "Joint Entrance Examination Advanced - for admission to IITs", format: jeeAdvancedFormat },
   { name: "NEET", code: "NEET", description: "National Eligibility cum Entrance Test - for admission to medical and dental colleges", format: neetFormat },
-  { name: "CUET", code: "CUET", description: "Common University Entrance Test - for admission to central universities" },
-  { name: "CLAT", code: "CLAT", description: "Common Law Admission Test - for admission to NLUs and other law colleges" },
-  { name: "AILET", code: "AILET", description: "All India Law Entrance Test - for admission to NLU Delhi" },
-  { name: "NATA", code: "NATA", description: "National Aptitude Test in Architecture - for admission to architecture colleges" },
-  { name: "BITSAT", code: "BITSAT", description: "Birla Institute of Technology and Science Admission Test" },
-  { name: "VITEEE", code: "VITEEE", description: "VIT Engineering Entrance Examination" },
-  { name: "SRMJEEE", code: "SRMJEEE", description: "SRM Joint Engineering Entrance Examination" },
-  { name: "WBJEE", code: "WBJEE", description: "West Bengal Joint Entrance Examination" },
-  { name: "MHT CET", code: "MHT_CET", description: "Maharashtra Common Entrance Test" },
-  { name: "KCET", code: "KCET", description: "Karnataka Common Entrance Test" },
-  { name: "TNEA", code: "TNEA", description: "Tamil Nadu Engineering Admission" },
-  { name: "AP EAMCET", code: "AP_EAMCET", description: "Andhra Pradesh Engineering, Agriculture and Medical Common Entrance Test" },
-  { name: "TS EAMCET", code: "TS_EAMCET", description: "Telangana State Engineering, Agriculture and Medical Common Entrance Test" },
-  { name: "Gujarat CET", code: "GUJCET", description: "Gujarat Common Entrance Test" },
-  { name: "Rajasthan JEE", code: "RJEE", description: "Rajasthan Joint Entrance Examination" },
-  { name: "UPSEE", code: "UPSEE", description: "Uttar Pradesh State Entrance Examination" },
-  { name: "COMEDK", code: "COMEDK", description: "Consortium of Medical, Engineering and Dental Colleges of Karnataka" },
-  { name: "KIITEE", code: "KIITEE", description: "KIIT Entrance Examination" },
-  { name: "JIPMER", code: "JIPMER", description: "Jawaharlal Institute of Postgraduate Medical Education and Research Entrance Exam" },
+  { name: "CUET", code: "CUET", description: "Common University Entrance Test - for admission to central universities", format: cuetFormat },
+  { name: "CLAT", code: "CLAT", description: "Common Law Admission Test - for admission to NLUs and other law colleges", format: clatFormat },
+  { name: "AILET", code: "AILET", description: "All India Law Entrance Test - for admission to NLU Delhi", format: ailetFormat },
+  { name: "NATA", code: "NATA", description: "National Aptitude Test in Architecture - for admission to architecture colleges", format: nataFormat },
+  { name: "BITSAT", code: "BITSAT", description: "Birla Institute of Technology and Science Admission Test", format: bitsatFormat },
+  { name: "VITEEE", code: "VITEEE", description: "VIT Engineering Entrance Examination", format: viteeeFormat },
+  { name: "SRMJEEE", code: "SRMJEEE", description: "SRM Joint Engineering Entrance Examination", format: srmjeeeFormat },
+  { name: "WBJEE", code: "WBJEE", description: "West Bengal Joint Entrance Examination", format: wbjeeFormat },
+  { name: "MHT CET", code: "MHT_CET", description: "Maharashtra Common Entrance Test", format: mhtcetFormat },
+  { name: "KCET", code: "KCET", description: "Karnataka Common Entrance Test", format: kcetFormat },
+  { name: "TNEA", code: "TNEA", description: "Tamil Nadu Engineering Admission", format: tneaFormat },
+  { name: "AP EAMCET", code: "AP_EAMCET", description: "Andhra Pradesh Engineering, Agriculture and Medical Common Entrance Test", format: apeamcetFormat },
+  { name: "TS EAMCET", code: "TS_EAMCET", description: "Telangana State Engineering, Agriculture and Medical Common Entrance Test", format: tseamcetFormat },
+  { name: "Gujarat CET", code: "GUJCET", description: "Gujarat Common Entrance Test", format: gujcetFormat },
+  { name: "Rajasthan JEE", code: "RJEE", description: "Rajasthan Joint Entrance Examination", format: rjeeFormat },
+  { name: "UPSEE", code: "UPSEE", description: "Uttar Pradesh State Entrance Examination", format: upseeFormat },
+  { name: "COMEDK", code: "COMEDK", description: "Consortium of Medical, Engineering and Dental Colleges of Karnataka", format: comedkFormat },
+  { name: "KIITEE", code: "KIITEE", description: "KIIT Entrance Examination", format: kiiteeFormat },
+  { name: "JIPMER", code: "JIPMER", description: "Jawaharlal Institute of Postgraduate Medical Education and Research Entrance Exam", format: jipmerFormat },
   { name: "AIIMS", code: "AIIMS", description: "All India Institute of Medical Sciences Entrance Exam", format: aiimsFormat },
-  { name: "NEST", code: "NEST", description: "National Entrance Screening Test - for admission to NISER and CEBS" },
-  { name: "IISER Aptitude Test", code: "IISER_APTITUDE", description: "Indian Institutes of Science Education and Research Aptitude Test" },
+  { name: "NEST", code: "NEST", description: "National Entrance Screening Test - for admission to NISER and CEBS", format: nestFormat },
+  { name: "IISER Aptitude Test", code: "IISER_APTITUDE", description: "Indian Institutes of Science Education and Research Aptitude Test", format: iiserFormat },
 ];
 
 async function seedExams() {
