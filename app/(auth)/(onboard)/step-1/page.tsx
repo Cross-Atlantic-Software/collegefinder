@@ -14,7 +14,7 @@ export default function StepOne() {
   // Redirect to dashboard if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed) {
-      setIsRedirecting(true);
+      queueMicrotask(() => setIsRedirecting(true));
       // Prefetch dashboard for faster loading
       router.prefetch('/dashboard');
       // Small delay for smooth transition

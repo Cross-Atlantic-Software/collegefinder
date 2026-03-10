@@ -136,7 +136,7 @@ class Test {
         MAX(ta.total_score) as max_score,
         MIN(ta.total_score) as min_score
       FROM tests t
-      LEFT JOIN test_attempts ta ON t.id = ta.test_id
+      LEFT JOIN user_exam_attempts ta ON t.id = ta.test_id
       WHERE t.id = $1
       GROUP BY t.id
     `, [testId]);

@@ -15,9 +15,10 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
   const { format, rules, marking_scheme, sections } = formatRules;
 
   // Calculate total questions (handle empty sections)
+  type SectionWithSubs = { subsections?: Record<string, { questions?: number }> };
   const totalQuestions = sections && Object.keys(sections).length > 0
-    ? Object.values(sections).reduce((total: number, section: any) => {
-        return total + Object.values(section.subsections || {}).reduce((sectionTotal: number, subsection: any) => {
+    ? (Object.values(sections) as SectionWithSubs[]).reduce((total: number, section) => {
+        return total + Object.values(section.subsections || {}).reduce((sectionTotal: number, subsection) => {
           return sectionTotal + (subsection.questions || 0);
         }, 0);
       }, 0)
@@ -60,7 +61,7 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
         <h3 className="text-lg font-semibold text-white mb-4">Section Breakdown</h3>
         
         <div className="space-y-4">
-          {Object.entries(sections).map(([sectionKey, section]: [string, any]) => (
+          {Object.entries(sections).map(([sectionKey, section]) => (
             <div key={sectionKey} className="border border-white/10 rounded-lg p-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-white">{section.name}</h4>
@@ -68,7 +69,7 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {Object.entries(section.subsections || {}).map(([subKey, subsection]: [string, any]) => (
+                {Object.entries(section.subsections || {}).map(([subKey, subsection]) => (
                   <div key={subKey} className="bg-white/5 rounded p-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-slate-200">

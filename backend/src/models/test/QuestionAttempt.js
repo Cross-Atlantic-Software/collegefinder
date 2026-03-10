@@ -5,7 +5,7 @@ class QuestionAttempt {
    * Find question attempt by ID
    */
   static async findById(id) {
-    const result = await db.query('SELECT * FROM question_attempts WHERE id = $1', [id]);
+    const result = await db.query('SELECT * FROM user_attempt_answers WHERE id = $1', [id]);
     return result.rows[0];
   }
 
@@ -15,9 +15,9 @@ class QuestionAttempt {
   static async findByTestAttemptId(testAttemptId) {
     const result = await db.query(`
       SELECT qa.*, q.question_text, q.correct_option, q.solution_text, q.options, q.marks, q.subject, q.difficulty
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1
+      WHERE qa.user_exam_attempt_id = $1
       ORDER BY qa.attempt_order ASC
     `, [testAttemptId]);
     return result.rows;
@@ -29,7 +29,7 @@ class QuestionAttempt {
   static async findByUserId(userId, limit = 100, offset = 0) {
     const result = await db.query(`
       SELECT qa.*, q.question_text, q.subject, q.difficulty, q.marks
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
       WHERE qa.user_id = $1
       ORDER BY qa.created_at DESC
@@ -44,7 +44,7 @@ class QuestionAttempt {
   static async findByQuestionId(questionId, limit = 100, offset = 0) {
     const result = await db.query(`
       SELECT qa.*, u.name as user_name
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN users u ON qa.user_id = u.id
       WHERE qa.question_id = $1
       ORDER BY qa.created_at DESC
@@ -61,6 +61,8 @@ class QuestionAttempt {
       user_id,
       question_id,
       test_attempt_id,
+      exam_id,
+      mock_id,
       selected_option,
       is_correct,
       time_spent_seconds,
@@ -68,15 +70,17 @@ class QuestionAttempt {
     } = data;
 
     const result = await db.query(`
-      INSERT INTO question_attempts (
-        user_id, question_id, test_attempt_id, selected_option, 
-        is_correct, time_spent_seconds, attempt_order
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO user_attempt_answers (
+        user_id, question_id, user_exam_attempt_id, exam_id, exam_mock_id,
+        selected_option, is_correct, time_spent_seconds, attempt_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       user_id,
       question_id,
       test_attempt_id,
+      exam_id,
+      mock_id || null,
       selected_option,
       is_correct,
       time_spent_seconds,
@@ -110,7 +114,7 @@ class QuestionAttempt {
     values.push(id);
 
     const query = `
-      UPDATE question_attempts 
+      UPDATE user_attempt_answers 
       SET ${fields.join(', ')} 
       WHERE id = $${paramIndex} 
       RETURNING *
@@ -125,7 +129,7 @@ class QuestionAttempt {
    */
   static async delete(id) {
     const result = await db.query(
-      'DELETE FROM question_attempts WHERE id = $1 RETURNING *',
+      'DELETE FROM user_attempt_answers WHERE id = $1 RETURNING *',
       [id]
     );
     return result.rows[0];
@@ -148,8 +152,8 @@ class QuestionAttempt {
           (COUNT(CASE WHEN is_correct = true THEN 1 END)::DECIMAL / 
            NULLIF(COUNT(CASE WHEN selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
-      FROM question_attempts
-      WHERE test_attempt_id = $1
+      FROM user_attempt_answers
+      WHERE user_exam_attempt_id = $1
     `, [testAttemptId]);
     return result.rows[0];
   }
@@ -170,9 +174,9 @@ class QuestionAttempt {
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
            NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1
+      WHERE qa.user_exam_attempt_id = $1
       GROUP BY q.subject
       ORDER BY q.subject
     `, [testAttemptId]);
@@ -195,9 +199,9 @@ class QuestionAttempt {
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
            NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1
+      WHERE qa.user_exam_attempt_id = $1
       GROUP BY q.difficulty
       ORDER BY 
         CASE q.difficulty 
@@ -218,8 +222,8 @@ class QuestionAttempt {
         qa.*,
         ta.test_id,
         t.title as test_title
-      FROM question_attempts qa
-      JOIN test_attempts ta ON qa.test_attempt_id = ta.id
+      FROM user_attempt_answers qa
+      JOIN user_exam_attempts ta ON qa.user_exam_attempt_id = ta.id
       JOIN tests t ON ta.test_id = t.id
       WHERE qa.user_id = $1 AND qa.question_id = $2
       ORDER BY qa.created_at DESC
@@ -244,7 +248,7 @@ class QuestionAttempt {
         ) as success_rate,
         selected_option,
         COUNT(*) as option_count
-      FROM question_attempts
+      FROM user_attempt_answers
       WHERE question_id = $1 AND selected_option IS NOT NULL
       GROUP BY ROLLUP(selected_option)
       ORDER BY selected_option NULLS FIRST
@@ -272,9 +276,9 @@ class QuestionAttempt {
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
            NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1 AND q.topic IS NOT NULL AND q.topic != ''
+      WHERE qa.user_exam_attempt_id = $1 AND q.topic IS NOT NULL AND q.topic != ''
       GROUP BY q.topic, q.subject
       ORDER BY q.subject, q.topic
     `, [testAttemptId]);
@@ -302,9 +306,9 @@ class QuestionAttempt {
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
            NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1 AND q.sub_topic IS NOT NULL AND q.sub_topic != ''
+      WHERE qa.user_exam_attempt_id = $1 AND q.sub_topic IS NOT NULL AND q.sub_topic != ''
       GROUP BY q.sub_topic, q.topic, q.subject
       ORDER BY q.subject, q.topic, q.sub_topic
     `, [testAttemptId]);
@@ -319,9 +323,9 @@ class QuestionAttempt {
       SELECT 
         COALESCE(SUM(q.negative_marks), 0) as total_negative_marks_lost,
         COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as wrong_answers
-      FROM question_attempts qa
+      FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
-      WHERE qa.test_attempt_id = $1
+      WHERE qa.user_exam_attempt_id = $1
         AND qa.is_correct = false
         AND qa.selected_option IS NOT NULL
     `, [testAttemptId]);
@@ -330,7 +334,7 @@ class QuestionAttempt {
 
   /**
    * Upsert a question attempt.
-   * If a row already exists for (test_attempt_id, question_id), update it (handles pre-inserted empty rows).
+   * If a row already exists for (user_exam_attempt_id, question_id), update it (handles pre-inserted empty rows).
    * Otherwise, insert a new row.
    */
   static async upsert(data) {
@@ -338,6 +342,8 @@ class QuestionAttempt {
       user_id,
       question_id,
       test_attempt_id,
+      exam_id,
+      mock_id,
       selected_option,
       is_correct,
       time_spent_seconds,
@@ -345,20 +351,24 @@ class QuestionAttempt {
     } = data;
 
     const result = await db.query(`
-      INSERT INTO question_attempts (
-        user_id, question_id, test_attempt_id, selected_option,
-        is_correct, time_spent_seconds, attempt_order
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (test_attempt_id, question_id) DO UPDATE SET
+      INSERT INTO user_attempt_answers (
+        user_id, question_id, user_exam_attempt_id, exam_id, exam_mock_id,
+        selected_option, is_correct, time_spent_seconds, attempt_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (user_exam_attempt_id, question_id) DO UPDATE SET
         selected_option = EXCLUDED.selected_option,
         is_correct = EXCLUDED.is_correct,
         time_spent_seconds = EXCLUDED.time_spent_seconds,
-        attempt_order = EXCLUDED.attempt_order
+        attempt_order = EXCLUDED.attempt_order,
+        exam_id = EXCLUDED.exam_id,
+        exam_mock_id = EXCLUDED.exam_mock_id
       RETURNING *
     `, [
       user_id,
       question_id,
       test_attempt_id,
+      exam_id,
+      mock_id || null,
       selected_option,
       is_correct,
       time_spent_seconds,
@@ -380,14 +390,16 @@ class QuestionAttempt {
     const placeholders = [];
     
     attempts.forEach((attempt, index) => {
-      const baseIndex = index * 7;
+      const baseIndex = index * 9;
       placeholders.push(
-        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7})`
+        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9})`
       );
       values.push(
         attempt.user_id,
         attempt.question_id,
         attempt.test_attempt_id,
+        attempt.exam_id,
+        attempt.mock_id || null,
         attempt.selected_option,
         attempt.is_correct,
         attempt.time_spent_seconds,
@@ -396,9 +408,9 @@ class QuestionAttempt {
     });
 
     const query = `
-      INSERT INTO question_attempts (
-        user_id, question_id, test_attempt_id, selected_option, 
-        is_correct, time_spent_seconds, attempt_order
+      INSERT INTO user_attempt_answers (
+        user_id, question_id, user_exam_attempt_id, exam_id, exam_mock_id,
+        selected_option, is_correct, time_spent_seconds, attempt_order
       ) VALUES ${placeholders.join(', ')}
       RETURNING *
     `;

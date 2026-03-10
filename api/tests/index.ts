@@ -12,7 +12,7 @@ export interface Test {
   total_marks: number;
   duration_minutes: number;
   question_ids: number[];
-  sections?: any;
+  sections?: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -53,7 +53,7 @@ export interface FormatRules {
     incorrect: number;
     unattempted: number;
   };
-  sections: any;
+  sections: Record<string, unknown>;
 }
 
 export interface Question {
@@ -64,10 +64,28 @@ export interface Question {
   difficulty: 'easy' | 'medium' | 'hard';
   subject: string;
   topic: string;
-  question_type: 'mcq' | 'numerical';
+  question_type: 
+    | 'mcq_single'           // MCQ with single correct answer
+    | 'mcq_multiple'         // MCQ with multiple correct answers
+    | 'numerical'            // Numerical/integer answer
+    | 'paragraph'            // Paragraph/comprehension based
+    | 'assertion_reason'     // Assertion-Reason type
+    | 'match_following'      // Match the following
+    | 'true_false'           // True/False
+    | 'fill_blank';          // Fill in the blanks
   negative_marks: number;
-  /** Optional diagram/figure image URL for image-based questions (e.g. JEE Physics) */
   image_url?: string | null;
+  
+  // Additional fields for specific question types
+  paragraph_context?: string;
+  assertion?: string;
+  reason?: string;
+  match_pairs?: Array<{
+    left: string;
+    right: string;
+    correct_match: string;
+  }>;
+  correct_option: string;
 }
 
 export interface TestAttempt {
@@ -84,8 +102,8 @@ export interface TestAttempt {
   skipped_count: number;
   accuracy_percentage: number;
   time_spent_minutes: number;
-  subject_wise_stats: Record<string, any>;
-  difficulty_wise_stats: Record<string, any>;
+  subject_wise_stats: Record<string, unknown>;
+  difficulty_wise_stats: Record<string, unknown>;
   completed_at?: string;
   created_at: string;
 }
@@ -176,7 +194,7 @@ export interface AnalyticsSummaryAttempt {
   incorrect_count: number;
   skipped_count: number;
   time_spent_minutes: number;
-  subject_wise_stats: Record<string, any>;
+  subject_wise_stats: Record<string, unknown>;
   completed_at: string;
 }
 
@@ -311,7 +329,7 @@ export async function completeTest(testAttemptId: number): Promise<ApiResponse<{
 }>> {
   return apiRequest<{
     test_attempt: TestAttempt;
-    summary: any;
+    summary: unknown;
   }>(`/tests/attempts/${testAttemptId}/complete`, {
     method: 'POST',
   });
@@ -352,8 +370,8 @@ export async function getUserTestHistory(
 /**
  * Test Gemini service (for debugging)
  */
-export async function testGeminiService(): Promise<ApiResponse<any>> {
-  return apiRequest<any>('/tests/utils/test-gemini', {
+export async function testGeminiService(): Promise<ApiResponse<unknown>> {
+  return apiRequest<unknown>('/tests/utils/test-gemini', {
     method: 'GET',
   });
 }

@@ -65,9 +65,15 @@ const validateGetNextQuestion = [
 const validateSubmitAnswer = [
   body('selected_option')
     .optional()
-    .trim()
-    .isLength({ min: 1, max: 10 })
-    .withMessage('Selected option must be between 1 and 10 characters'),
+    .custom((value) => {
+      if (value == null) return true;
+      if (typeof value === 'string') return value.length <= 10000;
+      if (typeof value === 'number') return true;
+      if (Array.isArray(value)) return true;
+      if (typeof value === 'object') return true;
+      return false;
+    })
+    .withMessage('selected_option must be a string, number, or array'),
   body('time_spent_seconds')
     .optional()
     .isInt({ min: 0, max: 3600 })

@@ -554,13 +554,26 @@ MCQ REQUIREMENTS:
       if (isNumerical) {
         // For numerical questions, options should be empty
         if (!Array.isArray(parsed.options) || parsed.options.length !== 0) {
-          throw new Error('Numerical questions must have an empty options array');
+          console.warn('⚠️  Numerical question has non-empty options, clearing them');
+          parsed.options = [];
         }
         
-        // Validate correct option is a number
-        const numAnswer = parseInt(parsed.correct_option);
-        if (isNaN(numAnswer) || numAnswer < 0 || numAnswer > 9999) {
-          throw new Error('Numerical answer must be an integer between 0 and 9999');
+        // Validate correct option is a number (be lenient with parsing)
+        const answerStr = String(parsed.correct_option).trim();
+        const numAnswer = parseFloat(answerStr);
+        
+        if (isNaN(numAnswer)) {
+          throw new Error(`Numerical answer "${parsed.correct_option}" is not a valid number`);
+        }
+        
+        // Round to nearest integer if needed
+        const roundedAnswer = Math.round(numAnswer);
+        
+        if (roundedAnswer < 0 || roundedAnswer > 9999) {
+          console.warn(`⚠️  Numerical answer ${roundedAnswer} out of range, clamping to 0-9999`);
+          parsed.correct_option = String(Math.max(0, Math.min(9999, roundedAnswer)));
+        } else {
+          parsed.correct_option = String(roundedAnswer);
         }
       } else {
         // For MCQ questions, validate 4 options
@@ -610,7 +623,7 @@ MCQ REQUIREMENTS:
         topic: parsed.topic || originalParams.topic || 'General Topic',
         sub_topic: parsed.sub_topic || 'General Sub-topic',
         difficulty: originalParams.difficulty,
-        question_type: originalParams.question_type,
+        question_type: originalParams.question_type, // Use the original question_type from params (e.g. 'mcq_single')
         marks: this.getMarksForDifficulty(originalParams.difficulty),
         negative_marks: 0.25,
         source: 'LLM',

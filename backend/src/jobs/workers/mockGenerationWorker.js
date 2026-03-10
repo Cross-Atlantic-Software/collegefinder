@@ -116,7 +116,7 @@ async function processMockGeneration(job) {
   }
 
   // 2. Confirm mock_test row still exists and is in generating/failed state
-  const mockResult = await db.query('SELECT * FROM mock_tests WHERE id = $1', [mockTestId]);
+  const mockResult = await db.query('SELECT * FROM exam_mocks WHERE id = $1', [mockTestId]);
   const mockTest = mockResult.rows[0];
   if (!mockTest) {
     throw new Error(`MockTest ${mockTestId} not found`);
@@ -145,14 +145,13 @@ async function processMockGeneration(job) {
     try {
       const insertResult = await db.query(`
         INSERT INTO questions (
-          exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
+          subject, unit, topic, sub_topic, concept_tags, difficulty,
           question_type, question_text, options, correct_option, solution_text,
           marks, negative_marks, source, generation_prompt_version,
           section_name, section_type, image_url
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
         RETURNING id
       `, [
-        examId,
         question.subject,
         question.unit || null,
         question.topic || null,
@@ -182,17 +181,19 @@ async function processMockGeneration(job) {
     throw new Error('No questions could be saved to the database');
   }
 
-  // 6. Bulk insert mock_questions mapping
-  const mockQuestionValues = insertedQuestions.map((qId, idx) => `(${mockTestId}, ${qId}, ${idx})`).join(', ');
+  // 6. Bulk insert exam_mock_questions mapping
+  const mockQuestionValues = insertedQuestions.map((qId, idx) => 
+    `(${mockTestId}, ${qId}, ${examId}, ${idx + 1})`
+  ).join(', ');
   await db.query(`
-    INSERT INTO mock_questions (mock_test_id, question_id, order_index)
+    INSERT INTO exam_mock_questions (exam_mock_id, question_id, exam_id, order_index)
     VALUES ${mockQuestionValues}
-    ON CONFLICT (mock_test_id, question_id) DO NOTHING
+    ON CONFLICT (exam_mock_id, question_id) DO NOTHING
   `);
 
   // 7. Mark mock as ready and record total_questions
   await db.query(`
-    UPDATE mock_tests
+    UPDATE exam_mocks
     SET status = 'ready', total_questions = $1
     WHERE id = $2
   `, [insertedQuestions.length, mockTestId]);
@@ -218,11 +219,11 @@ async function handleFailed(job, err) {
 
   try {
     await db.query(
-      "UPDATE mock_tests SET status = 'failed' WHERE id = $1 AND status != 'ready'",
+      "UPDATE exam_mocks SET status = 'failed' WHERE id = $1 AND status != 'ready'",
       [mockTestId]
     );
   } catch (dbErr) {
-    console.error('❌ [Worker] Could not update mock_tests status to failed:', dbErr.message);
+    console.error('❌ [Worker] Could not update exam_mocks status to failed:', dbErr.message);
   }
 }
 

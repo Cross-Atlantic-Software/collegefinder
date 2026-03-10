@@ -51,15 +51,17 @@ const DateOfBirthPicker: React.FC<DateOfBirthPickerProps> = ({
 
   // Sync local state when value prop changes from external source
   useEffect(() => {
-    if (value) {
-      const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (dateMatch) {
-        const [, year, month, day] = dateMatch;
-        setLocalDate({ day, month, year });
+    queueMicrotask(() => {
+      if (value) {
+        const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          const [, year, month, day] = dateMatch;
+          setLocalDate({ day, month, year });
+        }
+      } else if (value === null) {
+        setLocalDate({ day: null, month: null, year: null });
       }
-    } else if (value === null) {
-      setLocalDate({ day: null, month: null, year: null });
-    }
+    });
   }, [value]);
 
   // Generate year options

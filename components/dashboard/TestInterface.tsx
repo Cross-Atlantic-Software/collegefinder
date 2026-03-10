@@ -24,23 +24,12 @@ interface Exam {
 
 interface TestInterfaceProps {
   exam: Exam;
-  format?: any;
+  format?: Record<string, unknown>;
   onExit: () => void;
 }
 
 export default function TestInterface({ exam, format, onExit }: TestInterfaceProps) {
-  // Use fullscreen interface if format is provided
-  if (format) {
-    return (
-      <FullscreenTestInterface
-        exam={exam}
-        format={format}
-        onExit={onExit}
-      />
-    );
-  }
-
-  // Legacy interface for backward compatibility
+  // All hooks must run unconditionally (before any early return)
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -50,20 +39,31 @@ export default function TestInterface({ exam, format, onExit }: TestInterfacePro
   const [timeSpent, setTimeSpent] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [showSolution, setShowSolution] = useState(false);
-  const [lastSubmissionResult, setLastSubmissionResult] = useState<any>(null);
+  const [lastSubmissionResult, setLastSubmissionResult] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    startTest();
+    if (!format) startTest();
   }, []);
 
   useEffect(() => {
-    // Timer for tracking time spent on current question
-    const interval = setInterval(() => {
-      setTimeSpent(Date.now() - questionStartTime);
-    }, 1000);
+    if (!format) {
+      const interval = setInterval(() => {
+        setTimeSpent(Date.now() - questionStartTime);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [questionStartTime, format]);
 
-    return () => clearInterval(interval);
-  }, [questionStartTime]);
+  // Use fullscreen interface if format is provided (after all hooks)
+  if (format) {
+    return (
+      <FullscreenTestInterface
+        exam={exam}
+        format={format}
+        onExit={onExit}
+      />
+    );
+  }
 
   const startTest = async () => {
     try {

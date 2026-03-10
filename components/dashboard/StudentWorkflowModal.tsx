@@ -52,27 +52,6 @@ export function StudentWorkflowModal({
     const wsRef = useRef<WebSocket | null>(null);
     const logsEndRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [logs]);
-
-    useEffect(() => {
-        return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (isOpen && status === 'idle' && user) {
-            startWorkflow();
-        }
-    }, [isOpen, user]);
-
-    if (!isOpen) return null;
-
     const addLog = (message: string, level: LogEntry['level']) => {
         setLogs(prev => [...prev, {
             message,
@@ -153,6 +132,27 @@ export function StudentWorkflowModal({
             Object.keys(options).length ? options : undefined
         );
     };
+
+    useEffect(() => {
+        logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [logs]);
+
+    useEffect(() => {
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isOpen && status === 'idle' && user) {
+            queueMicrotask(() => startWorkflow());
+        }
+    }, [isOpen, user]);
+
+    if (!isOpen) return null;
 
     const handleSubmitOtp = () => {
         if (!inputValue.trim() || !wsRef.current) return;

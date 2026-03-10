@@ -12,7 +12,7 @@ export default function AdminHeader() {
     if (adminUserStr) {
       try {
         const admin = JSON.parse(adminUserStr);
-        setAdminInfo(admin);
+        queueMicrotask(() => setAdminInfo(admin));
       } catch (e) {
         console.error('Error parsing admin user:', e);
       }

@@ -214,7 +214,7 @@ export default function AdminSidebar() {
         activeGroups.add(group.label);
       }
     });
-    setExpandedGroups(activeGroups);
+    queueMicrotask(() => setExpandedGroups(activeGroups));
   }, [pathname]);
 
   const handleLogout = () => {

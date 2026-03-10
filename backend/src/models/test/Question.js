@@ -10,13 +10,13 @@ class Question {
   }
 
   /**
-   * Find questions by filters
+   * Find questions by filters (no exam_id - questions are shared across exams)
    */
   static async findByFilters(filters) {
-    const { exam_id, subject, difficulty, topic, question_type, section_name, section_type, limit = 10, offset = 0 } = filters;
-    let query = 'SELECT * FROM questions WHERE exam_id = $1';
-    let params = [exam_id];
-    let paramIndex = 2;
+    const { subject, difficulty, topic, question_type, section_name, section_type, limit = 10, offset = 0 } = filters;
+    let query = 'SELECT * FROM questions WHERE 1=1';
+    let params = [];
+    let paramIndex = 1;
 
     if (subject) {
       query += ` AND LOWER(subject) = LOWER($${paramIndex})`;
@@ -77,29 +77,29 @@ class Question {
   }
 
   /**
-   * Search questions by text
+   * Search questions by text (no exam scope - searches full question bank)
    */
-  static async search(searchTerm, examId, limit = 20) {
+  static async search(searchTerm, limit = 20) {
     const result = await db.query(`
       SELECT * FROM questions 
-      WHERE exam_id = $1 AND (
-        question_text ILIKE $2 OR 
-        subject ILIKE $2 OR 
-        topic ILIKE $2 OR 
-        sub_topic ILIKE $2
+      WHERE (
+        question_text ILIKE $1 OR 
+        subject ILIKE $1 OR 
+        topic ILIKE $1 OR 
+        sub_topic ILIKE $1
       )
       ORDER BY usage_count ASC, quality_rating DESC
-      LIMIT $3
-    `, [examId, `%${searchTerm}%`, limit]);
+      LIMIT $2
+    `, [`%${searchTerm}%`, limit]);
     return result.rows;
   }
 
   /**
-   * Create a new question
+   * Create a new question (no exam_id - questions are shared across exams)
    */
   static async create(data) {
     const {
-      exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
+      subject, unit, topic, sub_topic, concept_tags, difficulty,
       question_type, question_text, options, correct_option, solution_text,
       marks, negative_marks, source, generation_prompt_version,
       section_name, section_type, image_url
@@ -107,14 +107,14 @@ class Question {
 
     const result = await db.query(`
       INSERT INTO questions (
-        exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
+        subject, unit, topic, sub_topic, concept_tags, difficulty,
         question_type, question_text, options, correct_option, solution_text,
         marks, negative_marks, source, generation_prompt_version,
         section_name, section_type, image_url
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `, [
-      exam_id, subject, unit, topic, sub_topic, concept_tags, difficulty,
+      subject, unit, topic, sub_topic, concept_tags, difficulty,
       question_type, question_text, JSON.stringify(options), correct_option,
       solution_text, marks, negative_marks, source, generation_prompt_version,
       section_name || null, section_type || null, image_url || null
@@ -220,7 +220,7 @@ class Question {
         ) as success_rate,
         AVG(qa.time_spent_seconds) as avg_time_spent
       FROM questions q
-      LEFT JOIN question_attempts qa ON q.id = qa.question_id
+      LEFT JOIN user_attempt_answers qa ON q.id = qa.question_id
       WHERE q.id = $1
       GROUP BY q.id
     `, [questionId]);
@@ -228,7 +228,7 @@ class Question {
   }
 
   /**
-   * Get questions by exam with statistics
+   * Get questions used in an exam (via exam_mock_questions) with statistics
    */
   static async getByExamWithStats(examId, limit = 50, offset = 0) {
     const result = await db.query(`
@@ -241,8 +241,8 @@ class Question {
            NULLIF(COUNT(qa.id), 0)) * 100, 2
         ) as success_rate
       FROM questions q
-      LEFT JOIN question_attempts qa ON q.id = qa.question_id
-      WHERE q.exam_id = $1
+      INNER JOIN exam_mock_questions mq ON mq.question_id = q.id AND mq.exam_id = $1
+      LEFT JOIN user_attempt_answers qa ON q.id = qa.question_id
       GROUP BY q.id
       ORDER BY q.created_at DESC
       LIMIT $2 OFFSET $3

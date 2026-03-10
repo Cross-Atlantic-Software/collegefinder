@@ -22,11 +22,13 @@ export default function StepTwoC() {
 
   // Initialize state options on mount
   useEffect(() => {
-    const states = getAllStates();
-    setStateOptions(states.map(state => ({
-      value: state,
-      label: state
-    })));
+    queueMicrotask(() => {
+      const states = getAllStates();
+      setStateOptions(states.map(state => ({
+        value: state,
+        label: state
+      })));
+    });
   }, []);
 
   // Load existing address data if available
@@ -60,24 +62,25 @@ export default function StepTwoC() {
 
   // Update district options when state changes
   useEffect(() => {
-    if (selectedState) {
-      const districts = getDistrictsForState(selectedState);
-      setDistrictOptions(districts.map(district => ({
-        value: district,
-        label: district
-      })));
-      // Reset district when state changes
-      setSelectedDistrict("");
-    } else {
-      setDistrictOptions([]);
-      setSelectedDistrict("");
-    }
+    queueMicrotask(() => {
+      if (selectedState) {
+        const districts = getDistrictsForState(selectedState);
+        setDistrictOptions(districts.map(district => ({
+          value: district,
+          label: district
+        })));
+        setSelectedDistrict("");
+      } else {
+        setDistrictOptions([]);
+        setSelectedDistrict("");
+      }
+    });
   }, [selectedState]);
 
   // Redirect to dashboard if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
-      setIsRedirecting(true);
+      queueMicrotask(() => setIsRedirecting(true));
       router.prefetch('/dashboard');
       const timer = setTimeout(() => {
         router.replace('/dashboard');

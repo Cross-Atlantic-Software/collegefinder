@@ -17,10 +17,10 @@ export default function StepThree() {
   useEffect(() => {
     if (!isLoading && !hasLoadedUser) {
       refreshUser().then(() => {
-        setHasLoadedUser(true);
+        queueMicrotask(() => setHasLoadedUser(true));
       }).catch(err => {
         console.error("Error refreshing user:", err);
-        setHasLoadedUser(true); // Continue even if refresh fails
+        queueMicrotask(() => setHasLoadedUser(true));
       });
     }
   }, [isLoading, hasLoadedUser, refreshUser]);
@@ -28,16 +28,10 @@ export default function StepThree() {
   // Only redirect if user hasn't completed onboarding (shouldn't be here - they need to complete previous steps first)
   useEffect(() => {
     if (!isLoading && hasLoadedUser && !user?.onboarding_completed) {
-      // Check which step they need to complete
+      queueMicrotask(() => setIsRedirecting(true));
       if (!user?.name) {
-        // No name, go to step-2
-        setIsRedirecting(true);
         router.replace('/step-2');
       } else {
-        // Has name, check if they have stream and interests
-        // For now, just redirect to step-2a if onboarding not completed
-        // The backend should track completion status
-        setIsRedirecting(true);
         router.replace('/step-2a');
       }
     }

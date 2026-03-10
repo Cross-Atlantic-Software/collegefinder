@@ -495,10 +495,23 @@ class TestController {
         });
       }
 
+      // Check for unknown question type and send alert email (don't let this break submit)
+      try {
+        const emailAlertService = require('../../services/emailAlertService');
+        await emailAlertService.sendUnknownQuestionTypeAlert(question.question_type, question.id, {
+          subject: question.subject,
+          difficulty: question.difficulty,
+          topic: question.topic
+        });
+      } catch (emailErr) {
+        console.warn('Email alert skipped:', emailErr?.message);
+      }
+
       // Check if already answered with a real answer (selected_option != null)
       // Pre-inserted empty rows (from mock test flow) have selected_option = null and are not considered "answered"
       const existingAttempts = await QuestionAttempt.findByTestAttemptId(parseInt(testAttemptId));
-      const existingForQuestion = existingAttempts.find(qa => qa.question_id === parseInt(questionId));
+      const qIdNum = parseInt(questionId, 10);
+      const existingForQuestion = existingAttempts.find(qa => Number(qa.question_id) === qIdNum);
       const alreadyAnswered = existingForQuestion && existingForQuestion.selected_option !== null;
 
       if (alreadyAnswered) {
@@ -508,19 +521,71 @@ class TestController {
         });
       }
 
-      // Determine if answer is correct
-      const isCorrect = selected_option === question.correct_option;
+      // Determine if answer is correct based on question type
+      let isCorrect = false;
+      const selectedStr = selected_option == null ? '' : (typeof selected_option === 'string' ? selected_option : JSON.stringify(selected_option));
+      const qType = question.question_type || 'mcq_single';
+      const correctOption = question.correct_option != null ? String(question.correct_option) : '';
+
+      switch (qType) {
+        case 'mcq_single':
+        case 'numerical':
+        case 'true_false':
+        case 'fill_blank':
+        case 'assertion_reason':
+          isCorrect = selectedStr === correctOption;
+          break;
+
+        case 'mcq_multiple':
+          try {
+            const selected = Array.isArray(selected_option) ? [...selected_option].sort() : JSON.parse(selectedStr || '[]');
+            const correct = typeof question.correct_option === 'string' && question.correct_option.startsWith('[')
+              ? JSON.parse(question.correct_option)
+              : [question.correct_option];
+            const correctSorted = Array.isArray(correct) ? [...correct].sort() : [correct];
+            const selSorted = Array.isArray(selected) ? [...selected].sort() : [selected];
+            isCorrect = JSON.stringify(selSorted) === JSON.stringify(correctSorted);
+          } catch (e) {
+            isCorrect = false;
+          }
+          break;
+
+        case 'match_following':
+          try {
+            const selectedMatches = typeof selected_option === 'object' ? selected_option : (selectedStr ? JSON.parse(selectedStr) : {});
+            const correctMatches = typeof question.correct_option === 'object' ? question.correct_option : (question.correct_option ? JSON.parse(question.correct_option) : {});
+            isCorrect = JSON.stringify(selectedMatches) === JSON.stringify(correctMatches);
+          } catch (e) {
+            isCorrect = false;
+          }
+          break;
+
+        case 'paragraph':
+          isCorrect = selectedStr === correctOption;
+          break;
+
+        default:
+          console.warn(`Unknown question type: ${qType}`);
+          isCorrect = selectedStr === correctOption;
+      }
 
       // Attempt order: use existing order if row was pre-inserted, otherwise assign next order
-      const answeredCount = existingAttempts.filter(qa => qa.selected_option !== null).length;
-      const attemptOrder = existingForQuestion ? existingForQuestion.attempt_order : answeredCount + 1;
+      const answeredCount = existingAttempts.filter(qa => qa.selected_option != null && qa.selected_option !== '').length;
+      const attemptOrder = existingForQuestion != null ? Number(existingForQuestion.attempt_order) : answeredCount + 1;
+
+      // Get exam_id and mock_id from test_attempt
+      const testAttemptRecord = await TestAttempt.findById(parseInt(testAttemptId));
+      const examId = testAttemptRecord.exam_id;
+      const mockId = testAttemptRecord.exam_mock_id ?? testAttemptRecord.mock_test_id ?? null;
 
       // Upsert: updates pre-inserted empty rows OR inserts new row (old flow)
       const questionAttempt = await QuestionAttempt.upsert({
         user_id: userId,
         question_id: parseInt(questionId),
         test_attempt_id: parseInt(testAttemptId),
-        selected_option,
+        exam_id: examId,
+        mock_id: mockId,
+        selected_option: selectedStr, // Store as string for all types
         is_correct: isCorrect,
         time_spent_seconds: time_spent_seconds || 0,
         attempt_order: attemptOrder
@@ -531,17 +596,18 @@ class TestController {
         message: 'Answer submitted successfully',
         data: {
           is_correct: isCorrect,
-          correct_option: question.correct_option,
-          solution_text: question.solution_text,
+          correct_option: question.correct_option != null ? String(question.correct_option) : '',
+          solution_text: question.solution_text || '',
           marks_awarded: isCorrect ? question.marks : -question.negative_marks
         }
       });
 
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error submitting answer:', error?.message || error);
+      if (error?.stack) console.error(error.stack);
       res.status(500).json({
         success: false,
-        message: 'Failed to submit answer'
+        message: process.env.NODE_ENV === 'development' && error?.message ? error.message : 'Failed to submit answer'
       });
     }
   }

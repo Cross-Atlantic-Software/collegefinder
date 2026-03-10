@@ -27,7 +27,7 @@ export default function CareerGoalsTableClient({ initialUsers }: CareerGoalsTabl
 
   useEffect(() => {
     if (initialUsers.length === 0) {
-      setUsers([]);
+      queueMicrotask(() => setUsers([]));
       return;
     }
     

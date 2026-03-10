@@ -83,10 +83,10 @@ const init = async () => {
       'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
       'user_other_info.sql',   // User other info table (depends on users, programs, exam_city)
       'user_document_vault.sql', // User document vault table (depends on users)
-      'test_attempts.sql',    // Test attempts table (depends on users, tests, exams)
-      'question_attempts.sql', // Question attempts table (depends on users, questions, test_attempts)
-      'mock_tests.sql',       // Mock tests table (depends on exams)
-      'mock_questions.sql',   // Mock questions table (depends on mock_tests, questions)
+      'mock_tests.sql',       // exam_mocks (depends on exams)
+      'test_attempts.sql',    // user_exam_attempts (depends on users, tests, exams, exam_mocks)
+      'mock_questions.sql',   // exam_mock_questions (depends on exam_mocks, questions, exams)
+      'question_attempts.sql', // user_attempt_answers (depends on users, questions, user_exam_attempts, exams, exam_mocks)
       // Automation tables (for python-backend PostgreSQL integration)
       'automation_exams.sql',       // Automation exam configurations
       'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
@@ -127,7 +127,9 @@ const runMigrations = async () => {
     'update_government_identification_apaar_id.sql',
     'add_questions_image_url.sql',
     'add_total_mocks_generated_to_exams.sql',
-    'add_mock_test_id_to_test_attempts.sql'
+    'add_mock_test_id_to_test_attempts.sql',
+    'remove_exam_id_from_questions.sql',
+    'rename_test_tables_to_self_explanatory.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
@@ -143,17 +145,21 @@ const runMigrations = async () => {
     const cleanedSql = sql
       .split('\n')
       .filter(line => !line.trim().startsWith('--'))
-      .join('\n');
-
-    const statements = cleanedSql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .join('\n')
+      .trim();
 
     try {
-      for (const statement of statements) {
-        if (statement.trim()) {
-          await pool.query(statement);
+      if (cleanedSql.includes('$$')) {
+        await pool.query(cleanedSql);
+      } else {
+        const statements = cleanedSql
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        for (const statement of statements) {
+          if (statement.trim()) {
+            await pool.query(statement);
+          }
         }
       }
       console.log(`✅ Migration: ${file}`);

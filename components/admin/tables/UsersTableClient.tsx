@@ -15,7 +15,7 @@ export default function UsersTableClient({ initialUsers }: UsersTableClientProps
 
   useEffect(() => {
     if (initialUsers.length === 0) {
-      setUsers([]);
+      queueMicrotask(() => setUsers([]));
       return;
     }
     

@@ -5,7 +5,7 @@ class TestAttempt {
    * Find test attempt by ID
    */
   static async findById(id) {
-    const result = await db.query('SELECT * FROM test_attempts WHERE id = $1', [id]);
+    const result = await db.query('SELECT * FROM user_exam_attempts WHERE id = $1', [id]);
     return result.rows[0];
   }
 
@@ -16,11 +16,11 @@ class TestAttempt {
     const result = await db.query(`
       SELECT
         ta.*,
-        COALESCE(t.title, CONCAT('Mock ', mt.mock_number)) as test_title,
+        COALESCE(t.title, CONCAT('Mock ', mt.order_index)) as test_title,
         e.name as exam_name
-      FROM test_attempts ta
+      FROM user_exam_attempts ta
       LEFT JOIN tests t ON ta.test_id = t.id
-      LEFT JOIN mock_tests mt ON ta.mock_test_id = mt.id
+      LEFT JOIN exam_mocks mt ON ta.exam_mock_id = mt.id
       JOIN exams_taxonomies e ON ta.exam_id = e.id
       WHERE ta.user_id = $1
       ORDER BY ta.created_at DESC
@@ -35,7 +35,7 @@ class TestAttempt {
   static async findByTestId(testId, limit = 100, offset = 0) {
     const result = await db.query(`
       SELECT ta.*, u.name as user_name, u.email as user_email
-      FROM test_attempts ta
+      FROM user_exam_attempts ta
       JOIN users u ON ta.user_id = u.id
       WHERE ta.test_id = $1
       ORDER BY ta.total_score DESC, ta.created_at ASC
@@ -49,7 +49,7 @@ class TestAttempt {
    */
   static async findUserTestAttempts(userId, testId) {
     const result = await db.query(`
-      SELECT * FROM test_attempts 
+      SELECT * FROM user_exam_attempts 
       WHERE user_id = $1 AND test_id = $2
       ORDER BY created_at DESC
     `, [userId, testId]);
@@ -60,10 +60,10 @@ class TestAttempt {
    * Create a new test attempt
    */
   static async create(data) {
-    const { user_id, test_id, exam_id, mock_test_id } = data;
+    const { user_id, test_id, exam_id, exam_mock_id, mock_test_id } = data;
     const result = await db.query(
-      'INSERT INTO test_attempts (user_id, test_id, exam_id, mock_test_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [user_id, test_id || null, exam_id, mock_test_id || null]
+      'INSERT INTO user_exam_attempts (user_id, test_id, exam_id, exam_mock_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [user_id, test_id || null, exam_id, exam_mock_id ?? mock_test_id ?? null]
     );
     return result.rows[0];
   }
@@ -97,7 +97,7 @@ class TestAttempt {
     values.push(id);
 
     const query = `
-      UPDATE test_attempts 
+      UPDATE user_exam_attempts 
       SET ${fields.join(', ')} 
       WHERE id = $${paramIndex} 
       RETURNING *
@@ -124,7 +124,7 @@ class TestAttempt {
     } = finalData;
 
     const result = await db.query(`
-      UPDATE test_attempts 
+      UPDATE user_exam_attempts 
       SET 
         total_score = $1,
         attempted_count = $2,
@@ -168,7 +168,7 @@ class TestAttempt {
       SELECT 
         COUNT(*) as total_attempts,
         COUNT(CASE WHEN total_score < $1 THEN 1 END) as lower_scores
-      FROM test_attempts 
+      FROM user_exam_attempts 
       WHERE test_id = $2 AND completed_at IS NOT NULL
     `, [testAttempt.total_score, testAttempt.test_id]);
 
@@ -178,7 +178,7 @@ class TestAttempt {
     // Calculate rank
     const rankResult = await db.query(`
       SELECT COUNT(*) + 1 as rank_position
-      FROM test_attempts 
+      FROM user_exam_attempts 
       WHERE test_id = $1 AND total_score > $2 AND completed_at IS NOT NULL
     `, [testAttempt.test_id, testAttempt.total_score]);
 
@@ -186,7 +186,7 @@ class TestAttempt {
 
     // Update the test attempt
     const result = await db.query(`
-      UPDATE test_attempts 
+      UPDATE user_exam_attempts 
       SET percentile = $1, rank_position = $2
       WHERE id = $3 
       RETURNING *
@@ -202,8 +202,8 @@ class TestAttempt {
   static async countCompletedMocks(userId, examId) {
     const result = await db.query(`
       SELECT COUNT(*) as count
-      FROM test_attempts ta
-      JOIN mock_tests mt ON ta.mock_test_id = mt.id
+      FROM user_exam_attempts ta
+      JOIN exam_mocks mt ON ta.exam_mock_id = mt.id
       WHERE ta.user_id = $1
         AND ta.exam_id = $2
         AND ta.completed_at IS NOT NULL
@@ -216,7 +216,7 @@ class TestAttempt {
    */
   static async delete(id) {
     const result = await db.query(
-      'DELETE FROM test_attempts WHERE id = $1 RETURNING *',
+      'DELETE FROM user_exam_attempts WHERE id = $1 RETURNING *',
       [id]
     );
     return result.rows[0];
@@ -233,15 +233,15 @@ class TestAttempt {
         t.test_type,
         t.duration_minutes,
         t.total_questions as test_total_questions,
-        COALESCE(t.title, CONCAT('Mock ', mt.mock_number)) as test_title,
-        mt.mock_number,
+        COALESCE(t.title, CONCAT('Mock ', mt.order_index)) as test_title,
+        mt.order_index as mock_order_index,
         mt.total_questions as mock_total_questions,
         e.name as exam_name,
         u.name as user_name,
         u.email as user_email
-      FROM test_attempts ta
+      FROM user_exam_attempts ta
       LEFT JOIN tests t ON ta.test_id = t.id
-      LEFT JOIN mock_tests mt ON ta.mock_test_id = mt.id
+      LEFT JOIN exam_mocks mt ON ta.exam_mock_id = mt.id
       JOIN exams_taxonomies e ON ta.exam_id = e.id
       JOIN users u ON ta.user_id = u.id
       WHERE ta.id = $1
@@ -263,7 +263,7 @@ class TestAttempt {
         ta.rank_position,
         ta.percentile,
         u.name as user_name
-      FROM test_attempts ta
+      FROM user_exam_attempts ta
       JOIN users u ON ta.user_id = u.id
       WHERE ta.test_id = $1 AND ta.completed_at IS NOT NULL
       ORDER BY ta.total_score DESC, ta.time_spent_minutes ASC
@@ -284,7 +284,7 @@ class TestAttempt {
         AVG(accuracy_percentage) as avg_accuracy,
         AVG(time_spent_minutes) as avg_time,
         COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END) as completed_attempts
-      FROM test_attempts 
+      FROM user_exam_attempts 
       WHERE user_id = $1
     `;
     

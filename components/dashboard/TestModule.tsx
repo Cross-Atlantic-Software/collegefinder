@@ -356,11 +356,7 @@ export default function TestModule() {
                     <p className="text-slate-300 text-sm mb-4 line-clamp-2">
                       {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
                     </p>
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-slate-400">
-                        <span className="inline-block w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                        AI Questions Available
-                      </div>
+                    <div className="flex items-center justify-end">
                       <Button
                         onClick={() => handleExamSelect(exam)}
                         variant="themeButton"

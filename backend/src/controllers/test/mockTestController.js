@@ -5,7 +5,17 @@ const QuestionAttempt = require('../../models/test/QuestionAttempt');
 const Question = require('../../models/test/Question');
 const Exam = require('../../models/taxonomy/Exam');
 const db = require('../../config/database');
-const { getMockGenerationQueue } = require('../../jobs/queues/mockGenerationQueue');
+
+/** Lazy getter for mock generation queue; returns null if bullmq/redis not available (e.g. in Docker without deps). */
+function getMockGenerationQueueLazy() {
+  try {
+    const { getMockGenerationQueue } = require('../../jobs/queues/mockGenerationQueue');
+    return getMockGenerationQueue();
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND') return null;
+    throw err;
+  }
+}
 
 class MockTestController {
   /**
@@ -50,7 +60,7 @@ class MockTestController {
         data: {
           mock: {
             id: mock.id,
-            mock_number: mock.mock_number,
+            order_index: mock.order_index,
             status: mock.status,
             total_questions: mock.total_questions,
           },
@@ -68,7 +78,7 @@ class MockTestController {
    * Start a mock test attempt for the authenticated user.
    * - Resolves the user's next mock (completed + 1).
    * - Creates a test_attempt linked to the mock.
-   * - Pre-inserts empty question_attempts for every question in the mock.
+   * - Pre-inserts empty user_attempt_answers for every question in the mock.
    * - Triggers background generation of mock N+1 if it doesn't exist yet.
    *
    * POST /api/mock-tests/exams/:examId/start
@@ -120,7 +130,7 @@ class MockTestController {
           data: {
             test_attempt_id: existingIncomplete.id,
             mock_test_id: mock.id,
-            mock_number: mock.mock_number,
+            order_index: mock.order_index,
             is_resume: true,
           },
         });
@@ -128,14 +138,14 @@ class MockTestController {
 
       // --- Create test_attempt linked to this mock ---
       const testAttempt = await db.query(`
-        INSERT INTO test_attempts (user_id, exam_id, mock_test_id, test_id)
+        INSERT INTO user_exam_attempts (user_id, exam_id, exam_mock_id, test_id)
         VALUES ($1, $2, $3, $4)
         RETURNING *
       `, [userId, examId, mock.id, null]);
 
       const attempt = testAttempt.rows[0];
 
-      // --- Pre-insert empty question_attempts for all questions in the mock ---
+      // --- Pre-insert empty user_attempt_answers for all questions in the mock ---
       const mockQuestions = await MockQuestion.findByMockTestId(mock.id);
 
       if (mockQuestions.length > 0) {
@@ -143,6 +153,8 @@ class MockTestController {
           user_id: userId,
           question_id: mq.id,  // q.id from q.* in findByMockTestId JOIN result
           test_attempt_id: attempt.id,
+          exam_id: examId,
+          mock_id: mock.id,
           selected_option: null,
           is_correct: false,
           time_spent_seconds: 0,
@@ -163,7 +175,7 @@ class MockTestController {
         data: {
           test_attempt_id: attempt.id,
           mock_test_id: mock.id,
-          mock_number: mock.mock_number,
+          order_index: mock.order_index,
           total_questions: mock.total_questions,
           is_resume: false,
         },
@@ -203,6 +215,8 @@ class MockTestController {
       const sanitized = questions.map((q) => ({
         id: q.id,
         mock_question_id: q.mock_question_id,
+        mock_id: q.exam_mock_id,
+        exam_id: q.exam_id,
         order_index: q.order_index,
         question_text: q.question_text,
         options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
@@ -221,7 +235,8 @@ class MockTestController {
         success: true,
         data: {
           mock_test_id: mockTestId,
-          mock_number: mock.mock_number,
+          order_index: mock.order_index,
+          exam_id: mock.exam_id,
           total_questions: mock.total_questions,
           questions: sanitized,
         },
@@ -243,8 +258,8 @@ class MockTestController {
   static async _countCompletedMocks(userId, examId) {
     const result = await db.query(`
       SELECT COUNT(*) as count
-      FROM test_attempts ta
-      JOIN mock_tests mt ON ta.mock_test_id = mt.id
+      FROM user_exam_attempts ta
+      JOIN exam_mocks mt ON ta.exam_mock_id = mt.id
       WHERE ta.user_id = $1
         AND ta.exam_id = $2
         AND ta.completed_at IS NOT NULL
@@ -257,9 +272,9 @@ class MockTestController {
    */
   static async _findIncompleteAttempt(userId, mockTestId) {
     const result = await db.query(`
-      SELECT * FROM test_attempts
+      SELECT * FROM user_exam_attempts
       WHERE user_id = $1
-        AND mock_test_id = $2
+        AND exam_mock_id = $2
         AND completed_at IS NULL
       ORDER BY created_at DESC
       LIMIT 1
@@ -268,8 +283,8 @@ class MockTestController {
   }
 
   /**
-   * Creates a mock_tests record with status='generating' and enqueues a BullMQ job.
-   * The UNIQUE(exam_id, mock_number) constraint on mock_tests prevents duplicate generation.
+   * Creates an exam_mocks record with status='generating' and enqueues a BullMQ job.
+   * The UNIQUE(exam_id, order_index) constraint on exam_mocks prevents duplicate generation.
    */
   static async _triggerNextMockGeneration(examId, mockNumber) {
     const created = await MockTest.createGenerating(examId, mockNumber, 'system');
@@ -278,7 +293,11 @@ class MockTestController {
       return;
     }
 
-    const queue = getMockGenerationQueue();
+    const queue = getMockGenerationQueueLazy();
+    if (!queue) {
+      console.warn('⚠️  Mock generation queue unavailable (bullmq/redis not installed). Skipping background generation.');
+      return;
+    }
     await queue.add('generate', {
       examId,
       mockNumber,
