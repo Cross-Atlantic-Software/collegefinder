@@ -7,6 +7,7 @@ export interface Exam {
   name: string;
   code: string;
   description: string | null;
+  generation_prompt?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +75,31 @@ export async function updateExam(
 export async function deleteExam(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}`, {
     method: 'DELETE',
+  });
+}
+
+/**
+ * Get exam generation prompt (for mock question generation)
+ */
+export async function getExamPrompt(id: number): Promise<ApiResponse<{
+  prompt: string;
+  hasCustomPrompt: boolean;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}/prompt`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Update exam generation prompt
+ */
+export async function updateExamPrompt(
+  id: number,
+  prompt: string
+): Promise<ApiResponse<{ exam: Exam; prompt: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}/prompt`, {
+    method: 'PUT',
+    body: JSON.stringify({ prompt }),
   });
 }
 

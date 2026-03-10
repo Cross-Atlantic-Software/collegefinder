@@ -129,7 +129,10 @@ const runMigrations = async () => {
     'add_total_mocks_generated_to_exams.sql',
     'add_mock_test_id_to_test_attempts.sql',
     'remove_exam_id_from_questions.sql',
-    'rename_test_tables_to_self_explanatory.sql'
+    'rename_test_tables_to_self_explanatory.sql',
+    'allow_any_question_type.sql',
+    'add_generation_prompt_to_exams.sql',
+    'create_exam_mock_prompts_table.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

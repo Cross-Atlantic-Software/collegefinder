@@ -329,7 +329,18 @@ export async function completeTest(testAttemptId: number): Promise<ApiResponse<{
 }>> {
   return apiRequest<{
     test_attempt: TestAttempt;
-    summary: unknown;
+    summary: {
+      total_score: number;
+      total_questions: number;
+      attempted: number;
+      correct: number;
+      incorrect: number;
+      skipped: number;
+      accuracy: number;
+      percentile?: number;
+      rank?: number;
+      time_taken: number;
+    };
   }>(`/tests/attempts/${testAttemptId}/complete`, {
     method: 'POST',
   });

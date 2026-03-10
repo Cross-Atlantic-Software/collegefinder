@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   code VARCHAR(50) NOT NULL, -- Short code like JEE_MAIN, NEET, etc.
   description TEXT,
   format JSONB DEFAULT '{}'::jsonb, -- Format configuration including papers, sections, marking scheme
+  generation_prompt TEXT, -- Optional exam-specific prompt for question generation; if set, used instead of generic prompt
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(name),
@@ -17,6 +18,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'exams_taxonomies') THEN
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS format JSONB DEFAULT '{}'::jsonb;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS generation_prompt TEXT;
   END IF;
 END $$;
 

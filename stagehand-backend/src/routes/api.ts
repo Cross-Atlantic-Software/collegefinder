@@ -234,7 +234,7 @@ router.post("/init", async (req: Request, res: Response) => {
         const page = stagehand.context.pages()[0];
 
         // Full-screen viewport before navigation (runs in background when headless)
-        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.setViewportSize(1920, 1080);
 
         wsManager.broadcastLog(sessionId, `Navigating to ${examUrl}`, "info");
         // Use longer timeout for slow government sites
@@ -331,11 +331,14 @@ router.post("/execute", async (req: Request, res: Response) => {
             // Deterministic execution: no LLM call — use cached selector from previous run
             const first = { ...cachedActions[0] };
             if (body.argumentsOverride && body.argumentsOverride.length > 0) {
-                first.arguments = body.argumentsOverride;
+                first.arguments = body.argumentsOverride.map((a: string | number | boolean) => String(a));
             }
             wsManager.broadcastLog(sessionId, "Executing cached action (no LLM)", "info");
             console.log(`[${sessionId}] actCached: ${first.method} on selector`);
-            result = await stagehand.act(first);
+            result = await stagehand.act({
+                ...first,
+                arguments: (first.arguments ?? []).map((a: string | number | boolean) => String(a)),
+            } as { method: string; description: string; selector: string; arguments: string[] });
         } else {
             const promptStr = prompt ?? "";
             wsManager.broadcastLog(sessionId, `Executing: ${action}`, "info");
@@ -482,7 +485,7 @@ router.post("/click", async (req: Request, res: Response) => {
 
         let checkboxHandled = false;
         if (type === "checkbox" && stagehand.context) {
-            const pages = stagehand.context.pages() as import("playwright").Page[];
+            const pages = stagehand.context.pages() as unknown as import("playwright").Page[];
             const currentPage = pages[pages.length - 1];
             if (currentPage) {
                 const direct = await clickCheckboxByTargetText(currentPage, target);
@@ -502,7 +505,7 @@ router.post("/click", async (req: Request, res: Response) => {
 
             // For checkboxes, verify and force-check once more via deterministic DOM path
             if (type === "checkbox" && stagehand.context) {
-                const pages = stagehand.context.pages() as import("playwright").Page[];
+                const pages = stagehand.context.pages() as unknown as import("playwright").Page[];
                 const currentPage = pages[pages.length - 1];
                 if (currentPage) {
                     const verify = await clickCheckboxByTargetText(currentPage, target);

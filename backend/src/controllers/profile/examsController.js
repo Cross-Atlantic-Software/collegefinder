@@ -43,6 +43,54 @@ class ExamsTaxonomyController {
   }
 
   /**
+   * Get generation prompt for an exam (for admin)
+   * GET /api/admin/exams/:id/prompt
+   */
+  static async getPrompt(req, res) {
+    try {
+      const { id } = req.params;
+      const exam = await Exam.findById(parseInt(id));
+      if (!exam) {
+        return res.status(404).json({ success: false, message: 'Exam not found' });
+      }
+      const prompt = await Exam.getGenerationPrompt(parseInt(id));
+      res.json({
+        success: true,
+        data: { prompt: prompt || '', hasCustomPrompt: !!(prompt && prompt.trim()) }
+      });
+    } catch (error) {
+      console.error('Error fetching exam prompt:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch exam prompt' });
+    }
+  }
+
+  /**
+   * Update generation prompt for an exam (for admin)
+   * PUT /api/admin/exams/:id/prompt
+   */
+  static async updatePrompt(req, res) {
+    try {
+      const { id } = req.params;
+      const { prompt } = req.body;
+      const exam = await Exam.findById(parseInt(id));
+      if (!exam) {
+        return res.status(404).json({ success: false, message: 'Exam not found' });
+      }
+      // Persist to DB: save trimmed string or null (empty/whitespace = no custom prompt)
+      const valueToSave = (typeof prompt === 'string' && prompt.trim()) ? prompt.trim() : null;
+      const updated = await Exam.updateGenerationPrompt(parseInt(id), valueToSave);
+      res.json({
+        success: true,
+        data: { exam: updated, prompt: updated.generation_prompt || '' },
+        message: 'Exam prompt saved to database successfully'
+      });
+    } catch (error) {
+      console.error('Error updating exam prompt:', error);
+      res.status(500).json({ success: false, message: 'Failed to update exam prompt' });
+    }
+  }
+
+  /**
    * Get exam by ID (for admin)
    * GET /api/admin/exams/:id
    */

@@ -186,9 +186,9 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
         let test_attempt = (responseData as { test_attempt?: Record<string, unknown> })?.test_attempt;
         try {
           const resultsResponse = await getTestResults(testAttemptId);
-          const resultsData = resultsResponse.data ?? (resultsResponse as { question_attempts?: TestResultsData['question_attempts']; test_attempt?: Record<string, unknown> });
-          question_attempts = resultsData?.question_attempts ?? [];
-          test_attempt = resultsData?.test_attempt ?? test_attempt;
+          const resultsData = resultsResponse.data;
+          question_attempts = (resultsData?.question_attempts ?? []) as unknown as TestResultsData['question_attempts'];
+          test_attempt = (resultsData?.test_attempt != null ? (resultsData.test_attempt as unknown as Record<string, unknown>) : test_attempt) as Record<string, unknown> | undefined;
         } catch {
           // use summary from completeResponse
         }
@@ -259,7 +259,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
       setLoading(true);
       setError(null);
       const response = await submitAnswer(testAttemptId, currentQuestion.id, {
-        selected_option: selectedOption,
+        selected_option: typeof selectedOption === 'string' ? selectedOption : JSON.stringify(selectedOption),
         time_spent_seconds: 30,
       });
       if (response.success) {

@@ -61,15 +61,17 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
         <h3 className="text-lg font-semibold text-white mb-4">Section Breakdown</h3>
         
         <div className="space-y-4">
-          {Object.entries(sections).map(([sectionKey, section]) => (
+          {Object.entries(sections).map(([sectionKey, section]) => {
+            const sec = section as { name: string; marks: number; subsections?: Record<string, { type: string; questions: number; marks_per_question: number }> };
+            return (
             <div key={sectionKey} className="border border-white/10 rounded-lg p-4">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="font-semibold text-white">{section.name}</h4>
-                <span className="text-sm text-pink-300">{section.marks} marks</span>
+                <h4 className="font-semibold text-white">{sec.name}</h4>
+                <span className="text-sm text-pink-300">{sec.marks} marks</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {Object.entries(section.subsections || {}).map(([subKey, subsection]) => (
+                {Object.entries(sec.subsections || {}).map(([subKey, subsection]) => (
                   <div key={subKey} className="bg-white/5 rounded p-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-slate-200">
@@ -83,7 +85,8 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
                 ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       )}

@@ -20,7 +20,8 @@ import {
   FiStar,
   FiHelpCircle,
   FiPlay,
-  FiSettings
+  FiSettings,
+  FiMessageSquare
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -116,6 +117,17 @@ const navGroups: NavGroup[] = [
         label: 'Exams',
         href: '/admin/exams',
         icon: <FiFileText className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Mock Prompts',
+    icon: <FiMessageSquare className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Prompts',
+        href: '/admin/mock-prompts',
+        icon: <FiMessageSquare className="h-4 w-4" />,
       },
     ],
   },

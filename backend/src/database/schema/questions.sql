@@ -10,7 +10,11 @@ CREATE TABLE IF NOT EXISTS questions (
   sub_topic VARCHAR(100),
   concept_tags TEXT[] DEFAULT ARRAY[]::TEXT[],
   difficulty VARCHAR(20) NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  question_type VARCHAR(20) NOT NULL CHECK (question_type IN ('mcq', 'numerical')),
+  question_type VARCHAR(80) NOT NULL CHECK (char_length(trim(question_type)) >= 1 AND char_length(question_type) <= 80),
+  paragraph_context TEXT,
+  assertion TEXT,
+  reason TEXT,
+  match_pairs JSONB DEFAULT '[]'::jsonb,
   question_text TEXT NOT NULL,
   options JSONB DEFAULT '[]'::jsonb,
   correct_option VARCHAR(10) NOT NULL,
@@ -38,6 +42,10 @@ BEGIN
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS topic VARCHAR(100);
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS sub_topic VARCHAR(100);
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS concept_tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+    ALTER TABLE questions ADD COLUMN IF NOT EXISTS paragraph_context TEXT;
+    ALTER TABLE questions ADD COLUMN IF NOT EXISTS assertion TEXT;
+    ALTER TABLE questions ADD COLUMN IF NOT EXISTS reason TEXT;
+    ALTER TABLE questions ADD COLUMN IF NOT EXISTS match_pairs JSONB DEFAULT '[]'::jsonb;
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20);
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS question_type VARCHAR(20);
     ALTER TABLE questions ADD COLUMN IF NOT EXISTS question_text TEXT;
@@ -86,7 +94,11 @@ COMMENT ON COLUMN questions.topic IS 'Topic within the unit';
 COMMENT ON COLUMN questions.sub_topic IS 'Sub-topic for granular categorization';
 COMMENT ON COLUMN questions.concept_tags IS 'Array of concept tags for better categorization';
 COMMENT ON COLUMN questions.difficulty IS 'Question difficulty: easy, medium, or hard';
-COMMENT ON COLUMN questions.question_type IS 'Type of question: mcq or numerical';
+COMMENT ON COLUMN questions.question_type IS 'Type of question: mcq_single, mcq_multiple, numerical, paragraph, assertion_reason, match_following, true_false, fill_blank';
+COMMENT ON COLUMN questions.paragraph_context IS 'Paragraph/context text for paragraph-based questions';
+COMMENT ON COLUMN questions.assertion IS 'Assertion statement for assertion-reason type';
+COMMENT ON COLUMN questions.reason IS 'Reason statement for assertion-reason type';
+COMMENT ON COLUMN questions.match_pairs IS 'JSONB array for match-following questions';
 COMMENT ON COLUMN questions.question_text IS 'The actual question text';
 COMMENT ON COLUMN questions.options IS 'JSONB array of answer options for MCQ questions';
 COMMENT ON COLUMN questions.correct_option IS 'Correct answer option (A, B, C, D for MCQ)';

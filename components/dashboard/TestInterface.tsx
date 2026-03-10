@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
 import FullscreenTestInterface from "../test/FullscreenTestInterface";
+import type { ExamFormat } from "@/api/tests";
 
 interface Question {
   id: number;
@@ -24,7 +25,7 @@ interface Exam {
 
 interface TestInterfaceProps {
   exam: Exam;
-  format?: Record<string, unknown>;
+  format?: ExamFormat;
   onExit: () => void;
 }
 
@@ -39,7 +40,7 @@ export default function TestInterface({ exam, format, onExit }: TestInterfacePro
   const [timeSpent, setTimeSpent] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [showSolution, setShowSolution] = useState(false);
-  const [lastSubmissionResult, setLastSubmissionResult] = useState<Record<string, unknown> | null>(null);
+  const [lastSubmissionResult, setLastSubmissionResult] = useState<{ correct_option?: string; is_correct?: boolean; marks_awarded?: number; solution_text?: string } | null>(null);
 
   useEffect(() => {
     if (!format) startTest();
@@ -325,7 +326,7 @@ export default function TestInterface({ exam, format, onExit }: TestInterfacePro
                   />
                   <span className="font-medium">{option.key}.</span>
                   <span className="flex-1">{option.text}</span>
-                  {showSolution && option.key === lastSubmissionResult.correct_option && (
+                  {showSolution && lastSubmissionResult && option.key === lastSubmissionResult.correct_option && (
                     <span className="text-green-400">✓</span>
                   )}
                 </label>
@@ -347,12 +348,12 @@ export default function TestInterface({ exam, format, onExit }: TestInterfacePro
                     {lastSubmissionResult.is_correct ? 'Correct' : 'Incorrect'}
                   </span>
                   <span className="text-slate-400">
-                    {lastSubmissionResult.is_correct ? '+' : ''}{lastSubmissionResult.marks_awarded} marks
+                    {lastSubmissionResult.is_correct ? '+' : ''}{lastSubmissionResult.marks_awarded ?? 0} marks
                   </span>
                 </div>
               </div>
               <p className="text-slate-300 text-sm leading-relaxed">
-                {lastSubmissionResult.solution_text}
+                {lastSubmissionResult.solution_text ?? ''}
               </p>
             </div>
           )}

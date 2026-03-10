@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
     BLOGS: '/admin/blogs',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
+    MOCK_PROMPTS: '/admin/mock-prompts',
     SUBJECTS: '/admin/subjects',
     STREAMS: '/admin/streams',
     CAREERS: '/admin/careers',

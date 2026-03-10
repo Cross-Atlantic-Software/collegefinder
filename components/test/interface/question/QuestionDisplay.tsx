@@ -262,7 +262,7 @@ export default function QuestionDisplay({
                 className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
               >
                 <option value="">Select match...</option>
-                {question.match_pairs.map((p) => (
+                {(question.match_pairs ?? []).map((p) => (
                   <option key={p.right} value={p.right}>
                     {p.right}
                   </option>

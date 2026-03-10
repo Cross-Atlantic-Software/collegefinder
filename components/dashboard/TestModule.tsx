@@ -2,17 +2,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
 import { getAllExams } from "@/api";
+import type { Exam } from "@/api/exams";
 import { getExamFormats, getTestRules, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
-
-interface Exam {
-  id: number;
-  name: string;
-  description: string;
-  code: string;
-  format?: any;
-}
 
 type ViewState = 'exam-selection' | 'format-selection' | 'test-active';
 
@@ -177,8 +170,8 @@ export default function TestModule() {
   if (viewState === 'test-active' && selectedExam) {
     return (
       <TestInterface 
-        exam={selectedExam} 
-        format={selectedFormat}
+        exam={{ id: selectedExam.id, name: selectedExam.name, description: selectedExam.description ?? '', code: selectedExam.code }}
+        format={selectedFormat ?? undefined}
         onExit={handleBackToExams} 
       />
     );

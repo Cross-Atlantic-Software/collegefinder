@@ -41,16 +41,20 @@ class MockTestController {
       const completedCount = await MockTestController._countCompletedMocks(userId, examId);
       const nextMockNumber = completedCount + 1;
 
-      const mock = await MockTest.findByExamAndNumber(examId, nextMockNumber);
+      let mock = await MockTest.findByExamAndNumber(examId, nextMockNumber);
 
       if (!mock) {
+        // Auto-trigger generation so the user doesn't have to run a script manually
+        MockTestController._triggerNextMockGeneration(examId, nextMockNumber).catch((err) => {
+          console.error(`⚠️  Failed to trigger mock ${nextMockNumber} generation:`, err.message);
+        });
         return res.json({
           success: true,
           data: {
             mock: null,
             next_mock_number: nextMockNumber,
-            status: 'not_generated',
-            message: 'No mock test available yet. Please try again shortly.',
+            status: 'generating',
+            message: 'Your mock test is being generated. This takes a few minutes — please check back shortly.',
           },
         });
       }
@@ -66,6 +70,7 @@ class MockTestController {
           },
           next_mock_number: nextMockNumber,
           completed_mocks: completedCount,
+          status: mock.status,
         },
       });
     } catch (error) {
@@ -104,20 +109,57 @@ class MockTestController {
       const mock = await MockTest.findByExamAndNumber(examId, nextMockNumber);
 
       if (!mock) {
-        return res.status(503).json({
+        // Auto-trigger generation and return generating status
+        MockTestController._triggerNextMockGeneration(examId, nextMockNumber).catch((err) => {
+          console.error(`⚠️  Failed to trigger mock ${nextMockNumber} generation:`, err.message);
+        });
+        return res.status(202).json({
           success: false,
-          message: 'Mock test not available yet. Please try again in a moment.',
-          data: { next_mock_number: nextMockNumber, status: 'not_generated' },
+          message: 'Your mock test is being generated. This takes a few minutes — please try again shortly.',
+          data: { next_mock_number: nextMockNumber, status: 'generating' },
         });
       }
 
       if (mock.status !== 'ready') {
-        return res.status(503).json({
+        const isStuck = mock.status === 'failed' ||
+          (mock.status === 'generating' && mock.total_questions === 0);
+
+        if (isStuck) {
+          // Re-trigger: reset status to generating and enqueue / run inline
+          await MockTest.setStatus(mock.id, 'generating');
+          const queue = getMockGenerationQueueLazy();
+          if (queue) {
+            await queue.add('generate', { examId, mockNumber: nextMockNumber, mockTestId: mock.id });
+            console.log(`🔄 Re-triggered mock ${nextMockNumber} generation for exam ${examId} (BullMQ)`);
+          } else {
+            // Inline fallback
+            console.log(`🔄 Re-triggering mock ${nextMockNumber} generation for exam ${examId} (inline)`);
+            const mockId = mock.id;
+            setImmediate(() => {
+              let runMockGenerationSync;
+              try {
+                ({ runMockGenerationSync } = require('../../jobs/workers/mockGenerationWorker'));
+              } catch (loadErr) {
+                console.error('❌ Could not load mockGenerationWorker:', loadErr.message);
+                db.query("UPDATE exam_mocks SET status = 'failed' WHERE id = $1", [mockId]).catch(() => {});
+                return;
+              }
+              runMockGenerationSync({ examId, mockNumber: nextMockNumber, mockTestId: mockId })
+                .then(() => console.log(`✅ Mock ${nextMockNumber} for exam ${examId} generated`))
+                .catch((err) => {
+                  console.error(`❌ Mock ${nextMockNumber} generation failed:`, err.message);
+                  db.query("UPDATE exam_mocks SET status = 'failed' WHERE id = $1", [mockId]).catch(() => {});
+                });
+            });
+          }
+        }
+
+        return res.status(202).json({
           success: false,
-          message: mock.status === 'generating'
-            ? 'Mock test is being prepared. Please try again shortly.'
-            : 'Mock test generation failed. Please contact support.',
-          data: { next_mock_number: nextMockNumber, status: mock.status },
+          message: isStuck
+            ? 'Generating your mock test. This takes a few minutes — please try again shortly.'
+            : 'Mock test is being prepared. Please try again shortly.',
+          data: { next_mock_number: nextMockNumber, status: 'generating' },
         });
       }
 
@@ -283,7 +325,8 @@ class MockTestController {
   }
 
   /**
-   * Creates an exam_mocks record with status='generating' and enqueues a BullMQ job.
+   * Creates an exam_mocks record with status='generating' and either enqueues a BullMQ job
+   * (when Redis/BullMQ is available) or runs generation inline as a background async task.
    * The UNIQUE(exam_id, order_index) constraint on exam_mocks prevents duplicate generation.
    */
   static async _triggerNextMockGeneration(examId, mockNumber) {
@@ -294,17 +337,30 @@ class MockTestController {
     }
 
     const queue = getMockGenerationQueueLazy();
-    if (!queue) {
-      console.warn('⚠️  Mock generation queue unavailable (bullmq/redis not installed). Skipping background generation.');
+    if (queue) {
+      await queue.add('generate', { examId, mockNumber, mockTestId: created.id });
+      console.log(`🚀 Triggered generation of mock ${mockNumber} for exam ${examId} (BullMQ)`);
       return;
     }
-    await queue.add('generate', {
-      examId,
-      mockNumber,
-      mockTestId: created.id,
-    });
 
-    console.log(`🚀 Triggered generation of mock ${mockNumber} for exam ${examId}`);
+    // BullMQ/Redis not available — run generation directly in this process (non-blocking)
+    console.log(`🚀 Triggering generation of mock ${mockNumber} for exam ${examId} (inline fallback)`);
+    setImmediate(() => {
+      let runMockGenerationSync;
+      try {
+        ({ runMockGenerationSync } = require('../../jobs/workers/mockGenerationWorker'));
+      } catch (loadErr) {
+        console.error('❌ Could not load mockGenerationWorker:', loadErr.message);
+        db.query("UPDATE exam_mocks SET status = 'failed' WHERE id = $1", [created.id]).catch(() => {});
+        return;
+      }
+      runMockGenerationSync({ examId, mockNumber, mockTestId: created.id })
+        .then(() => console.log(`✅ Mock ${mockNumber} for exam ${examId} generated successfully`))
+        .catch((err) => {
+          console.error(`❌ Mock ${mockNumber} generation failed for exam ${examId}:`, err.message);
+          db.query("UPDATE exam_mocks SET status = 'failed' WHERE id = $1", [created.id]).catch(() => {});
+        });
+    });
   }
 }
 

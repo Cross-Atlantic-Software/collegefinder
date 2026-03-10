@@ -144,6 +144,30 @@ class Exam {
   }
 
   /**
+   * Get generation prompt for an exam (for mock question generation)
+   */
+  static async getGenerationPrompt(examId) {
+    const result = await db.query(
+      'SELECT generation_prompt FROM exams_taxonomies WHERE id = $1',
+      [examId]
+    );
+    return result.rows[0] ? result.rows[0].generation_prompt : null;
+  }
+
+  /**
+   * Update generation prompt for an exam (persisted in exams_taxonomies.generation_prompt).
+   * Pass a non-empty string to save, or null/empty to clear.
+   */
+  static async updateGenerationPrompt(examId, generationPrompt) {
+    const value = (generationPrompt && String(generationPrompt).trim()) ? String(generationPrompt).trim() : null;
+    const result = await db.query(
+      'UPDATE exams_taxonomies SET generation_prompt = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [value, examId]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Check if exam has format configuration
    */
   static async hasFormat(examId) {
