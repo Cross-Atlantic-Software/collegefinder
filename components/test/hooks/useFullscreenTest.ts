@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   startMockTest,
   getMockQuestions,
@@ -8,9 +9,10 @@ import {
   completeTest,
   getTestResults,
   ExamFormat,
-  MockQuestion,
 } from '@/api/tests';
 import type { Question, QuestionEntry, QuestionStatus, SectionProgress, TestResultsData } from '../interface/types';
+import { buildSectionMaps, computeSubmitSummary, getQuestionStatusesFromMap, normalizeTestResults } from '../utils';
+import { useFullscreenAndWarnings } from './useFullscreenAndWarnings';
 
 export interface UseFullscreenTestProps {
   examId: number;
@@ -30,76 +32,26 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
   const [sectionProgress, setSectionProgress] = useState<SectionProgress>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tabChangeWarning, setTabChangeWarning] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [completingTest, setCompletingTest] = useState(false);
   const [showEndTestConfirm, setShowEndTestConfirm] = useState(false);
   const [testResults, setTestResults] = useState<TestResultsData | null>(null);
+  const questionViewedAtRef = useRef<number>(Date.now());
+  const sectionMapsRef = useRef(sectionMaps);
+  const currentSectionRef = useRef(currentSection);
+  const questionNumberRef = useRef(questionNumber);
+  sectionMapsRef.current = sectionMaps;
+  currentSectionRef.current = currentSection;
+  questionNumberRef.current = questionNumber;
 
-  const enterFullscreen = useCallback(async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-    } catch (e) {
-      console.error('Failed to enter fullscreen:', e);
-    }
-  }, []);
+  const {
+    enterFullscreen,
+    isFullscreen,
+    tabChangeWarning,
+    setTabChangeWarning,
+  } = useFullscreenAndWarnings({ testAttemptId });
 
-  const exitFullscreen = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-    } catch (e) {
-      console.error('Failed to exit fullscreen:', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.requestFullscreen?.().catch(() => {});
-  }, [testAttemptId]);
-
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden && testAttemptId) setTabChangeWarning(true);
-    };
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (testAttemptId) {
-        e.preventDefault();
-        e.returnValue = 'Are you sure you want to leave? Your test progress may be lost.';
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [testAttemptId]);
-
-  useEffect(() => {
-    const onFullscreen = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFullscreen);
-    return () => document.removeEventListener('fullscreenchange', onFullscreen);
-  }, []);
-
-  useEffect(() => () => { exitFullscreen(); }, [exitFullscreen]);
-
-  const buildSectionMaps = useCallback(
-    (questions: MockQuestion[]): Record<string, Record<number, QuestionEntry>> => {
-      const counters: Record<string, number> = {};
-      const maps: Record<string, Record<number, QuestionEntry>> = {};
-      const firstSection = Object.keys(format.sections)[0];
-      for (const q of questions) {
-        const key = q.section_name || firstSection;
-        if (!maps[key]) maps[key] = {};
-        if (!counters[key]) counters[key] = 0;
-        counters[key]++;
-        maps[key][counters[key]] = { question: q, status: 'not_visited', savedOption: '' };
-      }
-      return maps;
-    },
-    [format.sections]
-  );
-
+  // —— Start test ——
   const startTest = useCallback(async () => {
     try {
       setLoading(true);
@@ -116,12 +68,13 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
         setError(qRes.message || 'Failed to load mock questions. Please try again.');
         return;
       }
-      const builtMaps = buildSectionMaps(qRes.data.questions);
+      const builtMaps = buildSectionMaps(qRes.data.questions, format);
       setSectionMaps(builtMaps);
       await enterFullscreen();
       const firstSection = Object.keys(format.sections)[0];
       const firstEntry = builtMaps[firstSection]?.[1];
       if (firstEntry) {
+        questionViewedAtRef.current = Date.now();
         setCurrentQuestion(firstEntry.question);
         setQuestionNumber(1);
       }
@@ -131,37 +84,71 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     } finally {
       setLoading(false);
     }
-  }, [examId, format.sections, buildSectionMaps, enterFullscreen]);
+  }, [examId, format, enterFullscreen]);
 
+  // First question index (1-based) for the current subsection within the current section
+  const firstQuestionNumberOfSubsection = useMemo(() => {
+    const section = format.sections?.[currentSection];
+    if (!section?.subsections) return 1;
+    const subKeys = Object.keys(section.subsections);
+    let start = 1;
+    for (const k of subKeys) {
+      if (k === currentSubsection) return start;
+      start += section.subsections[k]?.questions ?? 0;
+    }
+    return start;
+  }, [format.sections, currentSection, currentSubsection]);
+
+  // —— Derived section state ——
+  const currentSectionMap = sectionMaps[currentSection] || {};
   const totalQuestionsInSection =
     Object.keys(sectionMaps[currentSection] || {}).length ||
     Object.values(format.sections[currentSection]?.subsections ?? {}).reduce(
       (s: number, sub: { questions?: number }) => s + (sub?.questions ?? 0),
       0
     );
-
-  const currentSectionMap = sectionMaps[currentSection] || {};
-
-  const loadQuestionForNumber = useCallback(
-    (num: number) => {
-      if (num < 1) return;
-      const entry = (sectionMaps[currentSection] || {})[num];
-      if (entry) {
-        setCurrentQuestion(entry.question);
-        setSelectedOption(entry.savedOption);
-        setQuestionNumber(num);
-      }
-    },
-    [currentSection, sectionMaps]
+  const totalForHeader = Object.values(format.sections[currentSection]?.subsections ?? {}).reduce(
+    (s: number, sub: { questions?: number }) => s + (sub?.questions ?? 0),
+    0
   );
 
-  // When section/subsection changes, show first question of that section (intentionally not deps on loadQuestionForNumber/sectionMaps to avoid running on every answer)
+  // —— Navigation: load question by number (and mark previous as skipped if left without answering) ——
+  // Uses refs so palette clicks and Save & Next always see latest sectionMaps/currentSection.
+  const loadQuestionForNumber = useCallback((num: number) => {
+    if (num < 1) return;
+    const section = currentSectionRef.current;
+    const map = sectionMapsRef.current[section] || {};
+    const entry = map[num];
+    const prevNum = questionNumberRef.current;
+    if (prevNum >= 1 && prevNum !== num) {
+      setSectionMaps((prev) => {
+        const sectionMap = prev[section] || {};
+        const prevEntry = sectionMap[prevNum];
+        if (!prevEntry || prevEntry.status !== 'not_visited') return prev;
+        return {
+          ...prev,
+          [section]: {
+            ...sectionMap,
+            [prevNum]: { ...prevEntry, status: 'not_answered' },
+          },
+        };
+      });
+    }
+    if (entry) {
+      questionViewedAtRef.current = Date.now();
+      setCurrentQuestion(entry.question);
+      setSelectedOption(entry.savedOption);
+      setQuestionNumber(num);
+    }
+  }, []);
+
   useEffect(() => {
     if (testAttemptId && Object.keys(sectionMaps[currentSection] || {}).length > 0) {
-      loadQuestionForNumber(1);
+      loadQuestionForNumber(firstQuestionNumberOfSubsection);
     }
-  }, [currentSection, currentSubsection]);
+  }, [currentSection, currentSubsection, testAttemptId, sectionMaps, firstQuestionNumberOfSubsection, loadQuestionForNumber]);
 
+  // —— Progress ——
   const updateProgress = useCallback(async () => {
     if (!testAttemptId) return;
     try {
@@ -172,52 +159,22 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     }
   }, [testAttemptId]);
 
+  // —— Complete test ——
   const handleCompleteTest = useCallback(async () => {
     if (!testAttemptId) return;
     try {
       setCompletingTest(true);
       setError(null);
       const completeResponse = await completeTest(testAttemptId);
-      const responseData = completeResponse.data ?? (completeResponse as { summary?: unknown; test_attempt?: Record<string, unknown> });
-      const summary = responseData?.summary ?? responseData;
-
       if (completeResponse.success) {
-        let question_attempts: TestResultsData['question_attempts'] = [];
-        let test_attempt = (responseData as { test_attempt?: Record<string, unknown> })?.test_attempt;
+        let resultsResponse: Awaited<ReturnType<typeof getTestResults>> | null = null;
         try {
-          const resultsResponse = await getTestResults(testAttemptId);
-          const resultsData = resultsResponse.data;
-          question_attempts = (resultsData?.question_attempts ?? []) as unknown as TestResultsData['question_attempts'];
-          test_attempt = (resultsData?.test_attempt != null ? (resultsData.test_attempt as unknown as Record<string, unknown>) : test_attempt) as Record<string, unknown> | undefined;
+          resultsResponse = await getTestResults(testAttemptId);
         } catch {
-          // use summary from completeResponse
+          // use summary from completeResponse only
         }
-        const s = summary as TestResultsData['summary'] | undefined;
-        const t = test_attempt as Record<string, unknown> | undefined;
-        setTestResults({
-          summary: s
-            ? {
-                total_score: (s as TestResultsData['summary']).total_score ?? 0,
-                total_questions: (s as TestResultsData['summary']).total_questions ?? 0,
-                attempted: (s as TestResultsData['summary']).attempted ?? 0,
-                correct: (s as TestResultsData['summary']).correct ?? 0,
-                incorrect: (s as TestResultsData['summary']).incorrect ?? 0,
-                skipped: (s as TestResultsData['summary']).skipped ?? 0,
-                accuracy: (s as TestResultsData['summary']).accuracy ?? 0,
-                time_taken: (s as TestResultsData['summary']).time_taken ?? 0,
-              }
-            : {
-                total_score: (t?.total_score as number) ?? 0,
-                total_questions: 0,
-                attempted: (t?.attempted_count as number) ?? 0,
-                correct: (t?.correct_count as number) ?? 0,
-                incorrect: (t?.incorrect_count as number) ?? 0,
-                skipped: (t?.skipped_count as number) ?? 0,
-                accuracy: (t?.accuracy_percentage as number) ?? 0,
-                time_taken: (t?.time_spent_minutes as number) ?? 0,
-              },
-          question_attempts: question_attempts ?? [],
-        });
+        const normalized = normalizeTestResults(completeResponse, resultsResponse);
+        setTestResults(normalized);
         setTestCompleted(true);
       } else {
         setError(completeResponse.message || 'Failed to complete test.');
@@ -233,6 +190,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     }
   }, [testAttemptId, onExit]);
 
+  // —— Timer: auto-submit when time runs out ——
   useEffect(() => {
     if (timeRemaining <= 0 || !testAttemptId) return;
     const timer = setInterval(() => {
@@ -247,20 +205,19 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     return () => clearInterval(timer);
   }, [timeRemaining, testAttemptId, handleCompleteTest]);
 
+  // —— Submit answer ——
   const handleSubmitAnswer = useCallback(async () => {
-    // Check if answer is provided (handle both string and array types)
-    const hasAnswer = Array.isArray(selectedOption) 
-      ? selectedOption.length > 0 
+    const hasAnswer = Array.isArray(selectedOption)
+      ? selectedOption.length > 0
       : selectedOption !== '';
-    
     if (!testAttemptId || !currentQuestion || !hasAnswer) return;
-    
     try {
       setLoading(true);
       setError(null);
+      const timeSpentSeconds = Math.max(0, Math.floor((Date.now() - questionViewedAtRef.current) / 1000));
       const response = await submitAnswer(testAttemptId, currentQuestion.id, {
         selected_option: typeof selectedOption === 'string' ? selectedOption : JSON.stringify(selectedOption),
-        time_spent_seconds: 30,
+        time_spent_seconds: timeSpentSeconds,
       });
       if (response.success) {
         const answeredNum = questionNumber;
@@ -298,6 +255,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     updateProgress,
   ]);
 
+  // —— Skip question ——
   const handleSkip = useCallback(() => {
     if (!currentQuestion) return;
     const skippedNum = questionNumber;
@@ -316,6 +274,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     }
   }, [currentQuestion, questionNumber, currentSection, totalQuestionsInSection, loadQuestionForNumber]);
 
+  // —— Section / subsection change ——
   const handleSectionChange = useCallback((sectionKey: string) => {
     const section = format.sections[sectionKey];
     const firstSub = section?.subsections
@@ -341,21 +300,14 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     onExit();
   }, [onExit]);
 
-  const getQuestionStatuses = useCallback((): Record<number, QuestionStatus> => {
-    const statuses: Record<number, QuestionStatus> = {};
-    Object.entries(currentSectionMap).forEach(([numStr, entry]) => {
-      statuses[parseInt(numStr)] = entry.status;
-    });
-    return statuses;
-  }, [currentSectionMap]);
-
-  const totalForHeader = Object.values(format.sections[currentSection]?.subsections ?? {}).reduce(
-    (s: number, sub: { questions?: number }) => s + (sub?.questions ?? 0),
-    0
+  // —— Submit summary and question statuses (from utils) ——
+  const getQuestionStatuses = useCallback(
+    (): Record<number, QuestionStatus> => getQuestionStatusesFromMap(currentSectionMap),
+    [currentSectionMap]
   );
+  const submitSummary = useMemo(() => computeSubmitSummary(sectionMaps), [sectionMaps]);
 
   return {
-    // state
     currentSection,
     currentSubsection,
     currentQuestion,
@@ -379,7 +331,6 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     format,
     totalQuestionsInSection,
     currentSectionMap,
-    // actions
     startTest,
     loadQuestionForNumber,
     handleSubmitAnswer,
@@ -391,5 +342,6 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     enterFullscreen,
     getQuestionStatuses,
     totalForHeader,
+    submitSummary,
   };
 }

@@ -5,15 +5,33 @@
 const ExamMockPrompt = require('../../../models/taxonomy/ExamMockPrompt');
 
 /**
+ * Normalize a section type string to a geminiService question_type.
+ * Handles both old format ("Numerical", "MCQ") and new flat format ("mcq_single", "numerical").
+ */
+function resolveQuestionType(rawType) {
+  if (!rawType) return 'mcq_single';
+  const t = String(rawType).toLowerCase().trim();
+  if (t === 'numerical' || t === 'integer') return 'numerical';
+  if (t === 'mcq_single' || t === 'mcq') return 'mcq_single';
+  if (t === 'mcq_multiple') return 'mcq_multiple';
+  // Old shape used "Numerical" string
+  if (t.includes('numerical') || t.includes('integer')) return 'numerical';
+  // Fallback: any MCQ variant
+  return 'mcq_single';
+}
+
+/**
  * Build params for geminiService.generateQuestion from an exam row.
- * Uses first format; falls back to generic set if no format. Prefers prompt from exam_mock_prompts.
+ * Handles two format shapes stored in exams_taxonomies.format:
+ *   - Flat: { name, total_questions, sections: { Subject: { total_questions, subsections: { ... } } } }
+ *   - Nested: { "FORMAT_ID": { sections: { Subject: { subsections: { "Section A": { type, questions, ... } } } } } }
+ * Prefers prompt from exam_mock_prompts.
  *
  * @param {object} exam - Row from exams_taxonomies
  * @returns {Promise<Array<object>>} Array of params for geminiService.generateQuestion
  */
 async function buildQuestionParamsList(exam) {
-  const formatConfig = exam.format && typeof exam.format === 'object' ? exam.format : {};
-  const formatKeys = Object.keys(formatConfig);
+  const rawFormat = exam.format && typeof exam.format === 'object' ? exam.format : {};
 
   let generation_prompt = null;
   try {
@@ -23,7 +41,22 @@ async function buildQuestionParamsList(exam) {
     generation_prompt = exam.generation_prompt.trim();
   }
 
-  if (formatKeys.length === 0) {
+  // Detect flat format shape: has a "sections" key directly on the format object
+  const isFlatFormat = rawFormat.sections && typeof rawFormat.sections === 'object';
+
+  // Resolve to the format object that contains { sections: { ... }, marking_scheme: { ... } }
+  let format;
+  if (isFlatFormat) {
+    format = rawFormat;
+  } else {
+    // Nested shape: pick the first format id whose value has a sections object
+    const firstKey = Object.keys(rawFormat).find(
+      (k) => rawFormat[k] && typeof rawFormat[k] === 'object' && rawFormat[k].sections
+    );
+    format = firstKey ? rawFormat[firstKey] : null;
+  }
+
+  if (!format) {
     const params = [];
     const total = 10;
     for (let i = 0; i < total; i++) {
@@ -43,8 +76,10 @@ async function buildQuestionParamsList(exam) {
     return params;
   }
 
-  const firstFormatId = formatKeys[0];
-  const format = formatConfig[firstFormatId];
+  const markingScheme = format.marking_scheme || {};
+  const defaultCorrectMarks = markingScheme.correct || 4;
+  const defaultNegativeMarks = Math.abs(markingScheme.incorrect != null ? markingScheme.incorrect : -1);
+
   const sections = format.sections || {};
   const params = [];
 
@@ -53,13 +88,15 @@ async function buildQuestionParamsList(exam) {
     const subsections = sectionConfig.subsections || {};
 
     if (Object.keys(subsections).length === 0) {
-      const questionCount = sectionConfig.questions || 5;
-      const sectionType = sectionConfig.type || 'MCQ';
-      const marksCorrect = sectionConfig.marks_correct || 4;
-      const marksIncorrect = sectionConfig.marks_incorrect != null ? sectionConfig.marks_incorrect : -1;
+      // Flat section with no subsections: use count or total_questions
+      const questionCount = sectionConfig.count || sectionConfig.questions || sectionConfig.total_questions || 5;
+      const rawType = sectionConfig.type || 'MCQ';
+      const sectionType = rawType;
+      const questionType = resolveQuestionType(rawType);
+      const marksCorrect = sectionConfig.marks_correct || defaultCorrectMarks;
+      const marksIncorrect = sectionConfig.marks_incorrect != null ? sectionConfig.marks_incorrect : defaultNegativeMarks;
 
       for (let i = 0; i < questionCount; i++) {
-        const questionType = sectionType === 'Numerical' ? 'numerical' : 'any';
         params.push({
           exam_name: exam.name,
           subject: sectionName,
@@ -75,13 +112,15 @@ async function buildQuestionParamsList(exam) {
       }
     } else {
       for (const [subsectionKey, subsectionConfig] of Object.entries(subsections)) {
-        const questionCount = subsectionConfig.questions || 5;
-        const sectionType = subsectionConfig.type || subsectionConfig.section_type || 'MCQ';
-        const marksCorrect = subsectionConfig.marks_correct || 4;
-        const marksIncorrect = subsectionConfig.marks_incorrect != null ? subsectionConfig.marks_incorrect : -1;
+        // Flat subsection uses "count"; nested uses "questions"
+        const questionCount = subsectionConfig.count || subsectionConfig.questions || 5;
+        const rawType = subsectionConfig.type || subsectionConfig.section_type || 'MCQ';
+        const sectionType = rawType;
+        const questionType = resolveQuestionType(rawType);
+        const marksCorrect = subsectionConfig.marks_correct || defaultCorrectMarks;
+        const marksIncorrect = subsectionConfig.marks_incorrect != null ? subsectionConfig.marks_incorrect : defaultNegativeMarks;
 
         for (let i = 0; i < questionCount; i++) {
-          const questionType = sectionType === 'Numerical' ? 'numerical' : 'any';
           params.push({
             exam_name: exam.name,
             subject: sectionName,
@@ -100,18 +139,18 @@ async function buildQuestionParamsList(exam) {
   }
 
   if (params.length === 0) {
-    const total = 10;
+    const total = format.total_questions || 10;
     for (let i = 0; i < total; i++) {
       params.push({
         exam_name: exam.name,
         subject: 'General',
         section_name: 'General',
-        section_type: 'MCQ',
-        question_type: 'any',
+        section_type: 'mcq_single',
+        question_type: 'mcq_single',
         question_number: i + 1,
         total_in_section: total,
-        marks: 4,
-        negative_marks: 1,
+        marks: defaultCorrectMarks,
+        negative_marks: defaultNegativeMarks,
         generation_prompt,
       });
     }

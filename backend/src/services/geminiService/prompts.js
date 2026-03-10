@@ -347,6 +347,43 @@ ${getDiagramInstructions(subject)}
 Remember: Respond with ONLY the JSON object, no additional text or formatting.`;
 }
 
+/**
+ * Build a single prompt that asks for 5 questions in one JSON array.
+ * @param {Array<object>} paramsArray - Exactly 5 param objects (same shape as for buildQuestionPrompt).
+ * @returns {string} Prompt that requests a JSON array of 5 question objects.
+ */
+function buildBatchQuestionPrompt(paramsArray) {
+  if (!Array.isArray(paramsArray) || paramsArray.length === 0) {
+    throw new Error('buildBatchQuestionPrompt requires a non-empty params array');
+  }
+  const count = Math.min(paramsArray.length, 5);
+  const params = paramsArray.slice(0, 5);
+
+  const specs = params.map((p, i) => {
+    const sub = p.subject || 'General';
+    const topic = p.topic || 'General';
+    const diff = p.difficulty || 'medium';
+    const type = p.question_type || 'mcq_single';
+    return `  ${i + 1}. Subject: ${sub}, Topic: ${topic}, Difficulty: ${diff}, Type: ${type}`;
+  }).join('\n');
+
+  const examName = params[0]?.exam_name || 'Exam';
+  const formatBlock = getFormatInstructions(params[0]?.question_type || 'mcq_single', params[0]?.section_type || 'MCQ');
+
+  return `You are an expert question creator for competitive entrance and board exams.
+
+Generate exactly ${count} questions in one response. Return a JSON array of exactly ${count} question objects. Each object must have the same structure as a single question (question_text, options, correct_option, solution_text, concept_tags, unit, topic, sub_topic).
+
+SPECIFICATIONS FOR EACH QUESTION:
+${specs}
+
+EXAM: ${examName}
+
+${formatBlock}
+
+CRITICAL: Respond with ONLY a JSON array of ${count} question objects. No markdown, no backticks, no extra text. Example: [ { "question_text": "...", ... }, { ... }, ... ]`;
+}
+
 module.exports = {
   substitutePromptPlaceholders,
   getDifficultyDescription,
@@ -354,4 +391,5 @@ module.exports = {
   getFormatInstructionsForAnyType,
   getFormatInstructions,
   buildQuestionPrompt,
+  buildBatchQuestionPrompt,
 };

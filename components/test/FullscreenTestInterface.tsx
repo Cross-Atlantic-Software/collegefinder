@@ -56,6 +56,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     handleBackToExams,
     enterFullscreen,
     getQuestionStatuses,
+    submitSummary,
   } = api;
 
   if (tabChangeWarning) {
@@ -96,18 +97,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     );
   }
 
-  if (showEndTestConfirm) {
-    return fullscreenOverlay(
-      <EndTestConfirmation
-        completingTest={completingTest}
-        error={error}
-        onCancel={() => setShowEndTestConfirm(false)}
-        onConfirm={handleCompleteTest}
-      />
-    );
-  }
-
-  return fullscreenOverlay(
+  const examQuestionScreen = (
     <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col">
       <TestHeader
         examName={exam.name}
@@ -160,5 +150,20 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
         />
       </div>
     </div>
+  );
+
+  return fullscreenOverlay(
+    <>
+      {examQuestionScreen}
+      {showEndTestConfirm && (
+        <EndTestConfirmation
+          completingTest={completingTest}
+          error={error}
+          summary={submitSummary}
+          onCancel={() => setShowEndTestConfirm(false)}
+          onConfirm={handleCompleteTest}
+        />
+      )}
+    </>
   );
 }

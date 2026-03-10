@@ -931,8 +931,7 @@ class TestController {
   }
 
   /**
-   * Build format baseline (total_marks, total_questions, subjects) from test.sections and test.total_marks.
-   * Used so analytics are calculated against the standard paper format, not just attempted questions.
+   * Build format baseline from a regular test's sections.
    */
   static _getFormatBaseline(test) {
     if (!test) return null;
@@ -947,24 +946,53 @@ class TestController {
       const subsections = config?.subsections || {};
       const sectionQuestions = Object.values(subsections).reduce((sum, sub) => sum + (sub?.questions || 0), 0);
       const sectionMarks = parseInt(config?.marks, 10) || 0;
-      subjects.push({
-        key,
-        name,
-        total_questions: sectionQuestions,
-        total_marks: sectionMarks
-      });
+      subjects.push({ key, name, total_questions: sectionQuestions, total_marks: sectionMarks });
       totalQuestions += sectionQuestions;
     }
-    return {
-      total_marks: totalMarks,
-      total_questions: totalQuestions,
-      subjects
-    };
+    return { total_marks: totalMarks, total_questions: totalQuestions, subjects };
+  }
+
+  /**
+   * Build format baseline from an exam's format JSON (used for mock tests that have no test_id).
+   * Supports both the seeded format shape (total_questions, total_marks, sections.X.total_questions)
+   * and the old shape (sections.X.subsections.Y.questions).
+   */
+  static _getMockFormatBaseline(exam) {
+    if (!exam) return null;
+    const fmt = typeof exam.format === 'string' ? JSON.parse(exam.format || '{}') : (exam.format || {});
+    if (!fmt || Object.keys(fmt).length === 0) return null;
+
+    // Top-level totals
+    const totalMarks = parseInt(fmt.total_marks, 10) || 0;
+    let totalQuestions = parseInt(fmt.total_questions, 10) || 0;
+
+    const sections = fmt.sections || {};
+    const subjects = [];
+    let computedTotal = 0;
+
+    for (const [key, config] of Object.entries(sections)) {
+      const name = config?.name || key;
+      // Support both shapes
+      let sectionQuestions = parseInt(config?.total_questions, 10) || 0;
+      if (!sectionQuestions && config?.subsections) {
+        sectionQuestions = Object.values(config.subsections).reduce(
+          (sum, sub) => sum + (parseInt(sub?.count, 10) || parseInt(sub?.questions, 10) || 0),
+          0
+        );
+      }
+      const sectionMarks = parseInt(config?.marks, 10) || parseInt(config?.total_marks, 10) || 0;
+      subjects.push({ key, name, total_questions: sectionQuestions, total_marks: sectionMarks });
+      computedTotal += sectionQuestions;
+    }
+
+    if (!totalQuestions) totalQuestions = computedTotal;
+
+    return { total_marks: totalMarks, total_questions: totalQuestions, subjects };
   }
 
   /**
    * Get per-attempt analytics (full matrix breakdown).
-   * Uses test format (sections, total_marks) as baseline so score is "out of 300", attempt rate vs full paper, and all subjects shown.
+   * Supports both regular tests (with test_id) and mock tests (with exam_mock_id).
    */
   static async getAttemptAnalytics(req, res) {
     try {
@@ -986,8 +1014,13 @@ class TestController {
         });
       }
 
-      const test = await Test.findById(testAttempt.test_id);
-      const formatBaseline = TestController._getFormatBaseline(test);
+      // Determine format baseline — prefer regular test, fall back to exam format for mock tests
+      const test = testAttempt.test_id ? await Test.findById(testAttempt.test_id) : null;
+      let formatBaseline = TestController._getFormatBaseline(test);
+      if (!formatBaseline && testAttempt.exam_id) {
+        const exam = await Exam.findById(testAttempt.exam_id);
+        formatBaseline = TestController._getMockFormatBaseline(exam);
+      }
 
       const [overallStats, subjectStats, topicStats, subTopicStats, negMarks] = await Promise.all([
         QuestionAttempt.getTestAttemptStats(parseInt(testAttemptId)),

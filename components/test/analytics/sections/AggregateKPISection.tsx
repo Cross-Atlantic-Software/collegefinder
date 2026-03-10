@@ -20,11 +20,13 @@ export default function AggregateKPISection({ aggregate }: AggregateKPISectionPr
           label="Avg Accuracy"
           value={`${fmt(aggregate.avg_accuracy, 1)}%`}
           sub={
-            aggregate.avg_accuracy >= 75
-              ? 'Excellent'
-              : aggregate.avg_accuracy >= 50
-                ? 'Good'
-                : 'Needs Work'
+            aggregate.avg_accuracy === 0
+              ? undefined
+              : aggregate.avg_accuracy >= 75
+                ? 'Excellent'
+                : aggregate.avg_accuracy >= 50
+                  ? 'Good'
+                  : 'Needs Work'
           }
         />
         <KPICard

@@ -8,26 +8,26 @@ import { getMockPromptsList, updateMockPrompt, type MockPromptItem } from '@/api
 import { useToast } from '@/components/shared';
 import { FiSearch, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 
-/** Example prompt for JEE Main — copy into the textarea for that exam. */
-const JEE_MAIN_EXAMPLE_PROMPT = `You are an expert JEE Main paper setter.
+/** Example prompt for JEE Main — copy into the textarea for that exam. Updated for NTA JEE Main 2025/2026 pattern. */
+const JEE_MAIN_EXAMPLE_PROMPT = `You are an expert JEE Main (NTA) paper setter. Generate one question per call matching the current NTA JEE Main Paper 1 (B.E./B.Tech) pattern.
 
-SLOT: Question {{question_number}} of {{total_in_section}} for {{section_name}} ({{section_type}}) in {{exam_name}}.
+SLOT: Question {{question_number}} of {{total_in_section}} in {{section_name}} ({{section_type}}), {{exam_name}}.
 QUESTION TYPE: {{question_type}}
 
-SYLLABUS for {{subject}}:
-- Physics: Mechanics, Kinematics, Laws of Motion, Work-Energy-Power, Rotational Motion, Gravitation, Thermodynamics, Waves, Oscillations, Electrostatics, Current Electricity, EMI, Magnetic Effects, Optics, Modern Physics, Semiconductors
-- Chemistry: Atomic Structure, Chemical Bonding, Thermodynamics, Equilibrium, Electrochemistry, Kinetics, p-Block, d-Block, Coordination Compounds, Hydrocarbons, Organic Reactions, Biomolecules, Polymers
-- Mathematics: Sets, Complex Numbers, Quadratics, Sequences, Binomial, Matrices, Permutations, Probability, Trigonometry, Calculus, Differential Equations, Coordinate Geometry, 3D, Vectors
+SYLLABUS for {{subject}} (align with NTA JEE Main 2025 syllabus):
+- Physics: Units & Dimensions, Kinematics, Laws of Motion, Work Energy Power, Rotational Motion, Gravitation, Properties of Solids & Fluids, Thermodynamics, Kinetic Theory, Oscillations & Waves, Electrostatics, Current Electricity, Magnetic Effects, EMI, AC, EM Waves, Ray & Wave Optics, Dual Nature, Atoms & Nuclei, Electronic Devices, Communication Systems
+- Chemistry: Some Basic Concepts, Atomic Structure, Classification, Chemical Bonding, States of Matter, Thermodynamics, Equilibrium, Redox, Hydrogen, s-Block, p-Block, Organic Chemistry (Basic, Hydrocarbons), Environmental Chemistry; Solid State, Solutions, Electrochemistry, Chemical Kinetics, Surface Chemistry, p-Block (cont.), d-Block, Coordination Compounds, Haloalkanes & Haloarenes, Alcohols & Ethers, Aldehydes, Ketones, Carboxylic Acids, Amines, Biomolecules, Polymers, Chemistry in Everyday Life
+- Mathematics: Sets, Relations & Functions, Complex Numbers, Quadratic Equations, Matrices, Permutations & Combinations, Binomial Theorem, Sequences & Series, Straight Lines, Conic Sections, 3D Geometry, Limits, Continuity, Differentiation, Applications of Derivatives, Integrals, Applications of Integrals, Differential Equations, Vector Algebra, Probability, Statistics
 
-COVERAGE RULE: This is question {{question_number}} of {{total_in_section}}. Pick a topic from the syllabus above that ensures full coverage across the section — do not repeat topics that earlier questions likely covered.
+COVERAGE: This is question {{question_number}} of {{total_in_section}}. Choose a topic from the syllabus so that across the section there is broad coverage; avoid repeating the same topic in consecutive questions.
 
-DIFFICULTY RULE: Distribute difficulty across the full section as: first ~30% easy, middle ~50% medium, last ~20% hard. Based on question {{question_number}} of {{total_in_section}}, choose the appropriate difficulty level.
+DIFFICULTY: For the section, aim for roughly: first 30% easier, middle 50% medium, last 20% harder. For question {{question_number}} of {{total_in_section}}, set difficulty accordingly (easy / medium / hard).
 
 STYLE:
-- MCQ: single correct, 4 plausible options, matches NTA JEE Main pattern (2022–2025 level)
-- Numerical: integer answer 0–9999, step-by-step derivation
-- Use standard notation; in JSON use double backslashes for LaTeX (e.g. \\\\Omega)
-- Solution must be educational and step-by-step`;
+- MCQ (Section A): Single correct answer; exactly 4 options; plausible distractors; clarity and precision; NTA JEE Main 2025–2026 style.
+- Numerical (Section B): Integer answer in range 0–9999; clear step-by-step solution; final answer as a single integer.
+- Use standard symbols; in JSON escape LaTeX with double backslashes (e.g. \\\\Omega, \\\\frac{1}{2}).
+- Solution must be complete, step-by-step, and suitable for JEE Main preparation.`;
 
 export default function MockPromptsPage() {
   const router = useRouter();
@@ -108,13 +108,10 @@ export default function MockPromptsPage() {
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-4">
             <h1 className="text-xl font-bold text-gray-900 mb-1">Mock Prompts</h1>
-            <p className="text-sm text-gray-600">
-              Set the generation prompt for each exam. These prompts are stored by exam ID and used for mock question generation.
+            <p className="text-sm text-gray-600 max-w-2xl">
+              Write instructions for the AI that generates mock questions. One prompt per exam; the same prompt is used for every question in that exam, with placeholders filled in per question (e.g. which subject, section, and question number). Use placeholders in double curly braces so the system can inject context: exam and subject names, section and type, question type (MCQ/Numerical), and position (e.g. question 5 of 25). Expand the JEE Main example below to see a full template you can copy and adapt.
             </p>
           </div>
-          <p className="text-sm text-gray-600 mb-2">
-            Placeholders: {'{{exam_name}}'}, {'{{subject}}'}, {'{{section_name}}'}, {'{{section_type}}'}, {'{{question_type}}'}, {'{{question_number}}'}, {'{{total_in_section}}'}
-          </p>
           <div className="mb-4">
             <button
               type="button"
@@ -125,7 +122,7 @@ export default function MockPromptsPage() {
               Example prompt for JEE Main
             </button>
             {showExample && (
-              <pre className="mt-2 p-4 bg-gray-100 border border-gray-200 rounded-lg text-xs text-left overflow-x-auto whitespace-pre-wrap font-sans">
+              <pre className="mt-2 p-4 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-800 text-left overflow-x-auto whitespace-pre-wrap font-sans">
                 {JEE_MAIN_EXAMPLE_PROMPT}
               </pre>
             )}

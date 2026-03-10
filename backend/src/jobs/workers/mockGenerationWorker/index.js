@@ -8,7 +8,7 @@ const { processMockGeneration, handleFailed } = require('./processJob');
 
 function startMockGenerationWorker() {
   const { Worker } = require('bullmq');
-  const { getRedisConnection } = require('../redisConnection');
+  const { getRedisConnection } = require('../../redisConnection');
   const worker = new Worker(QUEUE_NAME, processMockGeneration, {
     connection: getRedisConnection(),
     concurrency: 2,

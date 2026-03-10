@@ -59,14 +59,36 @@ function parseQuestionResponse(text, originalParams) {
     try {
       parsed = JSON.parse(jsonText);
     } catch (parseError) {
-      if (parseError.message.includes('Unterminated string')) {
-        console.log('⚠️  Fixing unterminated string in JSON...');
-        const lastCompleteQuote = jsonText.lastIndexOf('"}');
-        if (lastCompleteQuote > 0) {
-          jsonText = jsonText.substring(0, lastCompleteQuote + 2) + '}';
-          parsed = JSON.parse(jsonText);
+      if (parseError.message.includes('Unterminated string') || parseError.message.includes('Expected ') || parseError.message.includes('Unexpected end')) {
+        const solStart = jsonText.indexOf('"solution_text"');
+        if (solStart !== -1) {
+          const valueStart = jsonText.indexOf('"', solStart + 15) + 1;
+          if (valueStart > 0) {
+            console.log('⚠️  Fixing truncated or invalid solution_text in JSON...');
+            const before = jsonText.substring(0, valueStart);
+            const closeNeeded = Math.max(1, (jsonText.match(/\{/g) || []).length - (jsonText.match(/\}/g) || []).length);
+            jsonText = before + '[Solution truncated.]"';
+            for (let i = 0; i < closeNeeded; i++) jsonText += '}';
+            try {
+              parsed = JSON.parse(jsonText);
+            } catch (e) {
+              throw parseError;
+            }
+          } else {
+            throw parseError;
+          }
         } else {
-          throw parseError;
+          const lastCompleteQuote = jsonText.lastIndexOf('"}');
+          if (lastCompleteQuote > 0) {
+            jsonText = jsonText.substring(0, lastCompleteQuote + 2) + '}';
+            try {
+              parsed = JSON.parse(jsonText);
+            } catch (e) {
+              throw parseError;
+            }
+          } else {
+            throw parseError;
+          }
         }
       } else if (parseError.message.includes('Bad escaped character')) {
         console.log('⚠️  Fixing bad escaped character (LaTeX backslashes)...');
@@ -230,7 +252,43 @@ function parseQuestionResponse(text, originalParams) {
   }
 }
 
+/**
+ * Parse a batch response: JSON array of N question objects. Each element is parsed with parseQuestionResponse.
+ * @param {string} text - Raw response text (may contain markdown or extra text).
+ * @param {Array<object>} paramsArray - Array of param objects, one per expected question (same order as response).
+ * @returns {Promise<Array<object>>} Array of processed question data.
+ */
+function parseQuestionBatchResponse(text, paramsArray) {
+  try {
+    let cleanText = (text || '').trim();
+    cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+
+    const arrayMatch = cleanText.match(/\[[\s\S]*\]/);
+    if (!arrayMatch) {
+      throw new Error('No JSON array found in batch response');
+    }
+
+    const arr = JSON.parse(arrayMatch[0]);
+    if (!Array.isArray(arr)) {
+      throw new Error('Batch response is not an array');
+    }
+
+    const results = [];
+    for (let i = 0; i < arr.length; i++) {
+      const params = paramsArray[i] || paramsArray[0];
+      const itemStr = JSON.stringify(arr[i]);
+      const processed = parseQuestionResponse(itemStr, params);
+      results.push(processed);
+    }
+    return results;
+  } catch (error) {
+    console.error('❌ Failed to parse Gemini batch response:', error);
+    throw new Error(`Invalid batch response format from Gemini API: ${error.message}`);
+  }
+}
+
 module.exports = {
   parseQuestionResponse,
+  parseQuestionBatchResponse,
   getMarksForDifficulty,
 };

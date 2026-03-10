@@ -1,12 +1,17 @@
 /**
  * Gemini service: question generation, model resolution, and batch operations.
- * Composes config, modelResolver, prompts, diagram, and parser modules.
+ * Composes config, modelResolver, prompts, diagram, parser, requestHelper; uses p-limit for concurrency.
  */
+const pLimit = require('p-limit').default || require('p-limit');
 const { GENERATION_CONFIG } = require('./config');
 const { fetchAndPickModelName } = require('./modelResolver');
-const { buildQuestionPrompt, substitutePromptPlaceholders } = require('./prompts');
+const { buildQuestionPrompt, buildBatchQuestionPrompt, substitutePromptPlaceholders } = require('./prompts');
 const { setDiagramImageUrl } = require('./diagram');
-const { parseQuestionResponse } = require('./parser');
+const { parseQuestionResponse, parseQuestionBatchResponse } = require('./parser');
+const { withRetry, isRetryableError } = require('./requestHelper');
+
+const GEMINI_CONCURRENCY = 3;
+const apiLimit = pLimit(GEMINI_CONCURRENCY);
 
 class GeminiService {
   constructor() {
@@ -18,7 +23,8 @@ class GeminiService {
     this._excludedModelNames = new Set();
 
     if (!process.env.GOOGLE_API_KEY) {
-      console.warn('⚠️  GOOGLE_API_KEY not found in environment variables. Gemini service will not work.');
+      this._initError = 'GOOGLE_API_KEY is not set. Add it to backend/.env (see .env.example) and restart the backend for mock test generation.';
+      console.warn('⚠️  GOOGLE_API_KEY not found. Mock test generation will fail until you add GOOGLE_API_KEY to backend/.env and restart.');
       return;
     }
 
@@ -78,6 +84,71 @@ class GeminiService {
     return buildQuestionPrompt(exam_name, subject, question_type, section_name, section_type, options);
   }
 
+  /**
+   * Generate up to 5 questions in a single API request. Uses same retry and concurrency as generateQuestion.
+   * @param {Array<object>} paramsArray - Array of 1–5 param objects (same shape as generateQuestion).
+   * @returns {Promise<Array<object>>} Array of processed question data.
+   */
+  async generateFiveQuestions(paramsArray) {
+    await this.ensureInitialized();
+    if (this.model === null) {
+      throw new Error(this._initError || 'Gemini service is not available.');
+    }
+    if (!Array.isArray(paramsArray) || paramsArray.length === 0) {
+      throw new Error('generateFiveQuestions requires a non-empty params array');
+    }
+    const slice = paramsArray.slice(0, 5);
+
+    const prompt = buildBatchQuestionPrompt(slice);
+
+    const doRequest = async () => {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      const processedList = parseQuestionBatchResponse(text, slice);
+      for (const data of processedList) {
+        await setDiagramImageUrl(data);
+      }
+      return processedList;
+    };
+
+    return apiLimit(async () => {
+      try {
+        console.log(`🤖 Generating ${slice.length} questions in one request for ${slice[0]?.exam_name || 'exam'} - ${slice[0]?.subject || 'General'}`);
+        const processedList = await withRetry(doRequest, { operationName: 'generateContent (batch of 5)' });
+        console.log(`✅ Batch of ${processedList.length} questions generated successfully`);
+        return processedList;
+      } catch (error) {
+        const isModelUnavailable = error.message && (
+          error.message.includes('404') ||
+          error.message.includes('no longer available') ||
+          error.message.includes('is not found')
+        );
+        if (isModelUnavailable && this._modelName) {
+          console.warn('⚠️  Model', this._modelName, 'unavailable; will refetch list and retry with another model');
+          this._excludedModelNames.add(this._modelName);
+          this.model = null;
+          this._modelName = null;
+          this._initPromise = null;
+          await this.ensureInitialized();
+          const processedList = await withRetry(doRequest, { operationName: 'generateContent (batch, new model)' });
+          console.log(`✅ Batch of ${processedList.length} questions generated successfully`);
+          return processedList;
+        }
+        if (error.message?.includes('API_KEY_INVALID')) {
+          throw new Error('Invalid Google API key. Please check your GOOGLE_API_KEY configuration.');
+        }
+        if (error.message?.includes('QUOTA_EXCEEDED') || error.message?.includes('429')) {
+          throw new Error('Google API quota exceeded. Please try again later or upgrade your plan.');
+        }
+        if (isRetryableError(error)) {
+          throw new Error(`Gemini API batch failed after 5 retries. Last error: ${error.message}`);
+        }
+        throw new Error(`Failed to generate questions from Gemini API: ${error.message}`);
+      }
+    });
+  }
+
   async generateQuestion(params) {
     await this.ensureInitialized();
     if (this.model === null) {
@@ -87,13 +158,13 @@ class GeminiService {
       throw new Error(msg);
     }
 
-    const { 
-      exam_name, 
-      subject, 
-      question_type = 'mcq', 
-      section_name, 
-      section_type, 
-      force_diagram, 
+    const {
+      exam_name,
+      subject,
+      question_type = 'mcq',
+      section_name,
+      section_type,
+      force_diagram,
       generation_prompt,
       question_number,
       total_in_section,
@@ -104,65 +175,67 @@ class GeminiService {
       throw new Error('Missing required parameters: exam_name and subject are required');
     }
 
-    const prompt = this.buildQuestionPrompt(exam_name, subject, question_type, section_name, section_type, { 
-      force_diagram, 
+    const prompt = this.buildQuestionPrompt(exam_name, subject, question_type, section_name, section_type, {
+      force_diagram,
       generation_prompt,
       question_number,
       total_in_section,
       difficulty
     });
 
-    try {
-      console.log(`🤖 Generating ${question_type} question for ${exam_name} - ${subject}${question_number ? ` (Q${question_number}/${total_in_section})` : ''}`);
-
+    const doRequest = async () => {
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-
-      console.log('✅ Question generated successfully');
       const processedData = parseQuestionResponse(text, params);
       await setDiagramImageUrl(processedData);
       return processedData;
-    } catch (error) {
-      console.error('❌ Gemini API Error:', error);
+    };
 
-      const isModelUnavailable = error.message && (
-        error.message.includes('404') ||
-        error.message.includes('no longer available') ||
-        error.message.includes('is not found')
-      );
-      if (isModelUnavailable && this._modelName) {
-        console.warn('⚠️  Model', this._modelName, 'unavailable; will refetch list and retry with another model');
-        this._excludedModelNames.add(this._modelName);
-        this.model = null;
-        this._modelName = null;
-        this._initPromise = null;
-        await this.ensureInitialized();
-        const result = await this.model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+    return apiLimit(async () => {
+      try {
+        console.log(`🤖 Generating ${question_type} question for ${exam_name} - ${subject}${question_number ? ` (Q${question_number}/${total_in_section})` : ''}`);
+        const processedData = await withRetry(doRequest, { operationName: 'generateContent' });
         console.log('✅ Question generated successfully');
-        const processedData = parseQuestionResponse(text, params);
-        await setDiagramImageUrl(processedData);
         return processedData;
-      }
+      } catch (error) {
+        const isModelUnavailable = error.message && (
+          error.message.includes('404') ||
+          error.message.includes('no longer available') ||
+          error.message.includes('is not found')
+        );
+        if (isModelUnavailable && this._modelName) {
+          console.warn('⚠️  Model', this._modelName, 'unavailable; will refetch list and retry with another model');
+          this._excludedModelNames.add(this._modelName);
+          this.model = null;
+          this._modelName = null;
+          this._initPromise = null;
+          await this.ensureInitialized();
+          const processedData = await withRetry(doRequest, { operationName: 'generateContent (new model)' });
+          console.log('✅ Question generated successfully');
+          return processedData;
+        }
 
-      if (error.message?.includes('API_KEY_INVALID')) {
-        throw new Error('Invalid Google API key. Please check your GOOGLE_API_KEY configuration.');
-      } else if (error.message?.includes('QUOTA_EXCEEDED')) {
-        throw new Error('Google API quota exceeded. Please try again later or upgrade your plan.');
-      } else if (error.message?.includes('SAFETY')) {
-        throw new Error('Content was blocked by safety filters. Please try with different parameters.');
+        if (error.message?.includes('API_KEY_INVALID')) {
+          throw new Error('Invalid Google API key. Please check your GOOGLE_API_KEY configuration.');
+        }
+        if (error.message?.includes('QUOTA_EXCEEDED') || error.message?.includes('429')) {
+          throw new Error('Google API quota exceeded. Please try again later or upgrade your plan.');
+        }
+        if (error.message?.includes('SAFETY')) {
+          throw new Error('Content was blocked by safety filters. Please try with different parameters.');
+        }
+        if (isRetryableError(error)) {
+          throw new Error(`Gemini API failed after 5 retries (503/429/network). Last error: ${error.message}`);
+        }
+        throw new Error(`Failed to generate question from Gemini API: ${error.message}`);
       }
-
-      throw new Error(`Failed to generate question from Gemini API: ${error.message}`);
-    }
+    });
   }
 
   async generateQuestionsBatch(paramsArray, maxConcurrent = 3) {
-    if (!this.isAvailable()) {
-      throw new Error('Gemini service is not available. Please check GOOGLE_API_KEY configuration.');
-    }
+    // Ensure model is initialized (resolves lazily when GEMINI_MODEL env var is not set)
+    await this.ensureInitialized();
 
     if (!Array.isArray(paramsArray) || paramsArray.length === 0) {
       throw new Error('paramsArray must be a non-empty array');

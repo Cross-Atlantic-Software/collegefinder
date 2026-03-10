@@ -24,12 +24,10 @@ const DIAGRAM_IMAGE_URLS = {
   thermodynamics: 'https://placehold.co/480x280/1e293b/94a3b8?text=P-V+Diagram'
 };
 
-/** Fallback model names to try if list-models API fails (newer first; all support generateContent + multimodal) */
+/** Fallback model names only when list-models API fails (prefer 2.5 then 2.0; short names may 404) */
 const FALLBACK_MODEL_NAMES = [
   'gemini-2.5-flash',
-  'gemini-2.5-flash-preview-05-20',
-  'gemini-2.5-pro-preview-05-06',
-  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro',
 ];

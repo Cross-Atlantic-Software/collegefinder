@@ -35,7 +35,11 @@ export default function SelectedAttemptStats({ overallData }: SelectedAttemptSta
           <KPICard
             label="Attempt Rate"
             value={`${fmt(overallData.attempt_rate, 1)}%`}
-            sub={`${overallData.attempted} / ${overallData.total_questions} Qs`}
+            sub={
+              overallData.total_questions > 0
+                ? `${overallData.attempted} / ${overallData.total_questions} Qs`
+                : `${overallData.attempted} Qs attempted`
+            }
           />
         </div>
       </div>

@@ -115,7 +115,8 @@ services:
       - "${PORT:-5001}:5001"
     
     # Load all environment variables from .env file
-    # Includes: DB credentials, JWT_SECRET, EMAIL config, etc.
+    # Includes: DB credentials, JWT_SECRET, GOOGLE_API_KEY (required for mock generation), etc.
+    # Copy backend/.env.example to .env and set GOOGLE_API_KEY for mock test generation.
     env_file:
       - .env
     

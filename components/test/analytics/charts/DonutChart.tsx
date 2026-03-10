@@ -7,7 +7,8 @@ interface DonutChartProps {
 }
 
 export default function DonutChart({ correct, incorrect, skipped }: DonutChartProps) {
-  const total = correct + incorrect + skipped || 1;
+  const actualTotal = correct + incorrect + skipped;
+  const total = actualTotal || 1; // avoid division by zero
   const r = 36;
   const circumference = 2 * Math.PI * r;
   const correctPct = (correct / total) * circumference;
@@ -52,7 +53,7 @@ export default function DonutChart({ correct, incorrect, skipped }: DonutChartPr
           />
         )}
         <text x="50" y="54" textAnchor="middle" className="fill-white" fontSize="13" fontWeight="bold">
-          {total}
+          {actualTotal > 0 ? actualTotal : '—'}
         </text>
       </svg>
       <div className="flex gap-4 text-xs text-slate-400">

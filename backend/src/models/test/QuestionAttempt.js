@@ -163,15 +163,18 @@ class QuestionAttempt {
    */
   static async getSubjectWiseStats(testAttemptId) {
     const result = await db.query(`
-      SELECT 
+      SELECT
         q.subject,
         COUNT(*) as total_questions,
         COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
         COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
-        AVG(qa.time_spent_seconds) as avg_time_per_question,
+        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
+        COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
         ROUND(
-          (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
+          (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL /
            NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers qa
