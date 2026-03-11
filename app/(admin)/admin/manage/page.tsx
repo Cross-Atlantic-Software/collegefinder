@@ -9,7 +9,8 @@ export default function ManagePage() {
   useEffect(() => {
     // Redirect to new admin users route
     router.replace('/admin/admin-users');
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }

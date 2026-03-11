@@ -1,78 +1,72 @@
 const db = require('../../config/database');
 
 class College {
-  /**
-   * Find all colleges
-   */
   static async findAll() {
     const result = await db.query(
-      'SELECT * FROM colleges ORDER BY ranking ASC NULLS LAST, name ASC'
+      'SELECT * FROM colleges ORDER BY college_name ASC'
     );
     return result.rows;
   }
 
-  /**
-   * Find college by ID
-   */
   static async findById(id) {
-    const result = await db.query('SELECT * FROM colleges WHERE id = $1', [id]);
-    return result.rows[0] || null;
-  }
-
-  /**
-   * Find college by name
-   */
-  static async findByName(name) {
-    const result = await db.query('SELECT * FROM colleges WHERE name = $1', [name]);
-    return result.rows[0] || null;
-  }
-
-  /**
-   * Create a new college
-   */
-  static async create(data) {
-    const { name, ranking, description, logo_url } = data;
-
     const result = await db.query(
-      `INSERT INTO colleges (name, ranking, description, logo_url)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [name, ranking || null, description || null, logo_url || null]
+      'SELECT * FROM colleges WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async findByIds(ids) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
+    const validIds = ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
+    if (validIds.length === 0) return [];
+    const result = await db.query(
+      'SELECT * FROM colleges WHERE id = ANY($1::int[]) ORDER BY college_name ASC',
+      [validIds]
+    );
+    return result.rows;
+  }
+
+  static async findByName(name) {
+    const result = await db.query(
+      'SELECT * FROM colleges WHERE LOWER(college_name) = LOWER($1)',
+      [name]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async create(data) {
+    const { college_name, college_location, college_type, college_logo } = data;
+    const result = await db.query(
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [college_name, college_location || null, college_type || null, college_logo || null]
     );
     return result.rows[0];
   }
 
-  /**
-   * Update a college
-   */
   static async update(id, data) {
-    const { name, ranking, description, logo_url } = data;
-
+    const { college_name, college_location, college_type, college_logo } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
-
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(name);
+    if (college_name !== undefined) {
+      updates.push(`college_name = $${paramCount++}`);
+      values.push(college_name);
     }
-    if (ranking !== undefined) {
-      updates.push(`ranking = $${paramCount++}`);
-      values.push(ranking || null);
+    if (college_location !== undefined) {
+      updates.push(`college_location = $${paramCount++}`);
+      values.push(college_location);
     }
-    if (description !== undefined) {
-      updates.push(`description = $${paramCount++}`);
-      values.push(description || null);
+    if (college_type !== undefined) {
+      updates.push(`college_type = $${paramCount++}`);
+      values.push(college_type);
     }
-    if (logo_url !== undefined) {
-      updates.push(`logo_url = $${paramCount++}`);
-      values.push(logo_url || null);
+    if (college_logo !== undefined) {
+      updates.push(`college_logo = $${paramCount++}`);
+      values.push(college_logo);
     }
-
-    if (updates.length === 0) {
-      return await this.findById(id);
-    }
-
+    if (updates.length === 0) return await this.findById(id);
     values.push(id);
     const result = await db.query(
       `UPDATE colleges SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
@@ -82,14 +76,13 @@ class College {
     return result.rows[0] || null;
   }
 
-  /**
-   * Delete a college
-   */
   static async delete(id) {
-    const result = await db.query('DELETE FROM colleges WHERE id = $1 RETURNING *', [id]);
+    const result = await db.query(
+      'DELETE FROM colleges WHERE id = $1 RETURNING *',
+      [id]
+    );
     return result.rows[0] || null;
   }
 }
 
 module.exports = College;
-

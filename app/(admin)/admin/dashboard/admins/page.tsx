@@ -41,7 +41,8 @@ export default function AdminUsersPage() {
     }
 
     fetchAdmins();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Debounced search handler
   useEffect(() => {

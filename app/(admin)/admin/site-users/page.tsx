@@ -5,11 +5,14 @@ import SimplifiedUsersTable from '@/components/admin/tables/SimplifiedUsersTable
 import { getAllUsersBasicInfo } from '@/lib/server/adminData';
 
 export default async function SiteUsersPage() {
-  // Check authentication - redirects to login if not authenticated
   const { requireAdmin } = await import('@/lib/server/adminAuth');
-  await requireAdmin();
+  const admin = await requireAdmin();
 
-  // Fetch data on the server
+  // Site Users is Super Admin only
+  if (admin.type !== 'super_admin') {
+    redirect('/admin');
+  }
+
   let users;
   try {
     users = await getAllUsersBasicInfo();

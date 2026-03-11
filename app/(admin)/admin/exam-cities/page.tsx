@@ -32,7 +32,8 @@ export default function ExamCitiesPage() {
     }
 
     fetchExamCities();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allExamCities.length === 0) {

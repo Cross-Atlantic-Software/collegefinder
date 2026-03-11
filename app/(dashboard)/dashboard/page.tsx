@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar} from "@/components/dashboard";
-import { ShortlistExams } from "@/components/dashboard";
+import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 
 type SectionId =
   | "dashboard"
   | "profile"
   | "exam-shortlist"
+  | "college-shortlist"
   | "applications"
   | "exam-prep";
 
@@ -51,9 +52,9 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {activeSection === "exam-shortlist" && (
-                <ShortlistExams />
-              )}
+              {activeSection === "exam-shortlist" && <ShortlistExams />}
+
+              {activeSection === "college-shortlist" && <ShortlistColleges />}
 
               {activeSection === "applications" && (
                 <ApplicationsPage />

@@ -19,7 +19,7 @@ export default function CareerGoalsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCareerGoal, setEditingCareerGoal] = useState<CareerGoalAdmin | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ label: '', logo: '' });
+  const [formData, setFormData] = useState({ label: '', logo: '', description: '', status: true });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +36,8 @@ export default function CareerGoalsPage() {
     }
 
     fetchCareerGoals();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allCareerGoals.length === 0) {
@@ -51,7 +52,8 @@ export default function CareerGoalsPage() {
       }
       const searchLower = searchQuery.toLowerCase();
       const filtered = allCareerGoals.filter(cg =>
-        cg.label.toLowerCase().includes(searchLower)
+        cg.label.toLowerCase().includes(searchLower) ||
+        (cg.description && cg.description.toLowerCase().includes(searchLower))
       );
       setCareerGoals(filtered);
     }, 300);
@@ -194,7 +196,12 @@ export default function CareerGoalsPage() {
 
   const handleEdit = (careerGoal: CareerGoalAdmin) => {
     setEditingCareerGoal(careerGoal);
-    setFormData({ label: careerGoal.label, logo: careerGoal.logo });
+    setFormData({ 
+      label: careerGoal.label, 
+      logo: careerGoal.logo,
+      description: careerGoal.description || '',
+      status: careerGoal.status !== undefined ? careerGoal.status : true
+    });
     setLogoPreview(careerGoal.logo);
     setLogoFile(null);
     setShowModal(true);
@@ -207,7 +214,7 @@ export default function CareerGoalsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ label: '', logo: '' });
+    setFormData({ label: '', logo: '', description: '', status: true });
     setLogoFile(null);
     setLogoPreview(null);
     setError(null);
@@ -259,7 +266,7 @@ export default function CareerGoalsPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by label"
+                  placeholder="Search by label or description"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
@@ -298,6 +305,12 @@ export default function CareerGoalsPage() {
                         LABEL
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        DESCRIPTION
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        STATUS
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -311,7 +324,7 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500">
                           {careerGoals.length < allCareerGoals.length ? 'No career goals found matching your search' : 'No career goals found'}
                         </td>
                       </tr>
@@ -335,6 +348,20 @@ export default function CareerGoalsPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-gray-900">{cg.label}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="text-xs text-gray-600 line-clamp-2 max-w-xs">
+                              {cg.description || 'No description'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              cg.status !== false 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {cg.status !== false ? 'Active' : 'Inactive'}
+                            </span>
                           </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(cg.created_at).toLocaleDateString('en-US', {
@@ -409,6 +436,52 @@ export default function CareerGoalsPage() {
                     placeholder="e.g., Technology, Design"
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter a detailed description of the career goal"
+                    rows={4}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Status <span className="text-pink">*</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="true"
+                        checked={formData.status === true}
+                        onChange={() => setFormData({ ...formData, status: true })}
+                        className="text-pink focus:ring-pink"
+                      />
+                      <span className="text-sm text-gray-700">Active</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="false"
+                        checked={formData.status === false}
+                        onChange={() => setFormData({ ...formData, status: false })}
+                        className="text-pink focus:ring-pink"
+                      />
+                      <span className="text-sm text-gray-700">Inactive</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only active career goals will appear on the site
+                  </p>
                 </div>
 
                 <div>

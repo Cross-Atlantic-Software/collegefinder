@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllAdmins, createAdmin, updateAdmin, deleteAdmin, AdminUser } from '@/api';
+import { getAllAdmins, createAdmin, updateAdmin, deleteAdmin, getAllModules, AdminUser, type Module } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiSave, FiShield, FiUser, FiSearch } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
 import { ConfirmationModal } from '@/components/shared';
@@ -26,18 +26,23 @@ export default function AdminUsersPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [modules, setModules] = useState<Module[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'user' as 'user' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin',
+    module_ids: [] as number[],
   });
 
   // Edit form state
   const [editFormData, setEditFormData] = useState({
     email: '',
     password: '',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
+    is_active: true,
+    module_ids: [] as number[],
   });
 
   useEffect(() => {
@@ -56,7 +61,18 @@ export default function AdminUsersPage() {
     }
 
     fetchAdmins();
-  }, [router]);
+    fetchModules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchModules = async () => {
+    try {
+      const res = await getAllModules();
+      if (res.success && res.data?.modules) {
+        setModules(res.data.modules.filter((m) => m.code !== 'users'));
+      }
+    } catch (_) {}
+  };
 
   // Debounced search handler
   useEffect(() => {
@@ -102,16 +118,16 @@ export default function AdminUsersPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Type is always 'user' for new admins created through UI
       const response = await createAdmin(
         formData.email,
         formData.password,
-        'user'
+        formData.type,
+        formData.module_ids
       );
       if (response.success) {
         showSuccess('Admin user created successfully');
         setShowCreateModal(false);
-        setFormData({ email: '', password: '', type: 'user' });
+        setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
         fetchAdmins();
       } else {
         const errorMsg = response.message || 'Failed to create admin user';
@@ -146,11 +162,20 @@ export default function AdminUsersPage() {
     }
   };
 
+  const typeLabel = (t: string) => {
+    if (t === 'super_admin') return 'Super Admin';
+    if (t === 'admin') return 'Admin';
+    return 'Data Entry';
+  };
+
   const handleEditClick = (admin: AdminUser) => {
     setEditingAdmin(admin);
     setEditFormData({
       email: admin.email,
-      password: '', // Leave empty - if unchanged, password won't be updated
+      password: '',
+      type: admin.type,
+      is_active: admin.is_active,
+      module_ids: admin.module_ids ?? [],
     });
     setShowEditModal(true);
   };
@@ -161,42 +186,42 @@ export default function AdminUsersPage() {
 
     try {
       setIsUpdating(true);
-      const updateData: { email?: string; password?: string } = {};
-      
-      // Only include email if it changed
-      if (editFormData.email !== editingAdmin.email) {
-        updateData.email = editFormData.email;
+      const updateData: {
+        email?: string;
+        password?: string;
+        type?: 'data_entry' | 'admin' | 'super_admin';
+        is_active?: boolean;
+        module_ids?: number[];
+      } = {};
+      if (editFormData.email !== editingAdmin.email) updateData.email = editFormData.email;
+      if (editFormData.password.trim() !== '') updateData.password = editFormData.password;
+      if (editingAdmin.type !== 'super_admin') {
+        if (editFormData.type !== editingAdmin.type) updateData.type = editFormData.type;
+        if (editFormData.is_active !== editingAdmin.is_active) updateData.is_active = editFormData.is_active;
+        const prevIds = (editingAdmin.module_ids ?? []).slice().sort();
+        const nextIds = editFormData.module_ids.slice().sort();
+        if (prevIds.length !== nextIds.length || prevIds.some((id, i) => id !== nextIds[i])) {
+          updateData.module_ids = editFormData.module_ids;
+        }
       }
-      
-      // Only include password if it's provided (not empty)
-      if (editFormData.password.trim() !== '') {
-        updateData.password = editFormData.password;
-      }
-
-      // Only make API call if there are changes
       if (Object.keys(updateData).length === 0) {
         showError('No changes to save');
         setIsUpdating(false);
         return;
       }
-
       const response = await updateAdmin(editingAdmin.id, updateData);
       if (response.success) {
         showSuccess('Admin user updated successfully');
         setShowEditModal(false);
         setEditingAdmin(null);
-        setEditFormData({ email: '', password: '' });
+        setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
         fetchAdmins();
       } else {
-        const errorMsg = response.message || 'Failed to update admin user';
-        setError(errorMsg);
-        showError(errorMsg);
+        showError(response.message || 'Failed to update admin user');
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while updating admin user';
-      setError(errorMsg);
-      showError(errorMsg);
-      console.error('Error updating admin:', err);
+      showError('An error occurred while updating admin user');
+      console.error(err);
     } finally {
       setIsUpdating(false);
     }
@@ -376,14 +401,17 @@ export default function AdminUsersPage() {
                                   }
                                   className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                                 >
-                                  <option value="user">User</option>
+                                  <option value="data_entry">Data Entry</option>
+                                  <option value="admin">Admin</option>
                                 </select>
                               ) : (
                                 <span
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                                     isSuperAdminType
                                       ? 'bg-purple-100 text-purple-800'
-                                      : 'bg-blue-100 text-blue-800'
+                                      : admin.type === 'admin'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-gray-100 text-gray-800'
                                   }`}
                                 >
                                   {isSuperAdminType ? (
@@ -391,7 +419,7 @@ export default function AdminUsersPage() {
                                   ) : (
                                     <FiUser className="h-3 w-3" />
                                   )}
-                                  {isSuperAdminType ? 'Super Admin' : 'User'}
+                                  {typeLabel(admin.type)}
                                 </span>
                               )}
                             </td>
@@ -509,7 +537,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
               >
@@ -546,6 +574,56 @@ export default function AdminUsersPage() {
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'data_entry' | 'admin' })}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  >
+                    <option value="data_entry">Data Entry</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                {(formData.type === 'data_entry' || formData.type === 'admin') && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1.5">
+                      <label className="flex items-center gap-2 cursor-pointer font-medium text-gray-800 pb-1.5 border-b border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={modules.length > 0 && formData.module_ids.length === modules.length}
+                          ref={(el) => {
+                            if (el) el.indeterminate = formData.module_ids.length > 0 && formData.module_ids.length < modules.length;
+                          }}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              module_ids: e.target.checked ? modules.map((m) => m.id) : [],
+                            });
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm">Select all</span>
+                      </label>
+                      {modules.map((m) => (
+                        <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.module_ids.includes(m.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setFormData({ ...formData, module_ids: [...formData.module_ids, m.id] });
+                              else setFormData({ ...formData, module_ids: formData.module_ids.filter((id) => id !== m.id) });
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm">{m.name}</span>
+                        </label>
+                      ))}
+                      {modules.length === 0 && <span className="text-xs text-gray-500">No modules (excluding Users).</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
 
@@ -555,7 +633,7 @@ export default function AdminUsersPage() {
                 type="button"
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
               >
@@ -584,7 +662,7 @@ export default function AdminUsersPage() {
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingAdmin(null);
-                  setEditFormData({ email: '', password: '' });
+                  setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
                 disabled={isUpdating}
@@ -609,10 +687,9 @@ export default function AdminUsersPage() {
                     disabled={isUpdating}
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Password <span className="text-gray-500 text-xs">(leave empty to keep current password)</span>
+                    Password <span className="text-gray-500 text-xs">(leave empty to keep current)</span>
                   </label>
                   <input
                     type="password"
@@ -624,6 +701,72 @@ export default function AdminUsersPage() {
                     disabled={isUpdating}
                   />
                 </div>
+                {editingAdmin.type !== 'super_admin' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                      <select
+                        value={editFormData.type}
+                        onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value as 'data_entry' | 'admin' })}
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        disabled={isUpdating}
+                      >
+                        <option value="data_entry">Data Entry</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editFormData.is_active}
+                          onChange={(e) => setEditFormData({ ...editFormData, is_active: e.target.checked })}
+                          disabled={isUpdating}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Active</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
+                      <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer font-medium text-gray-800 pb-1.5 border-b border-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={modules.length > 0 && editFormData.module_ids.length === modules.length}
+                            ref={(el) => {
+                              if (el) el.indeterminate = editFormData.module_ids.length > 0 && editFormData.module_ids.length < modules.length;
+                            }}
+                            onChange={(e) => {
+                              setEditFormData({
+                                ...editFormData,
+                                module_ids: e.target.checked ? modules.map((m) => m.id) : [],
+                              });
+                            }}
+                            className="rounded border-gray-300"
+                            disabled={isUpdating}
+                          />
+                          <span className="text-sm">Select all</span>
+                        </label>
+                        {modules.map((m) => (
+                          <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editFormData.module_ids.includes(m.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setEditFormData({ ...editFormData, module_ids: [...editFormData.module_ids, m.id] });
+                                else setEditFormData({ ...editFormData, module_ids: editFormData.module_ids.filter((id) => id !== m.id) });
+                              }}
+                              className="rounded border-gray-300"
+                              disabled={isUpdating}
+                            />
+                            <span className="text-sm">{m.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </form>
 
@@ -634,7 +777,7 @@ export default function AdminUsersPage() {
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingAdmin(null);
-                  setEditFormData({ email: '', password: '' });
+                  setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
                 disabled={isUpdating}

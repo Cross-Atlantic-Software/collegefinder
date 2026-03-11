@@ -6,6 +6,7 @@ const BasicInfoController = require('../../controllers/profile/basicInfoControll
 const AcademicsController = require('../../controllers/profile/academicsController');
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
+const ProfileCollegesController = require('../../controllers/profile/collegesController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
 const SubjectsController = require('../../controllers/profile/subjectsController');
 const TopicsController = require('../../controllers/profile/topicsController');
@@ -249,6 +250,20 @@ router.get('/profile/exam-preferences', authenticate, ExamsController.getExamPre
  * @access  Private
  */
 router.put('/profile/exam-preferences', authenticate, ExamsController.updateExamPreferences);
+
+/**
+ * @route   GET /api/auth/profile/recommended-exams
+ * @desc    Get recommended exams for user (by career goals + stream eligibility)
+ * @access  Private
+ */
+router.get('/profile/recommended-exams', authenticate, ExamsController.getRecommendedExams);
+
+/**
+ * @route   GET /api/auth/profile/recommended-colleges
+ * @desc    Get recommended colleges for user (colleges whose recommended exams match user's recommended exam IDs)
+ * @access  Private
+ */
+router.get('/profile/recommended-colleges', authenticate, ProfileCollegesController.getRecommendedColleges);
 
 /**
  * @route   GET /api/auth/profile/completion

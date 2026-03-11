@@ -54,7 +54,8 @@ export default function AutomationExamsPage() {
     }
 
     fetchExams();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allExams.length === 0) {
@@ -704,7 +705,7 @@ export default function AutomationExamsPage() {
         message="Are you sure you want to delete this exam? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        isDeleting={isDeleting}
+        isLoading={isDeleting}
       />
     </div>
   );

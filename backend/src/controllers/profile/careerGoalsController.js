@@ -7,10 +7,11 @@ class CareerGoalsTaxonomyController {
   /**
    * Get all career goals (for users - public endpoint)
    * GET /api/career-goals
+   * Only returns active career goals
    */
   static async getAll(req, res) {
     try {
-      const careerGoals = await CareerGoal.findAll();
+      const careerGoals = await CareerGoal.findActive(); // Only active goals for public
       res.json({
         success: true,
         data: { careerGoals }
@@ -79,7 +80,7 @@ class CareerGoalsTaxonomyController {
    */
   static async create(req, res) {
     try {
-      const { label, logo } = req.body;
+      const { label, logo, description, status } = req.body;
 
       // Validate required fields
       if (!label || !logo) {
@@ -98,7 +99,12 @@ class CareerGoalsTaxonomyController {
         });
       }
 
-      const careerGoal = await CareerGoal.create({ label, logo });
+      const careerGoal = await CareerGoal.create({ 
+        label, 
+        logo, 
+        description: description || null,
+        status: status !== undefined ? status : true 
+      });
       res.status(201).json({
         success: true,
         data: { careerGoal },
@@ -151,7 +157,7 @@ class CareerGoalsTaxonomyController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { label, logo } = req.body;
+      const { label, logo, description, status } = req.body;
 
       const existing = await CareerGoal.findById(parseInt(id));
       if (!existing) {
@@ -177,7 +183,12 @@ class CareerGoalsTaxonomyController {
         await deleteFromS3(existing.logo);
       }
 
-      const careerGoal = await CareerGoal.update(parseInt(id), { label, logo });
+      const careerGoal = await CareerGoal.update(parseInt(id), { 
+        label, 
+        logo, 
+        description,
+        status 
+      });
       res.json({
         success: true,
         data: { careerGoal },

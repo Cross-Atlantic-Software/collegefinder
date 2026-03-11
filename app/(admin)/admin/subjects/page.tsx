@@ -38,7 +38,8 @@ export default function SubjectsPage() {
 
     fetchSubjects();
     fetchStreams();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchStreams = async () => {
     try {

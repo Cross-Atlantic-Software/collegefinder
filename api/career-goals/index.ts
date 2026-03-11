@@ -5,6 +5,8 @@ export interface CareerGoal {
   id: number;
   label: string;
   logo: string; // Changed from image to logo
+  description?: string | null;
+  status?: boolean;
   created_at: string;
   updated_at: string;
 }

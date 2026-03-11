@@ -32,7 +32,8 @@ export default function ProgramsPage() {
     }
 
     fetchPrograms();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allPrograms.length === 0) {

@@ -28,29 +28,25 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  moduleCode?: string; // for filtering by admin module access
 }
 
 interface NavGroup {
   label: string;
   icon: React.ReactNode;
   children: NavItem[];
+  superAdminOnly?: boolean; // Users group: only for super_admin
 }
 
 const navGroups: NavGroup[] = [
   {
     label: 'Users',
     icon: <FiUsers className="h-4 w-4" />,
+    superAdminOnly: true,
     children: [
-      {
-        label: 'Site Users',
-        href: '/admin/site-users',
-        icon: <FiUser className="h-4 w-4" />,
-      },
-      {
-        label: 'Admin Users',
-        href: '/admin/admin-users',
-        icon: <FiShield className="h-4 w-4" />,
-      },
+      { label: 'Site Users', href: '/admin/site-users', icon: <FiUser className="h-4 w-4" /> },
+      { label: 'Admin Users', href: '/admin/admin-users', icon: <FiShield className="h-4 w-4" /> },
+      { label: 'Modules', href: '/admin/modules', icon: <FiLayers className="h-4 w-4" /> },
     ],
   },
   {
@@ -61,161 +57,103 @@ const navGroups: NavGroup[] = [
         label: 'Career Goals',
         href: '/admin/career-goals',
         icon: <FiTarget className="h-4 w-4" />,
+        moduleCode: 'career_goals',
       },
-      {
-        label: 'Subjects',
-        href: '/admin/subjects',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Streams',
-        href: '/admin/streams',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Careers',
-        href: '/admin/careers',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Topics',
-        href: '/admin/topics',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Subtopics',
-        href: '/admin/subtopics',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Purposes',
-        href: '/admin/purposes',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Levels',
-        href: '/admin/levels',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Programs',
-        href: '/admin/programs',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Categories',
-        href: '/admin/categories',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Exam Cities',
-        href: '/admin/exam-cities',
-        icon: <FiMapPin className="h-4 w-4" />,
-      },
-      {
-        label: 'Exams',
-        href: '/admin/exams',
-        icon: <FiFileText className="h-4 w-4" />,
-      },
+      { label: 'Subjects', href: '/admin/subjects', icon: <FiBook className="h-4 w-4" />, moduleCode: 'subjects' },
+      { label: 'Streams', href: '/admin/streams', icon: <FiBook className="h-4 w-4" />, moduleCode: 'streams' },
+      { label: 'Careers', href: '/admin/careers', icon: <FiBook className="h-4 w-4" />, moduleCode: 'careers' },
+      { label: 'Topics', href: '/admin/topics', icon: <FiBook className="h-4 w-4" />, moduleCode: 'topics' },
+      { label: 'Subtopics', href: '/admin/subtopics', icon: <FiBook className="h-4 w-4" />, moduleCode: 'subtopics' },
+      { label: 'Purposes', href: '/admin/purposes', icon: <FiBook className="h-4 w-4" />, moduleCode: 'purposes' },
+      { label: 'Levels', href: '/admin/levels', icon: <FiBook className="h-4 w-4" />, moduleCode: 'levels' },
+      { label: 'Programs', href: '/admin/programs', icon: <FiBook className="h-4 w-4" />, moduleCode: 'programs' },
+      { label: 'Categories', href: '/admin/categories', icon: <FiBook className="h-4 w-4" />, moduleCode: 'categories' },
+      { label: 'Exam Cities', href: '/admin/exam-cities', icon: <FiMapPin className="h-4 w-4" />, moduleCode: 'exam_cities' },
+    ],
+  },
+  {
+    label: 'Institutes',
+    icon: <FiBook className="h-4 w-4" />,
+    children: [
+      { label: 'Institutes', href: '/admin/institutes', icon: <FiBook className="h-4 w-4" />, moduleCode: 'institutes' },
+    ],
+  },
+  {
+    label: 'Exams',
+    icon: <FiFileText className="h-4 w-4" />,
+    children: [
+      { label: 'Exams', href: '/admin/exams', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'exams' },
     ],
   },
   {
     label: 'Colleges',
     icon: <FiBook className="h-4 w-4" />,
     children: [
-      {
-        label: 'All Colleges',
-        href: '/admin/colleges',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Reviews',
-        href: '/admin/colleges/reviews',
-        icon: <FiStar className="h-4 w-4" />,
-      },
-      {
-        label: 'FAQs',
-        href: '/admin/colleges/faqs',
-        icon: <FiHelpCircle className="h-4 w-4" />,
-      },
-      {
-        label: 'Cutoffs',
-        href: '/admin/courses/cutoffs',
-        icon: <FiFileText className="h-4 w-4" />,
-      },
+      { label: 'Colleges', href: '/admin/colleges', icon: <FiBook className="h-4 w-4" />, moduleCode: 'colleges' },
     ],
   },
   {
-    label: 'Coachings',
+    label: 'Scholarships',
     icon: <FiBook className="h-4 w-4" />,
     children: [
-      {
-        label: 'All Coachings',
-        href: '/admin/coachings',
-        icon: <FiBook className="h-4 w-4" />,
-      },
-      {
-        label: 'Locations',
-        href: '/admin/coachings/locations',
-        icon: <FiMapPin className="h-4 w-4" />,
-      },
-      {
-        label: 'Gallery',
-        href: '/admin/coachings/gallery',
-        icon: <FiImage className="h-4 w-4" />,
-      },
-      {
-        label: 'Courses',
-        href: '/admin/coachings/courses',
-        icon: <FiBook className="h-4 w-4" />,
-      },
+      { label: 'Scholarships', href: '/admin/scholarships', icon: <FiBook className="h-4 w-4" />, moduleCode: 'scholarships' },
+    ],
+  },
+  {
+    label: 'Loans',
+    icon: <FiBook className="h-4 w-4" />,
+    children: [
+      { label: 'Loan Providers', href: '/admin/loans', icon: <FiBook className="h-4 w-4" />, moduleCode: 'loans' },
     ],
   },
 ];
 
 const navItems: NavItem[] = [
-  {
-    label: 'Email Templates',
-    href: '/admin/email-templates',
-    icon: <FiMail className="h-4 w-4" />,
-  },
-  {
-    label: 'Blogs',
-    href: '/admin/blogs',
-    icon: <FiFileText className="h-4 w-4" />,
-  },
-  {
-    label: 'Lectures',
-    href: '/admin/lectures',
-    icon: <FiFileText className="h-4 w-4" />,
-  },
-  {
-    label: 'Applications',
-    href: '/admin/applications',
-    icon: <FiPlay className="h-4 w-4" />,
-  },
-  {
-    label: 'Automation Exams',
-    href: '/admin/automation-exams',
-    icon: <FiSettings className="h-4 w-4" />,
-  },
+  { label: 'Email Templates', href: '/admin/email-templates', icon: <FiMail className="h-4 w-4" />, moduleCode: 'email_templates' },
+  { label: 'Blogs', href: '/admin/blogs', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'blogs' },
+  { label: 'Lectures', href: '/admin/lectures', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'lectures' },
+  { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
+  { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [admin, setAdmin] = useState<{ type?: string; module_codes?: string[] } | null>(null);
 
   useEffect(() => {
-    // Auto-expand groups if any child is active
+    try {
+      const s = localStorage.getItem('admin_user');
+      if (s) setAdmin(JSON.parse(s));
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
     const activeGroups = new Set<string>();
     navGroups.forEach((group) => {
+      if (group.superAdminOnly && admin?.type !== 'super_admin') return;
       const hasActiveChild = group.children.some((child) => pathname === child.href || pathname.startsWith(child.href + '/'));
-      if (hasActiveChild) {
-        activeGroups.add(group.label);
-      }
+      if (hasActiveChild) activeGroups.add(group.label);
     });
     setExpandedGroups(activeGroups);
-  }, [pathname]);
+  }, [pathname, admin]);
+
+  const canSeeGroup = (group: NavGroup) => {
+    if (group.superAdminOnly) return admin?.type === 'super_admin';
+    if (admin?.type === 'super_admin') return true;
+    const codes = admin?.module_codes ?? [];
+    return group.children.some((c) => !c.moduleCode || codes.includes(c.moduleCode));
+  };
+  const canSeeItem = (item: NavItem) => {
+    if (admin?.type === 'super_admin') return true;
+    return !item.moduleCode || (admin?.module_codes ?? []).includes(item.moduleCode);
+  };
+
+  const filteredGroups = navGroups.filter(canSeeGroup).map((group) => ({
+    ...group,
+    children: group.children.filter(canSeeItem),
+  })).filter((g) => g.children.length > 0);
+  const filteredNavItems = navItems.filter(canSeeItem);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_authenticated');
@@ -255,7 +193,7 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {/* Navigation Groups */}
-        {navGroups.map((group) => {
+        {filteredGroups.map((group) => {
           const isExpanded = isGroupExpanded(group.label);
           const hasActiveChild = group.children.some((child) => pathname === child.href || pathname.startsWith(child.href + '/'));
 
@@ -309,7 +247,7 @@ export default function AdminSidebar() {
         })}
 
         {/* Regular Navigation Items */}
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const isActive = pathname === item.href;
 
           return (
