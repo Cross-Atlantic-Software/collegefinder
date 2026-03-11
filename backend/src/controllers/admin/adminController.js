@@ -1,5 +1,6 @@
 const User = require('../../models/user/User');
 const Admin = require('../../models/admin/Admin');
+const AdminUserModule = require('../../models/admin/AdminUserModule');
 const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
 
@@ -50,7 +51,16 @@ class AdminController {
       // Update last login
       await Admin.updateLastLogin(admin.id);
 
-      // Generate JWT token
+      const AdminUserModule = require('../../models/admin/AdminUserModule');
+      const Module = require('../../models/taxonomy/Module');
+      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin')
+        ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
+      const moduleCodes = [];
+      for (const mid of moduleIds) {
+        const mod = await Module.findById(mid);
+        if (mod) moduleCodes.push(mod.code);
+      }
+
       const token = generateToken({
         adminId: admin.id,
         email: admin.email,
@@ -64,7 +74,9 @@ class AdminController {
           admin: {
             id: admin.id,
             email: admin.email,
-            type: admin.type
+            type: admin.type,
+            module_ids: moduleIds,
+            module_codes: moduleCodes
           },
           token
         }
@@ -84,7 +96,16 @@ class AdminController {
    */
   static async getMe(req, res) {
     try {
+      const AdminUserModule = require('../../models/admin/AdminUserModule');
+      const Module = require('../../models/taxonomy/Module');
       const admin = await Admin.findById(req.admin.id);
+      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin')
+        ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
+      const moduleCodes = [];
+      for (const mid of moduleIds) {
+        const mod = await Module.findById(mid);
+        if (mod) moduleCodes.push(mod.code);
+      }
       res.json({
         success: true,
         data: {
@@ -92,7 +113,9 @@ class AdminController {
             id: admin.id,
             email: admin.email,
             type: admin.type,
-            is_active: admin.is_active
+            is_active: admin.is_active,
+            module_ids: moduleIds,
+            module_codes: moduleCodes
           }
         }
       });
@@ -155,12 +178,17 @@ class AdminController {
   static async getAllAdmins(req, res) {
     try {
       const admins = await Admin.findAll();
-      
+      const adminsWithModules = await Promise.all(admins.map(async (admin) => {
+        const moduleIds = req.admin.type === 'super_admin'
+          ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id)
+          : [];
+        return { ...admin, module_ids: moduleIds };
+      }));
       res.json({
         success: true,
         data: {
-          admins,
-          total: admins.length
+          admins: adminsWithModules,
+          total: adminsWithModules.length
         }
       });
     } catch (error) {
@@ -187,9 +215,8 @@ class AdminController {
         });
       }
 
-      const { email, password, type = 'user' } = req.body;
+      const { email, password, type = 'data_entry', module_ids } = req.body;
 
-      // Check if email already exists
       const existingEmail = await Admin.findByEmail(email);
       if (existingEmail) {
         return res.status(400).json({
@@ -198,7 +225,6 @@ class AdminController {
         });
       }
 
-      // Only super_admin can create other admins
       if (req.admin.type !== 'super_admin') {
         return res.status(403).json({
           success: false,
@@ -206,7 +232,6 @@ class AdminController {
         });
       }
 
-      // Cannot create super_admin type (only one super admin)
       if (type === 'super_admin') {
         return res.status(400).json({
           success: false,
@@ -216,10 +241,15 @@ class AdminController {
 
       const admin = await Admin.create(email, password, type, req.admin.id);
 
+      if ((type === 'data_entry' || type === 'admin') && Array.isArray(module_ids) && module_ids.length > 0) {
+        await AdminUserModule.setModulesForAdminUser(admin.id, module_ids);
+      }
+
+      const moduleIds = (type === 'data_entry' || type === 'admin') ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
       res.status(201).json({
         success: true,
         message: 'Admin user created successfully',
-        data: { admin }
+        data: { admin: { ...admin, module_ids: moduleIds } }
       });
     } catch (error) {
       console.error('Error creating admin:', error);
@@ -247,9 +277,8 @@ class AdminController {
       }
 
       const { id } = req.params;
-      const { email, password, type, is_active } = req.body;
+      const { email, password, type, is_active, module_ids } = req.body;
 
-      // Only super_admin can update other admins
       if (req.admin.type !== 'super_admin') {
         return res.status(403).json({
           success: false,
@@ -257,7 +286,6 @@ class AdminController {
         });
       }
 
-      // Cannot update super_admin
       const targetAdmin = await Admin.findById(id);
       if (targetAdmin && targetAdmin.type === 'super_admin') {
         return res.status(403).json({
@@ -267,31 +295,34 @@ class AdminController {
       }
 
       let updatedAdmin = targetAdmin;
-      
-      // Update email if provided
+
       if (email !== undefined && email !== targetAdmin.email) {
         updatedAdmin = await Admin.updateEmail(id, email);
       }
-      
-      // Update password if provided
       if (password !== undefined && password.trim() !== '') {
         updatedAdmin = await Admin.updatePassword(id, password);
       }
-      
-      // Update type if provided
       if (type !== undefined) {
         updatedAdmin = await Admin.updateType(id, type);
       }
-      
-      // Update active status if provided
       if (is_active !== undefined) {
         updatedAdmin = await Admin.updateActiveStatus(id, is_active);
       }
 
+      if (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin') {
+        if (module_ids !== undefined && Array.isArray(module_ids)) {
+          await AdminUserModule.setModulesForAdminUser(id, module_ids);
+        }
+      } else {
+        await AdminUserModule.setModulesForAdminUser(id, []);
+      }
+
+      const moduleIds = (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin')
+        ? await AdminUserModule.getModuleIdsByAdminUserId(id) : [];
       res.json({
         success: true,
         message: 'Admin user updated successfully',
-        data: { admin: updatedAdmin }
+        data: { admin: { ...updatedAdmin, module_ids: moduleIds } }
       });
     } catch (error) {
       console.error('Error updating admin:', error);

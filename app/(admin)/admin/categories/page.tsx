@@ -32,7 +32,8 @@ export default function CategoriesPage() {
     }
 
     fetchCategories();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allCategories.length === 0) {

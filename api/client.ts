@@ -137,17 +137,16 @@ export async function apiRequest<T>(
     }
 
     if (!response.ok) {
-      // Check if this is an authentication error
-      if (response.status === 401 || response.status === 403) {
-        // Clear tokens and redirect to login
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('admin_token');
-          localStorage.removeItem('admin_authenticated');
-          window.location.href = '/admin/login';
-        }
+      // Only 401 (Unauthorized) means session is invalid — clear and redirect to login.
+      // 403 (Forbidden) means user is authenticated but not allowed for this action (e.g. module access);
+      // do not clear session so Admin/Data Entry users stay logged in.
+      if (response.status === 401 && typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_authenticated');
+        window.location.href = '/admin/login';
       }
-      
+
       return {
         success: false,
         message: data.message || 'An error occurred',

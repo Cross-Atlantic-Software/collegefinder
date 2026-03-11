@@ -32,7 +32,8 @@ export default function LevelsPage() {
     }
 
     fetchLevels();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allLevels.length === 0) {

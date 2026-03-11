@@ -43,7 +43,8 @@ export default function BlogsPage() {
     fetchBlogs();
     fetchStreamsAndCareers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchStreamsAndCareers = async () => {
     try {

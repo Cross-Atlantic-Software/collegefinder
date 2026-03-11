@@ -48,10 +48,10 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority } = data;
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description) VALUES ($1, $2, $3) RETURNING *',
-      [name, code, description || null]
+      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null]
     );
     return result.rows[0];
   }
@@ -60,11 +60,52 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description } = data;
-    const result = await db.query(
-      'UPDATE exams_taxonomies SET name = $1, code = $2, description = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
-      [name, code, description || null, id]
-    );
+    const { name, code, description, exam_logo, exam_type, conducting_authority } = data;
+    
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramCount++}`);
+      values.push(name);
+    }
+    if (code !== undefined) {
+      updates.push(`code = $${paramCount++}`);
+      values.push(code);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      values.push(description);
+    }
+    if (exam_logo !== undefined) {
+      updates.push(`exam_logo = $${paramCount++}`);
+      values.push(exam_logo);
+    }
+    if (exam_type !== undefined) {
+      updates.push(`exam_type = $${paramCount++}`);
+      values.push(exam_type);
+    }
+    if (conducting_authority !== undefined) {
+      updates.push(`conducting_authority = $${paramCount++}`);
+      values.push(conducting_authority);
+    }
+
+    if (updates.length === 0) {
+      return null;
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(id);
+
+    const query = `
+      UPDATE exams_taxonomies 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+
+    const result = await db.query(query, values);
     return result.rows[0] || null;
   }
 

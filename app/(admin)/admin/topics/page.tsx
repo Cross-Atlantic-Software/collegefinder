@@ -47,7 +47,8 @@ export default function TopicsPage() {
 
     fetchTopics();
     fetchSubjects();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchSubjects = async () => {
     try {

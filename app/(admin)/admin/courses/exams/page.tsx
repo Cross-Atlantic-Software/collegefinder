@@ -33,9 +33,9 @@ export default function CourseExamsPage() {
       router.replace('/admin/login');
       return;
     }
-
     fetchData();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allExams.length === 0) {

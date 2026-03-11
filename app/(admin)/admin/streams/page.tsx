@@ -34,7 +34,8 @@ export default function StreamsPage() {
     }
 
     fetchStreams();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allStreams.length === 0) {

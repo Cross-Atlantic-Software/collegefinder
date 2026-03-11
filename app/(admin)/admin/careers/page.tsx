@@ -34,7 +34,8 @@ export default function CareersPage() {
     }
 
     fetchCareers();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allCareers.length === 0) {

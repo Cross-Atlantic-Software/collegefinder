@@ -16,24 +16,12 @@ const LevelController = require('../../controllers/admin/levelController');
 const ProgramController = require('../../controllers/admin/programController');
 const ExamCityController = require('../../controllers/admin/examCityController');
 const CategoryController = require('../../controllers/admin/categoryController');
-const { CollegeController, upload: logoUpload } = require('../../controllers/admin/collegeController');
-const CollegeLocationController = require('../../controllers/admin/collegeLocationController');
-const { CollegeGalleryController, upload: imageUpload } = require('../../controllers/admin/collegeGalleryController');
-const CollegeReviewController = require('../../controllers/admin/collegeReviewController');
-const CollegeNewsController = require('../../controllers/admin/collegeNewsController');
-const { CollegeCourseController, upload: courseUpload } = require('../../controllers/admin/collegeCourseController');
-const CourseExamController = require('../../controllers/admin/courseExamController');
-const CourseCutoffController = require('../../controllers/admin/courseCutoffController');
-const CourseSubjectController = require('../../controllers/admin/courseSubjectController');
-const { CollegeFAQController, upload: faqUpload } = require('../../controllers/admin/collegeFAQController');
-const {
-  CoachingController,
-  CoachingLocationController,
-  CoachingGalleryController,
-  CoachingCourseController,
-  upload: coachingUpload
-} = require('../../controllers/admin/coachingController');
-const { authenticateAdmin, requireSuperAdmin } = require('../../middleware/adminAuth');
+const CollegesController = require('../../controllers/admin/collegesController');
+const InstitutesController = require('../../controllers/admin/institutesController');
+const ScholarshipsController = require('../../controllers/admin/scholarshipsController');
+const LoansController = require('../../controllers/admin/loansController');
+const ModulesController = require('../../controllers/admin/modulesController');
+const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
   validateCreateAdmin,
@@ -60,34 +48,6 @@ const {
   validateUpdateExamCity,
   validateCreateCategory,
   validateUpdateCategory,
-  validateCreateCollege,
-  validateUpdateCollege,
-  validateCreateCollegeLocation,
-  validateUpdateCollegeLocation,
-  validateCreateCollegeGallery,
-  validateUpdateCollegeGallery,
-  validateCreateCollegeReview,
-  validateUpdateCollegeReview,
-  validateCreateCollegeNews,
-  validateUpdateCollegeNews,
-  validateCreateCollegeCourse,
-  validateUpdateCollegeCourse,
-  validateCreateCourseExam,
-  validateUpdateCourseExam,
-  validateCreateCourseCutoff,
-  validateUpdateCourseCutoff,
-  validateCreateCourseSubject,
-  validateUpdateCourseSubject,
-  validateCreateCollegeFAQ,
-  validateUpdateCollegeFAQ,
-  validateCreateCoaching,
-  validateUpdateCoaching,
-  validateCreateCoachingLocation,
-  validateUpdateCoachingLocation,
-  validateCreateCoachingGallery,
-  validateUpdateCoachingGallery,
-  validateCreateCoachingCourse,
-  validateUpdateCoachingCourse,
   validateCreateAutomationExam,
   validateUpdateAutomationExam
 } = require('../../middleware/validators');
@@ -105,6 +65,32 @@ const upload = multer({
     } else {
       cb(new Error('Only image files are allowed'), false);
     }
+  },
+});
+
+// Multer for bulk exam upload: Excel + multiple logo images or one ZIP of logos
+const uploadBulkExams = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB per file (zip can contain many images)
+  },
+  fileFilter: (req, file, cb) => {
+    const field = file.fieldname || '';
+    if (field === 'excel') {
+      const ok = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ].includes(file.mimetype);
+      return cb(ok ? null : new Error('Excel file required (.xlsx or .xls)'), ok);
+    }
+    if (field === 'logos') {
+      return cb(null, file.mimetype.startsWith('image/'));
+    }
+    if (field === 'logos_zip') {
+      const ok = file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || (file.originalname || '').toLowerCase().endsWith('.zip');
+      return cb(ok ? null : new Error('ZIP file required for logos'), ok);
+    }
+    cb(null, false);
   },
 });
 
@@ -132,35 +118,44 @@ router.get('/me', authenticateAdmin, AdminController.getMe);
  * @desc    Get all users with basic info
  * @access  Private (Admin)
  */
-router.get('/users/basic-info', authenticateAdmin, AdminUsersController.getAllUsersBasicInfo);
+router.get('/users/basic-info', authenticateAdmin, requireSuperAdmin, AdminUsersController.getAllUsersBasicInfo);
 
 /**
  * @route   GET /api/admin/users/academics
  * @desc    Get all users with academics
- * @access  Private (Admin)
+ * @access  Private (Super Admin only - Users module not assignable to Data Entry/Admin)
  */
-router.get('/users/academics', authenticateAdmin, AdminUsersController.getAllUsersAcademics);
+router.get('/users/academics', authenticateAdmin, requireSuperAdmin, AdminUsersController.getAllUsersAcademics);
 
 /**
  * @route   GET /api/admin/users/career-goals
  * @desc    Get all users with career goals
- * @access  Private (Admin)
+ * @access  Private (Super Admin only)
  */
-router.get('/users/career-goals', authenticateAdmin, AdminUsersController.getAllUsersCareerGoals);
+router.get('/users/career-goals', authenticateAdmin, requireSuperAdmin, AdminUsersController.getAllUsersCareerGoals);
 
 /**
  * @route   GET /api/admin/users/:id
  * @desc    Get single user with complete details (basic + academics + career goals)
- * @access  Private (Admin)
+ * @access  Private (Super Admin only)
  */
-router.get('/users/:id', authenticateAdmin, AdminUsersController.getUserDetails);
+router.get('/users/:id', authenticateAdmin, requireSuperAdmin, AdminUsersController.getUserDetails);
 
 /**
  * @route   GET /api/admin/users
  * @desc    Get all registered users
- * @access  Private (Admin)
+ * @access  Private (Super Admin only)
  */
-router.get('/users', authenticateAdmin, AdminController.getAllUsers);
+router.get('/users', authenticateAdmin, requireSuperAdmin, AdminController.getAllUsers);
+
+/**
+ * Modules taxonomy - Super Admin only (used when assigning modules to Data Entry/Admin)
+ */
+router.get('/modules', authenticateAdmin, requireSuperAdmin, ModulesController.getAll);
+router.get('/modules/:id', authenticateAdmin, requireSuperAdmin, ModulesController.getById);
+router.post('/modules', authenticateAdmin, requireSuperAdmin, ModulesController.create);
+router.put('/modules/:id', authenticateAdmin, requireSuperAdmin, ModulesController.update);
+router.delete('/modules/:id', authenticateAdmin, requireSuperAdmin, ModulesController.delete);
 
 /**
  * @route   GET /api/admin/admins
@@ -191,51 +186,14 @@ router.put('/admins/:id', authenticateAdmin, requireSuperAdmin, validateUpdateAd
 router.delete('/admins/:id', authenticateAdmin, requireSuperAdmin, AdminController.deleteAdmin);
 
 /**
- * Career Goals Taxonomy Routes
+ * Career Goals Taxonomy Routes (module: career_goals; Data Entry: add only; Admin: add+edit; Super Admin: full+delete)
  */
-
-/**
- * @route   GET /api/admin/career-goals
- * @desc    Get all career goals (for admin)
- * @access  Private (Admin)
- */
-router.get('/career-goals', authenticateAdmin, CareerGoalsController.getAllAdmin);
-
-/**
- * @route   POST /api/admin/career-goals/upload-image
- * @desc    Upload logo to S3
- * @access  Private (Admin)
- * IMPORTANT: This route must come BEFORE /career-goals/:id to avoid route conflicts
- */
-router.post('/career-goals/upload-image', authenticateAdmin, upload.single('image'), CareerGoalsController.uploadImage);
-
-/**
- * @route   POST /api/admin/career-goals
- * @desc    Create new career goal
- * @access  Private (Admin)
- */
-router.post('/career-goals', authenticateAdmin, CareerGoalsController.create);
-
-/**
- * @route   GET /api/admin/career-goals/:id
- * @desc    Get career goal by ID
- * @access  Private (Admin)
- */
-router.get('/career-goals/:id', authenticateAdmin, CareerGoalsController.getById);
-
-/**
- * @route   PUT /api/admin/career-goals/:id
- * @desc    Update career goal
- * @access  Private (Admin)
- */
-router.put('/career-goals/:id', authenticateAdmin, CareerGoalsController.update);
-
-/**
- * @route   DELETE /api/admin/career-goals/:id
- * @desc    Delete career goal
- * @access  Private (Admin)
- */
-router.delete('/career-goals/:id', authenticateAdmin, CareerGoalsController.delete);
+router.get('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getAllAdmin);
+router.post('/career-goals/upload-image', authenticateAdmin, requireModuleAccess('career_goals'), upload.single('image'), CareerGoalsController.uploadImage);
+router.post('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.create);
+router.get('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getById);
+router.put('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanEdit, CareerGoalsController.update);
+router.delete('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDelete, CareerGoalsController.delete);
 
 /**
  * Subjects Taxonomy Routes
@@ -246,35 +204,35 @@ router.delete('/career-goals/:id', authenticateAdmin, CareerGoalsController.dele
  * @desc    Get all subjects (for admin)
  * @access  Private (Admin)
  */
-router.get('/subjects', authenticateAdmin, SubjectController.getAllSubjects);
+router.get('/subjects', authenticateAdmin, requireModuleAccess('subjects'), SubjectController.getAllSubjects);
 
 /**
  * @route   GET /api/admin/subjects/:id
  * @desc    Get subject by ID
  * @access  Private (Admin)
  */
-router.get('/subjects/:id', authenticateAdmin, SubjectController.getSubjectById);
+router.get('/subjects/:id', authenticateAdmin, requireModuleAccess('subjects'), SubjectController.getSubjectById);
 
 /**
  * @route   POST /api/admin/subjects
  * @desc    Create new subject
  * @access  Private (Admin)
  */
-router.post('/subjects', authenticateAdmin, validateCreateSubject, SubjectController.createSubject);
+router.post('/subjects', authenticateAdmin, requireModuleAccess('subjects'), validateCreateSubject, SubjectController.createSubject);
 
 /**
  * @route   PUT /api/admin/subjects/:id
  * @desc    Update subject
  * @access  Private (Admin)
  */
-router.put('/subjects/:id', authenticateAdmin, validateUpdateSubject, SubjectController.updateSubject);
+router.put('/subjects/:id', authenticateAdmin, requireModuleAccess('subjects'), requireCanEdit, validateUpdateSubject, SubjectController.updateSubject);
 
 /**
  * @route   DELETE /api/admin/subjects/:id
  * @desc    Delete subject
  * @access  Private (Admin)
  */
-router.delete('/subjects/:id', authenticateAdmin, SubjectController.deleteSubject);
+router.delete('/subjects/:id', authenticateAdmin, requireModuleAccess('subjects'), requireCanDelete, SubjectController.deleteSubject);
 
 /**
  * Streams Taxonomy Routes
@@ -285,35 +243,35 @@ router.delete('/subjects/:id', authenticateAdmin, SubjectController.deleteSubjec
  * @desc    Get all streams (for admin)
  * @access  Private (Admin)
  */
-router.get('/streams', authenticateAdmin, StreamController.getAllStreams);
+router.get('/streams', authenticateAdmin, requireModuleAccess('streams'), StreamController.getAllStreams);
 
 /**
  * @route   GET /api/admin/streams/:id
  * @desc    Get stream by ID
  * @access  Private (Admin)
  */
-router.get('/streams/:id', authenticateAdmin, StreamController.getStreamById);
+router.get('/streams/:id', authenticateAdmin, requireModuleAccess('streams'), StreamController.getStreamById);
 
 /**
  * @route   POST /api/admin/streams
  * @desc    Create new stream
  * @access  Private (Admin)
  */
-router.post('/streams', authenticateAdmin, validateCreateStream, StreamController.createStream);
+router.post('/streams', authenticateAdmin, requireModuleAccess('streams'), validateCreateStream, StreamController.createStream);
 
 /**
  * @route   PUT /api/admin/streams/:id
  * @desc    Update stream
  * @access  Private (Admin)
  */
-router.put('/streams/:id', authenticateAdmin, validateUpdateStream, StreamController.updateStream);
+router.put('/streams/:id', authenticateAdmin, requireModuleAccess('streams'), requireCanEdit, validateUpdateStream, StreamController.updateStream);
 
 /**
  * @route   DELETE /api/admin/streams/:id
  * @desc    Delete stream
  * @access  Private (Admin)
  */
-router.delete('/streams/:id', authenticateAdmin, StreamController.deleteStream);
+router.delete('/streams/:id', authenticateAdmin, requireModuleAccess('streams'), requireCanDelete, StreamController.deleteStream);
 
 /**
  * Careers Taxonomy Routes
@@ -324,35 +282,35 @@ router.delete('/streams/:id', authenticateAdmin, StreamController.deleteStream);
  * @desc    Get all careers (for admin)
  * @access  Private (Admin)
  */
-router.get('/careers', authenticateAdmin, CareerController.getAllCareers);
+router.get('/careers', authenticateAdmin, requireModuleAccess('careers'), CareerController.getAllCareers);
 
 /**
  * @route   GET /api/admin/careers/:id
  * @desc    Get career by ID
  * @access  Private (Admin)
  */
-router.get('/careers/:id', authenticateAdmin, CareerController.getCareerById);
+router.get('/careers/:id', authenticateAdmin, requireModuleAccess('careers'), CareerController.getCareerById);
 
 /**
  * @route   POST /api/admin/careers
  * @desc    Create new career
  * @access  Private (Admin)
  */
-router.post('/careers', authenticateAdmin, validateCreateCareer, CareerController.createCareer);
+router.post('/careers', authenticateAdmin, requireModuleAccess('careers'), validateCreateCareer, CareerController.createCareer);
 
 /**
  * @route   PUT /api/admin/careers/:id
  * @desc    Update career
  * @access  Private (Admin)
  */
-router.put('/careers/:id', authenticateAdmin, validateUpdateCareer, CareerController.updateCareer);
+router.put('/careers/:id', authenticateAdmin, requireModuleAccess('careers'), requireCanEdit, validateUpdateCareer, CareerController.updateCareer);
 
 /**
  * @route   DELETE /api/admin/careers/:id
  * @desc    Delete career
  * @access  Private (Admin)
  */
-router.delete('/careers/:id', authenticateAdmin, CareerController.deleteCareer);
+router.delete('/careers/:id', authenticateAdmin, requireModuleAccess('careers'), requireCanDelete, CareerController.deleteCareer);
 
 /**
  * Exams Taxonomy Routes
@@ -363,35 +321,68 @@ router.delete('/careers/:id', authenticateAdmin, CareerController.deleteCareer);
  * @desc    Get all exams (for admin)
  * @access  Private (Admin)
  */
-router.get('/exams', authenticateAdmin, ExamsController.getAllAdmin);
+router.get('/exams', authenticateAdmin, requireModuleAccess('exams'), ExamsController.getAllAdmin);
+
+/**
+ * @route   POST /api/admin/exams/upload-logo
+ * @desc    Upload exam logo to S3
+ * @access  Private (Admin)
+ * IMPORTANT: This route must come BEFORE /exams/:id to avoid route conflicts
+ */
+router.post('/exams/upload-logo', authenticateAdmin, requireModuleAccess('exams'), upload.single('image'), ExamsController.uploadLogo);
+
+/**
+ * @route   GET /api/admin/exams/bulk-upload-template
+ * @desc    Download Excel template for bulk exam upload
+ * @access  Private (Admin)
+ */
+router.get('/exams/bulk-upload-template', authenticateAdmin, requireModuleAccess('exams'), requireCanDownloadExcel, ExamsController.downloadBulkTemplate);
+
+/**
+ * @route   GET /api/admin/exams/download-excel
+ * @desc    Download all exams data as Excel (Super Admin only)
+ * @access  Private (Super Admin)
+ */
+router.get('/exams/download-excel', authenticateAdmin, requireModuleAccess('exams'), requireCanDownloadExcel, ExamsController.downloadAllExcel);
+
+/**
+ * @route   POST /api/admin/exams/bulk-upload
+ * @desc    Bulk create exams from Excel; optional logos matched by logo_filename column
+ * @access  Private (Admin)
+ */
+router.post('/exams/bulk-upload', authenticateAdmin, requireModuleAccess('exams'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+  { name: 'logos', maxCount: 100 },
+  { name: 'logos_zip', maxCount: 1 },
+]), ExamsController.bulkUpload);
 
 /**
  * @route   POST /api/admin/exams
  * @desc    Create new exam (for admin)
  * @access  Private (Admin)
  */
-router.post('/exams', authenticateAdmin, ExamsController.create);
+router.post('/exams', authenticateAdmin, requireModuleAccess('exams'), ExamsController.create);
 
 /**
  * @route   GET /api/admin/exams/:id
  * @desc    Get exam by ID (for admin)
  * @access  Private (Admin)
  */
-router.get('/exams/:id', authenticateAdmin, ExamsController.getById);
+router.get('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), ExamsController.getById);
 
 /**
  * @route   PUT /api/admin/exams/:id
  * @desc    Update exam (for admin)
  * @access  Private (Admin)
  */
-router.put('/exams/:id', authenticateAdmin, ExamsController.update);
+router.put('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), requireCanEdit, ExamsController.update);
 
 /**
  * @route   DELETE /api/admin/exams/:id
  * @desc    Delete exam (for admin)
  * @access  Private (Admin)
  */
-router.delete('/exams/:id', authenticateAdmin, ExamsController.delete);
+router.delete('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), requireCanDelete, ExamsController.delete);
 
 /**
  * Topics Routes
@@ -402,42 +393,42 @@ router.delete('/exams/:id', authenticateAdmin, ExamsController.delete);
  * @desc    Get all topics
  * @access  Private (Admin)
  */
-router.get('/topics', authenticateAdmin, TopicController.getAllTopics);
+router.get('/topics', authenticateAdmin, requireModuleAccess('topics'), TopicController.getAllTopics);
 
 /**
  * @route   GET /api/admin/topics/:id
  * @desc    Get topic by ID
  * @access  Private (Admin)
  */
-router.get('/topics/:id', authenticateAdmin, TopicController.getTopicById);
+router.get('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), TopicController.getTopicById);
 
 /**
  * @route   POST /api/admin/topics
  * @desc    Create new topic
  * @access  Private (Admin)
  */
-router.post('/topics', authenticateAdmin, TopicController.upload.single('thumbnail'), validateCreateTopic, TopicController.createTopic);
+router.post('/topics', authenticateAdmin, requireModuleAccess('topics'), TopicController.upload.single('thumbnail'), validateCreateTopic, TopicController.createTopic);
 
 /**
  * @route   PUT /api/admin/topics/:id
  * @desc    Update topic
  * @access  Private (Admin)
  */
-router.put('/topics/:id', authenticateAdmin, TopicController.upload.single('thumbnail'), validateUpdateTopic, TopicController.updateTopic);
+router.put('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanEdit, TopicController.upload.single('thumbnail'), validateUpdateTopic, TopicController.updateTopic);
 
 /**
  * @route   DELETE /api/admin/topics/:id
  * @desc    Delete topic
  * @access  Private (Admin)
  */
-router.delete('/topics/:id', authenticateAdmin, TopicController.deleteTopic);
+router.delete('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanDelete, TopicController.deleteTopic);
 
 /**
  * @route   POST /api/admin/topics/upload-thumbnail
  * @desc    Upload topic thumbnail
  * @access  Private (Admin)
  */
-router.post('/topics/upload-thumbnail', authenticateAdmin, TopicController.upload.single('thumbnail'), TopicController.uploadThumbnail);
+router.post('/topics/upload-thumbnail', authenticateAdmin, requireModuleAccess('topics'), TopicController.upload.single('thumbnail'), TopicController.uploadThumbnail);
 
 /**
  * Subtopics Routes
@@ -448,42 +439,42 @@ router.post('/topics/upload-thumbnail', authenticateAdmin, TopicController.uploa
  * @desc    Get all subtopics
  * @access  Private (Admin)
  */
-router.get('/subtopics', authenticateAdmin, SubtopicController.getAllSubtopics);
+router.get('/subtopics', authenticateAdmin, requireModuleAccess('subtopics'), SubtopicController.getAllSubtopics);
 
 /**
  * @route   GET /api/admin/subtopics/topic/:topicId
  * @desc    Get subtopics by topic ID
  * @access  Private (Admin)
  */
-router.get('/subtopics/topic/:topicId', authenticateAdmin, SubtopicController.getSubtopicsByTopicId);
+router.get('/subtopics/topic/:topicId', authenticateAdmin, requireModuleAccess('subtopics'), SubtopicController.getSubtopicsByTopicId);
 
 /**
  * @route   GET /api/admin/subtopics/:id
  * @desc    Get subtopic by ID
  * @access  Private (Admin)
  */
-router.get('/subtopics/:id', authenticateAdmin, SubtopicController.getSubtopicById);
+router.get('/subtopics/:id', authenticateAdmin, requireModuleAccess('subtopics'), SubtopicController.getSubtopicById);
 
 /**
  * @route   POST /api/admin/subtopics
  * @desc    Create new subtopic
  * @access  Private (Admin)
  */
-router.post('/subtopics', authenticateAdmin, validateCreateSubtopic, SubtopicController.createSubtopic);
+router.post('/subtopics', authenticateAdmin, requireModuleAccess('subtopics'), validateCreateSubtopic, SubtopicController.createSubtopic);
 
 /**
  * @route   PUT /api/admin/subtopics/:id
  * @desc    Update subtopic
  * @access  Private (Admin)
  */
-router.put('/subtopics/:id', authenticateAdmin, validateUpdateSubtopic, SubtopicController.updateSubtopic);
+router.put('/subtopics/:id', authenticateAdmin, requireModuleAccess('subtopics'), requireCanEdit, validateUpdateSubtopic, SubtopicController.updateSubtopic);
 
 /**
  * @route   DELETE /api/admin/subtopics/:id
  * @desc    Delete subtopic
  * @access  Private (Admin)
  */
-router.delete('/subtopics/:id', authenticateAdmin, SubtopicController.deleteSubtopic);
+router.delete('/subtopics/:id', authenticateAdmin, requireModuleAccess('subtopics'), requireCanDelete, SubtopicController.deleteSubtopic);
 
 /**
  * Lectures Routes
@@ -494,28 +485,28 @@ router.delete('/subtopics/:id', authenticateAdmin, SubtopicController.deleteSubt
  * @desc    Get all lectures
  * @access  Private (Admin)
  */
-router.get('/lectures', authenticateAdmin, LectureController.getAllLectures);
+router.get('/lectures', authenticateAdmin, requireModuleAccess('lectures'), LectureController.getAllLectures);
 
 /**
  * @route   GET /api/admin/lectures/subtopic/:subtopicId
  * @desc    Get lectures by subtopic ID
  * @access  Private (Admin)
  */
-router.get('/lectures/subtopic/:subtopicId', authenticateAdmin, LectureController.getLecturesBySubtopicId);
+router.get('/lectures/subtopic/:subtopicId', authenticateAdmin, requireModuleAccess('lectures'), LectureController.getLecturesBySubtopicId);
 
 /**
  * @route   GET /api/admin/lectures/:id
  * @desc    Get lecture by ID
  * @access  Private (Admin)
  */
-router.get('/lectures/:id', authenticateAdmin, LectureController.getLectureById);
+router.get('/lectures/:id', authenticateAdmin, requireModuleAccess('lectures'), LectureController.getLectureById);
 
 /**
  * @route   POST /api/admin/lectures
  * @desc    Create new lecture
  * @access  Private (Admin)
  */
-router.post('/lectures', authenticateAdmin, LectureController.upload.fields([
+router.post('/lectures', authenticateAdmin, requireModuleAccess('lectures'), LectureController.upload.fields([
   { name: 'video_file', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), validateCreateLecture, LectureController.createLecture);
@@ -525,7 +516,7 @@ router.post('/lectures', authenticateAdmin, LectureController.upload.fields([
  * @desc    Update lecture
  * @access  Private (Admin)
  */
-router.put('/lectures/:id', authenticateAdmin, LectureController.upload.fields([
+router.put('/lectures/:id', authenticateAdmin, requireModuleAccess('lectures'), requireCanEdit, LectureController.upload.fields([
   { name: 'video_file', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), validateUpdateLecture, LectureController.updateLecture);
@@ -535,7 +526,7 @@ router.put('/lectures/:id', authenticateAdmin, LectureController.upload.fields([
  * @desc    Delete lecture
  * @access  Private (Admin)
  */
-router.delete('/lectures/:id', authenticateAdmin, LectureController.deleteLecture);
+router.delete('/lectures/:id', authenticateAdmin, requireModuleAccess('lectures'), requireCanDelete, LectureController.deleteLecture);
 
 /**
  * Purposes Taxonomy Routes
@@ -546,105 +537,105 @@ router.delete('/lectures/:id', authenticateAdmin, LectureController.deleteLectur
  * @desc    Get all purposes (for admin)
  * @access  Private (Admin)
  */
-router.get('/purposes', authenticateAdmin, PurposeController.getAllPurposes);
+router.get('/purposes', authenticateAdmin, requireModuleAccess('purposes'), PurposeController.getAllPurposes);
 
 /**
  * @route   GET /api/admin/purposes/:id
  * @desc    Get purpose by ID
  * @access  Private (Admin)
  */
-router.get('/purposes/:id', authenticateAdmin, PurposeController.getPurposeById);
+router.get('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), PurposeController.getPurposeById);
 
 /**
  * @route   POST /api/admin/purposes
  * @desc    Create new purpose
  * @access  Private (Admin)
  */
-router.post('/purposes', authenticateAdmin, validateCreatePurpose, PurposeController.createPurpose);
+router.post('/purposes', authenticateAdmin, requireModuleAccess('purposes'), validateCreatePurpose, PurposeController.createPurpose);
 
 /**
  * @route   PUT /api/admin/purposes/:id
  * @desc    Update purpose
  * @access  Private (Admin)
  */
-router.put('/purposes/:id', authenticateAdmin, validateUpdatePurpose, PurposeController.updatePurpose);
+router.put('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), requireCanEdit, validateUpdatePurpose, PurposeController.updatePurpose);
 
 /**
  * @route   DELETE /api/admin/purposes/:id
  * @desc    Delete purpose
  * @access  Private (Admin)
  */
-router.delete('/purposes/:id', authenticateAdmin, PurposeController.deletePurpose);
+router.delete('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), requireCanDelete, PurposeController.deletePurpose);
 
 /**
  * @route   GET /api/admin/levels
  * @desc    Get all levels (for admin)
  * @access  Private (Admin)
  */
-router.get('/levels', authenticateAdmin, LevelController.getAllLevels);
+router.get('/levels', authenticateAdmin, requireModuleAccess('levels'), LevelController.getAllLevels);
 
 /**
  * @route   GET /api/admin/levels/:id
  * @desc    Get level by ID
  * @access  Private (Admin)
  */
-router.get('/levels/:id', authenticateAdmin, LevelController.getLevelById);
+router.get('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), LevelController.getLevelById);
 
 /**
  * @route   POST /api/admin/levels
  * @desc    Create new level
  * @access  Private (Admin)
  */
-router.post('/levels', authenticateAdmin, validateCreateLevel, LevelController.createLevel);
+router.post('/levels', authenticateAdmin, requireModuleAccess('levels'), validateCreateLevel, LevelController.createLevel);
 
 /**
  * @route   PUT /api/admin/levels/:id
  * @desc    Update level
  * @access  Private (Admin)
  */
-router.put('/levels/:id', authenticateAdmin, validateUpdateLevel, LevelController.updateLevel);
+router.put('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requireCanEdit, validateUpdateLevel, LevelController.updateLevel);
 
 /**
  * @route   DELETE /api/admin/levels/:id
  * @desc    Delete level
  * @access  Private (Admin)
  */
-router.delete('/levels/:id', authenticateAdmin, LevelController.deleteLevel);
+router.delete('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requireCanDelete, LevelController.deleteLevel);
 
 /**
  * @route   GET /api/admin/programs
  * @desc    Get all programs (for admin)
  * @access  Private (Admin)
  */
-router.get('/programs', authenticateAdmin, ProgramController.getAllPrograms);
+router.get('/programs', authenticateAdmin, requireModuleAccess('programs'), ProgramController.getAllPrograms);
 
 /**
  * @route   GET /api/admin/programs/:id
  * @desc    Get program by ID
  * @access  Private (Admin)
  */
-router.get('/programs/:id', authenticateAdmin, ProgramController.getProgramById);
+router.get('/programs/:id', authenticateAdmin, requireModuleAccess('programs'), ProgramController.getProgramById);
 
 /**
  * @route   POST /api/admin/programs
  * @desc    Create new program
  * @access  Private (Admin)
  */
-router.post('/programs', authenticateAdmin, validateCreateProgram, ProgramController.createProgram);
+router.post('/programs', authenticateAdmin, requireModuleAccess('programs'), validateCreateProgram, ProgramController.createProgram);
 
 /**
  * @route   PUT /api/admin/programs/:id
  * @desc    Update program
  * @access  Private (Admin)
  */
-router.put('/programs/:id', authenticateAdmin, validateUpdateProgram, ProgramController.updateProgram);
+router.put('/programs/:id', authenticateAdmin, requireModuleAccess('programs'), requireCanEdit, validateUpdateProgram, ProgramController.updateProgram);
 
 /**
  * @route   DELETE /api/admin/programs/:id
  * @desc    Delete program
  * @access  Private (Admin)
  */
-router.delete('/programs/:id', authenticateAdmin, ProgramController.deleteProgram);
+router.delete('/programs/:id', authenticateAdmin, requireModuleAccess('programs'), requireCanDelete, ProgramController.deleteProgram);
 
 /**
  * Exam Cities Taxonomy Routes
@@ -655,647 +646,157 @@ router.delete('/programs/:id', authenticateAdmin, ProgramController.deleteProgra
  * @desc    Get all exam cities (for admin)
  * @access  Private (Admin)
  */
-router.get('/exam-cities', authenticateAdmin, ExamCityController.getAllExamCities);
+router.get('/exam-cities', authenticateAdmin, requireModuleAccess('exam_cities'), ExamCityController.getAllExamCities);
 
 /**
  * @route   GET /api/admin/exam-cities/:id
  * @desc    Get exam city by ID
  * @access  Private (Admin)
  */
-router.get('/exam-cities/:id', authenticateAdmin, ExamCityController.getExamCityById);
+router.get('/exam-cities/:id', authenticateAdmin, requireModuleAccess('exam_cities'), ExamCityController.getExamCityById);
 
 /**
  * @route   POST /api/admin/exam-cities
  * @desc    Create new exam city
  * @access  Private (Admin)
  */
-router.post('/exam-cities', authenticateAdmin, validateCreateExamCity, ExamCityController.createExamCity);
+router.post('/exam-cities', authenticateAdmin, requireModuleAccess('exam_cities'), validateCreateExamCity, ExamCityController.createExamCity);
 
 /**
  * @route   PUT /api/admin/exam-cities/:id
  * @desc    Update exam city
  * @access  Private (Admin)
  */
-router.put('/exam-cities/:id', authenticateAdmin, validateUpdateExamCity, ExamCityController.updateExamCity);
+router.put('/exam-cities/:id', authenticateAdmin, requireModuleAccess('exam_cities'), requireCanEdit, validateUpdateExamCity, ExamCityController.updateExamCity);
 
 /**
  * @route   DELETE /api/admin/exam-cities/:id
  * @desc    Delete exam city
  * @access  Private (Admin)
  */
-router.delete('/exam-cities/:id', authenticateAdmin, ExamCityController.deleteExamCity);
+router.delete('/exam-cities/:id', authenticateAdmin, requireModuleAccess('exam_cities'), requireCanDelete, ExamCityController.deleteExamCity);
 
 /**
  * @route   GET /api/admin/categories
  * @desc    Get all categories
  * @access  Private (Admin)
  */
-router.get('/categories', authenticateAdmin, CategoryController.getAllCategories);
+router.get('/categories', authenticateAdmin, requireModuleAccess('categories'), CategoryController.getAllCategories);
 
 /**
  * @route   GET /api/admin/categories/:id
  * @desc    Get category by ID
  * @access  Private (Admin)
  */
-router.get('/categories/:id', authenticateAdmin, CategoryController.getCategoryById);
+router.get('/categories/:id', authenticateAdmin, requireModuleAccess('categories'), CategoryController.getCategoryById);
 
 /**
  * @route   POST /api/admin/categories
  * @desc    Create new category
  * @access  Private (Admin)
  */
-router.post('/categories', authenticateAdmin, validateCreateCategory, CategoryController.createCategory);
+router.post('/categories', authenticateAdmin, requireModuleAccess('categories'), validateCreateCategory, CategoryController.createCategory);
 
 /**
  * @route   PUT /api/admin/categories/:id
  * @desc    Update category
  * @access  Private (Admin)
  */
-router.put('/categories/:id', authenticateAdmin, validateUpdateCategory, CategoryController.updateCategory);
+router.put('/categories/:id', authenticateAdmin, requireModuleAccess('categories'), requireCanEdit, validateUpdateCategory, CategoryController.updateCategory);
 
 /**
  * @route   DELETE /api/admin/categories/:id
  * @desc    Delete category
  * @access  Private (Admin)
  */
-router.delete('/categories/:id', authenticateAdmin, CategoryController.deleteCategory);
+router.delete('/categories/:id', authenticateAdmin, requireModuleAccess('categories'), requireCanDelete, CategoryController.deleteCategory);
 
 /**
- * @route   GET /api/admin/colleges
- * @desc    Get all colleges (for admin)
- * @access  Private (Admin)
+ * Colleges Routes (CRUD + upload logo + bulk Excel + logos ZIP, same pattern as Exams)
  */
-router.get('/colleges', authenticateAdmin, CollegeController.getAllColleges);
+router.get('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getAllAdmin);
+router.post('/colleges/upload-logo', authenticateAdmin, requireModuleAccess('colleges'), upload.single('image'), CollegesController.uploadLogo);
+router.get('/colleges/bulk-upload-template', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadBulkTemplate);
+router.get('/colleges/download-excel', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadAllExcel);
+router.post('/colleges/bulk-upload', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+  { name: 'logos', maxCount: 100 },
+  { name: 'logos_zip', maxCount: 1 },
+]), CollegesController.bulkUpload);
+router.post('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.create);
+router.get('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getById);
+router.put('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), requireCanEdit, CollegesController.update);
+router.delete('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), requireCanDelete, CollegesController.delete);
 
 /**
- * @route   GET /api/admin/colleges/:id
- * @desc    Get college by ID
- * @access  Private (Admin)
+ * Institutes (Coachings) Routes - CRUD + upload logo + bulk Excel + logos ZIP
  */
-router.get('/colleges/:id', authenticateAdmin, CollegeController.getCollegeById);
+router.get('/institutes', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.getAllAdmin);
+router.post('/institutes/upload-logo', authenticateAdmin, requireModuleAccess('institutes'), upload.single('image'), InstitutesController.uploadLogo);
+router.get('/institutes/bulk-upload-template', authenticateAdmin, requireModuleAccess('institutes'), requireCanDownloadExcel, InstitutesController.downloadBulkTemplate);
+router.get('/institutes/download-excel', authenticateAdmin, requireModuleAccess('institutes'), requireCanDownloadExcel, InstitutesController.downloadAllExcel);
+router.post('/institutes/bulk-upload', authenticateAdmin, requireModuleAccess('institutes'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+  { name: 'logos', maxCount: 100 },
+  { name: 'logos_zip', maxCount: 1 },
+]), InstitutesController.bulkUpload);
+router.post('/institutes', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.create);
+router.get('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.getById);
+router.put('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanEdit, InstitutesController.update);
+router.delete('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanDelete, InstitutesController.delete);
 
 /**
- * @route   POST /api/admin/colleges
- * @desc    Create new college
- * @access  Private (Admin)
+ * Scholarships Routes - CRUD + bulk Excel upload
  */
-router.post('/colleges', authenticateAdmin, logoUpload.single('logo'), validateCreateCollege, CollegeController.createCollege);
+router.get('/scholarships', authenticateAdmin, requireModuleAccess('scholarships'), ScholarshipsController.getAllAdmin);
+router.get('/scholarships/bulk-upload-template', authenticateAdmin, requireModuleAccess('scholarships'), requireCanDownloadExcel, ScholarshipsController.downloadBulkTemplate);
+router.get('/scholarships/download-excel', authenticateAdmin, requireModuleAccess('scholarships'), requireCanDownloadExcel, ScholarshipsController.downloadAllExcel);
+router.post('/scholarships/bulk-upload', authenticateAdmin, requireModuleAccess('scholarships'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+]), ScholarshipsController.bulkUpload);
+router.post('/scholarships', authenticateAdmin, requireModuleAccess('scholarships'), ScholarshipsController.create);
+router.get('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), ScholarshipsController.getById);
+router.put('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), requireCanEdit, ScholarshipsController.update);
+router.delete('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), requireCanDelete, ScholarshipsController.delete);
 
 /**
- * @route   PUT /api/admin/colleges/:id
- * @desc    Update college
- * @access  Private (Admin)
+ * Loans (Loan Providers) Routes - CRUD + upload logo + bulk Excel + logos ZIP
  */
-router.put('/colleges/:id', authenticateAdmin, logoUpload.single('logo'), validateUpdateCollege, CollegeController.updateCollege);
-
-/**
- * @route   DELETE /api/admin/colleges/:id
- * @desc    Delete college
- * @access  Private (Admin)
- */
-router.delete('/colleges/:id', authenticateAdmin, CollegeController.deleteCollege);
-
-/**
- * @route   GET /api/admin/college-locations
- * @desc    Get all college locations (for admin)
- * @access  Private (Admin)
- */
-router.get('/college-locations', authenticateAdmin, CollegeLocationController.getAllCollegeLocations);
-
-/**
- * @route   GET /api/admin/college-locations/:id
- * @desc    Get college location by ID
- * @access  Private (Admin)
- */
-router.get('/college-locations/:id', authenticateAdmin, CollegeLocationController.getCollegeLocationById);
-
-/**
- * @route   POST /api/admin/college-locations
- * @desc    Create new college location
- * @access  Private (Admin)
- */
-router.post('/college-locations', authenticateAdmin, validateCreateCollegeLocation, CollegeLocationController.createCollegeLocation);
-
-/**
- * @route   PUT /api/admin/college-locations/:id
- * @desc    Update college location
- * @access  Private (Admin)
- */
-router.put('/college-locations/:id', authenticateAdmin, validateUpdateCollegeLocation, CollegeLocationController.updateCollegeLocation);
-
-/**
- * @route   DELETE /api/admin/college-locations/:id
- * @desc    Delete college location
- * @access  Private (Admin)
- */
-router.delete('/college-locations/:id', authenticateAdmin, CollegeLocationController.deleteCollegeLocation);
-
-/**
- * @route   GET /api/admin/college-gallery
- * @desc    Get all college gallery images (for admin)
- * @access  Private (Admin)
- */
-router.get('/college-gallery', authenticateAdmin, CollegeGalleryController.getAllCollegeGallery);
-
-/**
- * @route   GET /api/admin/college-gallery/:id
- * @desc    Get gallery image by ID
- * @access  Private (Admin)
- */
-router.get('/college-gallery/:id', authenticateAdmin, CollegeGalleryController.getCollegeGalleryById);
-
-/**
- * @route   POST /api/admin/college-gallery
- * @desc    Create new gallery image
- * @access  Private (Admin)
- */
-router.post('/college-gallery', authenticateAdmin, imageUpload.single('image'), validateCreateCollegeGallery, CollegeGalleryController.createCollegeGallery);
-
-/**
- * @route   PUT /api/admin/college-gallery/:id
- * @desc    Update gallery image
- * @access  Private (Admin)
- */
-router.put('/college-gallery/:id', authenticateAdmin, imageUpload.single('image'), validateUpdateCollegeGallery, CollegeGalleryController.updateCollegeGallery);
-
-/**
- * @route   DELETE /api/admin/college-gallery/:id
- * @desc    Delete gallery image
- * @access  Private (Admin)
- */
-router.delete('/college-gallery/:id', authenticateAdmin, CollegeGalleryController.deleteCollegeGallery);
-
-/**
- * @route   GET /api/admin/college-reviews
- * @desc    Get all college reviews (for admin)
- * @access  Private (Admin)
- */
-router.get('/college-reviews', authenticateAdmin, CollegeReviewController.getAllCollegeReviews);
-
-/**
- * @route   GET /api/admin/college-reviews/:id
- * @desc    Get review by ID
- * @access  Private (Admin)
- */
-router.get('/college-reviews/:id', authenticateAdmin, CollegeReviewController.getCollegeReviewById);
-
-/**
- * @route   POST /api/admin/college-reviews
- * @desc    Create new review
- * @access  Private (Admin)
- */
-router.post('/college-reviews', authenticateAdmin, validateCreateCollegeReview, CollegeReviewController.createCollegeReview);
-
-/**
- * @route   PUT /api/admin/college-reviews/:id
- * @desc    Update review
- * @access  Private (Admin)
- */
-router.put('/college-reviews/:id', authenticateAdmin, validateUpdateCollegeReview, CollegeReviewController.updateCollegeReview);
-
-/**
- * @route   DELETE /api/admin/college-reviews/:id
- * @desc    Delete review
- * @access  Private (Admin)
- */
-router.delete('/college-reviews/:id', authenticateAdmin, CollegeReviewController.deleteCollegeReview);
-
-/**
- * @route   GET /api/admin/college-news
- * @desc    Get all college news (for admin)
- * @access  Private (Admin)
- */
-router.get('/college-news', authenticateAdmin, CollegeNewsController.getAllCollegeNews);
-
-/**
- * @route   GET /api/admin/college-news/:id
- * @desc    Get news by ID
- * @access  Private (Admin)
- */
-router.get('/college-news/:id', authenticateAdmin, CollegeNewsController.getCollegeNewsById);
-
-/**
- * @route   POST /api/admin/college-news
- * @desc    Create new news article
- * @access  Private (Admin)
- */
-router.post('/college-news', authenticateAdmin, validateCreateCollegeNews, CollegeNewsController.createCollegeNews);
-
-/**
- * @route   PUT /api/admin/college-news/:id
- * @desc    Update news article
- * @access  Private (Admin)
- */
-router.put('/college-news/:id', authenticateAdmin, validateUpdateCollegeNews, CollegeNewsController.updateCollegeNews);
-
-/**
- * @route   DELETE /api/admin/college-news/:id
- * @desc    Delete news article
- * @access  Private (Admin)
- */
-router.delete('/college-news/:id', authenticateAdmin, CollegeNewsController.deleteCollegeNews);
-
-/**
- * @route   GET /api/admin/college-courses
- * @desc    Get all college courses (for admin)
- * @access  Private (Admin)
- */
-router.get('/college-courses', authenticateAdmin, CollegeCourseController.getAllCollegeCourses);
-
-/**
- * @route   GET /api/admin/college-courses/:id
- * @desc    Get course by ID
- * @access  Private (Admin)
- */
-router.get('/college-courses/:id', authenticateAdmin, CollegeCourseController.getCollegeCourseById);
-
-/**
- * @route   POST /api/admin/college-courses
- * @desc    Create new course
- * @access  Private (Admin)
- */
-router.post('/college-courses', authenticateAdmin, courseUpload.single('brochure'), validateCreateCollegeCourse, CollegeCourseController.createCollegeCourse);
-
-/**
- * @route   PUT /api/admin/college-courses/:id
- * @desc    Update course
- * @access  Private (Admin)
- */
-router.put('/college-courses/:id', authenticateAdmin, courseUpload.single('brochure'), validateUpdateCollegeCourse, CollegeCourseController.updateCollegeCourse);
-
-/**
- * @route   DELETE /api/admin/college-courses/:id
- * @desc    Delete course
- * @access  Private (Admin)
- */
-router.delete('/college-courses/:id', authenticateAdmin, CollegeCourseController.deleteCollegeCourse);
-
-/**
- * @route   GET /api/admin/course-exams
- * @desc    Get all course exams
- * @access  Private (Admin)
- */
-router.get('/course-exams', authenticateAdmin, CourseExamController.getAllCourseExams);
-
-/**
- * @route   GET /api/admin/course-exams/:id
- * @desc    Get exam by ID
- * @access  Private (Admin)
- */
-router.get('/course-exams/:id', authenticateAdmin, CourseExamController.getCourseExamById);
-
-/**
- * @route   POST /api/admin/course-exams
- * @desc    Create new exam
- * @access  Private (Admin)
- */
-router.post('/course-exams', authenticateAdmin, validateCreateCourseExam, CourseExamController.createCourseExam);
-
-/**
- * @route   PUT /api/admin/course-exams/:id
- * @desc    Update exam
- * @access  Private (Admin)
- */
-router.put('/course-exams/:id', authenticateAdmin, validateUpdateCourseExam, CourseExamController.updateCourseExam);
-
-/**
- * @route   DELETE /api/admin/course-exams/:id
- * @desc    Delete exam
- * @access  Private (Admin)
- */
-router.delete('/course-exams/:id', authenticateAdmin, CourseExamController.deleteCourseExam);
-
-/**
- * @route   GET /api/admin/course-cutoffs
- * @desc    Get all course cutoffs
- * @access  Private (Admin)
- */
-router.get('/course-cutoffs', authenticateAdmin, CourseCutoffController.getAllCourseCutoffs);
-
-/**
- * @route   GET /api/admin/course-cutoffs/:id
- * @desc    Get cutoff by ID
- * @access  Private (Admin)
- */
-router.get('/course-cutoffs/:id', authenticateAdmin, CourseCutoffController.getCourseCutoffById);
-
-/**
- * @route   POST /api/admin/course-cutoffs
- * @desc    Create new cutoff
- * @access  Private (Admin)
- */
-router.post('/course-cutoffs', authenticateAdmin, validateCreateCourseCutoff, CourseCutoffController.createCourseCutoff);
-
-/**
- * @route   PUT /api/admin/course-cutoffs/:id
- * @desc    Update cutoff
- * @access  Private (Admin)
- */
-router.put('/course-cutoffs/:id', authenticateAdmin, validateUpdateCourseCutoff, CourseCutoffController.updateCourseCutoff);
-
-/**
- * @route   DELETE /api/admin/course-cutoffs/:id
- * @desc    Delete cutoff
- * @access  Private (Admin)
- */
-router.delete('/course-cutoffs/:id', authenticateAdmin, CourseCutoffController.deleteCourseCutoff);
-
-/**
- * @route   GET /api/admin/course-subjects
- * @desc    Get all course subjects
- * @access  Private (Admin)
- */
-router.get('/course-subjects', authenticateAdmin, CourseSubjectController.getAllCourseSubjects);
-
-/**
- * @route   GET /api/admin/course-subjects/:id
- * @desc    Get subject by ID
- * @access  Private (Admin)
- */
-router.get('/course-subjects/:id', authenticateAdmin, CourseSubjectController.getCourseSubjectById);
-
-/**
- * @route   POST /api/admin/course-subjects
- * @desc    Create new course subject
- * @access  Private (Admin)
- */
-router.post('/course-subjects', authenticateAdmin, validateCreateCourseSubject, CourseSubjectController.createCourseSubject);
-
-/**
- * @route   PUT /api/admin/course-subjects/:id
- * @desc    Update course subject
- * @access  Private (Admin)
- */
-router.put('/course-subjects/:id', authenticateAdmin, validateUpdateCourseSubject, CourseSubjectController.updateCourseSubject);
-
-/**
- * @route   DELETE /api/admin/course-subjects/:id
- * @desc    Delete course subject
- * @access  Private (Admin)
- */
-router.delete('/course-subjects/:id', authenticateAdmin, CourseSubjectController.deleteCourseSubject);
-
-/**
- * @route   GET /api/admin/college-faqs
- * @desc    Get all college FAQs
- * @access  Private (Admin)
- */
-router.get('/college-faqs', authenticateAdmin, CollegeFAQController.getAllCollegeFAQs);
-
-/**
- * @route   GET /api/admin/college-faqs/:id
- * @desc    Get FAQ by ID
- * @access  Private (Admin)
- */
-router.get('/college-faqs/:id', authenticateAdmin, CollegeFAQController.getCollegeFAQById);
-
-/**
- * @route   POST /api/admin/college-faqs
- * @desc    Create new FAQ
- * @access  Private (Admin)
- */
-router.post('/college-faqs', authenticateAdmin, validateCreateCollegeFAQ, CollegeFAQController.createCollegeFAQ);
-
-/**
- * @route   PUT /api/admin/college-faqs/:id
- * @desc    Update FAQ
- * @access  Private (Admin)
- */
-router.put('/college-faqs/:id', authenticateAdmin, validateUpdateCollegeFAQ, CollegeFAQController.updateCollegeFAQ);
-
-/**
- * @route   DELETE /api/admin/college-faqs/:id
- * @desc    Delete FAQ
- * @access  Private (Admin)
- */
-router.delete('/college-faqs/:id', authenticateAdmin, CollegeFAQController.deleteCollegeFAQ);
+router.get('/loans', authenticateAdmin, requireModuleAccess('loans'), LoansController.getAllAdmin);
+router.post('/loans/upload-logo', authenticateAdmin, requireModuleAccess('loans'), upload.single('image'), LoansController.uploadLogo);
+router.get('/loans/bulk-upload-template', authenticateAdmin, requireModuleAccess('loans'), requireCanDownloadExcel, LoansController.downloadBulkTemplate);
+router.get('/loans/download-excel', authenticateAdmin, requireModuleAccess('loans'), requireCanDownloadExcel, LoansController.downloadAllExcel);
+router.post('/loans/bulk-upload', authenticateAdmin, requireModuleAccess('loans'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+  { name: 'logos', maxCount: 100 },
+  { name: 'logos_zip', maxCount: 1 },
+]), LoansController.bulkUpload);
+router.post('/loans', authenticateAdmin, requireModuleAccess('loans'), LoansController.create);
+router.get('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), LoansController.getById);
+router.put('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanEdit, LoansController.update);
+router.delete('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanDelete, LoansController.delete);
 
 /**
  * @route   POST /api/admin/lectures/upload-video
  * @desc    Upload lecture video
  * @access  Private (Admin)
  */
-router.post('/lectures/upload-video', authenticateAdmin, LectureController.upload.single('video_file'), LectureController.uploadVideo);
+router.post('/lectures/upload-video', authenticateAdmin, requireModuleAccess('lectures'), LectureController.upload.single('video_file'), LectureController.uploadVideo);
 
 /**
  * @route   POST /api/admin/lectures/upload-thumbnail
  * @desc    Upload lecture thumbnail
  * @access  Private (Admin)
  */
-router.post('/lectures/upload-thumbnail', authenticateAdmin, LectureController.upload.single('thumbnail'), LectureController.uploadThumbnail);
+router.post('/lectures/upload-thumbnail', authenticateAdmin, requireModuleAccess('lectures'), LectureController.upload.single('thumbnail'), LectureController.uploadThumbnail);
 
 /**
  * @route   POST /api/admin/lectures/upload-image
  * @desc    Upload image for rich text editor (article content)
  * @access  Private (Admin)
  */
-router.post('/lectures/upload-image', authenticateAdmin, LectureController.upload.single('lecture_image'), LectureController.uploadImage);
+router.post('/lectures/upload-image', authenticateAdmin, requireModuleAccess('lectures'), LectureController.upload.single('lecture_image'), LectureController.uploadImage);
 
-/**
- * @route   POST /api/admin/college-courses/upload-image
- * @desc    Upload image for rich text editor (course content)
- * @access  Private (Admin)
- */
-router.post('/college-courses/upload-image', authenticateAdmin, courseUpload.single('course_image'), CollegeCourseController.uploadImage);
-
-/**
- * @route   POST /api/admin/college-faqs/upload-image
- * @desc    Upload image for rich text editor (FAQ content)
- * @access  Private (Admin)
- */
-router.post('/college-faqs/upload-image', authenticateAdmin, faqUpload.single('faq_image'), CollegeFAQController.uploadImage);
-
-/**
- * Coaching Routes
- */
-
-/**
- * @route   GET /api/admin/coachings
- * @desc    Get all coachings
- * @access  Private (Admin)
- */
-router.get('/coachings', authenticateAdmin, CoachingController.getAllCoachings);
-
-/**
- * @route   GET /api/admin/coachings/:id
- * @desc    Get coaching by ID
- * @access  Private (Admin)
- */
-router.get('/coachings/:id', authenticateAdmin, CoachingController.getCoachingById);
-
-/**
- * @route   POST /api/admin/coachings
- * @desc    Create new coaching
- * @access  Private (Admin)
- */
-router.post('/coachings', authenticateAdmin, coachingUpload.fields([
-  { name: 'logo', maxCount: 1 }
-]), validateCreateCoaching, CoachingController.createCoaching);
-
-/**
- * @route   PUT /api/admin/coachings/:id
- * @desc    Update coaching
- * @access  Private (Admin)
- */
-router.put('/coachings/:id', authenticateAdmin, coachingUpload.fields([
-  { name: 'logo', maxCount: 1 }
-]), validateUpdateCoaching, CoachingController.updateCoaching);
-
-/**
- * @route   DELETE /api/admin/coachings/:id
- * @desc    Delete coaching
- * @access  Private (Admin)
- */
-router.delete('/coachings/:id', authenticateAdmin, CoachingController.deleteCoaching);
-
-/**
- * Coaching Location Routes
- */
-
-/**
- * @route   GET /api/admin/coaching-locations
- * @desc    Get all coaching locations
- * @access  Private (Admin)
- */
-router.get('/coaching-locations', authenticateAdmin, CoachingLocationController.getAllCoachingLocations);
-
-/**
- * @route   GET /api/admin/coaching-locations/coaching/:coachingId
- * @desc    Get locations by coaching ID
- * @access  Private (Admin)
- */
-router.get('/coaching-locations/coaching/:coachingId', authenticateAdmin, CoachingLocationController.getLocationsByCoachingId);
-
-/**
- * @route   GET /api/admin/coaching-locations/:id
- * @desc    Get coaching location by ID
- * @access  Private (Admin)
- */
-router.get('/coaching-locations/:id', authenticateAdmin, CoachingLocationController.getCoachingLocationById);
-
-/**
- * @route   POST /api/admin/coaching-locations
- * @desc    Create new coaching location
- * @access  Private (Admin)
- */
-router.post('/coaching-locations', authenticateAdmin, validateCreateCoachingLocation, CoachingLocationController.createCoachingLocation);
-
-/**
- * @route   PUT /api/admin/coaching-locations/:id
- * @desc    Update coaching location
- * @access  Private (Admin)
- */
-router.put('/coaching-locations/:id', authenticateAdmin, validateUpdateCoachingLocation, CoachingLocationController.updateCoachingLocation);
-
-/**
- * @route   DELETE /api/admin/coaching-locations/:id
- * @desc    Delete coaching location
- * @access  Private (Admin)
- */
-router.delete('/coaching-locations/:id', authenticateAdmin, CoachingLocationController.deleteCoachingLocation);
-
-/**
- * Coaching Gallery Routes
- */
-
-/**
- * @route   GET /api/admin/coaching-gallery
- * @desc    Get all coaching gallery images
- * @access  Private (Admin)
- */
-router.get('/coaching-gallery', authenticateAdmin, CoachingGalleryController.getAllCoachingGallery);
-
-/**
- * @route   GET /api/admin/coaching-gallery/coaching/:coachingId
- * @desc    Get gallery images by coaching ID
- * @access  Private (Admin)
- */
-router.get('/coaching-gallery/coaching/:coachingId', authenticateAdmin, CoachingGalleryController.getGalleryByCoachingId);
-
-/**
- * @route   GET /api/admin/coaching-gallery/:id
- * @desc    Get gallery image by ID
- * @access  Private (Admin)
- */
-router.get('/coaching-gallery/:id', authenticateAdmin, CoachingGalleryController.getCoachingGalleryById);
-
-/**
- * @route   POST /api/admin/coaching-gallery
- * @desc    Create new gallery image
- * @access  Private (Admin)
- */
-router.post('/coaching-gallery', authenticateAdmin, coachingUpload.fields([
-  { name: 'image', maxCount: 1 }
-]), validateCreateCoachingGallery, CoachingGalleryController.createCoachingGallery);
-
-/**
- * @route   PUT /api/admin/coaching-gallery/:id
- * @desc    Update gallery image
- * @access  Private (Admin)
- */
-router.put('/coaching-gallery/:id', authenticateAdmin, coachingUpload.fields([
-  { name: 'image', maxCount: 1 }
-]), validateUpdateCoachingGallery, CoachingGalleryController.updateCoachingGallery);
-
-/**
- * @route   DELETE /api/admin/coaching-gallery/:id
- * @desc    Delete gallery image
- * @access  Private (Admin)
- */
-router.delete('/coaching-gallery/:id', authenticateAdmin, CoachingGalleryController.deleteCoachingGallery);
-
-/**
- * Coaching Course Routes
- */
-
-/**
- * @route   GET /api/admin/coaching-courses
- * @desc    Get all coaching courses
- * @access  Private (Admin)
- */
-router.get('/coaching-courses', authenticateAdmin, CoachingCourseController.getAllCoachingCourses);
-
-/**
- * @route   GET /api/admin/coaching-courses/coaching/:coachingId
- * @desc    Get courses by coaching ID
- * @access  Private (Admin)
- */
-router.get('/coaching-courses/coaching/:coachingId', authenticateAdmin, CoachingCourseController.getCoursesByCoachingId);
-
-/**
- * @route   GET /api/admin/coaching-courses/:id
- * @desc    Get coaching course by ID
- * @access  Private (Admin)
- */
-router.get('/coaching-courses/:id', authenticateAdmin, CoachingCourseController.getCoachingCourseById);
-
-/**
- * @route   POST /api/admin/coaching-courses
- * @desc    Create new coaching course
- * @access  Private (Admin)
- */
-router.post('/coaching-courses', authenticateAdmin, validateCreateCoachingCourse, CoachingCourseController.createCoachingCourse);
-
-/**
- * @route   PUT /api/admin/coaching-courses/:id
- * @desc    Update coaching course
- * @access  Private (Admin)
- */
-router.put('/coaching-courses/:id', authenticateAdmin, validateUpdateCoachingCourse, CoachingCourseController.updateCoachingCourse);
-
-/**
- * @route   DELETE /api/admin/coaching-courses/:id
- * @desc    Delete coaching course
- * @access  Private (Admin)
- */
-router.delete('/coaching-courses/:id', authenticateAdmin, CoachingCourseController.deleteCoachingCourse);
-
-/**
- * @route   POST /api/admin/coaching-courses/upload-image
- * @desc    Upload image for coaching courses
- * @access  Private (Admin)
- */
-router.post('/coaching-courses/upload-image', authenticateAdmin, coachingUpload.single('course_image'), CoachingCourseController.uploadImage);
 
 /**
  * Automation Applications Routes
@@ -1309,84 +810,84 @@ const AutomationExamController = require('../../controllers/admin/automationExam
  * @desc    Get all automation applications
  * @access  Private (Admin)
  */
-router.get('/automation-applications', authenticateAdmin, AutomationApplicationsController.getAllApplications);
+router.get('/automation-applications', authenticateAdmin, requireModuleAccess('applications'), AutomationApplicationsController.getAllApplications);
 
 /**
  * @route   GET /api/admin/automation-applications/:id
  * @desc    Get automation application by ID
  * @access  Private (Admin)
  */
-router.get('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.getApplicationById);
+router.get('/automation-applications/:id', authenticateAdmin, requireModuleAccess('applications'), AutomationApplicationsController.getApplicationById);
 
 /**
  * @route   POST /api/admin/automation-applications
  * @desc    Create new automation application
  * @access  Private (Admin)
  */
-router.post('/automation-applications', authenticateAdmin, AutomationApplicationsController.createApplication);
+router.post('/automation-applications', authenticateAdmin, requireModuleAccess('applications'), AutomationApplicationsController.createApplication);
 
 /**
  * @route   POST /api/admin/automation-applications/:id/approve
  * @desc    Approve an automation application
  * @access  Private (Admin)
  */
-router.post('/automation-applications/:id/approve', authenticateAdmin, AutomationApplicationsController.approveApplication);
+router.post('/automation-applications/:id/approve', authenticateAdmin, requireModuleAccess('applications'), AutomationApplicationsController.approveApplication);
 
 /**
  * @route   PUT /api/admin/automation-applications/:id
  * @desc    Update automation application status
  * @access  Private (Admin)
  */
-router.put('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.updateStatus);
+router.put('/automation-applications/:id', authenticateAdmin, requireModuleAccess('applications'), requireCanEdit, AutomationApplicationsController.updateStatus);
 
 /**
  * @route   DELETE /api/admin/automation-applications/:id
  * @desc    Delete automation application
  * @access  Private (Admin)
  */
-router.delete('/automation-applications/:id', authenticateAdmin, AutomationApplicationsController.deleteApplication);
+router.delete('/automation-applications/:id', authenticateAdmin, requireModuleAccess('applications'), requireCanDelete, AutomationApplicationsController.deleteApplication);
 
 /**
  * @route   GET /api/admin/automation-exams
  * @desc    Get automation exams for selection dropdown
  * @access  Private (Admin)
  */
-router.get('/automation-exams', authenticateAdmin, AutomationApplicationsController.getAutomationExams);
+router.get('/automation-exams', authenticateAdmin, requireModuleAccess('automation_exams'), AutomationApplicationsController.getAutomationExams);
 
 /**
  * @route   GET /api/admin/automation-exams-full
  * @desc    Get all automation exams with full details
  * @access  Private (Admin)
  */
-router.get('/automation-exams-full', authenticateAdmin, AutomationExamController.getAllExams);
+router.get('/automation-exams-full', authenticateAdmin, requireModuleAccess('automation_exams'), AutomationExamController.getAllExams);
 
 /**
  * @route   GET /api/admin/automation-exams/:id
  * @desc    Get a single automation exam by ID
  * @access  Private (Admin)
  */
-router.get('/automation-exams/:id', authenticateAdmin, AutomationExamController.getExamById);
+router.get('/automation-exams/:id', authenticateAdmin, requireModuleAccess('automation_exams'), AutomationExamController.getExamById);
 
 /**
  * @route   POST /api/admin/automation-exams
  * @desc    Create a new automation exam
  * @access  Private (Admin)
  */
-router.post('/automation-exams', authenticateAdmin, validateCreateAutomationExam, AutomationExamController.createExam);
+router.post('/automation-exams', authenticateAdmin, requireModuleAccess('automation_exams'), validateCreateAutomationExam, AutomationExamController.createExam);
 
 /**
  * @route   PUT /api/admin/automation-exams/:id
  * @desc    Update an automation exam
  * @access  Private (Admin)
  */
-router.put('/automation-exams/:id', authenticateAdmin, validateUpdateAutomationExam, AutomationExamController.updateExam);
+router.put('/automation-exams/:id', authenticateAdmin, requireModuleAccess('automation_exams'), requireCanEdit, validateUpdateAutomationExam, AutomationExamController.updateExam);
 
 /**
  * @route   DELETE /api/admin/automation-exams/:id
  * @desc    Delete an automation exam
  * @access  Private (Admin)
  */
-router.delete('/automation-exams/:id', authenticateAdmin, AutomationExamController.deleteExam);
+router.delete('/automation-exams/:id', authenticateAdmin, requireModuleAccess('automation_exams'), requireCanDelete, AutomationExamController.deleteExam);
 
 /**
  * @route   GET /api/admin/users-for-automation

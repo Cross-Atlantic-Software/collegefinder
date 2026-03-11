@@ -5,20 +5,18 @@ import { ApiResponse } from '../../types';
 export interface CourseCutoff {
   id: number;
   course_id: number;
-  course_title?: string;
-  college_name?: string;
   exam_id: number;
-  exam_name?: string;
   year: number;
   category_id: number | null;
-  category_name?: string | null;
   cutoff_value: number;
-  created_at: string;
-  updated_at: string;
+  exam_name?: string;
+  course_title?: string;
+  college_name?: string;
+  category_name?: string;
 }
 
 /**
- * Get all course cutoffs
+ * Get all course cutoffs (for admin)
  */
 export async function getAllCourseCutoffs(): Promise<ApiResponse<{
   cutoffs: CourseCutoff[];
@@ -29,28 +27,15 @@ export async function getAllCourseCutoffs(): Promise<ApiResponse<{
 }
 
 /**
- * Get cutoff by ID
- */
-export async function getCourseCutoffById(id: number): Promise<ApiResponse<{
-  cutoff: CourseCutoff;
-}>> {
-  return apiRequest(`${API_ENDPOINTS.ADMIN.COURSE_CUTOFFS}/${id}`, {
-    method: 'GET',
-  });
-}
-
-/**
- * Create new cutoff
+ * Create course cutoff
  */
 export async function createCourseCutoff(data: {
   course_id: number;
   exam_id: number;
   year: number;
-  category?: string | null;
+  category_id: number | null;
   cutoff_value: number;
-}): Promise<ApiResponse<{
-  cutoff: CourseCutoff;
-}>> {
+}): Promise<ApiResponse<{ cutoff: CourseCutoff }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.COURSE_CUTOFFS, {
     method: 'POST',
     body: JSON.stringify(data),
@@ -58,7 +43,7 @@ export async function createCourseCutoff(data: {
 }
 
 /**
- * Update cutoff
+ * Update course cutoff
  */
 export async function updateCourseCutoff(
   id: number,
@@ -69,9 +54,7 @@ export async function updateCourseCutoff(
     category_id?: number | null;
     cutoff_value?: number;
   }
-): Promise<ApiResponse<{
-  cutoff: CourseCutoff;
-}>> {
+): Promise<ApiResponse<{ cutoff: CourseCutoff }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.COURSE_CUTOFFS}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -79,11 +62,10 @@ export async function updateCourseCutoff(
 }
 
 /**
- * Delete cutoff
+ * Delete course cutoff
  */
 export async function deleteCourseCutoff(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.COURSE_CUTOFFS}/${id}`, {
     method: 'DELETE',
   });
 }
-

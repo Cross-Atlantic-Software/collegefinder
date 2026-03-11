@@ -60,7 +60,8 @@ export default function LecturesPage() {
     fetchTopics();
     fetchAllSubtopics();
     fetchPurposes();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchTopics = async () => {
     try {

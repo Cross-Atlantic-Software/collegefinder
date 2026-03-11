@@ -74,14 +74,17 @@ export interface GetAllUsersResponse {
 /**
  * Admin types
  */
+export type AdminUserType = 'data_entry' | 'admin' | 'super_admin';
+
 export interface AdminUser {
   id: number;
   email: string;
-  type: 'super_admin' | 'user';
+  type: AdminUserType;
   is_active: boolean;
   created_at: string;
   last_login?: string;
   created_by?: number;
+  module_ids?: number[];
 }
 
 export interface AdminLoginResponse {

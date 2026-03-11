@@ -32,7 +32,8 @@ export default function PurposesPage() {
     }
 
     fetchPurposes();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allPurposes.length === 0) {

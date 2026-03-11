@@ -44,7 +44,8 @@ export default function SubtopicsPage() {
 
     fetchSubtopics();
     fetchTopics();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchTopics = async () => {
     try {

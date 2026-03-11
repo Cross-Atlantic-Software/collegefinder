@@ -54,7 +54,8 @@ export default function AutomationExamsPage() {
     }
 
     fetchExams();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allExams.length === 0) {
