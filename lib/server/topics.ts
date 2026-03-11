@@ -5,8 +5,6 @@
 import { cookies } from 'next/headers';
 import { serverApiRequest } from './api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-
 type Purpose = {
   id: number;
   name: string;
@@ -61,7 +59,7 @@ export async function getTopicByName(topicName: string): Promise<TopicResponse |
       success: boolean;
       data: TopicResponse;
       message?: string;
-    }>(`${API_BASE_URL}/auth/profile/topics/${encodeURIComponent(topicName)}`, token, {
+    }>(`/auth/profile/topics/${encodeURIComponent(topicName)}`, token, {
       method: 'GET',
     });
 

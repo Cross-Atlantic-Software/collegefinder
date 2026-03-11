@@ -5,6 +5,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-manrope-sans: "Manrope", Arial, Helvetica, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

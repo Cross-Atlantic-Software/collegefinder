@@ -5,8 +5,6 @@
 import { cookies } from 'next/headers';
 import { serverApiRequest } from './api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-
 type Topic = {
   id: number;
   name: string;
@@ -47,7 +45,7 @@ export async function getSubjectsByStream(): Promise<SubjectsResponse | null> {
       success: boolean;
       data: SubjectsResponse;
       message?: string;
-    }>(`${API_BASE_URL}/auth/profile/subjects`, token, {
+    }>(`/auth/profile/subjects`, token, {
       method: 'GET',
     });
 
