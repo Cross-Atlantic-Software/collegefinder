@@ -26,11 +26,12 @@ export async function getAllAdmins(): Promise<ApiResponse<GetAllAdminsResponse>>
 export async function createAdmin(
   email: string,
   password: string,
-  type: 'user' | 'super_admin' = 'user'
+  type: 'data_entry' | 'admin' = 'data_entry',
+  module_ids?: number[]
 ): Promise<ApiResponse<{ admin: AdminUser }>> {
   return apiRequest<{ admin: AdminUser }>(API_ENDPOINTS.ADMIN.ADMINS, {
     method: 'POST',
-    body: JSON.stringify({ email, password, type }),
+    body: JSON.stringify({ email, password, type, module_ids: module_ids || [] }),
   });
 }
 
@@ -39,11 +40,12 @@ export async function createAdmin(
  */
 export async function updateAdmin(
   id: number,
-  data: { 
-    email?: string; 
-    password?: string; 
-    type?: 'user' | 'super_admin'; 
-    is_active?: boolean 
+  data: {
+    email?: string;
+    password?: string;
+    type?: 'data_entry' | 'admin' | 'super_admin';
+    is_active?: boolean;
+    module_ids?: number[];
   }
 ): Promise<ApiResponse<{ admin: AdminUser }>> {
   return apiRequest<{ admin: AdminUser }>(`${API_ENDPOINTS.ADMIN.ADMINS}/${id}`, {
