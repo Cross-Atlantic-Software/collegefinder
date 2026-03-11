@@ -1,21 +1,25 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import { BiMenu } from "react-icons/bi";
 import {
   FaHome,
   FaUserCircle,
   FaClipboardList,
+  FaUniversity,
   FaFileAlt,
   FaBookOpen,
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import { getProfileCompletion } from "@/api";
 
 type SectionId =
   | "dashboard"
   | "profile"
   | "exam-shortlist"
+  | "college-shortlist"
   | "applications"
   | "exam-prep";
 
@@ -26,47 +30,54 @@ type SidebarProps = {
   onSectionChange: (id: SectionId) => void;
 };
 
-const navItems: {
+const baseNavItems: {
   id: SectionId;
   label: string;
   sub: string;
   icon: React.ComponentType<{ className?: string }>;
-  value?: string;
+  getValue?: (completion: number) => string;
 }[] = [
   {
     id: "dashboard",
     label: "Dashboard",
     sub: "Your command center",
     icon: FaHome,
-    value: "Overview",
+    getValue: () => "Overview",
   },
   {
     id: "profile",
     label: "My Profile",
     sub: "Complete",
     icon: FaUserCircle,
-    value: "85%",
+    getValue: (completion) => `${completion}%`,
   },
   {
     id: "exam-shortlist",
     label: "Exam Shortlist",
     sub: "Exams selected",
     icon: FaClipboardList,
-    value: "8",
+    getValue: () => "8",
+  },
+  {
+    id: "college-shortlist",
+    label: "College Shortlist",
+    sub: "Colleges matched",
+    icon: FaUniversity,
+    getValue: () => "",
   },
   {
     id: "applications",
     label: "Applications",
     sub: "in progress",
     icon: FaFileAlt,
-    value: "3",
+    getValue: () => "3",
   },
   {
     id: "exam-prep",
     label: "Exam Prep",
     sub: "Study time",
     icon: FaBookOpen,
-    value: "156h",
+    getValue: () => "156h",
   },
 ];
 
@@ -76,7 +87,30 @@ export default function Sidebar({
   activeSection,
   onSectionChange,
 }: SidebarProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const userName = user?.name || "User";
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+
+  useEffect(() => {
+    const fetchCompletion = async () => {
+      try {
+        const response = await getProfileCompletion();
+        if (response.success && response.data) {
+          setCompletionPercentage(response.data.percentage);
+        }
+      } catch (err) {
+        console.error("Error fetching profile completion:", err);
+      }
+    };
+
+    fetchCompletion();
+  }, []);
+
+  // Create navItems with dynamic values
+  const navItems = baseNavItems.map(item => ({
+    ...item,
+    value: item.getValue ? item.getValue(completionPercentage) : undefined,
+  }));
 
   const handleLogout = () => {
     logout();
@@ -123,19 +157,25 @@ export default function Sidebar({
       {/* User card */}
       <div className="mx-3 mb-4 rounded-md bg-lightGradient p-3 text-xs text-slate-700 shadow-lg">
         <div className="flex items-center gap-3">
-          <Image
-            src="/avatar-placeholder.jpg"
-            width={40}
-            height={40}
-            alt="Avatar"
-            className="rounded-full object-contain"
-          />
+          <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center">
+            {user?.profile_photo ? (
+              <Image
+                src={user.profile_photo}
+                alt="Profile"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <FaUserCircle className="h-8 w-8 text-slate-400" />
+            )}
+          </div>
 
           <div
             className={`${sidebarOpen ? "flex" : "hidden md:flex"} flex-1 flex-col`}
           >
             <p className="text-[11px] text-slate-700">Welcome</p>
-            <p className="text-sm font-semibold text-slate-900">Dinesh</p>
+            <p className="text-sm font-semibold text-slate-900">{userName}</p>
             <p className="mt-1 h-1.5 w-full rounded-full bg-slate-200">
               <span className="block h-1.5 w-2/3 rounded-full bg-pink" />
             </p>
@@ -158,9 +198,9 @@ export default function Sidebar({
               key={item.id}
               type="button"
               onClick={() => {
-                onSectionChange(item.id);
-                onToggle(); // closes drawer on mobile
-              }}
+                    onSectionChange(item.id);
+                    onToggle(); // closes drawer on mobile
+                  }}
               className={`
                 flex w-full items-center gap-3 rounded-md p-3 text-left transition duration-500 group
                 ${

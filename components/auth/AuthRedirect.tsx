@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import OnboardingLoader from '@/components/shared/OnboardingLoader';
 
 interface AuthRedirectProps {
   children: React.ReactNode;
@@ -11,32 +12,63 @@ interface AuthRedirectProps {
 
 /**
  * Redirects authenticated users away from auth pages (login, OTP, etc.)
+ * Allows access to onboarding pages only if user hasn't completed onboarding (no name)
+ * Redirects to dashboard if user has completed onboarding (has name)
  */
 export function AuthRedirect({ 
   children, 
   redirectTo = '/dashboard' 
 }: AuthRedirectProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if current route is an onboarding step
+  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-2a|step-2b|step-2c|step-3)/.test(pathname || '');
+  
+  // Check if user has completed onboarding
+  const hasCompletedOnboarding = user?.onboarding_completed;
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.push(redirectTo);
+    if (!isLoading) {
+      // Allow step-3, step-2a, step-2b, and step-2c to show even if user has completed onboarding
+      // (they may need to complete these steps even after name is saved)
+      const isStep3 = pathname?.includes('/step-3');
+      const isStep2A = pathname?.includes('/step-2a');
+      const isStep2B = pathname?.includes('/step-2b');
+      const isStep2C = pathname?.includes('/step-2c');
+      const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
+      
+      // If authenticated and on onboarding route (but not allowed steps) and has completed onboarding, redirect to dashboard
+      if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
+        router.prefetch(redirectTo);
+        router.replace(redirectTo);
+        return;
+      }
+      
+      // If authenticated and NOT on onboarding route, redirect to dashboard
+      if (isAuthenticated && !isOnboardingRoute) {
+        router.push(redirectTo);
+      }
     }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+  }, [isAuthenticated, isLoading, isOnboardingRoute, hasCompletedOnboarding, router, redirectTo, pathname]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink mx-auto"></div>
-          <p className="mt-4 text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <OnboardingLoader message="Loading..." />;
   }
 
-  if (isAuthenticated) {
+  // If authenticated user with completed onboarding tries to access onboarding (but not allowed steps), show loader while redirecting
+  const isStep3 = pathname?.includes('/step-3');
+  const isStep2A = pathname?.includes('/step-2a');
+  const isStep2B = pathname?.includes('/step-2b');
+  const isStep2C = pathname?.includes('/step-2c');
+  const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
+  if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
+  // If authenticated and NOT on onboarding route, don't render (will redirect)
+  if (isAuthenticated && !isOnboardingRoute) {
     return null;
   }
 

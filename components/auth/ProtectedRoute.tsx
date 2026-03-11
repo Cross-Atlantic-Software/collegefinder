@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import OnboardingLoader from '@/components/shared/OnboardingLoader';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -23,14 +24,7 @@ export function ProtectedRoute({
   }, [isAuthenticated, isLoading, router, redirectTo]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink mx-auto"></div>
-          <p className="mt-4 text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <OnboardingLoader message="Loading dashboard..." />;
   }
 
   if (!isAuthenticated) {

@@ -1,24 +1,58 @@
-'use client'
-import { useState } from "react";
-import { BiSearch } from "react-icons/bi";
-import { Button } from "../shared";
+'use client';
+
+import { useState, useEffect, useMemo } from "react";
 import ExamBox from "./ExamBox";
-import { IoFunnel } from "react-icons/io5";
+import { ExamApplicationModal } from "./ExamApplicationModal";
+import { getRecommendedExams, getAllExams, type Exam } from "@/api/exams";
 
 export default function ShortlistExams() {
     const [activeTab, setActiveTab] = useState("recommended");
+    const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
+    const [allExams, setAllExams] = useState<Exam[]>([]);
+    const [loadingRecommended, setLoadingRecommended] = useState(false);
+    const [recommendedMessage, setRecommendedMessage] = useState<string | null>(null);
+
+    const recommendedExams = useMemo(() => {
+        if (recommendedIds.length === 0) return [];
+        return allExams.filter((e) => recommendedIds.includes(String(e.id)));
+    }, [recommendedIds, allExams]);
+
+    useEffect(() => {
+        if (activeTab !== "recommended") return;
+        let cancelled = false;
+        void Promise.resolve().then(() => {
+            if (!cancelled) {
+                setLoadingRecommended(true);
+                setRecommendedMessage(null);
+            }
+        });
+        Promise.all([getRecommendedExams(), getAllExams()])
+            .then(([recRes, allRes]) => {
+                if (cancelled) return;
+                if (recRes.success && recRes.data) {
+                    setRecommendedIds(recRes.data.examIds ?? []);
+                    if (recRes.data.message) setRecommendedMessage(recRes.data.message);
+                } else {
+                    setRecommendedIds([]);
+                }
+                if (allRes.success && allRes.data) {
+                    setAllExams(allRes.data.exams ?? []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setRecommendedIds([]);
+            })
+            .finally(() => {
+                if (!cancelled) setLoadingRecommended(false);
+            });
+        return () => { cancelled = true; };
+    }, [activeTab]);
 
     return (
         <>
-            <section className="flex items-center gap-2 rounded-md bg-white/10 p-1 pl-4 text-xs text-slate-300 mb-5">
-                <BiSearch className="text-xl"/>
-                <input
-                    placeholder="Search exams, tutorials, colleges..."
-                    className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-                />
-                <Button variant="themeButton" size="sm" className="flex rounded-md gap-2"> <IoFunnel /> Filters</Button>
-            </section>
-
             {/* TABS */}
             <div className="flex w-full rounded-md bg-white/10 text-sm font-medium text-slate-300 overflow-hidden mb-5">
                 <button
@@ -59,22 +93,37 @@ export default function ShortlistExams() {
             <div className="grid gap-3 grid-cols-1 xl:grid-cols-2">
                 {activeTab === "recommended" && (
                     <>
-                        <ExamBox
-                            title="JEE Main"
-                            subtitle="Joint Entrance Examination Main"
-                            description="National level exam for admission to NITs, IIITs and other top engineering colleges."
-                            isHot
-                            matchPercent={98}
-                            isRecommended
-                            dateLabel="Jan 2026"
-                            feeLabel="₹1,000"
-                            collegesCount={1500}
-                            difficulty="High"
-                            applicants="12 Lakh"
-                            mode="Online"
-                            eligibility="12th PCM with 75%"
-                            shortlisted
-                        />
+                        {loadingRecommended && (
+                            <div className="col-span-full py-8 text-center text-slate-400 text-sm">
+                                Loading recommended exams…
+                            </div>
+                        )}
+                        {!loadingRecommended && recommendedExams.length === 0 && (
+                            <div className="col-span-full py-8 text-center text-slate-400 text-sm">
+                                {recommendedMessage || "No recommended exams. Complete your profile (stream & career goals) to get personalized recommendations."}
+                            </div>
+                        )}
+                        {!loadingRecommended &&
+                            recommendedExams.map((exam) => (
+                                <ExamBox
+                                    key={exam.id}
+                                    title={exam.name}
+                                    subtitle={exam.code}
+                                    description={exam.description || ""}
+                                    isRecommended
+                                    dateLabel="–"
+                                    feeLabel="–"
+                                    collegesCount="–"
+                                    difficulty="–"
+                                    applicants="–"
+                                    mode="–"
+                                    eligibility="–"
+                                    onApply={() => {
+                                        setSelectedExam({ name: exam.name, id: String(exam.id) });
+                                        setIsModalOpen(true);
+                                    }}
+                                />
+                            ))}
                     </>
                 )}
 
@@ -93,6 +142,10 @@ export default function ShortlistExams() {
                             mode="Online"
                             eligibility="12th PCM with 75%"
                             shortlisted
+                            onApply={() => {
+                                setSelectedExam({ name: "JEE Main", id: "jee-main" });
+                                setIsModalOpen(true);
+                            }}
                         />
                     </>
                 )}
@@ -112,6 +165,10 @@ export default function ShortlistExams() {
                             applicants="12 Lakh"
                             mode="Online"
                             eligibility="12th PCM with 75%"
+                            onApply={() => {
+                                setSelectedExam({ name: "JEE Main", id: "jee-main" });
+                                setIsModalOpen(true);
+                            }}
                         />
 
                         <ExamBox
@@ -125,10 +182,31 @@ export default function ShortlistExams() {
                             applicants="20 Lakh"
                             mode="Offline"
                             eligibility="12th PCB with 50%"
+                            onApply={() => {
+                                setSelectedExam({ name: "NEET", id: "neet" });
+                                setIsModalOpen(true);
+                            }}
                         />
                     </>
                 )}
             </div>
+
+            {/* Exam Application Modal */}
+            {selectedExam && (
+                <ExamApplicationModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setSelectedExam(null);
+                    }}
+                    examName={selectedExam.name}
+                    examId={selectedExam.id}
+                    onSubmit={async () => {
+                        // TODO: Implement API call to save exam application with subject breakdown
+                        // This will be implemented when backend is ready
+                    }}
+                />
+            )}
         </>
     );
 }

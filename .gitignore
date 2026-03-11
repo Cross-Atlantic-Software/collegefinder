@@ -10,6 +10,12 @@
 !.yarn/releases
 !.yarn/versions
 
+# lock files
+package-lock.json
+**/package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
 # testing
 /coverage
 
@@ -23,6 +29,14 @@
 # misc
 .DS_Store
 *.pem
+
+# SSH keys and private keys
+*.pub
+*rsa*key*
+*ed25519*
+id_rsa
+id_ed25519
+*.key
 
 # debug
 npm-debug.log*
@@ -39,3 +53,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python Backend
+python-backend/venv/
+python-backend/__pycache__/
+python-backend/**/__pycache__/
+python-backend/*.pyc
+python-backend/.env
+
+# Stagehand Backend
+stagehand-backend/node_modules/
+stagehand-backend/dist/
+stagehand-backend/.env
+
+# Backend
+backend/node_modules/
+backend/.env
+
+# IDE
+.idea/
+*.swp
+*.swo

@@ -28,6 +28,15 @@ button {
   .bg-lightGradient {
     background-image: linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%);
   }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 
   .bg-darkGradient {
     background-image: linear-gradient(to right, #9705F9 0%, #B903B8 50%, #DB0078 100%);
@@ -71,4 +80,43 @@ button {
   @media (min-width: 1536px) {
     .appContainer { max-width: 1400px; }
   }
+}
+
+/* React Select Custom Styles */
+.react-select__menu-portal {
+  z-index: 9999 !important;
+}
+
+.react-select__menu {
+  z-index: 9999 !important;
+}
+
+/* Ensure react-select menu appears above other elements */
+.react-select__menu-portal > div {
+  z-index: 9999 !important;
+}
+
+/* Toast Animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-right 0.3s ease-out, fade-in 0.3s ease-out;
 }

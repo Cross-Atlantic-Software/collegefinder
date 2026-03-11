@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../shared";
-import { verifyOTP, resendOTP } from "@/lib/api";
+import { verifyOTP, resendOTP } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const OTP_LENGTH = 6;
@@ -88,13 +88,63 @@ export function OtpVerificationForm({
       if (response.success && response.data) {
         setSuccess(true);
         // Store token and user data
-        login(response.data.token, response.data.user);
+        // Convert null to undefined for name property to match User type
+        const user = {
+          ...response.data.user,
+          name: response.data.user.name ?? undefined
+        };
+        login(response.data.token, user);
         onVerified?.(code);
         
-        // Redirect to onboarding or dashboard
+        // Redirect based on whether user has completed onboarding
+        // If onboarding_completed is true → go to dashboard
+        // If onboarding_completed is false/null → go to onboarding step-1
+        const onboardingCompletedValue = response.data.user?.onboarding_completed;
+        
+        // More robust check - handle boolean, string, number, or truthy values
+        let onboardingCompleted = false;
+        if (onboardingCompletedValue !== null && onboardingCompletedValue !== undefined) {
+          if (onboardingCompletedValue === true) {
+            onboardingCompleted = true;
+          } else if (onboardingCompletedValue === false) {
+            onboardingCompleted = false;
+          } else {
+            // TypeScript doesn't know the exact type, so we check at runtime
+            const valueType = typeof onboardingCompletedValue;
+            if (valueType === 'string') {
+              const strValue = onboardingCompletedValue as unknown as string;
+              onboardingCompleted = strValue.toLowerCase() === 'true' || strValue === 't';
+            } else if (valueType === 'number') {
+              const numValue = onboardingCompletedValue as unknown as number;
+              onboardingCompleted = numValue === 1;
+            } else {
+              // Fallback: treat as truthy
+              onboardingCompleted = !!onboardingCompletedValue;
+            }
+          }
+        }
+        
+        // Debug logging
+        console.log('🔍 OTP Verification - Full response:', JSON.stringify(response, null, 2));
+        console.log('🔍 OTP Verification - User data:', response.data.user);
+        console.log('🔍 OTP Verification - onboarding_completed (raw):', onboardingCompletedValue, 'Type:', typeof onboardingCompletedValue);
+        console.log('🔍 OTP Verification - onboarding_completed (converted):', onboardingCompleted);
+        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/dashboard' : '/step-1');
+        
+        // Prefetch target route for faster loading
+        if (onboardingCompleted) {
+          router.prefetch("/dashboard");
+        } else {
+          router.prefetch("/step-1");
+        }
+        // Small delay for smooth transition, then redirect
         setTimeout(() => {
-          router.push("/step-1");
-        }, 1000);
+          if (onboardingCompleted) {
+            router.replace("/dashboard");
+          } else {
+            router.replace("/step-1");
+          }
+        }, 300);
       } else {
         setError(response.message || "Invalid OTP code. Please try again.");
         // Clear OTP on error

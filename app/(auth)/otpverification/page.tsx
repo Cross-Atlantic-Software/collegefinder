@@ -33,7 +33,6 @@ export default function LoginVerifyPage() {
         <OtpVerificationForm
           emailHint={emailHint}
           onVerified={(code) => {
-            console.log("OTP verified:", code);
           }}
         />
 

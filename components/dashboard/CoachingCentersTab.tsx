@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { BiSearch } from "react-icons/bi";
 import {
   MdLocationOn,
   MdPeople,
@@ -11,7 +10,6 @@ import {
   MdFavoriteBorder,
 } from "react-icons/md";
 import { Button } from "@/components/shared";
-import { IoSwapVertical } from "react-icons/io5";
 
 type CoachingCenter = {
   id: string;
@@ -207,27 +205,6 @@ export default function CoachingCentersTab() {
 
   return (
     <div className="space-y-4">
-      {/* Search + Sort row (matches your bar) */}
-      <div className="flex items-center gap-2 rounded-full bg-white/10 p-2 pl-4 pr-0 text-sm text-slate-200">
-        <BiSearch className="text-lg opacity-80" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search coaching centers, city, or keyword..."
-          className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-400"
-        />
-
-        <button
-          onClick={() =>
-            setSortBy((p) => (p === "rating" ? "price" : "rating"))
-          }
-          className="mr-2 inline-flex items-center gap-1 rounded-full min-w-[120px] bg-white/10 px-3 py-2 text-[11px] font-semibold text-slate-200 hover:bg-white/15"
-        >
-          <IoSwapVertical />
-          Sort by {sortBy === "rating" ? "Rating" : "Price"}
-        </button>
-      </div>
-
       {/* Cards grid (fluid) */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {filtered.map((center) => (

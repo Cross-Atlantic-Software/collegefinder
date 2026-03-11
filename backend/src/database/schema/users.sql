@@ -1,0 +1,83 @@
+-- Users Table Schema
+-- This file defines the users table structure and related indexes
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  name VARCHAR(255),
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  date_of_birth DATE,
+  gender VARCHAR(50),
+  phone_number VARCHAR(25),
+  state VARCHAR(100),
+  district VARCHAR(100),
+  profile_photo VARCHAR(500),
+  email_verified BOOLEAN DEFAULT FALSE,
+  auth_provider VARCHAR(50) DEFAULT 'email',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_login TIMESTAMP,
+  is_active BOOLEAN DEFAULT TRUE,
+  google_id VARCHAR(255),
+  facebook_id VARCHAR(255)
+);
+
+-- Ensure columns exist on older databases
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'email';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(25);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo VARCHAR(500);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nationality VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS father_full_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT 'Ax' || substr(md5(random()::text), 1, 6) || '@1';
+
+-- Backfill default values for new columns where needed
+UPDATE users SET email_verified = false WHERE email_verified IS NULL;
+UPDATE users SET auth_provider = 'email' WHERE auth_provider IS NULL;
+-- Set existing users with name to have completed onboarding
+UPDATE users SET onboarding_completed = TRUE WHERE name IS NOT NULL AND name != '' AND (onboarding_completed IS NULL OR onboarding_completed = FALSE);
+
+-- Update existing automation_password to comply with password policy (uppercase, lowercase, number, special char)
+-- This changes old UUID passwords to the new format: Ax + 6char hex + @1
+UPDATE users SET automation_password = 'Ax' || substr(md5(random()::text), 1, 6) || '@1' 
+WHERE automation_password IS NULL 
+   OR automation_password LIKE '%-%' 
+   OR LENGTH(automation_password) > 12;
+
+-- Ensure name column is VARCHAR(255) (fix truncation issues)
+DO $$
+BEGIN
+  -- Check if name column exists and alter its type if needed
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'name') THEN
+    -- Alter to ensure it's VARCHAR(255)
+    EXECUTE 'ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(255)';
+  END IF;
+END $$;
+
+-- Indexes for users table
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id);
+
+-- Trigger to automatically update updated_at for users
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

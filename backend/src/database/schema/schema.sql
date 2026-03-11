@@ -1,0 +1,9 @@
+-- Main Database Schema
+-- This file is a placeholder - the actual schema is loaded modularly
+-- See backend/config/database.js for the initialization logic
+--
+-- Schema files are loaded in this order:
+-- 1. functions.sql - Database functions (must be first)
+-- 2. users.sql - Users table (base table)
+-- 3. otps.sql - OTP table (depends on users)
+-- 4. admin_users.sql - Admin users table (self-referencing)

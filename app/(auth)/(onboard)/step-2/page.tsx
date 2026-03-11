@@ -1,40 +1,141 @@
 'use client'
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button } from "@/components/shared";
-import { useState } from "react";
+import { updateProfile } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
+import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
-export default function StepThree() {
+export default function StepTwo() {
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isNavigatingToStep2A, setIsNavigatingToStep2A] = useState(false);
+  const router = useRouter();
+  const { user, refreshUser, isLoading } = useAuth();
+
+  // Redirect to dashboard if user has completed onboarding
+  // But NEVER redirect if we're saving or navigating to step-3
+  useEffect(() => {
+    // Only redirect if we're not in the middle of saving or navigating to step-3
+    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
+      setIsRedirecting(true);
+      // Prefetch dashboard for faster loading
+      router.prefetch('/dashboard');
+      // Small delay for smooth transition
+      const timer = setTimeout(() => {
+        router.replace('/dashboard');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLoading, router, isNavigatingToStep2A, saving]);
+
+  // Show smooth loader while checking auth or redirecting (but NEVER while saving/navigating to step-3)
+  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
+    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+  }
+
+  // Don't render if user has completed onboarding and we're not saving/navigating to step-3
+  if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
+  // Show saving state if we're navigating to step-3
+  if (saving || isNavigatingToStep2A) {
+    return <OnboardingLoader message="Saving your name..." />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name) {
+      setError("Please enter your name");
+      return;
+    }
+
+    if (!user) {
+      setError("You must be logged in to save your name");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setIsNavigatingToStep2A(true); // Set flag immediately to prevent any redirects
+
+    try {
+      const response = await updateProfile(name);
+      
+      if (response.success) {
+        // Prefetch step-2a for faster loading
+        router.prefetch("/step-2a");
+        // Navigate to step-2a immediately - don't refresh user data here
+        // The user data will be updated naturally when step-2a loads
+        router.replace("/step-2a");
+      } else {
+        setError(response.message || "Failed to save name. Please try again.");
+        setSaving(false);
+        setIsNavigatingToStep2A(false);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      console.error("Error updating profile:", err);
+      setSaving(false);
+      setIsNavigatingToStep2A(false);
+    }
+  };
 
   return (
-    <WelcomeLayout progress={66}>
-      <div className="flex gap-6 items-center justify-center w-full">
-        <Robot variant="five" />
+    <div
+      className="h-screen w-full flex flex-col"
+      style={{
+        background:
+          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
+      }}
+    >
+      <WelcomeLayout progress={40}>
+        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
+          {/* Robot */}
+          <div className="flex-shrink-0">
+            <Robot variant="five" />
+          </div>
 
-        <div className="flex flex-col gap-5 w-full max-w-xl">
-          <Bubble>I am curious. What shall I call you?</Bubble>
+          {/* Input + Button */}
+          <div className="flex flex-col gap-5 w-full max-w-xl">
+            <Bubble>I am curious. What shall I call you?</Bubble>
 
-          <div className="flex gap-3">
-            <input
-              type="text"
-              placeholder="Type your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500"
-            />
-            
-            <Button
+            {error && (
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex gap-3">
+              <input
+                type="text"
+                placeholder="Type your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="block w-full rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500"
+                required
+                minLength={1}
+                maxLength={255}
+              />
+
+              <Button
                 type="submit"
                 variant="DarkGradient"
                 size="lg"
-                className="w-full"
-                href="/step-3"
-            >
-                Sounds Good
-            </Button>
+                className="w-40 rounded-full"
+                disabled={saving || !name}
+              >
+                {saving ? "Saving..." : "Sounds Good"}
+              </Button>
+            </form>
           </div>
         </div>
-      </div>
-    </WelcomeLayout>
+      </WelcomeLayout>
+    </div>
   );
 }

@@ -68,7 +68,7 @@ export function MascotBubble({
         </div>
 
         {/* Mascot */}
-        <div className="relative h-56 w-30">
+        <div className="relative h-56 w-32 flex-shrink-0">
           <Image
             src={MASCOT_SVGS[variant]}
             alt="Mascot"

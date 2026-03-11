@@ -1,8 +1,12 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
+
+const Providers = dynamic(() => import("./Providers"), {
+  ssr: true,
+});
 
 const manropeSans = Manrope({
   variable: "--font-manrope-sans",
@@ -21,9 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <link rel="icon" href="/favicon.ico" sizes="any" />
       <body className={`${manropeSans.variable} antialiased`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

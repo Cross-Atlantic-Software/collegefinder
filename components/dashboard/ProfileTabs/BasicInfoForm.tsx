@@ -1,174 +1,311 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-
-import { BiCheck } from "react-icons/bi";
-import { Button } from "../../shared";
-import { LuLock } from "react-icons/lu";
-import { CiCircleInfo } from "react-icons/ci";
-import { IoLocationSharp } from "react-icons/io5";
-import { FaUser } from "react-icons/fa6";
-
-const genderOptions = [
-  { label: "Male", icon: "/icons/male.png" },
-  { label: "Female", icon: "/icons/female.png" },
-  { label: "Prefer not to say", icon: "/icons/not-say.png" },
-];
+import { useState, useEffect } from "react";
+import { useToast } from "../../shared";
+import {
+  getBasicInfo,
+  getGovernmentIdentification,
+  getCategoryAndReservation,
+  getOtherPersonalDetails,
+  getUserAddress,
+} from "@/api";
+import { getAllCategories } from "@/api/public/categories";
+import { EmailVerificationModal } from "./EmailVerificationModal";
+import BasicInfoTabs from "./basicInfo/BasicInfoTabs";
+import type {
+  CoreIdentityFormData,
+  GovernmentIdentificationData,
+  CategoryAndReservationData,
+  OtherPersonalDetailsData,
+  AddressData,
+} from "./basicInfo/types";
 
 export default function BasicInfoForm() {
-  const [selected, setSelected] = useState<string>("Male");
+  const { showSuccess } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+
+  const [formData, setFormData] = useState<CoreIdentityFormData>({
+    name: "",
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    gender: "Male",
+    phone_number: "",
+    profile_photo: "",
+    nationality: "",
+    marital_status: "",
+    father_full_name: "",
+    mother_full_name: "",
+    guardian_name: "",
+    alternate_mobile_number: "",
+  });
+
+  const [govIdData, setGovIdData] = useState<GovernmentIdentificationData>({
+    aadhar_number: "",
+    apaar_id: "",
+  });
+
+  const [catResData, setCatResData] = useState<CategoryAndReservationData>({
+    category_id: "",
+    ews_status: false,
+    pwbd_status: false,
+    type_of_disability: "",
+    disability_percentage: "",
+    state_domicile: false,
+    home_state_for_quota: "",
+    udid_number: "",
+    minority_status: "",
+    ex_serviceman_defence_quota: false,
+    kashmiri_migrant_regional_quota: false,
+  });
+
+  const [categories, setCategories] = useState<Array<{ value: string; label: string }>>([]);
+
+  const [otherPersonalDetails, setOtherPersonalDetails] = useState<OtherPersonalDetailsData>({
+    religion: "",
+    mother_tongue: "",
+    annual_family_income: "",
+    occupation_of_father: "",
+    occupation_of_mother: "",
+  });
+
+  const [addressData, setAddressData] = useState<AddressData>({
+    correspondence_address_line1: "",
+    correspondence_address_line2: "",
+    city_town_village: "",
+    district: "",
+    state: "",
+    country: "India",
+    pincode: "",
+    permanent_address_same_as_correspondence: true,
+    permanent_address: "",
+  });
+
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [automationPassword, setAutomationPassword] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await getBasicInfo();
+        if (response.success && response.data) {
+          // Format date_of_birth for DateOfBirthPicker (YYYY-MM-DD)
+          let formattedDate = "";
+          if (response.data.date_of_birth) {
+            if (typeof response.data.date_of_birth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(response.data.date_of_birth)) {
+              formattedDate = response.data.date_of_birth.split('T')[0];
+            } else {
+              const date = new Date(response.data.date_of_birth);
+              if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                formattedDate = `${year}-${month}-${day}`;
+              }
+            }
+          }
+
+          const formDataToSet: CoreIdentityFormData = {
+            name: response.data.name ?? "",
+            first_name: response.data.first_name ?? "",
+            last_name: response.data.last_name ?? "",
+            date_of_birth: formattedDate,
+            gender: response.data.gender ?? "Male",
+            phone_number: response.data.phone_number ?? "",
+            profile_photo: response.data.profile_photo ?? "",
+            nationality: response.data.nationality ?? "",
+            marital_status: response.data.marital_status ?? "",
+            father_full_name: response.data.father_full_name ?? "",
+            mother_full_name: response.data.mother_full_name ?? "",
+            guardian_name: response.data.guardian_name ?? "",
+            alternate_mobile_number: response.data.alternate_mobile_number ?? "",
+          };
+
+          setFormData(formDataToSet);
+          setProfilePhotoPreview(response.data.profile_photo || null);
+          setEmail(response.data.email || "");
+          setEmailVerified(response.data.email_verified || false);
+          setAutomationPassword(response.data.automation_password || null);
+
+          // Fetch government identification
+          try {
+            const govIdResponse = await getGovernmentIdentification();
+            if (govIdResponse.success && govIdResponse.data) {
+              setGovIdData({
+                aadhar_number: govIdResponse.data.aadhar_number || "",
+                apaar_id: govIdResponse.data.apaar_id || "",
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching government identification:", err);
+          }
+
+          // Fetch category and reservation
+          try {
+            const catResResponse = await getCategoryAndReservation();
+            if (catResResponse.success && catResResponse.data) {
+              setCatResData({
+                category_id: catResResponse.data.category_id?.toString() || "",
+                ews_status: catResResponse.data.ews_status || false,
+                pwbd_status: catResResponse.data.pwbd_status || false,
+                type_of_disability: catResResponse.data.type_of_disability || "",
+                disability_percentage: catResResponse.data.disability_percentage?.toString() || "",
+                udid_number: catResResponse.data.udid_number || "",
+                minority_status: catResResponse.data.minority_status || "",
+                ex_serviceman_defence_quota: catResResponse.data.ex_serviceman_defence_quota || false,
+                kashmiri_migrant_regional_quota: catResResponse.data.kashmiri_migrant_regional_quota || false,
+                state_domicile: catResResponse.data.state_domicile || false,
+                home_state_for_quota: catResResponse.data.home_state_for_quota || "",
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching category and reservation:", err);
+          }
+
+          // Fetch categories for dropdown
+          try {
+            const categoriesResponse = await getAllCategories();
+            if (categoriesResponse.success && categoriesResponse.data) {
+              const categoryOptions = categoriesResponse.data.categories.map((cat: { id: number; name: string }) => ({
+                value: cat.id.toString(),
+                label: cat.name,
+              }));
+              setCategories(categoryOptions);
+            }
+          } catch (err) {
+            console.error("Error fetching categories:", err);
+          }
+
+          // Fetch other personal details
+          try {
+            const otherDetailsResponse = await getOtherPersonalDetails();
+            if (otherDetailsResponse.success && otherDetailsResponse.data) {
+              setOtherPersonalDetails({
+                religion: otherDetailsResponse.data.religion || "",
+                mother_tongue: otherDetailsResponse.data.mother_tongue || "",
+                annual_family_income: otherDetailsResponse.data.annual_family_income?.toString() || "",
+                occupation_of_father: otherDetailsResponse.data.occupation_of_father || "",
+                occupation_of_mother: otherDetailsResponse.data.occupation_of_mother || "",
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching other personal details:", err);
+          }
+
+          // Fetch address
+          try {
+            const addressResponse = await getUserAddress();
+            if (addressResponse.success && addressResponse.data) {
+              setAddressData({
+                correspondence_address_line1: addressResponse.data.correspondence_address_line1 || "",
+                correspondence_address_line2: addressResponse.data.correspondence_address_line2 || "",
+                city_town_village: addressResponse.data.city_town_village || "",
+                district: addressResponse.data.district || "",
+                state: addressResponse.data.state || "",
+                country: addressResponse.data.country || "India",
+                pincode: addressResponse.data.pincode || "",
+                permanent_address_same_as_correspondence: addressResponse.data.permanent_address_same_as_correspondence ?? true,
+                permanent_address: addressResponse.data.permanent_address || "",
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching address:", err);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching basic info:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by this browser");
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("Error getting location:", error.message);
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    });
+  };
+
+  const handleEmailVerified = async () => {
+    try {
+      const response = await getBasicInfo();
+      if (response.success && response.data) {
+        setEmail(response.data.email || "");
+        setEmailVerified(response.data.email_verified || false);
+        showSuccess("Email verified successfully!");
+      }
+    } catch (err) {
+      console.error("Error refreshing basic info:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-slate-300">Loading profile data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded bg-white/5 text-sm text-slate-100 p-4">
-      <h2 className="mb-4 text-base font-semibold text-pink sm:text-lg">
-        Basic Information
-      </h2>
+    <>
+      <BasicInfoTabs
+        formData={formData}
+        setFormData={setFormData}
+        profilePhotoPreview={profilePhotoPreview}
+        setProfilePhotoPreview={setProfilePhotoPreview}
+        email={email}
+        emailVerified={emailVerified}
+        getCurrentLocation={getCurrentLocation}
+        onShowEmailModal={() => setShowEmailModal(true)}
+        govIdData={govIdData}
+        setGovIdData={setGovIdData}
+        catResData={catResData}
+        setCatResData={setCatResData}
+        categories={categories}
+        otherPersonalDetails={otherPersonalDetails}
+        setOtherPersonalDetails={setOtherPersonalDetails}
+        addressData={addressData}
+        setAddressData={setAddressData}
+        automationPassword={automationPassword}
+      />
 
-      <div className="space-y-5">
-        {/* Name */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-200">
-              First Name
-            </label>
-            <input
-              type="text"
-              className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-              placeholder="First name"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-200">
-              Last Name
-            </label>
-            <input
-              type="text"
-              className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-              placeholder="Last name"
-            />
-          </div>
-        </div>
-
-        {/* DOB */}
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-200">
-            <span>Date of Birth</span>
-            <LuLock className="h-3 w-3 text-white/50" />
-          </div>
-          <input
-            type="date"
-            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-          />
-        </div>
-
-        {/* Email */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-200">Email</label>
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-200 px-2 py-0.5 text-[10px] text-red-700">
-              <CiCircleInfo /> Unverified
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <input
-              type="text"
-              className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-              placeholder="dinesh@gmail.com"
-              disabled
-            />
-
-            <button className="rounded bg-red-500 px-4 py-1.5 text-xs font-semibold">
-              Verify Now
-            </button>
-          </div>
-        </div>
-
-        {/* Phone */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-200">Phone</label>
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-200 px-2 py-0.5 text-[10px] text-green-700">
-              <BiCheck /> Verified
-            </span>
-          </div>
-
-          <input
-            type="text"
-            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-            placeholder="(+91) 888 88 88888"
-            disabled
-          />
-        </div>
-
-        {/* Location */}
-        <div>
-          <label className="text-sm font-medium text-slate-200 mb-1 flex gap-1 items-center">
-            Location <IoLocationSharp className="text-pink" />
-          </label>
-          <input
-            type="text"
-            className="w-full rounded border border-pink/10 bg-white/10 px-3 py-3 text-sm"
-            placeholder="City, State"
-          />
-        </div>
-
-        {/* Gender */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-200 flex items-center gap-1">
-            Gender <FaUser className="text-pink" />
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-3">
-            {genderOptions.map((g) => {
-              const isActive = selected === g.label;
-
-              return (
-                <button
-                  key={g.label}
-                  type="button"
-                  onClick={() => setSelected(g.label)}
-                  className={`flex items-center gap-2 w-full rounded-full px-3 py-2 border transition ${
-                    isActive
-                      ? "bg-pink text-white border-pink-600"
-                      : "border-pink/10 bg-white/10 hover:bg-pink/20"
-                  }`}
-                >
-                  <Image
-                    src={g.icon}
-                    width={40}
-                    height={40}
-                    alt={g.label}
-                    className="rounded-full"
-                  />
-                  <span>{g.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-7 flex flex-col sm:flex-row gap-4">
-        <Button
-          variant="DarkGradient"
-          size="md"
-          className="w-full sm:w-1/2 rounded-full"
-        >
-          Update Details
-        </Button>
-
-        <Button
-          variant="LightGradient"
-          size="md"
-          className="w-full sm:w-1/2 rounded-full"
-        >
-          Skip for Now
-        </Button>
-      </div>
-    </div>
+      <EmailVerificationModal
+        email={email || null}
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onVerified={handleEmailVerified}
+      />
+    </>
   );
 }

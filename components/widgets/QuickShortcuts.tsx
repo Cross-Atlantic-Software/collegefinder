@@ -26,7 +26,7 @@ const shortcuts: Shortcut[] = [
 export default function QuickShortcuts() {
     return (
         <section className="w-full max-w-sm rounded-md bg-pink/5 px-5 pb-6 pt-6 dark:bg-slate-900">
-            <h3 className="mb-4 text-xl font-semibold dark:text-white">Quick Shortcuts</h3>
+            <h3 className="text-xl font-semibold leading-tight text-slate-900 dark:text-gray-50">Quick Shortcuts</h3>
 
             <div className="space-y-3">
                 {shortcuts.map((item) => (
