@@ -152,8 +152,8 @@ export default function StepTwoB() {
           {/* Interests + Button */}
           <div className="flex flex-col gap-5 w-full max-w-2xl">
             <Bubble className="w-full max-w-none">
-              <span className="block mb-2">What interests you? Select all that apply.</span>
-              <span className="block text-sm text-slate-400 font-normal">You can choose up to 3 interests.</span>
+              <div>What interests you? Select all that apply.</div>
+              <div className="text-sm text-slate-400 font-normal mt-1">You can choose up to 3 interests.</div>
             </Bubble>
 
             {error && (
