@@ -17,7 +17,7 @@ import {
   Career,
 } from '@/api';
 import type { Program } from '@/api/admin/programs';
-import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
 
@@ -526,13 +526,14 @@ export default function CareersPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Programs
+                    Programs (from programs taxonomy)
                   </label>
                   <MultiSelect
                     value={formData.program_ids.map(String)}
                     onChange={(vals) => setFormData({ ...formData, program_ids: vals.map(Number).filter((n) => !isNaN(n)) })}
                     options={programOptions}
-                    placeholder="Select programs..."
+                    placeholder="Select programs to map to this career..."
+                    isSearchable
                   />
                 </div>
 
@@ -609,7 +610,7 @@ export default function CareersPage() {
               {/* Sample template section */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-gray-600 mb-3">Your Excel file must have these columns. Program names are matched to existing programs in the database.</p>
+                <p className="text-xs text-gray-600 mb-3">Your Excel file must have these columns. Use <strong>program_names</strong> (comma-separated, e.g. B.Tech, M.Tech) or <strong>program_ids</strong> to map careers to programs from the programs taxonomy.</p>
                 <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>

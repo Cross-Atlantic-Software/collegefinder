@@ -39,6 +39,7 @@ export async function getCareerById(id: number): Promise<ApiResponse<{
 export async function createCareer(data: {
   name: string;
   status?: boolean;
+  program_ids?: number[];
 }): Promise<ApiResponse<{
   career: Career;
 }>> {

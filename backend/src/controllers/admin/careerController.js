@@ -360,12 +360,16 @@ class CareerController {
 
         const statusRaw = (row.status ?? '').toString().trim();
         const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
-        const programNamesRaw = (row.program_names ?? row.program_Names ?? row.programs ?? '').toString().trim();
+        const programNamesRaw = (row.program_names ?? row.program_Names ?? row.programs ?? row.Programs ?? '').toString().trim();
+        const programIdsRaw = (row.program_ids ?? row.program_Ids ?? '').toString().trim();
 
         try {
           const career = await Career.create({ name, status });
           let programIds = [];
-          if (programNamesRaw) {
+          if (programIdsRaw) {
+            programIds = programIdsRaw.split(/[,;\s]+/).map((n) => parseInt(n, 10)).filter((n) => !isNaN(n) && n > 0);
+          }
+          if (programIds.length === 0 && programNamesRaw) {
             programIds = await resolveProgramNamesToIds(programNamesRaw);
           }
           if (programIds.length) {
