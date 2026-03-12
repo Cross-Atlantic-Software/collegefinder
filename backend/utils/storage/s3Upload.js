@@ -1,4 +1,5 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+// Use AWS SDK v2 (aws-sdk) - compatible with v3 API, works when @aws-sdk/client-s3 is not installed
+const AWS = require('aws-sdk');
 const path = require('path');
 const https = require('https');
 const http = require('http');
@@ -23,12 +24,10 @@ if (isPlaceholder(BUCKET_NAME, 'your_bucket_name')) {
   console.warn('⚠️  AWS_S3_BUCKET_NAME or S3_BUCKET not configured or using placeholder value');
 }
 
-const s3Client = new S3Client({
+const s3 = new AWS.S3({
   region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
 });
 
 /**
@@ -72,11 +71,11 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
     };
 
     try {
-      await s3Client.send(new PutObjectCommand({ ...baseParams, ACL: 'public-read' }));
+      await s3.putObject({ ...baseParams, ACL: 'public-read' }).promise();
     } catch (aclError) {
       if (aclError.name === 'InvalidRequest' || aclError.message?.includes('ACL')) {
         console.warn('⚠️  ACL not allowed, uploading without ACL. Ensure bucket policy allows public read access.');
-        await s3Client.send(new PutObjectCommand(baseParams));
+        await s3.putObject(baseParams).promise();
       } else {
         throw aclError;
       }
@@ -119,7 +118,7 @@ const deleteFromS3 = async (s3Url) => {
     const url = new URL(s3Url);
     const key = url.pathname.substring(1); // Remove leading '/'
 
-    await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+    await s3.deleteObject({ Bucket: BUCKET_NAME, Key: key }).promise();
   } catch (error) {
     console.error('Error deleting from S3:', error);
     // Don't throw error - file might not exist or already deleted
