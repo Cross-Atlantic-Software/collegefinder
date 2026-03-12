@@ -23,7 +23,7 @@ export default function AdminUsersPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'user' as 'user' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
   });
 
   useEffect(() => {
@@ -89,15 +89,15 @@ export default function AdminUsersPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Type is always 'user' for new admins created through UI
+      // Type is always 'data_entry' for new admins created through UI
       const response = await createAdmin(
         formData.email,
         formData.password,
-        'user'
+        'data_entry'
       );
       if (response.success) {
         setShowCreateModal(false);
-        setFormData({ email: '', password: '', type: 'user' });
+        setFormData({ email: '', password: '', type: 'data_entry' });
         fetchAdmins();
       } else {
         setError(response.message || 'Failed to create admin user');
@@ -274,7 +274,7 @@ export default function AdminUsersPage() {
                                 <Dropdown
                                   value={admin.type}
                                   onChange={(v) => handleUpdate(admin.id, 'type', v)}
-                                  options={[{ value: 'user', label: 'User' }]}
+                                  options={[{ value: 'data_entry', label: 'Data Entry' }]}
                                   size="sm"
                                 />
                               ) : (
@@ -408,7 +408,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry' });
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
               >
@@ -454,7 +454,7 @@ export default function AdminUsersPage() {
                 type="button"
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry' });
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
               >
