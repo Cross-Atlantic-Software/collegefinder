@@ -59,6 +59,17 @@ const validateAdminLogin = [
 ];
 
 /**
+ * Strong password requirements for admin users
+ * - Min 8 characters
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one number
+ * - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+ */
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{}|;:,.<>?])[A-Za-z\d!@#$%^&*()_+\-=[\]{}|;:,.<>?]{8,}$/;
+const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
+
+/**
  * Validation rules for creating admin user
  */
 const validateCreateAdmin = [
@@ -68,8 +79,10 @@ const validateCreateAdmin = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
     .isIn(['data_entry', 'admin', 'super_admin'])
@@ -86,8 +99,10 @@ const validateUpdateAdmin = [
     .withMessage('Please provide a valid email address'),
   body('password')
     .optional()
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
     .isIn(['data_entry', 'admin', 'super_admin'])

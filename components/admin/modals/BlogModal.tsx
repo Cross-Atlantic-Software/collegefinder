@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiX, FiImage, FiVideo, FiFileText } from 'react-icons/fi';
 import { createBlog, updateBlog, type Blog } from '@/api/admin/blogs';
-import { useToast, MultiSelect, RichTextEditor, type MultiSelectOption } from '@/components/shared';
+import { useToast, MultiSelect, RichTextEditor, Dropdown, type MultiSelectOption } from '@/components/shared';
 import { getAllStreamsPublic, getAllCareersPublic } from '@/api';
 import Image from 'next/image';
 
@@ -338,15 +338,15 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   Content Type <span className="text-pink">*</span>
                 </label>
-                <select
+                <Dropdown
                   value={contentType}
-                  onChange={(e) => setContentType(e.target.value as 'TEXT' | 'VIDEO')}
-                  required
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                >
-                  <option value="TEXT">TEXT</option>
-                  <option value="VIDEO">VIDEO</option>
-                </select>
+                  onChange={(v) => setContentType(v)}
+                  options={[
+                    { value: 'TEXT', label: 'TEXT' },
+                    { value: 'VIDEO', label: 'VIDEO' },
+                  ]}
+                  className="w-full"
+                />
               </div>
               <div className="flex items-end">
                 <label className="flex items-center gap-2 cursor-pointer">

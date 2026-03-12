@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllLectures, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, getAllTopics, getSubtopicsByTopicId, getAllSubtopics } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage, FiVideo } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiImage, FiVideo } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 import RichTextEditor from '@/components/shared/RichTextEditor';
 
@@ -562,29 +563,11 @@ export default function LecturesPage() {
                               })}
                             </td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleView(lecture)}
-                                  className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                  title="View"
-                                >
-                                  <FiEye className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(lecture)}
-                                  className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="Edit"
-                                >
-                                  <FiEdit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClick(lecture.id)}
-                                  className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                  title="Delete"
-                                >
-                                  <FiTrash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                              <AdminTableActions
+                                onView={() => handleView(lecture)}
+                                onEdit={() => handleEdit(lecture)}
+                                onDelete={() => handleDeleteClick(lecture.id)}
+                              />
                             </td>
                           </tr>
                         );

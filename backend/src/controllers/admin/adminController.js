@@ -3,6 +3,7 @@ const Admin = require('../../models/admin/Admin');
 const AdminUserModule = require('../../models/admin/AdminUserModule');
 const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
+const { sendAdminWelcomeEmail } = require('../../../utils/email/emailService');
 
 class AdminController {
   /**
@@ -232,18 +233,16 @@ class AdminController {
         });
       }
 
-      if (type === 'super_admin') {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot create super_admin type'
-        });
-      }
-
       const admin = await Admin.create(email, password, type, req.admin.id);
 
       if ((type === 'data_entry' || type === 'admin') && Array.isArray(module_ids) && module_ids.length > 0) {
         await AdminUserModule.setModulesForAdminUser(admin.id, module_ids);
       }
+
+      // Send welcome email with credentials (non-blocking; don't fail creation if email fails)
+      sendAdminWelcomeEmail(email, password, type).catch((err) => {
+        console.error('Failed to send admin welcome email:', err);
+      });
 
       const moduleIds = (type === 'data_entry' || type === 'admin') ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
       res.status(201).json({
@@ -287,10 +286,32 @@ class AdminController {
       }
 
       const targetAdmin = await Admin.findById(id);
-      if (targetAdmin && targetAdmin.type === 'super_admin') {
+      if (!targetAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: 'Admin user not found'
+        });
+      }
+      if (parseInt(id) === req.admin.id && is_active === false) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot disable your own account'
+        });
+      }
+
+      // Super admin target: only allow is_active (disable access); block type/email/password/modules
+      if (targetAdmin.type === 'super_admin') {
+        if (is_active !== undefined) {
+          const updated = await Admin.updateActiveStatus(id, is_active);
+          return res.json({
+            success: true,
+            message: 'Admin user updated successfully',
+            data: { admin: { ...updated, module_ids: [] } }
+          });
+        }
         return res.status(403).json({
           success: false,
-          message: 'Cannot modify super_admin'
+          message: 'Cannot modify super_admin (except access disable)'
         });
       }
 

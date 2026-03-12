@@ -6,7 +6,8 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllSubtopics, getSubtopicsByTopicId, createSubtopic, updateSubtopic, deleteSubtopic, Subtopic } from '@/api';
 import { getAllTopics } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
 
 export default function SubtopicsPage() {
@@ -322,29 +323,11 @@ export default function SubtopicsPage() {
                               })}
                             </td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleView(subtopic)}
-                                  className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                  title="View"
-                                >
-                                  <FiEye className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(subtopic)}
-                                  className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="Edit"
-                                >
-                                  <FiEdit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClick(subtopic.id)}
-                                  className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                  title="Delete"
-                                >
-                                  <FiTrash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                              <AdminTableActions
+                                onView={() => handleView(subtopic)}
+                                onEdit={() => handleEdit(subtopic)}
+                                onDelete={() => handleDeleteClick(subtopic.id)}
+                              />
                             </td>
                           </tr>
                         );

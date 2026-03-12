@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown } from 'react-icons/fi';
 
 export default function AdminHeader() {
   // Get current admin info
@@ -40,9 +39,6 @@ export default function AdminHeader() {
           <div className="h-8 w-8 rounded-full bg-darkGradient flex items-center justify-center text-white text-sm font-semibold">
             {getAdminInitials()}
           </div>
-          <button className="text-gray-400 hover:text-gray-600">
-            <FiChevronDown className="h-4 w-4" />
-          </button>
         </div>
       </div>
     </header>

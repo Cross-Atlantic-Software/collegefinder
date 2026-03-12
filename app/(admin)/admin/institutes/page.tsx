@@ -22,7 +22,9 @@ import {
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiFileText, FiBarChart, FiBook } from 'react-icons/fi';
 import { MdSchool } from 'react-icons/md';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 type FormTab = 'basic' | 'details' | 'exams' | 'statistics' | 'courses';
@@ -95,7 +97,7 @@ export default function InstitutesPage() {
     errorDetails: { row: number; message: string }[];
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   // Run once on mount to prevent continuous API calls
@@ -105,12 +107,6 @@ export default function InstitutesPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
-    }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
     }
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,7 +522,7 @@ export default function InstitutesPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -609,33 +605,12 @@ export default function InstitutesPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleView(inst)}
-                                disabled={loadingView}
-                                className="p-2 text-gray-600 hover:text-gray-900"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(inst)}
-                                className="p-2 text-blue-600 hover:text-blue-800"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteClick(inst.id)}
-                                className="p-2 text-red-600 hover:text-red-800"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(inst)}
+                              onEdit={() => handleEdit(inst)}
+                              onDelete={() => handleDeleteClick(inst.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -706,21 +681,17 @@ export default function InstitutesPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          type: e.target.value as 'offline' | 'online' | 'hybrid' | '',
-                        })
-                      }
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                    >
-                      <option value="">Select type</option>
-                      <option value="offline">Offline</option>
-                      <option value="online">Online</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <Dropdown
+                      value={formData.type || null}
+                      onChange={(v) => setFormData({ ...formData, type: v })}
+                      options={[
+                        { value: 'offline', label: 'Offline' },
+                        { value: 'online', label: 'Online' },
+                        { value: 'hybrid', label: 'Hybrid' },
+                      ]}
+                      placeholder="Select type"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
@@ -1155,14 +1126,16 @@ export default function InstitutesPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-              >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button
+                  type="button"
+                  onClick={handleBulkTemplateDownload}
+                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
             </div>
             {bulkError && (
               <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>

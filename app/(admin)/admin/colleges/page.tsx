@@ -19,8 +19,10 @@ import {
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 export default function CollegesPage() {
@@ -71,7 +73,7 @@ export default function CollegesPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ created: number; createdColleges: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   // Run once on mount: auth check and load list + dropdowns. Empty deps prevent re-running and continuous API calls.
@@ -82,12 +84,6 @@ export default function CollegesPage() {
       router.replace('/admin/login');
       return;
     }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
-    }
     fetchData();
     (async () => {
       try {
@@ -95,7 +91,7 @@ export default function CollegesPage() {
         if (progRes.success && progRes.data?.programs) setPrograms(progRes.data.programs);
         if (examRes.success && examRes.data?.exams) {
           setExams(examRes.data.exams);
-          setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.exam_name || String(e.id) })));
+          setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.name || String(e.id) })));
         }
       } catch (_) {}
     })();
@@ -173,7 +169,7 @@ export default function CollegesPage() {
     setError(null);
     try {
       const recommendedExamNames = formData.recommendedExamIds
-        .map((id) => exams.find((e) => e.id === id)?.exam_name)
+        .map((id) => exams.find((e) => e.id === id)?.name)
         .filter((n): n is string => Boolean(n));
       const payload = {
         college_name: formData.college_name.trim(),
@@ -457,7 +453,7 @@ export default function CollegesPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -523,17 +519,12 @@ export default function CollegesPage() {
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => handleView(college)} disabled={loadingView} className="p-2 text-gray-600 hover:text-gray-900" title="View">
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleEdit(college)} className="p-2 text-blue-600 hover:text-blue-800" title="Edit">
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleDeleteClick(college.id)} className="p-2 text-red-600 hover:text-red-800" title="Delete">
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(college)}
+                              onEdit={() => handleEdit(college)}
+                              onDelete={() => handleDeleteClick(college.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -580,17 +571,18 @@ export default function CollegesPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={formData.college_type}
-                  onChange={(e) => setFormData({ ...formData, college_type: e.target.value as 'Central' | 'State' | 'Private' | 'Deemed' | '' })}
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                >
-                  <option value="">Select type</option>
-                  <option value="Central">Central</option>
-                  <option value="State">State</option>
-                  <option value="Private">Private</option>
-                  <option value="Deemed">Deemed</option>
-                </select>
+                <Dropdown
+                  value={formData.college_type || null}
+                  onChange={(v) => setFormData({ ...formData, college_type: v })}
+                  options={[
+                    { value: 'Central', label: 'Central' },
+                    { value: 'State', label: 'State' },
+                    { value: 'Private', label: 'Private' },
+                    { value: 'Deemed', label: 'Deemed' },
+                  ]}
+                  placeholder="Select type"
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
@@ -711,20 +703,20 @@ export default function CollegesPage() {
                 {formData.collegePrograms.map((p, i) => (
                   <div key={i} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50/50 space-y-2">
                     <div className="flex gap-2 items-center flex-wrap">
-                      <select
+                      <Dropdown<number>
                         value={p.program_id}
-                        onChange={(e) => {
+                        onChange={(v) => {
                           const next = [...formData.collegePrograms];
-                          next[i] = { ...next[i], program_id: parseInt(e.target.value, 10) };
+                          next[i] = { ...next[i], program_id: v };
                           setFormData({ ...formData, collegePrograms: next });
                         }}
-                        className="flex-1 min-w-[120px] px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                      >
-                        <option value={0}>Select program</option>
-                        {programs.map((prog) => (
-                          <option key={prog.id} value={prog.id}>{prog.name}</option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: 0, label: 'Select program' },
+                          ...programs.map((prog) => ({ value: prog.id, label: prog.name })),
+                        ]}
+                        placeholder="Select program"
+                        className="flex-1 min-w-[120px]"
+                      />
                       <input type="number" placeholder="Intake" value={p.intake_capacity ?? ''} onChange={(e) => {
                         const next = [...formData.collegePrograms];
                         next[i] = { ...next[i], intake_capacity: e.target.value ? parseInt(e.target.value, 10) : null };
@@ -771,16 +763,23 @@ export default function CollegesPage() {
                       <span className="font-medium">Previous year cutoff (exam | category | rank | year):</span>
                       {(p.previousCutoffs || []).map((c, ci) => (
                         <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <select value={c.exam_id} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], exam_id: parseInt(e.target.value, 10) };
-                            next[i] = { ...next[i], previousCutoffs: pc };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="min-w-[120px] px-2 py-1 text-sm border rounded">
-                            <option value={0}>Exam</option>
-                            {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.exam_name}</option>)}
-                          </select>
+                          <Dropdown<number>
+                            value={c.exam_id}
+                            onChange={(v) => {
+                              const next = [...formData.collegePrograms];
+                              const pc = [...(next[i].previousCutoffs || [])];
+                              pc[ci] = { ...pc[ci], exam_id: v };
+                              next[i] = { ...next[i], previousCutoffs: pc };
+                              setFormData({ ...formData, collegePrograms: next });
+                            }}
+                            options={[
+                              { value: 0, label: 'Exam' },
+                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
+                            ]}
+                            placeholder="Exam"
+                            size="sm"
+                            className="min-w-[120px]"
+                          />
                           <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const pc = [...(next[i].previousCutoffs || [])];
@@ -811,16 +810,23 @@ export default function CollegesPage() {
                       <span className="font-medium">Expected cutoff (exam | category | rank | year):</span>
                       {(p.expectedCutoffs || []).map((c, ci) => (
                         <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <select value={c.exam_id} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], exam_id: parseInt(e.target.value, 10) };
-                            next[i] = { ...next[i], expectedCutoffs: ec };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="min-w-[120px] px-2 py-1 text-sm border rounded">
-                            <option value={0}>Exam</option>
-                            {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.exam_name}</option>)}
-                          </select>
+                          <Dropdown<number>
+                            value={c.exam_id}
+                            onChange={(v) => {
+                              const next = [...formData.collegePrograms];
+                              const ec = [...(next[i].expectedCutoffs || [])];
+                              ec[ci] = { ...ec[ci], exam_id: v };
+                              next[i] = { ...next[i], expectedCutoffs: ec };
+                              setFormData({ ...formData, collegePrograms: next });
+                            }}
+                            options={[
+                              { value: 0, label: 'Exam' },
+                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
+                            ]}
+                            placeholder="Exam"
+                            size="sm"
+                            className="min-w-[120px]"
+                          />
                           <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const ec = [...(next[i].expectedCutoffs || [])];
@@ -934,7 +940,7 @@ export default function CollegesPage() {
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Recommended Exams</h3>
                 <p className="text-sm text-gray-700">
                   {(viewingData.recommendedExamIds ?? [])
-                    .map((eid) => exams.find((e) => e.id === eid)?.exam_name ?? `ID ${eid}`)
+                    .map((eid) => exams.find((e) => e.id === eid)?.name ?? `ID ${eid}`)
                     .join(', ') || '-'}
                 </p>
               </div>
@@ -962,12 +968,12 @@ export default function CollegesPage() {
                       )}
                       {(p.previousCutoffs?.length ?? 0) > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Previous cutoff: {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.exam_name ?? c.exam_id} ${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                          Previous cutoff: {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                       {(p.expectedCutoffs?.length ?? 0) > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Expected cutoff: {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.exam_name ?? c.exam_id} ${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                          Expected cutoff: {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                     </div>
@@ -1027,14 +1033,16 @@ export default function CollegesPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-              >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button
+                  type="button"
+                  onClick={handleBulkTemplateDownload}
+                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
             </div>
             {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
             {bulkResult && (

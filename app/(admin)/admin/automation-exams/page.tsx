@@ -14,6 +14,7 @@ import {
 } from '@/api/admin/automation-exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiLink, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 
 export default function AutomationExamsPage() {
   const router = useRouter();
@@ -377,29 +378,11 @@ export default function AutomationExamsPage() {
                         })}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleView(exam)}
-                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                            title="View"
-                          >
-                            <FiEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(exam)}
-                            className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                            title="Edit"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(exam.id)}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <AdminTableActions
+                          onView={() => handleView(exam)}
+                          onEdit={() => handleEdit(exam)}
+                          onDelete={() => handleDeleteClick(exam.id)}
+                        />
                       </td>
                     </tr>
                   ))}

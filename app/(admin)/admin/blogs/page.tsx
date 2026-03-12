@@ -6,7 +6,8 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllBlogs, deleteBlog, getBlogById, type Blog } from '@/api/admin/blogs';
 import { getAllStreamsPublic, getAllCareersPublic } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiImage, FiFileText, FiPlay, FiX, FiEye } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiImage, FiFileText, FiPlay, FiX } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import BlogModal from '@/components/admin/modals/BlogModal';
 import { ConfirmationModal, useToast } from '@/components/shared';
 import Image from 'next/image';
@@ -421,29 +422,11 @@ export default function BlogsPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleView(blog.id)}
-                                className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(blog)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(blog.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(blog.id)}
+                              onEdit={() => handleEdit(blog)}
+                              onDelete={() => handleDeleteClick(blog.id)}
+                            />
                           </td>
                         </tr>
                       ))
