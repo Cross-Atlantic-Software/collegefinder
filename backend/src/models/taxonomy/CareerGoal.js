@@ -53,20 +53,34 @@ class CareerGoal {
    * Create a new career goal taxonomy
    */
   static async create(data) {
-    const { label, logo, description, status, updated_by } = data;
+    const { label, logo, logo_filename, description, status, updated_by } = data;
     const result = await db.query(
-      'INSERT INTO career_goals_taxonomies (label, logo, description, status, updated_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [label, logo || null, description || null, status !== undefined ? status : true, updated_by || null]
+      'INSERT INTO career_goals_taxonomies (label, logo, logo_filename, description, status, updated_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [label, logo || null, logo_filename || null, description || null, status !== undefined ? status : true, updated_by || null]
     );
     return result.rows[0];
+  }
+
+  /**
+   * Find career goals with given logo_filename and no logo (missing logos)
+   */
+  static async findMissingLogosByFilename(filename) {
+    if (!filename || !String(filename).trim()) return [];
+    const result = await db.query(
+      `SELECT * FROM career_goals_taxonomies
+       WHERE LOWER(TRIM(logo_filename)) = LOWER(TRIM($1))
+       AND (logo IS NULL OR logo = '')`,
+      [String(filename).trim()]
+    );
+    return result.rows;
   }
 
   /**
    * Update a career goal taxonomy
    */
   static async update(id, data) {
-    const { label, logo, description, status, updated_by } = data;
-    
+    const { label, logo, logo_filename, description, status, updated_by } = data;
+
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -78,6 +92,10 @@ class CareerGoal {
     if (logo !== undefined) {
       updates.push(`logo = $${paramCount++}`);
       values.push(logo);
+    }
+    if (logo_filename !== undefined) {
+      updates.push(`logo_filename = $${paramCount++}`);
+      values.push(logo_filename);
     }
     if (description !== undefined) {
       updates.push(`description = $${paramCount++}`);

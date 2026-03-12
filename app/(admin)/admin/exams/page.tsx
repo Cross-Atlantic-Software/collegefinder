@@ -1556,62 +1556,85 @@ export default function ExamsPage() {
 
       {/* Upload Missing Logos Modal */}
       {showMissingLogosModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Upload missing logos</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMissingLogosModal(false)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                aria-label="Close"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-4 overflow-auto space-y-4">
-              <p className="text-sm text-gray-600">
-                Upload a ZIP containing logo images. File names must match the <strong>logo_filename</strong> stored for exams that have no logo yet. Only exams with matching <strong>logo_file_name</strong> and no logo will be updated.
-              </p>
+            <div className="p-5 overflow-auto space-y-5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_file_name</code> stored for exams that have no logo yet.
+                </p>
+              </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">ZIP file (required)</label>
-                <input
-                  type="file"
-                  accept=".zip,application/zip,application/x-zip-compressed"
-                  onChange={(e) => {
-                    setMissingLogosZipFile(e.target.files?.[0] ?? null);
-                    setMissingLogosResult(null);
-                    setMissingLogosError(null);
-                    e.target.value = '';
-                  }}
-                  className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-pink/10 file:text-pink"
-                />
-                {missingLogosZipFile && (
-                  <span className="text-xs text-gray-500 mt-1 block flex items-center gap-1">
-                    {missingLogosZipFile.name}
-                    <button type="button" onClick={() => setMissingLogosZipFile(null)} className="text-red-600 hover:text-red-800 p-0.5" aria-label="Remove ZIP">
-                      <FiX className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
+                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={(e) => {
+                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
+                      setMissingLogosResult(null);
+                      setMissingLogosError(null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {missingLogosZipFile ? (
+                    <div className="flex flex-col items-center gap-2 p-4">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600">
+                        <FiUpload className="h-5 w-5" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
+                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
+                      <FiUpload className="h-8 w-8 opacity-60" />
+                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                      <span className="text-xs">.zip only</span>
+                    </div>
+                  )}
+                </label>
               </div>
               {missingLogosError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
                   {missingLogosError}
                 </div>
               )}
               {missingLogosResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm space-y-2">
-                  <p className="font-medium text-gray-900">
-                    Logos added: {missingLogosResult.summary.logosAdded}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="font-semibold text-slate-900">
+                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
                   </p>
                   {missingLogosResult.summary.filesSkipped > 0 && (
-                    <p className="text-amber-700">Files skipped (no matching exam): {missingLogosResult.summary.filesSkipped}</p>
+                    <p className="text-sm text-amber-700">Files skipped (no matching exam): {missingLogosResult.summary.filesSkipped}</p>
                   )}
                   {missingLogosResult.summary.uploadErrors > 0 && (
-                    <p className="text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
+                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
                   )}
                   {missingLogosResult.updated.length > 0 && (
-                    <ul className="text-xs text-gray-600 list-disc list-inside max-h-24 overflow-y-auto">
+                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
                       {missingLogosResult.updated.map((u, i) => (
                         <li key={i}>{u.name} ({u.code})</li>
                       ))}
@@ -1619,8 +1642,8 @@ export default function ExamsPage() {
                   )}
                   {missingLogosResult.skipped.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-600 mb-1">Skipped files:</p>
-                      <ul className="text-xs text-gray-500 list-disc list-inside max-h-16 overflow-y-auto">
+                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
+                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
                         {missingLogosResult.skipped.map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
@@ -1630,11 +1653,11 @@ export default function ExamsPage() {
                 </div>
               )}
             </div>
-            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowMissingLogosModal(false)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-colors"
               >
                 Close
               </button>
@@ -1642,7 +1665,7 @@ export default function ExamsPage() {
                 type="button"
                 onClick={handleMissingLogosSubmit}
                 disabled={!missingLogosZipFile || missingLogosUploading}
-                className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-xl hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-pink/20"
               >
                 {missingLogosUploading ? 'Uploading…' : 'Upload'}
               </button>

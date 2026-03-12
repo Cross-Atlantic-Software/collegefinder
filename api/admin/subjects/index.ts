@@ -77,4 +77,73 @@ export async function deleteSubject(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Download subjects bulk upload template
+ */
+export async function downloadSubjectsBulkTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.SUBJECTS}/bulk-upload-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'subjects-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Download all subjects as Excel
+ */
+export async function downloadAllSubjectsExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.SUBJECTS}/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'subjects-all-data.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Bulk upload subjects from Excel
+ */
+export async function bulkUploadSubjects(file: File): Promise<ApiResponse<{
+  created: number;
+  createdSubjects: { id: number; name: string }[];
+  errors: number;
+  errorDetails: { row: number; message: string }[];
+}>> {
+  const formData = new FormData();
+  formData.append('excel', file);
+
+  const adminToken = localStorage.getItem('admin_token');
+  if (!adminToken) throw new Error('Admin token not found');
+
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.SUBJECTS}/bulk-upload`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || `Failed to bulk upload (${response.status})`);
+  return data;
+}
+
 

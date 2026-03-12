@@ -1,6 +1,7 @@
 const XLSX = require('xlsx');
 const AdmZip = require('adm-zip');
 const Exam = require('../../models/taxonomy/Exam');
+const { parseLogosFromZip, processMissingLogosFromZip, buildLogoMapFromRequest } = require('../../utils/logoUploadUtils');
 const UserExamPreferences = require('../../models/user/UserExamPreferences');
 const UserAcademics = require('../../models/user/UserAcademics');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
@@ -148,61 +149,27 @@ class ExamsTaxonomyController {
         });
       }
 
-      let logoMap;
-      try {
-        const zip = new AdmZip(logosZipFile.buffer);
-        const entries = zip.getEntries();
-        const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
-        logoMap = new Map();
-        for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
-          if (entry.isDirectory) continue;
-          const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
-          if (!name || !imageExt.test(name)) continue;
-          const buffer = entry.getData();
-          if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
-        }
-      } catch (zipErr) {
+      const logoMap = parseLogosFromZip(logosZipFile.buffer);
+      if (logoMap.size === 0) {
         return res.status(400).json({
           success: false,
           message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
         });
       }
 
-      const updated = [];
-      const skipped = [];
-      const errors = [];
-
-      for (const [filenameLower, file] of logoMap) {
-        const exams = await Exam.findMissingLogosByFilename(file.originalname);
-        if (exams.length === 0) {
-          skipped.push(file.originalname);
-          continue;
-        }
-        try {
-          const logoUrl = await uploadToS3(file.buffer, file.originalname, 'exam-logos');
-          for (const exam of exams) {
-            await Exam.update(exam.id, { exam_logo: logoUrl });
-            updated.push({ id: exam.id, name: exam.name, code: exam.code, logo_file_name: exam.logo_file_name });
-          }
-        } catch (uploadErr) {
-          errors.push({ file: file.originalname, message: uploadErr.message });
-        }
-      }
+      const result = await processMissingLogosFromZip(logoMap, {
+        findRecordsByFilename: (f) => Exam.findMissingLogosByFilename(f),
+        uploadToS3,
+        s3Folder: 'exam-logos',
+        logoColumn: 'exam_logo',
+        updateRecord: (id, data) => Exam.update(id, data),
+        toResultItem: (r) => ({ id: r.id, name: r.name, code: r.code, logo_file_name: r.logo_file_name })
+      });
 
       res.json({
         success: true,
-        data: {
-          updated,
-          skipped,
-          errors,
-          summary: {
-            logosAdded: updated.length,
-            filesSkipped: skipped.length,
-            uploadErrors: errors.length
-          }
-        },
-        message: `Added ${updated.length} logo(s). ${skipped.length} file(s) had no matching exams.`
+        data: result,
+        message: `Added ${result.updated.length} logo(s). ${result.skipped.length} file(s) had no matching exams.`
       });
     } catch (error) {
       console.error('Error uploading missing logos:', error);
@@ -695,6 +662,7 @@ class ExamsTaxonomyController {
         'exam_date',
         'streams',
         'subjects',
+        'interests',
         'age_limit_min',
         'age_limit_max',
         'attempt_limit',
@@ -725,6 +693,7 @@ class ExamsTaxonomyController {
           '2026-01-25',
           'PCM, PCB',
           'Physics, Chemistry, Mathematics',
+          'Building Apps & Software, Designing Machines & Robots',
           '17',
           '25',
           '3',
@@ -752,6 +721,7 @@ class ExamsTaxonomyController {
           '2026-05-05',
           'PCB',
           'Physics, Chemistry, Biology',
+          'Medicine & Healthcare, Biology & Lab Research',
           '17',
           '25',
           '',
@@ -942,7 +912,7 @@ class ExamsTaxonomyController {
       return { ids, notFound };
     };
     const resolveCareerGoalIds = async (row, allCareerGoals) => {
-      const raw = getCell(row, 'career_goal_ids', 'Career_Goal_Ids', 'career_goal_labels', 'Career_Goal_Labels', 'career_goals', 'Career_Goals') || getCellByKeyword(row, 'career');
+      const raw = getCell(row, 'interests', 'Interests', 'career_goal_ids', 'Career_Goal_Ids', 'career_goal_labels', 'Career_Goal_Labels', 'career_goals', 'Career_Goals') || getCellByKeyword(row, 'career') || getCellByKeyword(row, 'interest');
       if (!raw) return { ids: [], notFound: [] };
       const parts = raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
       const ids = [];
@@ -1045,37 +1015,7 @@ class ExamsTaxonomyController {
         });
       }
 
-      const logoMap = new Map();
-      const logosZipFile = req.files?.logos_zip?.[0];
-      if (logosZipFile && logosZipFile.buffer) {
-        try {
-          const zip = new AdmZip(logosZipFile.buffer);
-          const entries = zip.getEntries();
-          const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
-            if (entry.isDirectory) continue;
-            const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
-            if (!name || !imageExt.test(name)) continue;
-            const buffer = entry.getData();
-            if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
-          }
-        } catch (zipErr) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid or corrupted ZIP file for logos. Use a ZIP containing only image files (e.g. .jpg, .png).'
-          });
-        }
-      } else {
-        const logosRaw = req.files?.logos;
-        const logoFiles = Array.isArray(logosRaw) ? logosRaw : (logosRaw ? [logosRaw] : []);
-        logoFiles.forEach((f) => {
-          if (f && (f.buffer || f.path)) {
-            const name = (f.originalname || f.name || '').trim();
-            if (name) logoMap.set(name.toLowerCase(), f);
-          }
-        });
-      }
+      const logoMap = buildLogoMapFromRequest(req.files || {}, 'logos_zip', 'logos');
 
       let workbook;
       try {
@@ -1154,6 +1094,11 @@ class ExamsTaxonomyController {
         const collegeRes = await resolveCollegeIds(row);
         if (collegeRes.notFound.length > 0) {
           errors.push({ row: rowNum, message: `recommended colleges: not found: ${collegeRes.notFound.join(', ')}` });
+        }
+
+        const careerGoalRes = await resolveCareerGoalIds(row);
+        if (careerGoalRes.notFound.length > 0) {
+          errors.push({ row: rowNum, message: `interests: not found: ${careerGoalRes.notFound.join(', ')}` });
         }
 
         codesInFile.add(code);
@@ -1316,6 +1261,15 @@ class ExamsTaxonomyController {
           }
         } catch (e) {
           errors.push({ row: rowNum, message: `programs: ${e.message}` });
+        }
+
+        try {
+          const careerGoalRes = await resolveCareerGoalIds(row);
+          if (careerGoalRes.ids.length > 0) {
+            await ExamCareerGoal.setCareerGoalsForExam(examId, careerGoalRes.ids);
+          }
+        } catch (e) {
+          errors.push({ row: rowNum, message: `interests: ${e.message}` });
         }
 
         try {

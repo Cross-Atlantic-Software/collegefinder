@@ -6,12 +6,20 @@ export interface CareerGoal {
   id: number;
   label: string;
   logo?: string | null;
+  logo_filename?: string | null;
   description?: string | null;
   status?: boolean;
   created_at: string;
   updated_at: string;
   updated_by?: number | null;
   updated_by_email?: string | null;
+}
+
+export interface UploadMissingLogosResult {
+  updated: { id: number; label: string; logo_filename?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
 }
 
 /**
@@ -42,6 +50,7 @@ export async function getCareerGoalById(id: number): Promise<ApiResponse<{
 export async function createCareerGoal(data: {
   label: string;
   logo?: string | null;
+  logo_filename?: string | null;
   description?: string | null;
   status?: boolean;
 }): Promise<ApiResponse<{
@@ -55,9 +64,11 @@ export async function createCareerGoal(data: {
 
 /**
  * Upload logo to S3
+ * Returns logoUrl and logoFilename (use logoFilename when creating/updating for later "upload missing logos" matching)
  */
 export async function uploadCareerGoalLogo(file: File): Promise<ApiResponse<{
   logoUrl: string;
+  logoFilename?: string;
 }>> {
   const formData = new FormData();
   formData.append('image', file);
@@ -89,6 +100,10 @@ export async function uploadCareerGoalLogo(file: File): Promise<ApiResponse<{
     data.data.logoUrl = data.data.imageUrl;
     delete data.data.imageUrl;
   }
+  // Map logoFilename from backend
+  if (data.data && !data.data.logoFilename && file?.name) {
+    data.data.logoFilename = file.name;
+  }
   return data;
 }
 
@@ -99,7 +114,8 @@ export async function updateCareerGoal(
   id: number,
   data: {
     label?: string;
-    logo?: string; // Changed from image to logo
+    logo?: string;
+    logo_filename?: string | null;
     description?: string | null;
     status?: boolean;
   }
@@ -148,5 +164,26 @@ export async function deleteAllCareerGoals(): Promise<ApiResponse<{ message: str
   return apiRequest(`${API_ENDPOINTS.ADMIN.CAREER_GOALS}/all`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * Upload missing logos from a ZIP file.
+ * Matches files by logo_filename; updates interests where logo is null.
+ */
+export async function uploadMissingLogosCareerGoals(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
 }
 

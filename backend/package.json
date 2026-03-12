@@ -13,6 +13,7 @@
     "clear-all-tables": "node scripts/clearAllTables.js",
     "seed-career-goals": "node scripts/seedCareerGoals.js",
     "seed-exams": "node scripts/seedExams.js",
+    "seed-exam-bulk-data": "node scripts/seedExamBulkData.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

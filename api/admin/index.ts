@@ -30,6 +30,7 @@ export {
   deleteCareerGoal,
   downloadAllDataExcel as downloadAllCareerGoalsExcel,
   deleteAllCareerGoals,
+  uploadMissingLogosCareerGoals,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
 
@@ -51,6 +52,9 @@ export {
   createSubject,
   updateSubject,
   deleteSubject,
+  downloadSubjectsBulkTemplate,
+  downloadAllSubjectsExcel,
+  bulkUploadSubjects,
 } from './subjects';
 export type { Subject } from './subjects';
 
@@ -140,6 +144,9 @@ export {
   createProgram,
   updateProgram,
   deleteProgram,
+  downloadProgramsBulkTemplate,
+  downloadAllProgramsExcel,
+  bulkUploadPrograms,
 } from './programs';
 export type { Program } from './programs';
 

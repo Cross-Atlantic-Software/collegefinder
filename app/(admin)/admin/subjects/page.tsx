@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllSubjects, createSubject, updateSubject, deleteSubject, Subject } from '@/api';
+import { getAllSubjects, createSubject, updateSubject, deleteSubject, downloadSubjectsBulkTemplate, downloadAllSubjectsExcel, bulkUploadSubjects, Subject } from '@/api';
 import { getAllStreamsPublic } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiUpload, FiDownload } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, SelectOption } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -29,7 +29,14 @@ export default function SubjectsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewingSubject, setViewingSubject] = useState<Subject | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const { canEdit } = useAdminPermissions();
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; createdSubjects: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const { canEdit, canDownloadExcel } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -213,6 +220,64 @@ export default function SubjectsPage() {
     resetForm();
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadSubjectsBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadAllSubjectsExcel();
+      showSuccess('Excel downloaded');
+    } catch {
+      showError('Failed to download Excel');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadSubjects(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult({
+          created: response.data.created,
+          createdSubjects: response.data.createdSubjects || [],
+          errors: response.data.errors || 0,
+          errorDetails: response.data.errorDetails || [],
+        });
+        showSuccess(response.message || `Created ${response.data.created} subject(s)`);
+        fetchSubjects();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch (err) {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -260,13 +325,34 @@ export default function SubjectsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Subject
-            </button>
+            <div className="flex items-center gap-2">
+              {canDownloadExcel && (
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={downloadingExcel}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setShowBulkModal(true); setBulkResult(null); setBulkError(null); setBulkExcelFile(null); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                <FiUpload className="h-4 w-4" />
+                Upload Excel
+              </button>
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Subject
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -486,6 +572,94 @@ export default function SubjectsPage() {
                 className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingSubject ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bulk Upload Subjects</h2>
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-white hover:text-gray-200">
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Sample template – Excel format</h3>
+                <p className="text-xs text-gray-600 mb-3">Your Excel file must have these columns. streams: comma/semicolon-separated names or IDs (e.g. PCM, PCB, PCMB).</p>
+                <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">name</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">streams</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Physics</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCB, PCMB</td>
+                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Chemistry</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCB, PCMB</td>
+                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Mathematics</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCMB</td>
+                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
+                </button>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Upload your Excel file</h3>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-gray-300 rounded-lg p-2"
+                />
+              </div>
+              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
+              {bulkResult && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-gray-600 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.map((err, i) => (
+                        <li key={i}>Row {err.row}: {err.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+              </button>
+              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+                {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>

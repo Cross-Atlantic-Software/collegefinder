@@ -10,11 +10,11 @@ class CollegeSeatMatrix {
   }
 
   static async create(data) {
-    const { college_program_id, category, seat_count, year } = data;
+    const { college_program_id, branch, category, seat_count, year } = data;
     const result = await db.query(
-      `INSERT INTO college_seat_matrix (college_program_id, category, seat_count, year)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [college_program_id, category || null, seat_count || null, year || null]
+      `INSERT INTO college_seat_matrix (college_program_id, branch, category, seat_count, year)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [college_program_id, branch || null, category || null, seat_count || null, year || null]
     );
     return result.rows[0];
   }

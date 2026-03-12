@@ -182,6 +182,29 @@ export async function downloadAllDataExcel(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
+export interface UploadMissingLogosResult {
+  updated: { id: number; provider_name: string; logo_filename?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+}
+
+export async function uploadMissingLogosLoanProviders(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
+}
+
 export async function bulkUploadLoanProviders(
   excelFile: File,
   logoFiles: File[] = [],

@@ -10,11 +10,11 @@ class CollegeExpectedCutoff {
   }
 
   static async create(data) {
-    const { college_program_id, exam_id, category, expected_rank, year } = data;
+    const { college_program_id, exam_id, branch, category, expected_rank, year } = data;
     const result = await db.query(
-      `INSERT INTO college_expected_cutoff (college_program_id, exam_id, category, expected_rank, year)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [college_program_id, exam_id, category || null, expected_rank || null, year || null]
+      `INSERT INTO college_expected_cutoff (college_program_id, exam_id, branch, category, expected_rank, year)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [college_program_id, exam_id, branch || null, category || null, expected_rank || null, year || null]
     );
     return result.rows[0];
   }
