@@ -138,7 +138,8 @@ const runMigrations = async () => {
     'add_updated_by_and_nullable_logo_to_career_goals.sql',
     'add_exam_domicile_programs.sql',
     'add_branch_to_college_seat_matrix.sql',
-    'add_branch_to_college_cutoffs.sql'
+    'add_branch_to_college_cutoffs.sql',
+    'rename_career_goals_to_interests_module.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
