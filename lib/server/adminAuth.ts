@@ -1,6 +1,8 @@
 // Server-only module - do not import in client components
+// Uses API_INTERNAL_URL for server-to-server calls (avoids NAT hairpinning on EC2)
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL =
+  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 /**
  * Get admin token from cookies

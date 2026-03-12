@@ -8,6 +8,8 @@ import { getAllSubjects, createSubject, updateSubject, deleteSubject, Subject } 
 import { getAllStreamsPublic } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, SelectOption } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -27,6 +29,7 @@ export default function SubjectsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewingSubject, setViewingSubject] = useState<Subject | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const { canEdit } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -365,29 +368,11 @@ export default function SubjectsPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleView(subject)}
-                                className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(subject)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(subject.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(subject)}
+                              onEdit={() => handleEdit(subject)}
+                              onDelete={() => handleDeleteClick(subject.id)}
+                            />
                           </td>
                         </tr>
                         );
@@ -619,15 +604,17 @@ export default function SubjectsPage() {
               >
                 Close
               </button>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  handleEdit(viewingSubject);
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Edit
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    handleEdit(viewingSubject);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Edit
+                </button>
+              )}
             </div>
           </div>
         </div>

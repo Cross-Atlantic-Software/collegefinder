@@ -1,8 +1,12 @@
 /**
  * Shared API client - handles all HTTP requests
+ * In browser: always use relative /api so requests go to same origin (nginx proxies to backend)
+ * On server: use env or localhost for SSR
  */
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL =
+  typeof window !== 'undefined'
+    ? '/api'
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
 
 /**
  * Generic API fetch function with error handling
@@ -71,6 +75,7 @@ export async function apiRequest<T>(
       ...options,
       signal: controller.signal,
       headers: headersObj,
+      credentials: 'include', // Send cookies for auth
     });
 
     // Check if response is JSON before parsing

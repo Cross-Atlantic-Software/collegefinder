@@ -22,6 +22,8 @@ import {
 } from '@/api/admin/loans';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiBarChart } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 type FormTab = 'basic' | 'disbursement' | 'countries' | 'courseTypes';
@@ -84,7 +86,7 @@ export default function LoansPage() {
     errorDetails: { row: number; message: string }[];
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -96,12 +98,6 @@ export default function LoansPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
-    }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
     }
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -518,7 +514,7 @@ export default function LoansPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -599,17 +595,12 @@ export default function LoansPage() {
                             <span className="text-sm text-gray-600">{p.max_loan_amount || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => handleView(p)} disabled={loadingView} className="p-2 text-gray-600 hover:text-gray-900" title="View">
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleEdit(p)} className="p-2 text-blue-600 hover:text-blue-800" title="Edit">
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleDeleteClick(p.id)} className="p-2 text-red-600 hover:text-red-800" title="Delete">
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(p)}
+                              onEdit={() => handleEdit(p)}
+                              onDelete={() => handleDeleteClick(p.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -1025,10 +1016,12 @@ export default function LoansPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
             </div>
             {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
             {bulkResult && (

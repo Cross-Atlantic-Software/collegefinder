@@ -26,7 +26,9 @@ import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 export default function ExamsPage() {
@@ -101,7 +103,7 @@ export default function ExamsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
   const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
@@ -121,12 +123,6 @@ export default function ExamsPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
-    }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
     }
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -762,33 +758,12 @@ export default function ExamsPage() {
                             <span className="text-xs text-gray-600">{exam.conducting_authority || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleView(exam)}
-                                disabled={loadingView}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(exam)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteClick(exam.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(exam)}
+                              onEdit={() => handleEdit(exam)}
+                              onDelete={() => handleDeleteClick(exam.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -921,16 +896,17 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Exam Type
                       </label>
-                      <select
-                        value={formData.exam_type}
-                        onChange={(e) => setFormData({ ...formData, exam_type: e.target.value as 'National' | 'State' | 'Institute' | '' })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                      >
-                        <option value="">Select type</option>
-                        <option value="National">National</option>
-                        <option value="State">State</option>
-                        <option value="Institute">Institute</option>
-                      </select>
+                      <Dropdown
+                        value={formData.exam_type || null}
+                        onChange={(v) => setFormData({ ...formData, exam_type: v })}
+                        options={[
+                          { value: 'National', label: 'National' },
+                          { value: 'State', label: 'State' },
+                          { value: 'Institute', label: 'Institute' },
+                        ]}
+                        placeholder="Select type"
+                        className="w-full"
+                      />
                     </div>
 
                     <div>
@@ -1096,19 +1072,20 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Mode
                       </label>
-                      <select
-                        value={formData.examPattern.mode}
-                        onChange={(e) => setFormData({
+                      <Dropdown
+                        value={formData.examPattern.mode || null}
+                        onChange={(v) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, mode: e.target.value as 'Offline' | 'Online' | 'Hybrid' | '' }
+                          examPattern: { ...formData.examPattern, mode: v }
                         })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                      >
-                        <option value="">Select mode</option>
-                        <option value="Offline">Offline</option>
-                        <option value="Online">Online</option>
-                        <option value="Hybrid">Hybrid</option>
-                      </select>
+                        options={[
+                          { value: 'Offline', label: 'Offline' },
+                          { value: 'Online', label: 'Online' },
+                          { value: 'Hybrid', label: 'Hybrid' },
+                        ]}
+                        placeholder="Select mode"
+                        className="w-full"
+                      />
                     </div>
 
                     <div>
@@ -1426,14 +1403,16 @@ export default function ExamsPage() {
               <p className="text-sm text-gray-600">
                 Upload an Excel file. Required: <strong>name</strong>, <strong>code</strong>. Optional: description, exam_type (National/State/Institute), conducting_authority, logo_filename (match uploaded image names), dates (YYYY-MM-DD). For streams, subjects and interests use <strong>names or labels</strong> (e.g. stream_ids: &quot;PCM, PCB&quot;, subject_ids: &quot;Physics, Chemistry&quot;, career_goal_ids: &quot;Engineering&quot;) or numeric IDs. For <strong>category_wise_cutoff</strong> use JSON in one cell with double-quoted keys (e.g. &quot;General&quot;: 95, &quot;OBC&quot;: 90). Also: eligibility, pattern, other cutoff fields. Download the template for all columns.
               </p>
-              <button
-                type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-              >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button
+                  type="button"
+                  onClick={handleBulkTemplateDownload}
+                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Excel file (required)</label>
                 <input

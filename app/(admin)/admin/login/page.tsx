@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
-import { adminLogin } from '@/api';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -19,29 +18,46 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await adminLogin(email, password);
+      // Use same-origin /api so nginx (or Next rewrites) proxy to backend
+      const apiBase = typeof window !== 'undefined' ? window.location.origin : '';
+      const res = await fetch(`${apiBase}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-      if (response.success && response.data) {
-        // Store admin token and info in localStorage (for client-side)
-        localStorage.setItem('admin_token', response.data.token);
+      const text = await res.text();
+      let data: { success?: boolean; message?: string; data?: { token?: string; admin?: unknown } } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setError('Invalid response from server. Please try again.');
+        return;
+      }
+
+      if (res.ok && data.success && data.data?.token && data.data?.admin) {
+        const { token, admin } = data.data;
+
+        localStorage.setItem('admin_token', token);
         localStorage.setItem('admin_authenticated', 'true');
-        localStorage.setItem('admin_user', JSON.stringify(response.data.admin));
+        localStorage.setItem('admin_user', JSON.stringify(admin));
 
         // Set cookie for server-side access (must be set before navigation)
         const maxAge = 60 * 60 * 24 * 7; // 7 days
-        document.cookie = `admin_token=${response.data.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `admin_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${maxAge}; SameSite=Lax`;
 
         // Use full page navigation so the next request includes the new cookies.
         // router.push() triggers client-side navigation and the server may receive the old (empty) cookie state, causing immediate redirect to login.
-        const isSuperAdmin = response.data.admin?.type === 'super_admin';
+        const isSuperAdmin = (admin as { type?: string })?.type === 'super_admin';
         window.location.href = isSuperAdmin ? '/admin/site-users' : '/admin';
       } else {
-        setError(response.message || 'Invalid email or password');
+        setError(data.message || 'Invalid email or password');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
       console.error('Admin login error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

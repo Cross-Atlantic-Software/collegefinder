@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiUpload, FiX, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiUpload, FiX, FiDownload } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
@@ -445,20 +446,10 @@ export default function CareerGoalsPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEdit(cg)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(cg.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onEdit={() => handleEdit(cg)}
+                              onDelete={() => handleDeleteClick(cg.id)}
+                            />
                           </td>
                         </tr>
                       ))

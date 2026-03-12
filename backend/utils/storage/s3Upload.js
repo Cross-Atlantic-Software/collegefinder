@@ -1,4 +1,4 @@
-const AWS = require('aws-sdk');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 const https = require('https');
 const http = require('http');
@@ -23,11 +23,12 @@ if (isPlaceholder(BUCKET_NAME, 'your_bucket_name')) {
   console.warn('⚠️  AWS_S3_BUCKET_NAME or S3_BUCKET not configured or using placeholder value');
 }
 
-// Configure AWS S3
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
 });
 
 /**
@@ -62,50 +63,42 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
     const isPDF = fileName.toLowerCase().endsWith('.pdf') || contentType === 'application/pdf';
     const contentDisposition = isPDF ? 'inline' : undefined; // 'inline' allows viewing in browser, 'attachment' forces download
     
-    // Try to upload with public-read ACL first
-    let params = {
+    const baseParams = {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
       ContentType: contentType,
       ContentDisposition: contentDisposition,
-      ACL: 'public-read',
     };
 
-    let result;
     try {
-      result = await s3.upload(params).promise();
+      await s3Client.send(new PutObjectCommand({ ...baseParams, ACL: 'public-read' }));
     } catch (aclError) {
-      // If ACL fails (bucket has ACLs disabled), try without ACL
-      // Bucket policy should handle public access instead
-      if (aclError.code === 'InvalidRequest' || aclError.message?.includes('ACL')) {
+      if (aclError.name === 'InvalidRequest' || aclError.message?.includes('ACL')) {
         console.warn('⚠️  ACL not allowed, uploading without ACL. Ensure bucket policy allows public read access.');
-        params = {
-          Bucket: BUCKET_NAME,
-          Key: key,
-          Body: fileBuffer,
-          ContentType: getContentType(fileName),
-        };
-        result = await s3.upload(params).promise();
+        await s3Client.send(new PutObjectCommand(baseParams));
       } else {
         throw aclError;
       }
     }
-    console.log(`✅ Successfully uploaded to S3: ${result.Location}`);
-    return result.Location;
+
+    const region = process.env.AWS_REGION || 'us-east-1';
+    const location = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
+    console.log(`✅ Successfully uploaded to S3: ${location}`);
+    return location;
   } catch (error) {
     console.error('❌ Error uploading to S3:', error);
     
-    // Provide helpful error messages
-    if (error.code === 'InvalidAccessKeyId') {
+    const code = error.name || error.code;
+    if (code === 'InvalidAccessKeyId') {
       throw new Error('Invalid AWS Access Key ID. Please check your AWS_ACCESS_KEY_ID in .env file.');
-    } else if (error.code === 'SignatureDoesNotMatch') {
+    } else if (code === 'SignatureDoesNotMatch') {
       throw new Error('Invalid AWS Secret Access Key. Please check your AWS_SECRET_ACCESS_KEY in .env file.');
-    } else if (error.code === 'NoSuchBucket') {
+    } else if (code === 'NoSuchBucket') {
       throw new Error(`S3 bucket "${BUCKET_NAME}" does not exist. Please check your AWS_S3_BUCKET_NAME in .env file.`);
-    } else if (error.code === 'AccessDenied') {
+    } else if (code === 'AccessDenied') {
       throw new Error('Access denied to S3 bucket. Please check IAM user permissions and bucket policy.');
-    } else if (error.code === 'InvalidRequest' || error.message?.includes('ACL')) {
+    } else if (code === 'InvalidRequest' || error.message?.includes('ACL')) {
       throw new Error('The bucket does not allow ACLs. Please configure bucket policy for public access instead. See AWS_S3_SETUP.md for details.');
     } else if (error.message) {
       throw error; // Re-throw if it's already a helpful error message
@@ -126,12 +119,7 @@ const deleteFromS3 = async (s3Url) => {
     const url = new URL(s3Url);
     const key = url.pathname.substring(1); // Remove leading '/'
 
-    const params = {
-      Bucket: BUCKET_NAME,
-      Key: key,
-    };
-
-    await s3.deleteObject(params).promise();
+    await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
   } catch (error) {
     console.error('Error deleting from S3:', error);
     // Don't throw error - file might not exist or already deleted

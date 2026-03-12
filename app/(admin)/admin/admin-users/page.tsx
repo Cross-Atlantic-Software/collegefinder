@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllAdmins, createAdmin, updateAdmin, deleteAdmin, getAllModules, AdminUser, type Module } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiX, FiSave, FiShield, FiUser, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiX, FiSave, FiShield, FiUser, FiSearch, FiRefreshCw, FiEye, FiEyeOff, FiSlash, FiCheckCircle } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
-import { ConfirmationModal } from '@/components/shared';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { PasswordStrengthIndicator } from '@/components/admin/PasswordStrengthIndicator';
+import { isPasswordStrong, generateStrongPassword } from '@/lib/passwordStrength';
+import { ConfirmationModal, Dropdown, MultiSelect } from '@/components/shared';
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -20,19 +23,22 @@ export default function AdminUsersPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  const { isSuperAdmin, admin: currentAdmin } = useAdminPermissions();
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled'>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [modules, setModules] = useState<Module[]>([]);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'data_entry' as 'data_entry' | 'admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
     module_ids: [] as number[],
   });
 
@@ -54,12 +60,6 @@ export default function AdminUsersPage() {
       return;
     }
 
-    // Get current admin info
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      setCurrentAdmin(JSON.parse(adminUserStr));
-    }
-
     fetchAdmins();
     fetchModules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,28 +74,26 @@ export default function AdminUsersPage() {
     } catch (_) {}
   };
 
-  // Debounced search handler
+  // Debounced search and status filter
   useEffect(() => {
     if (allAdmins.length === 0) {
       setAdmins([]);
       return;
     }
-    
+
     const timer = setTimeout(() => {
-      if (!searchQuery.trim()) {
-        setAdmins(allAdmins);
-        return;
+      let filtered = allAdmins;
+      if (statusFilter === 'active') filtered = filtered.filter((a) => a.is_active);
+      else if (statusFilter === 'disabled') filtered = filtered.filter((a) => !a.is_active);
+      if (searchQuery.trim()) {
+        const searchLower = searchQuery.toLowerCase();
+        filtered = filtered.filter((a) => a.email.toLowerCase().includes(searchLower));
       }
-      const searchLower = searchQuery.toLowerCase();
-      const filtered = allAdmins.filter(admin => {
-        const email = admin.email.toLowerCase();
-        return email.includes(searchLower);
-      });
       setAdmins(filtered);
-    }, 300); // 300ms debounce for smooth search
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, allAdmins]);
+  }, [searchQuery, statusFilter, allAdmins]);
 
   const fetchAdmins = async () => {
     try {
@@ -117,6 +115,10 @@ export default function AdminUsersPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPasswordStrong(formData.password)) {
+      showError('Password does not meet requirements. Please ensure it has uppercase, lowercase, number, and special character.');
+      return;
+    }
     try {
       const response = await createAdmin(
         formData.email,
@@ -128,6 +130,7 @@ export default function AdminUsersPage() {
         showSuccess('Admin user created successfully');
         setShowCreateModal(false);
         setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
+        setShowCreatePassword(false);
         fetchAdmins();
       } else {
         const errorMsg = response.message || 'Failed to create admin user';
@@ -184,6 +187,11 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!editingAdmin) return;
 
+    if (editFormData.password.trim() !== '' && !isPasswordStrong(editFormData.password)) {
+      showError('Password does not meet requirements. Please ensure it has uppercase, lowercase, number, and special character.');
+      return;
+    }
+
     try {
       setIsUpdating(true);
       const updateData: {
@@ -215,6 +223,7 @@ export default function AdminUsersPage() {
         setShowEditModal(false);
         setEditingAdmin(null);
         setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
+        setShowEditPassword(false);
         fetchAdmins();
       } else {
         showError(response.message || 'Failed to update admin user');
@@ -261,8 +270,6 @@ export default function AdminUsersPage() {
       setIsDeleting(false);
     }
   };
-
-  const isSuperAdmin = currentAdmin?.type === 'super_admin';
 
   if (error && !isLoading) {
     return (
@@ -316,13 +323,26 @@ export default function AdminUsersPage() {
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All admins</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-                  {allAdmins.length}
-                </span>
-              </button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex min-w-[240px] rounded-lg border border-gray-300 overflow-hidden">
+                {(['all', 'active', 'disabled'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setStatusFilter(f)}
+                    className={`flex-1 min-w-[72px] px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                      statusFilter === f
+                        ? 'bg-pink text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Disabled'}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-500">
+                {admins.length} of {allAdmins.length}
+              </span>
               <div className="relative">
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -394,16 +414,15 @@ export default function AdminUsersPage() {
                             </td>
                             <td className="px-4 py-2">
                               {isEditing && !isSuperAdminType ? (
-                                <select
+                                <Dropdown
                                   value={admin.type}
-                                  onChange={(e) =>
-                                    handleUpdate(admin.id, 'type', e.target.value)
-                                  }
-                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                                >
-                                  <option value="data_entry">Data Entry</option>
-                                  <option value="admin">Admin</option>
-                                </select>
+                                  onChange={(v) => handleUpdate(admin.id, 'type', v)}
+                                  options={[
+                                    { value: 'data_entry', label: 'Data Entry' },
+                                    { value: 'admin', label: 'Admin' },
+                                  ]}
+                                  size="sm"
+                                />
                               ) : (
                                 <span
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -424,28 +443,15 @@ export default function AdminUsersPage() {
                               )}
                             </td>
                             <td className="px-4 py-2">
-                              {isEditing && !isSuperAdminType ? (
-                                <select
-                                  value={admin.is_active ? 'true' : 'false'}
-                                  onChange={(e) =>
-                                    handleUpdate(admin.id, 'is_active', e.target.value === 'true')
-                                  }
-                                  className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                                >
-                                  <option value="true">Active</option>
-                                  <option value="false">Inactive</option>
-                                </select>
-                              ) : (
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    admin.is_active
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}
-                                >
-                                  {admin.is_active ? 'Active' : 'Inactive'}
-                                </span>
-                              )}
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  admin.is_active
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {admin.is_active ? 'Active' : 'Disabled'}
+                              </span>
                             </td>
                             <td className="px-4 py-2 text-xs text-gray-600">
                               {new Date(admin.created_at).toLocaleDateString('en-US', {
@@ -475,6 +481,27 @@ export default function AdminUsersPage() {
                                         >
                                           <FiEdit2 className="h-4 w-4" />
                                         </button>
+                                        {!isCurrentUser && (
+                                          admin.is_active ? (
+                                            <button
+                                              onClick={() => handleUpdate(admin.id, 'is_active', false)}
+                                              disabled={isUpdating}
+                                              className="p-2 text-amber-600 hover:text-amber-800 transition-colors disabled:opacity-50"
+                                              title="Disable access"
+                                            >
+                                              <FiSlash className="h-4 w-4" strokeWidth={2.5} />
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => handleUpdate(admin.id, 'is_active', true)}
+                                              disabled={isUpdating}
+                                              className="p-2 text-green-600 hover:text-green-800 transition-colors disabled:opacity-50"
+                                              title="Enable access"
+                                            >
+                                              <FiCheckCircle className="h-4 w-4" strokeWidth={2} />
+                                            </button>
+                                          )
+                                        )}
                                         <button
                                           disabled
                                           className="p-2 text-gray-300 cursor-not-allowed"
@@ -492,6 +519,27 @@ export default function AdminUsersPage() {
                                         >
                                           <FiEdit2 className="h-4 w-4" />
                                         </button>
+                                        {!isCurrentUser && (
+                                          admin.is_active ? (
+                                            <button
+                                              onClick={() => handleUpdate(admin.id, 'is_active', false)}
+                                              disabled={isUpdating}
+                                              className="p-2 text-amber-600 hover:text-amber-800 transition-colors disabled:opacity-50"
+                                              title="Disable access"
+                                            >
+                                              <FiSlash className="h-4 w-4" strokeWidth={2.5} />
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => handleUpdate(admin.id, 'is_active', true)}
+                                              disabled={isUpdating}
+                                              className="p-2 text-green-600 hover:text-green-800 transition-colors disabled:opacity-50"
+                                              title="Enable access"
+                                            >
+                                              <FiCheckCircle className="h-4 w-4" strokeWidth={2} />
+                                            </button>
+                                          )
+                                        )}
                                         {isCurrentUser ? (
                                           <button
                                             disabled
@@ -538,6 +586,7 @@ export default function AdminUsersPage() {
                 onClick={() => {
                   setShowCreateModal(false);
                   setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
+                  setShowCreatePassword(false);
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
               >
@@ -565,63 +614,65 @@ export default function AdminUsersPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Password <span className="text-pink">*</span>
                   </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    minLength={6}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showCreatePassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                        minLength={8}
+                        placeholder="Min 8 chars, upper, lower, number, special char"
+                        className="w-full px-3 py-1.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatePassword((p) => !p)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                        title={showCreatePassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showCreatePassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const suggested = generateStrongPassword();
+                        setFormData({ ...formData, password: suggested });
+                        showSuccess('Strong password generated');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                      title="Generate a strong password"
+                    >
+                      <FiRefreshCw className="h-4 w-4" />
+                      Suggest
+                    </button>
+                  </div>
+                  <PasswordStrengthIndicator password={formData.password} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                  <select
+                  <Dropdown
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'data_entry' | 'admin' })}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                  >
-                    <option value="data_entry">Data Entry</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                    onChange={(v) => setFormData({ ...formData, type: v })}
+                    options={[
+                      { value: 'data_entry', label: 'Data Entry' },
+                      { value: 'admin', label: 'Admin' },
+                      { value: 'super_admin', label: 'Super Admin' },
+                    ]}
+                    className="w-full"
+                  />
                 </div>
                 {(formData.type === 'data_entry' || formData.type === 'admin') && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
-                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1.5">
-                      <label className="flex items-center gap-2 cursor-pointer font-medium text-gray-800 pb-1.5 border-b border-gray-200">
-                        <input
-                          type="checkbox"
-                          checked={modules.length > 0 && formData.module_ids.length === modules.length}
-                          ref={(el) => {
-                            if (el) el.indeterminate = formData.module_ids.length > 0 && formData.module_ids.length < modules.length;
-                          }}
-                          onChange={(e) => {
-                            setFormData({
-                              ...formData,
-                              module_ids: e.target.checked ? modules.map((m) => m.id) : [],
-                            });
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">Select all</span>
-                      </label>
-                      {modules.map((m) => (
-                        <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.module_ids.includes(m.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) setFormData({ ...formData, module_ids: [...formData.module_ids, m.id] });
-                              else setFormData({ ...formData, module_ids: formData.module_ids.filter((id) => id !== m.id) });
-                            }}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm">{m.name}</span>
-                        </label>
-                      ))}
-                      {modules.length === 0 && <span className="text-xs text-gray-500">No modules (excluding Users).</span>}
-                    </div>
+                    <MultiSelect
+                      options={modules.map((m) => ({ value: m.id.toString(), label: m.name }))}
+                      value={formData.module_ids.map((id) => id.toString())}
+                      onChange={(vals) => setFormData({ ...formData, module_ids: vals.map(Number) })}
+                      placeholder="Select modules..."
+                      isSearchable={true}
+                    />
                   </div>
                 )}
               </div>
@@ -634,6 +685,7 @@ export default function AdminUsersPage() {
                 onClick={() => {
                   setShowCreateModal(false);
                   setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
+                  setShowCreatePassword(false);
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
               >
@@ -663,6 +715,7 @@ export default function AdminUsersPage() {
                   setShowEditModal(false);
                   setEditingAdmin(null);
                   setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
+                  setShowEditPassword(false);
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
                 disabled={isUpdating}
@@ -691,29 +744,58 @@ export default function AdminUsersPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Password <span className="text-gray-500 text-xs">(leave empty to keep current)</span>
                   </label>
-                  <input
-                    type="password"
-                    value={editFormData.password}
-                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                    minLength={6}
-                    placeholder="Enter new password (min 6 characters)"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                    disabled={isUpdating}
-                  />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showEditPassword ? 'text' : 'password'}
+                        value={editFormData.password}
+                        onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                        minLength={8}
+                        placeholder="Enter new password (min 8 chars, uppercase, lowercase, number, special char)"
+                        className="w-full px-3 py-1.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        disabled={isUpdating}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditPassword((p) => !p)}
+                        disabled={isUpdating}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={showEditPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showEditPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const suggested = generateStrongPassword();
+                        setEditFormData({ ...editFormData, password: suggested });
+                        showSuccess('Strong password generated');
+                      }}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Generate a strong password"
+                    >
+                      <FiRefreshCw className="h-4 w-4" />
+                      Suggest
+                    </button>
+                  </div>
+                  <PasswordStrengthIndicator password={editFormData.password} />
                 </div>
                 {editingAdmin.type !== 'super_admin' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                      <select
+                      <Dropdown
                         value={editFormData.type}
-                        onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value as 'data_entry' | 'admin' })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        onChange={(v) => setEditFormData({ ...editFormData, type: v })}
+                        options={[
+                          { value: 'data_entry', label: 'Data Entry' },
+                          { value: 'admin', label: 'Admin' },
+                        ]}
                         disabled={isUpdating}
-                      >
-                        <option value="data_entry">Data Entry</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                        className="w-full"
+                      />
                     </div>
                     <div>
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -729,41 +811,14 @@ export default function AdminUsersPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
-                      <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer font-medium text-gray-800 pb-1.5 border-b border-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={modules.length > 0 && editFormData.module_ids.length === modules.length}
-                            ref={(el) => {
-                              if (el) el.indeterminate = editFormData.module_ids.length > 0 && editFormData.module_ids.length < modules.length;
-                            }}
-                            onChange={(e) => {
-                              setEditFormData({
-                                ...editFormData,
-                                module_ids: e.target.checked ? modules.map((m) => m.id) : [],
-                              });
-                            }}
-                            className="rounded border-gray-300"
-                            disabled={isUpdating}
-                          />
-                          <span className="text-sm">Select all</span>
-                        </label>
-                        {modules.map((m) => (
-                          <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={editFormData.module_ids.includes(m.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) setEditFormData({ ...editFormData, module_ids: [...editFormData.module_ids, m.id] });
-                                else setEditFormData({ ...editFormData, module_ids: editFormData.module_ids.filter((id) => id !== m.id) });
-                              }}
-                              className="rounded border-gray-300"
-                              disabled={isUpdating}
-                            />
-                            <span className="text-sm">{m.name}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <MultiSelect
+                        options={modules.map((m) => ({ value: m.id.toString(), label: m.name }))}
+                        value={editFormData.module_ids.map((id) => id.toString())}
+                        onChange={(vals) => setEditFormData({ ...editFormData, module_ids: vals.map(Number) })}
+                        placeholder="Select modules..."
+                        isSearchable={true}
+                        disabled={isUpdating}
+                      />
                     </div>
                   </>
                 )}
@@ -778,6 +833,7 @@ export default function AdminUsersPage() {
                   setShowEditModal(false);
                   setEditingAdmin(null);
                   setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
+                  setShowEditPassword(false);
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
                 disabled={isUpdating}
