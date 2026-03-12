@@ -3,7 +3,6 @@ const UserCareerGoals = require('../../models/user/UserCareerGoals');
 const User = require('../../models/user/User');
 const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
-const { parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 
 class CareerGoalsTaxonomyController {
   /**
@@ -258,6 +257,7 @@ class CareerGoalsTaxonomyController {
         });
       }
 
+      const { parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
       const logoMap = parseLogosFromZip(logosZipFile.buffer);
       if (logoMap.size === 0) {
         return res.status(400).json({
