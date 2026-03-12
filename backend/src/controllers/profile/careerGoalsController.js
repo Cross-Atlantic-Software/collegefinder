@@ -1,4 +1,3 @@
-const XLSX = require('xlsx');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
 const User = require('../../models/user/User');
@@ -314,6 +313,7 @@ class CareerGoalsTaxonomyController {
           cg.updated_by_email || ''
         ]);
       }
+      const XLSX = require('xlsx');
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Interests');
