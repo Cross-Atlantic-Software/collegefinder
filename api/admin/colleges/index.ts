@@ -142,6 +142,10 @@ export async function deleteCollege(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllColleges(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/all`, { method: 'DELETE' });
+}
+
 export interface BulkUploadResult {
   created: number;
   createdColleges: { id: number; name: string }[];

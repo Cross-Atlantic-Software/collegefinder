@@ -193,6 +193,13 @@ export async function deleteExam(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Delete all exams (Super Admin only)
+ */
+export async function deleteAllExams(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/all`, { method: 'DELETE' });
+}
+
 export interface BulkUploadResult {
   created: number;
   createdExams: { id: number; name: string; code: string }[];
@@ -238,6 +245,34 @@ export async function downloadAllDataExcel(): Promise<void> {
   a.download = 'exams-all-data.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+export interface UploadMissingLogosResult {
+  updated: { id: number; name: string; code: string; logo_file_name?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+}
+
+/**
+ * Upload missing logos from a ZIP file.
+ * Matches files by logo_file_name; updates exams where exam_logo is null.
+ */
+export async function uploadMissingLogos(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
 }
 
 /**

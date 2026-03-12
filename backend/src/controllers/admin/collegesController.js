@@ -382,6 +382,23 @@ class CollegesController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await College.findAll();
+      for (const c of all) {
+        if (c.college_logo) await deleteFromS3(c.college_logo);
+        await College.delete(c.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} colleges deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all colleges:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all colleges' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [

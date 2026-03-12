@@ -741,11 +741,11 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                 </section>
               )}
 
-              {/* Career Goals */}
+              {/* Interests */}
               <section className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Target className="h-4 w-4 text-purple-600" />
-                  Career Goals
+                  Interests
                 </h3>
                 {details.careerGoals && details.careerGoals.interests.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -759,7 +759,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No career goals information available</p>
+                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No interests information available</p>
                 )}
               </section>
 

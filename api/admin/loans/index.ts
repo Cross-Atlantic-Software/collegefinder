@@ -136,6 +136,10 @@ export async function deleteLoanProvider(id: number): Promise<ApiResponse<null>>
   return apiRequest(`${API_ENDPOINTS.ADMIN.LOANS}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllLoanProviders(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LOANS}/all`, { method: 'DELETE' });
+}
+
 export interface LoansBulkUploadResult {
   created: number;
   createdLoanProviders: { id: number; name: string }[];

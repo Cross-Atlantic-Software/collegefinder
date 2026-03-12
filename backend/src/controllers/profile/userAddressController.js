@@ -1,4 +1,5 @@
 const UserAddress = require('../../models/user/UserAddress');
+const User = require('../../models/user/User');
 const { validationResult } = require('express-validator');
 
 class UserAddressController {
@@ -84,6 +85,12 @@ class UserAddressController {
         permanent_address_same_as_correspondence,
         permanent_address
       });
+
+      // Check if all onboarding steps are completed and mark onboarding as completed
+      const isOnboardingComplete = await User.checkOnboardingCompletion(userId);
+      if (isOnboardingComplete) {
+        await User.markOnboardingCompleted(userId);
+      }
 
       res.json({
         success: true,

@@ -687,7 +687,11 @@ const validateCreateCareer = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array')
 ];
 
 /**
@@ -702,7 +706,11 @@ const validateUpdateCareer = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array')
 ];
 
 /**

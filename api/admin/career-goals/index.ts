@@ -119,3 +119,32 @@ export async function deleteCareerGoal(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Download all interests as Excel (Super Admin only)
+ */
+export async function downloadAllDataExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'interests-all-data.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Delete all interests (Super Admin only)
+ */
+export async function deleteAllCareerGoals(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.CAREER_GOALS}/all`, {
+    method: 'DELETE',
+  });
+}
+

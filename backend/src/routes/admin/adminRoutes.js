@@ -189,10 +189,12 @@ router.delete('/admins/:id', authenticateAdmin, requireSuperAdmin, AdminControll
  * Career Goals Taxonomy Routes (module: career_goals; Data Entry: add only; Admin: add+edit; Super Admin: full+delete)
  */
 router.get('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getAllAdmin);
+router.get('/career-goals/download-excel', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDownloadExcel, CareerGoalsController.downloadAllExcel);
 router.post('/career-goals/upload-image', authenticateAdmin, requireModuleAccess('career_goals'), upload.single('image'), CareerGoalsController.uploadImage);
 router.post('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.create);
 router.get('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getById);
 router.put('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanEdit, CareerGoalsController.update);
+router.delete('/career-goals/all', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDelete, CareerGoalsController.deleteAll);
 router.delete('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDelete, CareerGoalsController.delete);
 
 /**
@@ -285,6 +287,34 @@ router.delete('/streams/:id', authenticateAdmin, requireModuleAccess('streams'),
 router.get('/careers', authenticateAdmin, requireModuleAccess('careers'), CareerController.getAllCareers);
 
 /**
+ * @route   GET /api/admin/careers/bulk-upload-template
+ * @desc    Download careers bulk upload template
+ * @access  Private (Admin)
+ */
+router.get('/careers/bulk-upload-template', authenticateAdmin, requireModuleAccess('careers'), CareerController.downloadBulkTemplate);
+
+/**
+ * @route   GET /api/admin/careers/download-excel
+ * @desc    Download all careers as Excel (Super Admin only)
+ * @access  Private (Admin)
+ */
+router.get('/careers/download-excel', authenticateAdmin, requireModuleAccess('careers'), requireCanDownloadExcel, CareerController.downloadAllExcel);
+
+/**
+ * @route   POST /api/admin/careers/bulk-upload
+ * @desc    Bulk upload careers from Excel
+ * @access  Private (Admin)
+ */
+router.post('/careers/bulk-upload', authenticateAdmin, requireModuleAccess('careers'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), CareerController.bulkUpload);
+
+/**
+ * @route   DELETE /api/admin/careers/all
+ * @desc    Delete all careers (Super Admin only)
+ * @access  Private (Admin)
+ */
+router.delete('/careers/all', authenticateAdmin, requireModuleAccess('careers'), requireCanDelete, CareerController.deleteAll);
+
+/**
  * @route   GET /api/admin/careers/:id
  * @desc    Get career by ID
  * @access  Private (Admin)
@@ -332,6 +362,15 @@ router.get('/exams', authenticateAdmin, requireModuleAccess('exams'), ExamsContr
 router.post('/exams/upload-logo', authenticateAdmin, requireModuleAccess('exams'), upload.single('image'), ExamsController.uploadLogo);
 
 /**
+ * @route   POST /api/admin/exams/upload-missing-logos
+ * @desc    Upload missing logos from ZIP; matches by logo_file_name
+ * @access  Private (Admin)
+ */
+router.post('/exams/upload-missing-logos', authenticateAdmin, requireModuleAccess('exams'), uploadBulkExams.fields([
+  { name: 'logos_zip', maxCount: 1 },
+]), ExamsController.uploadMissingLogos);
+
+/**
  * @route   GET /api/admin/exams/bulk-upload-template
  * @desc    Download Excel template for bulk exam upload
  * @access  Private (Admin)
@@ -376,6 +415,13 @@ router.get('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), ExamsC
  * @access  Private (Admin)
  */
 router.put('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), requireCanEdit, ExamsController.update);
+
+/**
+ * @route   DELETE /api/admin/exams/all
+ * @desc    Delete all exams (Super Admin only)
+ * @access  Private (Admin)
+ */
+router.delete('/exams/all', authenticateAdmin, requireModuleAccess('exams'), requireCanDelete, ExamsController.deleteAll);
 
 /**
  * @route   DELETE /api/admin/exams/:id
@@ -724,6 +770,7 @@ router.post('/colleges/bulk-upload', authenticateAdmin, requireModuleAccess('col
   { name: 'logos_zip', maxCount: 1 },
 ]), CollegesController.bulkUpload);
 router.post('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.create);
+router.delete('/colleges/all', authenticateAdmin, requireModuleAccess('colleges'), requireCanDelete, CollegesController.deleteAll);
 router.get('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getById);
 router.put('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), requireCanEdit, CollegesController.update);
 router.delete('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), requireCanDelete, CollegesController.delete);
@@ -741,6 +788,7 @@ router.post('/institutes/bulk-upload', authenticateAdmin, requireModuleAccess('i
   { name: 'logos_zip', maxCount: 1 },
 ]), InstitutesController.bulkUpload);
 router.post('/institutes', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.create);
+router.delete('/institutes/all', authenticateAdmin, requireModuleAccess('institutes'), requireCanDelete, InstitutesController.deleteAll);
 router.get('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.getById);
 router.put('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanEdit, InstitutesController.update);
 router.delete('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanDelete, InstitutesController.delete);
@@ -755,6 +803,7 @@ router.post('/scholarships/bulk-upload', authenticateAdmin, requireModuleAccess(
   { name: 'excel', maxCount: 1 },
 ]), ScholarshipsController.bulkUpload);
 router.post('/scholarships', authenticateAdmin, requireModuleAccess('scholarships'), ScholarshipsController.create);
+router.delete('/scholarships/all', authenticateAdmin, requireModuleAccess('scholarships'), requireCanDelete, ScholarshipsController.deleteAll);
 router.get('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), ScholarshipsController.getById);
 router.put('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), requireCanEdit, ScholarshipsController.update);
 router.delete('/scholarships/:id', authenticateAdmin, requireModuleAccess('scholarships'), requireCanDelete, ScholarshipsController.delete);
@@ -772,6 +821,7 @@ router.post('/loans/bulk-upload', authenticateAdmin, requireModuleAccess('loans'
   { name: 'logos_zip', maxCount: 1 },
 ]), LoansController.bulkUpload);
 router.post('/loans', authenticateAdmin, requireModuleAccess('loans'), LoansController.create);
+router.delete('/loans/all', authenticateAdmin, requireModuleAccess('loans'), requireCanDelete, LoansController.deleteAll);
 router.get('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), LoansController.getById);
 router.put('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanEdit, LoansController.update);
 router.delete('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanDelete, LoansController.delete);

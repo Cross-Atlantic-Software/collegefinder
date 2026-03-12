@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, CareerGoalAdmin } from '@/api';
-import { FiPlus, FiSearch, FiUpload, FiX } from 'react-icons/fi';
+import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
+import { FiPlus, FiSearch, FiUpload, FiX, FiDownload } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
 import { ConfirmationModal, useToast } from '@/components/shared';
@@ -27,6 +27,10 @@ export default function CareerGoalsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -34,6 +38,12 @@ export default function CareerGoalsPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
+    }
+    const adminUserStr = localStorage.getItem('admin_user');
+    if (adminUserStr) {
+      try {
+        setCurrentAdmin(JSON.parse(adminUserStr));
+      } catch (_) {}
     }
 
     fetchCareerGoals();
@@ -70,11 +80,11 @@ export default function CareerGoalsPage() {
         setAllCareerGoals(response.data.careerGoals);
         setCareerGoals(response.data.careerGoals);
       } else {
-        setError(response.message || 'Failed to fetch career goals');
+        setError(response.message || 'Failed to fetch interests');
       }
     } catch (err) {
-      setError('An error occurred while fetching career goals');
-      console.error('Error fetching career goals:', err);
+      setError('An error occurred while fetching interests');
+      console.error('Error fetching interests:', err);
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +140,7 @@ export default function CareerGoalsPage() {
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
-          showSuccess('Career goal updated successfully');
+          showSuccess('Interest updated successfully');
           setShowModal(false);
           resetForm();
           fetchCareerGoals();
@@ -172,7 +182,7 @@ export default function CareerGoalsPage() {
       setIsDeleting(true);
       const response = await deleteCareerGoal(deletingId);
       if (response.success) {
-        showSuccess('Career goal deleted successfully');
+        showSuccess('Interest deleted successfully');
         setShowDeleteConfirm(false);
         setDeletingId(null);
         fetchCareerGoals();
@@ -227,6 +237,38 @@ export default function CareerGoalsPage() {
     resetForm();
   };
 
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadAllCareerGoalsExcel();
+      showSuccess('Excel downloaded');
+    } catch {
+      showError('Failed to download Excel');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllCareerGoals();
+      if (response.success) {
+        showSuccess(response.message || 'All interests deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchCareerGoals();
+      } else {
+        showError(response.message || 'Failed to delete all interests');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all interests');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -250,15 +292,15 @@ export default function CareerGoalsPage() {
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Career Goals Manager</h1>
-            <p className="text-sm text-gray-600">Manage career goal options that users can select.</p>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Interests Manager</h1>
+            <p className="text-sm text-gray-600">Manage interest options that users can select.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All goals</span>
+                <span className="text-xs font-medium text-gray-700">All interests</span>
                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
                   {allCareerGoals.length}
                 </span>
@@ -274,13 +316,37 @@ export default function CareerGoalsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Career Goal
-            </button>
+            <div className="flex items-center gap-2">
+              {currentAdmin?.type === 'super_admin' && (
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={downloadingExcel}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allCareerGoals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Interest
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -290,10 +356,10 @@ export default function CareerGoalsPage() {
             </div>
           )}
 
-          {/* Career Goals Table */}
+          {/* Interests Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading career goals...</div>
+              <div className="p-4 text-center text-sm text-gray-500">Loading interests...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -326,7 +392,7 @@ export default function CareerGoalsPage() {
                     {careerGoals.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500">
-                          {careerGoals.length < allCareerGoals.length ? 'No career goals found matching your search' : 'No career goals found'}
+                          {careerGoals.length < allCareerGoals.length ? 'No interests found matching your search' : 'No interests found'}
                         </td>
                       </tr>
                     ) : (
@@ -341,6 +407,7 @@ export default function CareerGoalsPage() {
                                   width={48}
                                   height={48}
                                   className="object-contain"
+                                  unoptimized
                                 />
                               ) : (
                                 <span className="text-xs text-gray-400">No logo</span>
@@ -402,7 +469,7 @@ export default function CareerGoalsPage() {
             {/* Header */}
             <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
-                {editingCareerGoal ? 'Edit Career Goal' : 'Create Career Goal'}
+                {editingCareerGoal ? 'Edit Interest' : 'Create Interest'}
               </h2>
               <button
                 onClick={handleModalClose}
@@ -436,7 +503,7 @@ export default function CareerGoalsPage() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Enter a detailed description of the career goal"
+                    placeholder="Enter a detailed description of the interest"
                     rows={4}
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
                   />
@@ -471,7 +538,7 @@ export default function CareerGoalsPage() {
                     </label>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Only active career goals will appear on the site
+                    Only active interests will appear on the site
                   </p>
                 </div>
 
@@ -487,6 +554,7 @@ export default function CareerGoalsPage() {
                           alt="Preview"
                           fill
                           className="object-contain"
+                          unoptimized
                         />
                       </div>
                     )}
@@ -552,12 +620,25 @@ export default function CareerGoalsPage() {
           setDeletingId(null);
         }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Career Goal"
-        message="Are you sure you want to delete this career goal? This action cannot be undone."
+        title="Delete Interest"
+        message="Are you sure you want to delete this interest? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Interests"
+        message="Are you sure you want to delete ALL interests? This will remove all interest options and clear user selections. This action cannot be undone."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

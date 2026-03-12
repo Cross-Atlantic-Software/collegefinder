@@ -288,6 +288,22 @@ class ScholarshipsController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await Scholarship.findAll();
+      for (const s of all) {
+        await Scholarship.delete(s.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} scholarships deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all scholarships:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all scholarships' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [

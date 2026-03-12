@@ -1,6 +1,8 @@
+const XLSX = require('xlsx');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
 const User = require('../../models/user/User');
+const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class CareerGoalsTaxonomyController {
@@ -232,6 +234,66 @@ class CareerGoalsTaxonomyController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete career goal'
+      });
+    }
+  }
+
+  /**
+   * Download all career goals as Excel (Super Admin only)
+   * GET /api/admin/career-goals/download-excel
+   * Logo column contains full S3 URL from DB
+   */
+  static async downloadAllExcel(req, res) {
+    try {
+      const careerGoals = await CareerGoal.findAll();
+      const headers = ['id', 'label', 'logo', 'description', 'status', 'created_at', 'updated_at'];
+      const rows = [headers];
+      for (const cg of careerGoals) {
+        rows.push([
+          cg.id,
+          cg.label || '',
+          cg.logo || '', // Full S3 URL from DB
+          cg.description || '',
+          cg.status !== false ? 'TRUE' : 'FALSE',
+          cg.created_at ? String(cg.created_at).slice(0, 19) : '',
+          cg.updated_at ? String(cg.updated_at).slice(0, 19) : ''
+        ]);
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Interests');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=interests-all-data.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating interests export:', error);
+      res.status(500).json({ success: false, message: 'Failed to export interests data' });
+    }
+  }
+
+  /**
+   * Delete all career goals (Super Admin only)
+   * DELETE /api/admin/career-goals/all
+   */
+  static async deleteAll(req, res) {
+    try {
+      const all = await CareerGoal.findAll();
+      for (const cg of all) {
+        if (cg.logo) await deleteFromS3(cg.logo);
+        await CareerGoal.delete(cg.id);
+      }
+      // Clear user interests (they reference deleted IDs)
+      await db.query('UPDATE user_career_goals SET interests = NULL, updated_at = CURRENT_TIMESTAMP');
+      res.json({
+        success: true,
+        message: `All ${all.length} interests deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all career goals:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete all interests'
       });
     }
   }

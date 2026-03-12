@@ -295,6 +295,23 @@ class InstitutesController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await Institute.findAll();
+      for (const inst of all) {
+        if (inst.logo) await deleteFromS3(inst.logo);
+        await Institute.delete(inst.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} institutes deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all institutes:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all institutes' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [
