@@ -90,7 +90,7 @@ export default function ScholarshipsPage() {
     errorDetails: { row: number; message: string }[];
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const { canDownloadExcel } = useAdminPermissions();
+  const { canDownloadExcel, isSuperAdmin } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -504,7 +504,7 @@ export default function ScholarshipsPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
-              {currentAdmin?.type === 'super_admin' && allScholarships.length > 0 && (
+              {isSuperAdmin && allScholarships.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowDeleteAllConfirm(true)}
