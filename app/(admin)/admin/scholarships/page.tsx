@@ -653,7 +653,7 @@ export default function ScholarshipsPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Stream</label>
                     <Dropdown<number>
-                      value={formData.stream_id ?? null}
+                      value={typeof formData.stream_id === 'number' ? formData.stream_id : null}
                       onChange={(v) => setFormData({ ...formData, stream_id: v })}
                       options={streams.map((st) => ({ value: st.id, label: st.name }))}
                       placeholder="Select stream"
