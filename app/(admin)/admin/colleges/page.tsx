@@ -54,8 +54,8 @@ export default function CollegesPage() {
       intake_capacity: number | null;
       duration_years: number | null;
       seatMatrix: { branch: string; category: string; seat_count: number | null; year: number | null }[];
-      previousCutoffs: { exam_id: number; category: string; cutoff_rank: number | null; year: number | null }[];
-      expectedCutoffs: { exam_id: number; category: string; expected_rank: number | null; year: number | null }[];
+      previousCutoffs: { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[];
+      expectedCutoffs: { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[];
     }[],
   });
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -284,8 +284,8 @@ export default function CollegesPage() {
             intake_capacity: p.intake_capacity ?? null,
             duration_years: (p as { duration_years?: number | null }).duration_years ?? null,
             seatMatrix: (p.seatMatrix || []).map((s) => ({ branch: (s as { branch?: string }).branch ?? '', category: s.category ?? '', seat_count: s.seat_count ?? null, year: s.year ?? null })),
-            previousCutoffs: (p.previousCutoffs || []).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', cutoff_rank: c.cutoff_rank ?? null, year: c.year ?? null })),
-            expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
+            previousCutoffs: (p.previousCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', cutoff_rank: c.cutoff_rank ?? null, year: c.year ?? null })),
+            expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
           })),
         });
         setLogoPreview(d.college.college_logo ?? null);
