@@ -167,7 +167,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
   const handleEdit = (careerGoal: CareerGoalAdmin) => {
     setEditingCareerGoal(careerGoal);
     setFormData({ label: careerGoal.label, logo: careerGoal.logo ?? '' });
-    setLogoPreview(careerGoal.logo);
+    setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
     setShowForm(true);
   };
