@@ -2,11 +2,14 @@ const db = require('../../config/database');
 
 class CareerGoal {
   /**
-   * Find all career goals taxonomies
+   * Find all career goals taxonomies (with updated_by admin email)
    */
   static async findAll() {
     const result = await db.query(
-      'SELECT * FROM career_goals_taxonomies ORDER BY label ASC'
+      `SELECT cg.*, a.email as updated_by_email
+       FROM career_goals_taxonomies cg
+       LEFT JOIN admin_users a ON cg.updated_by = a.id
+       ORDER BY cg.label ASC`
     );
     return result.rows;
   }
@@ -22,11 +25,14 @@ class CareerGoal {
   }
 
   /**
-   * Find career goal taxonomy by ID
+   * Find career goal taxonomy by ID (with updated_by admin email)
    */
   static async findById(id) {
     const result = await db.query(
-      'SELECT * FROM career_goals_taxonomies WHERE id = $1',
+      `SELECT cg.*, a.email as updated_by_email
+       FROM career_goals_taxonomies cg
+       LEFT JOIN admin_users a ON cg.updated_by = a.id
+       WHERE cg.id = $1`,
       [id]
     );
     return result.rows[0] || null;
@@ -47,10 +53,10 @@ class CareerGoal {
    * Create a new career goal taxonomy
    */
   static async create(data) {
-    const { label, logo, description, status } = data;
+    const { label, logo, description, status, updated_by } = data;
     const result = await db.query(
-      'INSERT INTO career_goals_taxonomies (label, logo, description, status) VALUES ($1, $2, $3, $4) RETURNING *',
-      [label, logo, description || null, status !== undefined ? status : true]
+      'INSERT INTO career_goals_taxonomies (label, logo, description, status, updated_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [label, logo || null, description || null, status !== undefined ? status : true, updated_by || null]
     );
     return result.rows[0];
   }
@@ -59,7 +65,7 @@ class CareerGoal {
    * Update a career goal taxonomy
    */
   static async update(id, data) {
-    const { label, logo, description, status } = data;
+    const { label, logo, description, status, updated_by } = data;
     
     const updates = [];
     const values = [];
@@ -80,6 +86,10 @@ class CareerGoal {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+    if (updated_by !== undefined) {
+      updates.push(`updated_by = $${paramCount++}`);
+      values.push(updated_by);
     }
 
     if (updates.length === 0) {

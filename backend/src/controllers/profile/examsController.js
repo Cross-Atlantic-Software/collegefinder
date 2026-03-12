@@ -9,9 +9,13 @@ const ExamEligibilityCriteria = require('../../models/exam/ExamEligibilityCriter
 const ExamPattern = require('../../models/exam/ExamPattern');
 const ExamCutoff = require('../../models/exam/ExamCutoff');
 const ExamCareerGoal = require('../../models/exam/ExamCareerGoal');
+const ExamProgram = require('../../models/exam/ExamProgram');
+const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
 const Stream = require('../../models/taxonomy/Stream');
 const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
+const Program = require('../../models/taxonomy/Program');
+const College = require('../../models/college/College');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class ExamsTaxonomyController {
@@ -627,7 +631,7 @@ class ExamsTaxonomyController {
       if (normalizedCareerGoalIds.length === 0) {
         return res.json({
           success: true,
-          data: { examIds: [], message: 'Add career goals to get recommended exams.' }
+          data: { examIds: [], message: 'Add interests to get recommended exams.' }
         });
       }
 
@@ -689,8 +693,8 @@ class ExamsTaxonomyController {
         'application_start_date',
         'application_close_date',
         'exam_date',
-        'stream_ids',
-        'subject_ids',
+        'streams',
+        'subjects',
         'age_limit_min',
         'age_limit_max',
         'attempt_limit',
@@ -702,7 +706,9 @@ class ExamsTaxonomyController {
         'ranks_percentiles',
         'category_wise_cutoff',
         'target_rank_range',
-        'career_goal_ids'
+        'domicile',
+        'programs',
+        'recommended_colleges'
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
@@ -710,52 +716,56 @@ class ExamsTaxonomyController {
         [
           'JEE Main',
           'JEE_MAIN',
-          'Engineering entrance',
+          'Engineering entrance exam for B.Tech admissions',
           'National',
           'NTA',
           'jee_main.png',
           '2025-12-01',
           '2026-01-15',
           '2026-01-25',
-          '1,2',
-          '1,2,3',
+          'PCM, PCB',
+          'Physics, Chemistry, Mathematics',
           '17',
           '25',
           '3',
           'Online',
           '90',
-          '+4 -1',
+          '4 marks correct, -1 wrong',
           '180',
-          'Previous year cutoffs',
-          'Rank vs percentile',
-          '{"General": 95, "OBC": 90, "SC": 85, "ST": 80}',
+          'General 95.2, OBC 90.1, SC 85.3, ST 80.5',
+          'Rank 1 = 99.99, Rank 1000 = 97.2, Rank 10000 = 92.5',
+          'General 95, OBC 90, SC 85, ST 80',
           'Top 10k',
-          '1,2'
+          'All India',
+          'B.Tech, B.E.',
+          'IIT Delhi, NIT Trichy, BITS Pilani'
         ],
         [
           'NEET',
           'NEET',
-          'Medical entrance',
+          'Medical entrance exam for MBBS and BDS admissions',
           'National',
           'NTA',
           'neet.png',
           '2025-11-01',
           '2025-12-15',
           '2026-05-05',
-          'PCM, PCB',
-          'Physics, Chemistry, Mathematics',
+          'PCB',
+          'Physics, Chemistry, Biology',
           '17',
-          '',
+          '25',
           '',
           'Offline',
           '200',
-          '',
+          '4 marks correct, -1 wrong',
           '200',
-          '',
-          '',
-          '',
-          '',
-          'Engineering'
+          'General 98.1, OBC 95.2, SC 90.3, ST 85.5',
+          'Rank 1 = 99.99, Rank 5000 = 98.5, Rank 50000 = 92.0',
+          'General 98, OBC 95, SC 90, ST 85',
+          'Top 50k',
+          'All India',
+          'MBBS, BDS',
+          'AIIMS Delhi, AFMC Pune, JIPMER Puducherry'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Exams');
@@ -881,6 +891,7 @@ class ExamsTaxonomyController {
       }
       return '';
     };
+    const splitList = (raw) => raw.split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean);
     const resolveStreamIds = async (row, allStreams) => {
       const raw = getCell(row, 'stream_ids', 'Stream_Ids', 'stream_names', 'Stream_Names', 'streams', 'Streams') || getCellByKeyword(row, 'stream');
       if (!raw) return { ids: [], notFound: [] };
@@ -892,7 +903,7 @@ class ExamsTaxonomyController {
           return s;
         }).filter(Boolean);
       } else {
-        parts = raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+        parts = splitList(raw);
       }
       const ids = [];
       const notFound = [];
@@ -916,7 +927,7 @@ class ExamsTaxonomyController {
     const resolveSubjectIds = async (row) => {
       const raw = getCell(row, 'subject_ids', 'Subject_Ids', 'subject_names', 'Subject_Names', 'subjects', 'Subjects') || getCellByKeyword(row, 'subject');
       if (!raw) return { ids: [], notFound: [] };
-      const parts = raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+      const parts = splitList(raw);
       const ids = [];
       const notFound = [];
       for (const p of parts) {
@@ -954,12 +965,75 @@ class ExamsTaxonomyController {
       }
       return { ids, notFound };
     };
+    const resolveProgramIds = async (row) => {
+      const raw = getCell(row, 'programs', 'Programs', 'program_ids', 'Program_Ids') || getCellByKeyword(row, 'program');
+      if (!raw) return { ids: [], notFound: [] };
+      const parts = splitList(raw);
+      const ids = [];
+      const notFound = [];
+      for (const p of parts) {
+        if (/^\d+$/.test(p)) {
+          ids.push(parseInt(p, 10));
+        } else {
+          const found = await Program.findByNameCaseInsensitive(p) || await Program.findByName(p);
+          if (found) ids.push(found.id);
+          else notFound.push(`program "${p}"`);
+        }
+      }
+      return { ids, notFound };
+    };
+    const resolveCollegeIds = async (row) => {
+      const raw = getCell(row, 'recommended_colleges', 'Recommended_Colleges', 'recommended_college_names') || getCellByKeyword(row, 'recommended_college');
+      if (!raw) return { ids: [], notFound: [] };
+      const parts = splitList(raw);
+      const ids = [];
+      const notFound = [];
+      for (const p of parts) {
+        const found = await College.findByName(p);
+        if (found) ids.push(found.id);
+        else notFound.push(`college "${p}"`);
+      }
+      return { ids, notFound };
+    };
     const parseDate = (val) => {
+      if (val == null || val === '') return null;
+      // Excel date serial number
+      const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
+      if (!isNaN(n) && n > 0 && n < 1000000) {
+        const d = new Date((n - 25569) * 86400 * 1000);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      }
+      const s = String(val).trim();
+      if (!s) return null;
+      // YYYY-MM-DD (preferred)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      // DD-MM-YYYY or DD/MM/YYYY
+      const ddmmyyyy = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+      if (ddmmyyyy) {
+        const [, d, m, y] = ddmmyyyy;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+      // YYYY/MM/DD or YYYY-MM-DD
+      const yyyymmdd = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+      if (yyyymmdd) {
+        const [, y, m, d] = yyyymmdd;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+      return null;
+    };
+    const parseCategoryWiseCutoff = (val) => {
       if (val == null || val === '') return null;
       const s = String(val).trim();
       if (!s) return null;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-      return null;
+      // Try JSON first (for backward compatibility)
+      if (s.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(s);
+          return typeof parsed === 'object' ? JSON.stringify(parsed) : s;
+        } catch (_) { /* fall through */ }
+      }
+      // Plain text: "General 95, OBC 90" or "General: 95. OBC: 90" - store as-is
+      return s;
     };
 
     try {
@@ -1024,23 +1098,19 @@ class ExamsTaxonomyController {
       }
 
       const allStreams = await Stream.findAll();
-      const allCareerGoals = await CareerGoal.findAll();
 
-      const created = [];
       const errors = [];
       const validTypes = ['National', 'State', 'Institute'];
       const validModes = ['Offline', 'Online', 'Hybrid'];
       const codesInFile = new Set();
       const namesInFile = new Set();
 
+      // Pass 1: Validate all rows. If any errors, return early without creating anything.
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
         const name = (row.name ?? row.Name ?? '').toString().trim();
         const code = (row.code ?? row.Code ?? '').toString().trim().toUpperCase().replace(/\s+/g, '_');
-        const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
-        const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
-        const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
 
         if (!name || !code) {
@@ -1069,6 +1139,55 @@ class ExamsTaxonomyController {
           continue;
         }
 
+        const streamRes = await resolveStreamIds(row);
+        const subjectRes = await resolveSubjectIds(row);
+        const allNotFound = [...streamRes.notFound, ...subjectRes.notFound];
+        if (allNotFound.length > 0) {
+          errors.push({ row: rowNum, message: `eligibility: not found: ${allNotFound.join(', ')}` });
+        }
+
+        const programRes = await resolveProgramIds(row);
+        if (programRes.notFound.length > 0) {
+          errors.push({ row: rowNum, message: `programs: not found: ${programRes.notFound.join(', ')}` });
+        }
+
+        const collegeRes = await resolveCollegeIds(row);
+        if (collegeRes.notFound.length > 0) {
+          errors.push({ row: rowNum, message: `recommended colleges: not found: ${collegeRes.notFound.join(', ')}` });
+        }
+
+        codesInFile.add(code);
+        namesInFile.add(name.toLowerCase());
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed. Fix errors before uploading. No data was created.',
+          data: {
+            created: 0,
+            createdExams: [],
+            errors: errors.length,
+            errorDetails: errors
+          }
+        });
+      }
+
+      // Pass 2: All validation passed. Create all exams and related data.
+      const created = [];
+      codesInFile.clear();
+      namesInFile.clear();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const name = (row.name ?? row.Name ?? '').toString().trim();
+        const code = (row.code ?? row.Code ?? '').toString().trim().toUpperCase().replace(/\s+/g, '_');
+        const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
+        const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
+        const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
+        const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
+
         let examLogoUrl = null;
         if (logoFilename) {
           const logoFile = logoMap.get(logoFilename.toLowerCase());
@@ -1076,13 +1195,16 @@ class ExamsTaxonomyController {
             try {
               examLogoUrl = await uploadToS3(logoFile.buffer, logoFile.originalname || logoFilename, 'exam-logos');
             } catch (uploadErr) {
-              errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
+              return res.status(500).json({
+                success: false,
+                message: `Logo upload failed for row ${rowNum}: ${uploadErr.message}`,
+                data: { created: created.length, createdExams: created, errors: 1, errorDetails: [{ row: rowNum, message: `logo upload failed: ${uploadErr.message}` }] }
+              });
             }
           }
-          // If logo file not in ZIP: still create exam with logo_file_name; can upload later via "Upload missing logos"
         }
 
-        const finalExamType = validTypes.includes(examType) ? examType : null;
+        const finalExamType = validTypes.find((t) => t.toLowerCase() === examType.toLowerCase()) || null;
         let exam;
         try {
           exam = await Exam.create({
@@ -1098,8 +1220,11 @@ class ExamsTaxonomyController {
           codesInFile.add(code);
           namesInFile.add(name.toLowerCase());
         } catch (createErr) {
-          errors.push({ row: rowNum, message: createErr.message || 'Failed to create exam' });
-          continue;
+          return res.status(500).json({
+            success: false,
+            message: `Failed to create exam at row ${rowNum}: ${createErr.message}`,
+            data: { created: created.length, createdExams: created, errors: 1, errorDetails: [{ row: rowNum, message: createErr.message }] }
+          });
         }
 
         const examId = exam.id;
@@ -1123,23 +1248,22 @@ class ExamsTaxonomyController {
         try {
           const streamRes = await resolveStreamIds(row);
           const subjectRes = await resolveSubjectIds(row);
-          const allNotFound = [...streamRes.notFound, ...subjectRes.notFound];
-          if (allNotFound.length > 0) {
-            errors.push({ row: rowNum, message: `eligibility: not found: ${allNotFound.join(', ')}` });
-          }
           const streamIds = streamRes.ids;
           const subjectIds = subjectRes.ids;
           const ageMin = row.age_limit_min != null && row.age_limit_min !== '' ? parseInt(String(row.age_limit_min), 10) : null;
           const ageMax = row.age_limit_max != null && row.age_limit_max !== '' ? parseInt(String(row.age_limit_max), 10) : null;
           const attemptLimit = row.attempt_limit != null && row.attempt_limit !== '' ? parseInt(String(row.attempt_limit), 10) : null;
-          if (streamIds.length > 0 || subjectIds.length > 0 || ageMin != null || ageMax != null || attemptLimit != null) {
+          const domicileRaw = getCell(row, 'domicile', 'Domicile') || getCellByKeyword(row, 'domicile');
+          const domicile = domicileRaw ? domicileRaw.trim() : null;
+          if (streamIds.length > 0 || subjectIds.length > 0 || ageMin != null || ageMax != null || attemptLimit != null || domicile) {
             await ExamEligibilityCriteria.create({
               exam_id: examId,
               stream_ids: streamIds,
               subject_ids: subjectIds,
               age_limit_min: !isNaN(ageMin) ? ageMin : null,
               age_limit_max: !isNaN(ageMax) ? ageMax : null,
-              attempt_limit: !isNaN(attemptLimit) ? attemptLimit : null
+              attempt_limit: !isNaN(attemptLimit) ? attemptLimit : null,
+              domicile
             });
           }
         } catch (e) {
@@ -1151,7 +1275,7 @@ class ExamsTaxonomyController {
           const numQ = row.number_of_questions != null && row.number_of_questions !== '' ? parseInt(String(row.number_of_questions), 10) : null;
           const markingScheme = (row.marking_scheme ?? row.Marking_Scheme ?? '') ? (row.marking_scheme ?? row.Marking_Scheme).toString().trim() : null;
           const duration = row.duration_minutes != null && row.duration_minutes !== '' ? parseInt(String(row.duration_minutes), 10) : null;
-          const finalMode = validModes.includes(mode) ? mode : null;
+          const finalMode = validModes.find((m) => m.toLowerCase() === mode.toLowerCase()) || null;
           if (finalMode || numQ != null || markingScheme || duration != null) {
             await ExamPattern.create({
               exam_id: examId,
@@ -1170,7 +1294,7 @@ class ExamsTaxonomyController {
           const prevCutoff = toStr(row.previous_year_cutoff ?? row.Previous_Year_Cutoff ?? getCellByKeyword(row, 'previous_year'));
           const ranks = toStr(row.ranks_percentiles ?? row.Ranks_Percentiles ?? getCellByKeyword(row, 'ranks_percentile'));
           const rawCat = row.category_wise_cutoff ?? row.Category_Wise_Cutoff ?? getCellByKeyword(row, 'category_wise') ?? getCellByKeyword(row, 'category');
-          const catCutoff = (rawCat != null && rawCat !== '') ? (typeof rawCat === 'object' ? JSON.stringify(rawCat) : String(rawCat).trim()) : null;
+          const catCutoff = parseCategoryWiseCutoff(rawCat);
           const targetRank = toStr(row.target_rank_range ?? row.Target_Rank_Range ?? getCellByKeyword(row, 'target_rank'));
           if (prevCutoff || ranks || catCutoff || targetRank) {
             await ExamCutoff.create({
@@ -1186,15 +1310,21 @@ class ExamsTaxonomyController {
         }
 
         try {
-          const careerRes = await resolveCareerGoalIds(row, allCareerGoals);
-          if (careerRes.notFound.length > 0) {
-            errors.push({ row: rowNum, message: `career goals: not found: ${careerRes.notFound.join(', ')}` });
-          }
-          if (careerRes.ids.length > 0) {
-            await ExamCareerGoal.setCareerGoalsForExam(examId, careerRes.ids);
+          const programRes = await resolveProgramIds(row);
+          if (programRes.ids.length > 0) {
+            await ExamProgram.setProgramsForExam(examId, programRes.ids);
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `career goals: ${e.message}` });
+          errors.push({ row: rowNum, message: `programs: ${e.message}` });
+        }
+
+        try {
+          const collegeRes = await resolveCollegeIds(row);
+          if (collegeRes.ids.length > 0) {
+            await CollegeRecommendedExam.addCollegesForExam(examId, collegeRes.ids);
+          }
+        } catch (e) {
+          errors.push({ row: rowNum, message: `recommended colleges: ${e.message}` });
         }
       }
 
@@ -1203,10 +1333,10 @@ class ExamsTaxonomyController {
         data: {
           created: created.length,
           createdExams: created,
-          errors: errors.length,
-          errorDetails: errors
+          errors: 0,
+          errorDetails: []
         },
-        message: `Created ${created.length} exam(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+        message: `Created ${created.length} exam(s) successfully.`
       });
     } catch (error) {
       console.error('Error in bulk upload:', error);

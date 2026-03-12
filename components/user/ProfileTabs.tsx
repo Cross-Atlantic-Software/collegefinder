@@ -12,7 +12,7 @@ type TabId = "basic" | "academics" | "goals" | "other";
 const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
     { id: "basic", label: "Personal Details", icon: <LuUser /> },
     { id: "academics", label: "Academics", icon: <LuBookOpen /> },
-    { id: "goals", label: "Career Goals", icon: <LuTarget /> },
+    { id: "goals", label: "Interests", icon: <LuTarget /> },
     { id: "other", label: "Other Info", icon: <LuInfo /> },
 ];
 

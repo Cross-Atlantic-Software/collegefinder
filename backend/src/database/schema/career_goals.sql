@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS career_goals_taxonomies (
   id SERIAL PRIMARY KEY,
   label VARCHAR(255) NOT NULL,
-  logo VARCHAR(500) NOT NULL, -- S3 URL
+  logo VARCHAR(500), -- S3 URL (optional)
   description TEXT,
   status BOOLEAN DEFAULT TRUE, -- true = active, false = inactive
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

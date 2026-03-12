@@ -26,15 +26,15 @@ export default function ExamCareerGoalsPage() {
         <AdminHeader />
         <main className="flex-1 p-6 overflow-auto">
           <div className="mb-4">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Exam Career Goals</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Exam Interests</h1>
             <p className="text-sm text-gray-600">
-              Links between exams and career goals are configured per exam.
+              Links between exams and interests are configured per exam.
             </p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <p className="text-sm text-gray-700 mb-4">
-              To add or edit which career goals are linked to an exam, open an exam from the
-              Exams list and use the Career Goals section in the form.
+              To add or edit which interests are linked to an exam, open an exam from the
+              Exams list and use the Interests section in the form.
             </p>
             <Link
               href="/admin/exams"

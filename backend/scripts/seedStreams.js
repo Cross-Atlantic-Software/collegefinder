@@ -6,13 +6,13 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const { pool } = require('../src/config/database');
 
 const streams = [
-    'Science (PCM)',
-    'Science (PCB)',
+    'Science – PCM (Physics, Chemistry, Math)',
+    'Science – PCB (Physics, Chemistry, Biology)',
+    'Science – PCMB (Physics, Chemistry, Math, Biology)',
     'Commerce',
-    'Arts/Humanities',
-    'Computer Science',
-    'Agriculture',
-    'Vocational'
+    'Humanities',
+    'Vocational',
+    'Others'
 ];
 
 async function seedStreams() {

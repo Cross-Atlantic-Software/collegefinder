@@ -8,10 +8,11 @@ const InstituteStatistics = require('../../models/institute/InstituteStatistics'
 const InstituteCourse = require('../../models/institute/InstituteCourse');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
 
 async function resolveExamNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
-  const names = namesStr.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const names = splitList(namesStr);
   const ids = [];
   for (const nm of names) {
     const ex = await Exam.findByName(nm);
@@ -337,24 +338,24 @@ class InstitutesController {
         [
           'Allen Kota',
           'Kota',
-          'offline',
+          'Offline',
           'allen.png',
           'https://allen.ac.in',
           '9876543210',
-          'Premier coaching for JEE/NEET.',
+          'Premier coaching for JEE and NEET.',
           'TRUE',
           'TRUE',
           '9.5',
           '85',
           '4.8',
-          'JEE Main,NEET',
+          'JEE Main, NEET',
           'JEE Advanced',
-          'JEE Main|Class 12|12|50000|30|2025-01-01;NEET|Class 12|24|80000|25|2025-04-01'
+          'JEE Main|Class 12|12|50000|30|2025-01-01, NEET|Class 12|24|80000|25|2025-04-01'
         ],
         [
           'Unacademy',
           'Online',
-          'online',
+          'Online',
           'unacademy.png',
           'https://unacademy.com',
           '',
@@ -364,7 +365,7 @@ class InstitutesController {
           '8',
           '78',
           '4.5',
-          'JEE Main,NEET,CUET',
+          'JEE Main, NEET, CUET',
           '',
           'Crash Course|Class 12|6|25000|100|2025-01-15'
         ]
@@ -525,14 +526,14 @@ class InstitutesController {
         }
 
         const location = (row.institute_location ?? row.institute_Location ?? '').toString().trim() || null;
-        const typeRaw = (row.type ?? '').toString().trim().toLowerCase();
-        const instituteType = validTypes.includes(typeRaw) ? typeRaw : null;
+        const typeRaw = (row.type ?? '').toString().trim();
+        const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const website = (row.website ?? '').toString().trim() || null;
         const contactNumber = (row.contact_number ?? row.contact_Number ?? '').toString().trim() || null;
         const description = (row.institute_description ?? row.institute_Description ?? '').toString().trim() || null;
-        const demoAvailable = /^(1|true|yes)$/i.test((row.demo_available ?? '').toString().trim());
-        const scholarshipAvailable = /^(1|true|yes)$/i.test((row.scholarship_available ?? '').toString().trim());
+        const demoAvailable = parseBool(row.demo_available, true);
+        const scholarshipAvailable = parseBool(row.scholarship_available, false);
         const rankingScoreRaw = (row.ranking_score ?? row.ranking_Score ?? '').toString().trim();
         const successRateRaw = (row.success_rate ?? row.success_Rate ?? '').toString().trim();
         const studentRatingRaw = (row.student_rating ?? row.student_Rating ?? '').toString().trim();
@@ -602,9 +603,10 @@ class InstitutesController {
           }
           if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
           if (coursesRaw) {
-            const courseRows = coursesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const courseRows = splitList(coursesRaw);
             for (const cr of courseRows) {
-              const [course_name, target_class, duration_months, fees, batch_size, start_date] = cr.split('|').map((s) => s.trim());
+              const [course_name, target_class, duration_months, fees, batch_size, start_dateRaw] = cr.split('|').map((s) => s.trim());
+              const start_date = start_dateRaw ? parseDate(start_dateRaw) : null;
               const dur = duration_months ? parseInt(duration_months, 10) : null;
               const feeVal = fees ? parseFloat(fees) : null;
               const batch = batch_size ? parseInt(batch_size, 10) : null;
@@ -615,7 +617,7 @@ class InstitutesController {
                 duration_months: isNaN(dur) ? null : dur,
                 fees: isNaN(feeVal) ? null : feeVal,
                 batch_size: isNaN(batch) ? null : batch,
-                start_date: start_date || null
+                start_date: start_date
               });
             }
           }

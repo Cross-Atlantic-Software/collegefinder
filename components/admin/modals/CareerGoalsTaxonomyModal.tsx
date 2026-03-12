@@ -39,11 +39,11 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       if (response.success && response.data) {
         setCareerGoals(response.data.careerGoals);
       } else {
-        setError(response.message || 'Failed to fetch career goals');
+        setError(response.message || 'Failed to fetch interests');
       }
     } catch (err) {
-      setError('An error occurred while fetching career goals');
-      console.error('Error fetching career goals:', err);
+      setError('An error occurred while fetching interests');
+      console.error('Error fetching interests:', err);
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +104,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to update career goal';
+          const errorMsg = response.message || 'Failed to update interest';
           setError(errorMsg);
           showError(errorMsg);
         }
@@ -116,16 +116,16 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to create career goal';
+          const errorMsg = response.message || 'Failed to create interest';
           setError(errorMsg);
           showError(errorMsg);
         }
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while saving career goal';
+      const errorMsg = 'An error occurred while saving interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error saving career goal:', err);
+      console.error('Error saving interest:', err);
     }
   };
 
@@ -146,17 +146,17 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
         setDeletingId(null);
         fetchCareerGoals();
       } else {
-        const errorMsg = response.message || 'Failed to delete career goal';
+        const errorMsg = response.message || 'Failed to delete interest';
         setError(errorMsg);
         showError(errorMsg);
         setShowDeleteConfirm(false);
         setDeletingId(null);
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while deleting career goal';
+      const errorMsg = 'An error occurred while deleting interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error deleting career goal:', err);
+      console.error('Error deleting interest:', err);
       setShowDeleteConfirm(false);
       setDeletingId(null);
     } finally {

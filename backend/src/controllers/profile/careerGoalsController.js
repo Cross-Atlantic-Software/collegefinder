@@ -59,7 +59,7 @@ class CareerGoalsTaxonomyController {
       if (!careerGoal) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
@@ -84,11 +84,11 @@ class CareerGoalsTaxonomyController {
     try {
       const { label, logo, description, status } = req.body;
 
-      // Validate required fields
-      if (!label || !logo) {
+      // Validate required fields (logo is optional)
+      if (!label) {
         return res.status(400).json({
           success: false,
-          message: 'Label and logo are required'
+          message: 'Label is required'
         });
       }
 
@@ -97,20 +97,21 @@ class CareerGoalsTaxonomyController {
       if (existing) {
         return res.status(400).json({
           success: false,
-          message: 'Career goal with this label already exists'
+          message: 'Interest with this label already exists'
         });
       }
 
       const careerGoal = await CareerGoal.create({ 
         label, 
-        logo, 
+        logo: logo || null, 
         description: description || null,
-        status: status !== undefined ? status : true 
+        status: status !== undefined ? status : true,
+        updated_by: req.admin?.id || null
       });
       res.status(201).json({
         success: true,
         data: { careerGoal },
-        message: 'Career goal created successfully'
+        message: 'Interest created successfully'
       });
     } catch (error) {
       console.error('Error creating career goal:', error);
@@ -165,7 +166,7 @@ class CareerGoalsTaxonomyController {
       if (!existing) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
@@ -175,13 +176,13 @@ class CareerGoalsTaxonomyController {
         if (duplicate && duplicate.id !== parseInt(id)) {
           return res.status(400).json({
             success: false,
-            message: 'Career goal with this label already exists'
+            message: 'Interest with this label already exists'
           });
         }
       }
 
       // If logo is being updated, delete old logo from S3
-      if (logo && logo !== existing.logo) {
+      if (logo !== undefined && logo !== existing.logo && existing.logo) {
         await deleteFromS3(existing.logo);
       }
 
@@ -189,7 +190,8 @@ class CareerGoalsTaxonomyController {
         label, 
         logo, 
         description,
-        status 
+        status,
+        updated_by: req.admin?.id || null
       });
       res.json({
         success: true,
@@ -217,17 +219,17 @@ class CareerGoalsTaxonomyController {
       if (!careerGoal) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
-      // Delete logo from S3
-      await deleteFromS3(careerGoal.logo);
+      // Delete logo from S3 if it exists
+      if (careerGoal.logo) await deleteFromS3(careerGoal.logo);
 
       await CareerGoal.delete(parseInt(id));
       res.json({
         success: true,
-        message: 'Career goal deleted successfully'
+        message: 'Interest deleted successfully'
       });
     } catch (error) {
       console.error('Error deleting career goal:', error);
@@ -246,17 +248,18 @@ class CareerGoalsTaxonomyController {
   static async downloadAllExcel(req, res) {
     try {
       const careerGoals = await CareerGoal.findAll();
-      const headers = ['id', 'label', 'logo', 'description', 'status', 'created_at', 'updated_at'];
+      const headers = ['id', 'label', 'logo', 'description', 'status', 'created_at', 'updated_at', 'updated_by_email'];
       const rows = [headers];
       for (const cg of careerGoals) {
         rows.push([
           cg.id,
           cg.label || '',
-          cg.logo || '', // Full S3 URL from DB
+          cg.logo || '',
           cg.description || '',
           cg.status !== false ? 'TRUE' : 'FALSE',
           cg.created_at ? String(cg.created_at).slice(0, 19) : '',
-          cg.updated_at ? String(cg.updated_at).slice(0, 19) : ''
+          cg.updated_at ? String(cg.updated_at).slice(0, 19) : '',
+          cg.updated_by_email || ''
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -377,7 +380,7 @@ class CareerGoalsTaxonomyController {
         data: {
           interests: interestsArray
         },
-        message: 'Career goals updated successfully'
+        message: 'Interests updated successfully'
       });
     } catch (error) {
       console.error('Error updating user career goals:', error);

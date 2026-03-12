@@ -5,6 +5,7 @@ const LoanDisbursementProcess = require('../../models/loan/LoanDisbursementProce
 const LoanEligibleCountry = require('../../models/loan/LoanEligibleCountry');
 const LoanEligibleCourseType = require('../../models/loan/LoanEligibleCourseType');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { splitList, parseBool } = require('../../utils/bulkUploadUtils');
 
 class LoansController {
   static async getAllAdmin(req, res) {
@@ -338,9 +339,30 @@ class LoansController {
           'support@credila.com',
           '9876543210',
           'Education loan provider for students.',
-          '1|Submit application;2|Document verification;3|Disbursement',
+          '1|Submit application, 2|Document verification, 3|Disbursement',
           'India',
-          'UG;PG;Diploma'
+          'UG, PG, Diploma'
+        ],
+        [
+          'SBI Student Loan',
+          'Bank',
+          'sbi.png',
+          '8.5',
+          '11',
+          '0.5%',
+          '40 Lakh',
+          '12',
+          '15',
+          'FALSE',
+          'TRUE',
+          'TRUE',
+          'https://sbi.co.in',
+          'student@sbi.co.in',
+          '1800123456',
+          'Government bank education loans.',
+          '1|Apply at branch, 2|Document check, 3|Sanction',
+          'India',
+          'UG, PG'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Loan Providers');
@@ -472,7 +494,7 @@ class LoansController {
       const errors = [];
       const namesInFile = new Set();
 
-      const getVal = (row, ...keys) => {
+            const getVal = (row, ...keys) => {
         for (const k of keys) {
           const v = row[k] ?? row[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
           if (v !== undefined && v !== null && v !== '') return String(v).trim();
@@ -517,9 +539,9 @@ class LoansController {
         const interestRateMax = getVal(row, 'interest_rate_max');
         const moratorium = getVal(row, 'moratorium_period_months');
         const repayment = getVal(row, 'repayment_duration_years');
-        const collateral = /^(1|true|yes)$/i.test(getVal(row, 'collateral_required') || '');
-        const coapplicant = /^(1|true|yes)$/i.test(getVal(row, 'coapplicant_required') || '');
-        const taxBenefit = /^(1|true|yes)$/i.test(getVal(row, 'tax_benefit_available') || '');
+        const collateral = parseBool(getVal(row, 'collateral_required'), false);
+        const coapplicant = parseBool(getVal(row, 'coapplicant_required'), false);
+        const taxBenefit = parseBool(getVal(row, 'tax_benefit_available'), false);
         const disbursementRaw = getVal(row, 'disbursement_process') || '';
         const countriesRaw = getVal(row, 'eligible_countries') || '';
         const courseTypesRaw = getVal(row, 'eligible_course_types') || '';
@@ -544,7 +566,7 @@ class LoansController {
             logo: logoUrl
           });
           if (disbursementRaw) {
-            const steps = disbursementRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const steps = splitList(disbursementRaw);
             for (const step of steps) {
               const [num, desc] = step.split('|').map((s) => s.trim());
               const step_number = num ? parseInt(num, 10) : null;
@@ -558,11 +580,11 @@ class LoansController {
             }
           }
           if (countriesRaw) {
-            const countries = countriesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const countries = splitList(countriesRaw);
             for (const c of countries) await LoanEligibleCountry.create({ loan_provider_id: provider.id, country_name: c });
           }
           if (courseTypesRaw) {
-            const types = courseTypesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const types = splitList(courseTypesRaw);
             for (const t of types) await LoanEligibleCourseType.create({ loan_provider_id: provider.id, course_type: t });
           }
           created.push({ id: provider.id, name: provider.provider_name });

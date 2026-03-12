@@ -301,7 +301,11 @@ export async function bulkUploadExams(
     body: formData,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
+  if (!res.ok) {
+    const err = new Error(data.message || 'Bulk upload failed') as Error & { data?: BulkUploadResult };
+    if (data.data) err.data = data.data;
+    throw err;
+  }
   return data;
 }
 

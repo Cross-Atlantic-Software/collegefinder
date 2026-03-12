@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
-import { FiPlus, FiSearch, FiUpload, FiX, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
 import { ConfirmationModal, useToast } from '@/components/shared';
@@ -131,8 +131,8 @@ export default function CareerGoalsPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.label || !formData.logo) {
-      setError('Label and logo are required');
+    if (!formData.label) {
+      setError('Label is required');
       return;
     }
 
@@ -145,7 +145,7 @@ export default function CareerGoalsPage() {
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to update career goal';
+          const errorMsg = response.message || 'Failed to update interest';
           setError(errorMsg);
           showError(errorMsg);
         }
@@ -157,16 +157,16 @@ export default function CareerGoalsPage() {
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to create career goal';
+          const errorMsg = response.message || 'Failed to create interest';
           setError(errorMsg);
           showError(errorMsg);
         }
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while saving career goal';
+      const errorMsg = 'An error occurred while saving interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error saving career goal:', err);
+      console.error('Error saving interest:', err);
     }
   };
 
@@ -187,17 +187,17 @@ export default function CareerGoalsPage() {
         setDeletingId(null);
         fetchCareerGoals();
       } else {
-        const errorMsg = response.message || 'Failed to delete career goal';
+        const errorMsg = response.message || 'Failed to delete interest';
         setError(errorMsg);
         showError(errorMsg);
         setShowDeleteConfirm(false);
         setDeletingId(null);
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while deleting career goal';
+      const errorMsg = 'An error occurred while deleting interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error deleting career goal:', err);
+      console.error('Error deleting interest:', err);
       setShowDeleteConfirm(false);
       setDeletingId(null);
     } finally {
@@ -209,11 +209,11 @@ export default function CareerGoalsPage() {
     setEditingCareerGoal(careerGoal);
     setFormData({ 
       label: careerGoal.label, 
-      logo: careerGoal.logo,
+      logo: careerGoal.logo ?? '',
       description: careerGoal.description || '',
       status: careerGoal.status !== undefined ? careerGoal.status : true
     });
-    setLogoPreview(careerGoal.logo);
+    setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
     setShowModal(true);
   };
@@ -381,6 +381,9 @@ export default function CareerGoalsPage() {
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        UPDATED BY
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         LAST UPDATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -391,7 +394,7 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-gray-500">
                           {careerGoals.length < allCareerGoals.length ? 'No interests found matching your search' : 'No interests found'}
                         </td>
                       </tr>
@@ -439,6 +442,9 @@ export default function CareerGoalsPage() {
                             })}
                           </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
+                            {cg.updated_by_email || '—'}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(cg.updated_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -462,7 +468,7 @@ export default function CareerGoalsPage() {
         </main>
       </div>
 
-      {/* Career Goal Modal */}
+      {/* Interest Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -544,7 +550,7 @@ export default function CareerGoalsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Logo <span className="text-pink">*</span>
+                    Logo
                   </label>
                   <div className="space-y-2">
                     {logoPreview && (
@@ -602,7 +608,7 @@ export default function CareerGoalsPage() {
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={uploading || !formData.label || !formData.logo}
+                disabled={uploading || !formData.label}
                 className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingCareerGoal ? 'Update' : 'Create'}

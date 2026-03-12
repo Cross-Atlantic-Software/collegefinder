@@ -4,9 +4,11 @@ const CareerProgram = require('../../models/taxonomy/CareerProgram');
 const Program = require('../../models/taxonomy/Program');
 const { validationResult } = require('express-validator');
 
+const { splitList } = require('../../utils/bulkUploadUtils');
+
 async function resolveProgramNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
-  const names = namesStr.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+  const names = splitList(namesStr);
   const ids = [];
   for (const nm of names) {
     const prog = await Program.findByNameCaseInsensitive(nm);
@@ -290,9 +292,9 @@ class CareerController {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['Engineering', 'TRUE', 'B.Tech,M.Tech,B.E'],
-        ['Medicine', 'TRUE', 'MBBS,MD,BDS'],
-        ['Law', 'FALSE', 'LLB,LLM']
+        ['Engineering', 'TRUE', 'B.Tech, M.Tech, B.E'],
+        ['Medicine', 'TRUE', 'MBBS, MD, BDS'],
+        ['Law', 'FALSE', 'LLB, LLM']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Careers');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

@@ -13,6 +13,7 @@ const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedE
 const Program = require('../../models/taxonomy/Program');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
 
 async function resolveRecommendedExamIds(body) {
   if (body.recommendedExamNames && Array.isArray(body.recommendedExamNames) && body.recommendedExamNames.length > 0) {
@@ -427,16 +428,16 @@ class CollegesController {
           'Central',
           'iit_delhi.png',
           'Premier engineering institute.',
-          'Admission Start|2025-01-01;Last Date|2025-02-28',
-          'Aadhar;Marksheet;Photo',
-          '1|Register online;2|Choice filling;3|Seat allotment',
-          'JEE Advanced;JEE Main',
-          'BTech;MTech',
-          '120,60',
-          '4,2',
-          'GEN|50|2024,OBC|30|2024;GEN|20|2024,OBC|10|2024',
-          'JEE Main|GEN|1000|2024,JEE Main|OBC|1500|2024;NEET|GEN|500|2024',
-          'JEE Main|GEN|900|2025;NEET|GEN|450|2025'
+          'Admission Start|2025-01-01, Last Date|2025-02-28',
+          'Aadhar, Marksheet, Photo',
+          '1|Register online, 2|Choice filling, 3|Seat allotment',
+          'JEE Advanced, JEE Main',
+          'B.Tech, M.Tech',
+          '120, 60',
+          '4, 2',
+          'GEN|50|2024, OBC|30|2024',
+          'JEE Main|GEN|1000|2024, JEE Main|OBC|1500|2024',
+          'JEE Main|GEN|900|2025'
         ],
         [
           'State College of Engineering',
@@ -444,14 +445,14 @@ class CollegesController {
           'State',
           'state_eng.png',
           'State level engineering college.',
-          '',
+          'Application Start|2025-02-01',
           'Marksheet',
-          '1|Apply',
+          '1|Apply online',
           'JEE Main',
-          'BTech',
+          'B.Tech',
           '100',
           '4',
-          'GEN|80|2024,OBC|20|2024',
+          'GEN|80|2024, OBC|20|2024',
           'JEE Main|GEN|2000|2024',
           'JEE Main|GEN|1800|2025'
         ]
@@ -645,7 +646,7 @@ class CollegesController {
 
         const location = (row.college_location ?? row.college_Location ?? '').toString().trim() || null;
         const typeRaw = (row.college_type ?? row.college_Type ?? '').toString().trim();
-        const collegeType = validTypes.includes(typeRaw) ? typeRaw : null;
+        const collegeType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
 
@@ -687,9 +688,10 @@ class CollegesController {
             await CollegeDetails.create({ college_id: college.id, college_description: description });
           }
           if (keyDatesRaw) {
-            const parts = keyDatesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const parts = splitList(keyDatesRaw);
             for (const part of parts) {
-              const [event_name, event_date] = part.split('|').map((s) => s.trim());
+              const [event_name, event_dateRaw] = part.split('|').map((s) => s.trim());
+              const event_date = event_dateRaw ? parseDate(event_dateRaw) : null;
               if (event_name || event_date) {
                 await CollegeKeyDates.create({
                   college_id: college.id,
@@ -700,13 +702,13 @@ class CollegesController {
             }
           }
           if (documentsRaw) {
-            const docs = documentsRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const docs = splitList(documentsRaw);
             for (const doc of docs) {
               await CollegeDocumentsRequired.create({ college_id: college.id, document_name: doc });
             }
           }
           if (counsellingRaw) {
-            const steps = counsellingRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const steps = splitList(counsellingRaw);
             for (const step of steps) {
               const [num, desc] = step.split('|').map((s) => s.trim());
               const step_number = num ? parseInt(num, 10) : null;
@@ -721,7 +723,7 @@ class CollegesController {
           }
           let recExamIds = [];
           if (recommendedExamNamesRaw) {
-            const names = recommendedExamNamesRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+            const names = splitList(recommendedExamNamesRaw);
             for (const nm of names) {
               const ex = await Exam.findByName(nm);
               if (ex) recExamIds.push(ex.id);
@@ -732,7 +734,7 @@ class CollegesController {
           }
           if (recExamIds.length) await CollegeRecommendedExam.setExamsForCollege(college.id, recExamIds);
 
-          const programNames = programNamesRaw ? programNamesRaw.split(';').map((s) => s.trim()).filter(Boolean) : [];
+          const programNames = programNamesRaw ? splitList(programNamesRaw) : [];
           const programIds = programIdsRaw ? programIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n)) : [];
           const intakeCapacities = intakeCapacitiesRaw ? intakeCapacitiesRaw.split(',').map((s) => s.trim()) : [];
           const programDurations = programDurationsRaw ? programDurationsRaw.split(',').map((s) => s.trim()) : [];

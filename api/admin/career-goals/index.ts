@@ -5,11 +5,13 @@ import { ApiResponse } from '../../types';
 export interface CareerGoal {
   id: number;
   label: string;
-  logo: string; // Changed from image to logo
+  logo?: string | null;
   description?: string | null;
   status?: boolean;
   created_at: string;
   updated_at: string;
+  updated_by?: number | null;
+  updated_by_email?: string | null;
 }
 
 /**
@@ -39,7 +41,7 @@ export async function getCareerGoalById(id: number): Promise<ApiResponse<{
  */
 export async function createCareerGoal(data: {
   label: string;
-  logo: string; // Changed from image to logo
+  logo?: string | null;
   description?: string | null;
   status?: boolean;
 }): Promise<ApiResponse<{

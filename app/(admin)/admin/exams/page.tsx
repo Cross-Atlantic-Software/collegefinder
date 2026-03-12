@@ -25,7 +25,7 @@ import {
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -103,7 +103,7 @@ export default function ExamsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const { canDownloadExcel } = useAdminPermissions();
+  const { canDownloadExcel, isSuperAdmin } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
   const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
@@ -540,6 +540,10 @@ export default function ExamsPage() {
       const msg = err instanceof Error ? err.message : 'Bulk upload failed';
       setBulkError(msg);
       showError(msg);
+      const errData = err && typeof err === 'object' && 'data' in err ? (err as { data?: { errorDetails?: { row: number; message: string }[] } }).data : undefined;
+      if (errData?.errorDetails?.length) {
+        setBulkResult({ created: 0, createdExams: [], errors: errData.errorDetails.length, errorDetails: errData.errorDetails });
+      }
     } finally {
       setBulkUploading(false);
     }
@@ -666,7 +670,7 @@ export default function ExamsPage() {
                   Upload missing logos
                 </button>
               )}
-              {currentAdmin?.type === 'super_admin' && allExams.length > 0 && (
+              {isSuperAdmin && allExams.length > 0 && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -677,7 +681,7 @@ export default function ExamsPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
-              {currentAdmin?.type === 'super_admin' && allExams.length > 0 && (
+              {isSuperAdmin && allExams.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowDeleteAllConfirm(true)}
@@ -1388,47 +1392,98 @@ export default function ExamsPage() {
       {/* Bulk Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Bulk upload exams (Excel)</h2>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Bulk upload exams</h2>
+                  <p className="text-xs text-white/80">Excel + optional logos</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                aria-label="Close"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-4 overflow-auto space-y-4">
-              <p className="text-sm text-gray-600">
-                Upload an Excel file. Required: <strong>name</strong>, <strong>code</strong>. Optional: description, exam_type (National/State/Institute), conducting_authority, logo_filename (match uploaded image names), dates (YYYY-MM-DD). For streams, subjects and interests use <strong>names or labels</strong> (e.g. stream_ids: &quot;PCM, PCB&quot;, subject_ids: &quot;Physics, Chemistry&quot;, career_goal_ids: &quot;Engineering&quot;) or numeric IDs. For <strong>category_wise_cutoff</strong> use JSON in one cell with double-quoted keys (e.g. &quot;General&quot;: 95, &quot;OBC&quot;: 90). Also: eligibility, pattern, other cutoff fields. Download the template for all columns.
-              </p>
+            <div className="p-5 overflow-auto space-y-5">
+              {/* Step 1: Template */}
               {canDownloadExcel && (
-                <button
-                  type="button"
-                  onClick={handleBulkTemplateDownload}
-                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-                >
-                  <FiDownload className="h-4 w-4" />
-                  Download Excel template
-                </button>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="h-10 w-10 rounded-lg bg-darkGradient flex items-center justify-center text-white shrink-0">
+                    <FiDownload className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900">Get the template</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Download the Excel file with all columns</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkTemplateDownload}
+                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Download
+                  </button>
+                </div>
               )}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file (required)</label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-pink/10 file:text-pink"
-                />
-                {bulkExcelFile && <span className="text-xs text-gray-500 mt-1 block">{bulkExcelFile.name}</span>}
-              </div>
+
+              {/* Excel file */}
               <div className="space-y-2">
-                <label className="block text-xs font-medium text-gray-700">Logos (ZIP file, optional)</label>
-                <p className="text-xs text-gray-500">
-                  Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
+                <p className="text-sm font-medium text-gray-900">
+                  Excel file <span className="text-red-500">*</span>
                 </p>
-                <div className="flex items-center gap-2 flex-wrap">
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkExcelFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiFile className={`h-10 w-10 ${bulkExcelFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkExcelFile ? bulkExcelFile.name : 'Choose Excel file (.xlsx, .xls)'}
+                    </span>
+                    {bulkExcelFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkExcelFile(null); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Logos ZIP */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">
+                  Logos ZIP <span className="text-xs font-normal text-gray-500">(optional)</span>
+                </p>
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkLogosZipFile ? bulkLogosZipFile.name : 'Choose ZIP file'}
+                    </span>
+                    {bulkLogosZipFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkLogosZipFile(null); setBulkLogoFiles([]); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept=".zip,application/zip,application/x-zip-compressed"
@@ -1438,28 +1493,22 @@ export default function ExamsPage() {
                       if (file) setBulkLogoFiles([]);
                       e.target.value = '';
                     }}
-                    className="text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-green-600 file:text-white file:text-sm"
+                    className="sr-only"
                   />
-                  {bulkLogosZipFile && (
-                    <span className="text-xs text-gray-700 flex items-center gap-1">
-                      {bulkLogosZipFile.name}
-                      <button type="button" onClick={() => setBulkLogosZipFile(null)} className="text-red-600 hover:text-red-800 p-0.5" aria-label="Remove ZIP">
-                        <FiX className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  )}
-                </div>
+                </label>
               </div>
+
               {bulkError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                  <FiX className="h-4 w-4 shrink-0 mt-0.5" />
                   {bulkError}
                 </div>
               )}
               {bulkResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm space-y-1">
                   <p className="font-medium text-gray-900">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && (
-                    <p className="text-amber-700 mt-1">Errors: {bulkResult.errors}</p>
+                    <p className="text-amber-700">Errors: {bulkResult.errors}</p>
                   )}
                   {bulkResult.errorDetails?.length > 0 && (
                     <ul className="mt-2 text-xs text-gray-600 list-disc list-inside max-h-32 overflow-y-auto">
@@ -1470,12 +1519,15 @@ export default function ExamsPage() {
                   )}
                 </div>
               )}
+              <p className="text-xs text-gray-500 pt-1">
+                Note: Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
+              </p>
             </div>
-            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50/50">
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Close
               </button>
@@ -1483,9 +1535,19 @@ export default function ExamsPage() {
                 type="button"
                 onClick={handleBulkSubmit}
                 disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {bulkUploading ? 'Uploading…' : 'Upload'}
+                {bulkUploading ? (
+                  <>
+                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
               </button>
             </div>
           </div>

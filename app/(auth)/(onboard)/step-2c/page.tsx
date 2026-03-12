@@ -124,7 +124,7 @@ export default function StepTwoC() {
           </div>
 
           <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble>Which city are you in?</Bubble>
+            <Bubble className="w-full max-w-none">Which city are you in?</Bubble>
 
             {error && (
               <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
@@ -132,7 +132,7 @@ export default function StepTwoC() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <Select
                 options={cityOptions}
                 value={selectedCity}
@@ -146,7 +146,7 @@ export default function StepTwoC() {
                 type="submit"
                 variant="DarkGradient"
                 size="lg"
-                className="w-full rounded-full"
+                className="w-full rounded-full min-h-[48px]"
                 disabled={saving || !selectedCity}
               >
                 {saving ? "Saving..." : "Continue"}

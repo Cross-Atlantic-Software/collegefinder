@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button } from "@/components/shared";
+import { Button, useToast } from "@/components/shared";
 import { updateCareerGoals, getAllCareerGoalsPublic } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
@@ -11,7 +11,7 @@ import OnboardingLoader from "@/components/shared/OnboardingLoader";
 interface CareerGoalOption {
   id: string;
   label: string;
-  logo: string;
+  logo?: string | null;
 }
 
 export default function StepTwoB() {
@@ -24,6 +24,7 @@ export default function StepTwoB() {
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
+  const { showError } = useToast();
 
   // Fetch career goals on mount
   useEffect(() => {
@@ -78,9 +79,15 @@ export default function StepTwoB() {
   }
 
   const toggleInterest = (id: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    if (selectedInterests.includes(id)) {
+      setSelectedInterests((prev) => prev.filter((x) => x !== id));
+      return;
+    }
+    if (selectedInterests.length >= 3) {
+      queueMicrotask(() => showError("You can choose up to 3 interests only."));
+      return;
+    }
+    setSelectedInterests((prev) => [...prev, id]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,9 +151,9 @@ export default function StepTwoB() {
 
           {/* Interests + Button */}
           <div className="flex flex-col gap-5 w-full max-w-2xl">
-            <Bubble>
+            <Bubble className="w-full max-w-none">
               <span className="block mb-2">What interests you? Select all that apply.</span>
-              <span className="block text-sm text-slate-400 font-normal">Choose up to 3 interests.</span>
+              <span className="block text-sm text-slate-400 font-normal">You can choose up to 3 interests.</span>
             </Bubble>
 
             {error && (
@@ -162,7 +169,7 @@ export default function StepTwoB() {
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div className="max-h-[400px] overflow-y-auto pr-2">
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {interestOptions.map((opt) => {
                       const active = selectedInterests.includes(opt.id);
                       return (
@@ -170,13 +177,11 @@ export default function StepTwoB() {
                           key={opt.id}
                           type="button"
                           onClick={() => toggleInterest(opt.id)}
-                          disabled={!selectedInterests.includes(opt.id) && selectedInterests.length >= 3}
                           className={[
-                            "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
-                            "border group",
+                            "flex flex-col items-center justify-center rounded-lg p-5 text-center transition-all duration-200 min-h-[140px] w-full border group",
                             active
-                              ? "bg-pink text-white border-pink"
-                              : "bg-white/5 border-white/10 hover:bg-white/10",
+                              ? "bg-pink text-white border-pink shadow-lg shadow-pink/20"
+                              : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20",
                           ].join(" ")}
                         >
                           {opt.logo ? (
@@ -195,8 +200,7 @@ export default function StepTwoB() {
                             </div>
                           )}
                           <span
-                            className={`text-md font-semibold transition duration-500 ${active ? "text-white" : "text-slate-200 group-hover:text-white"
-                              }`}
+                            className={`text-sm font-semibold leading-tight break-words transition-all duration-200 ${active ? "text-white" : "text-slate-200 group-hover:text-white"}`}
                           >
                             {opt.label}
                           </span>
@@ -210,7 +214,7 @@ export default function StepTwoB() {
                   type="submit"
                   variant="DarkGradient"
                   size="lg"
-                  className="w-full rounded-full"
+                  className="w-full rounded-full min-h-[48px]"
                   disabled={saving || selectedInterests.length === 0 || loadingInterests}
                 >
                   {saving ? "Saving..." : "Continue"}

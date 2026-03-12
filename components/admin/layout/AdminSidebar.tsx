@@ -92,20 +92,20 @@ const navGroups: NavGroup[] = [
       { label: 'Colleges', href: '/admin/colleges', icon: <FiBook className="h-4 w-4" />, moduleCode: 'colleges' },
     ],
   },
-  {
-    label: 'Scholarships',
-    icon: <FiBook className="h-4 w-4" />,
-    children: [
-      { label: 'Scholarships', href: '/admin/scholarships', icon: <FiBook className="h-4 w-4" />, moduleCode: 'scholarships' },
-    ],
-  },
-  {
-    label: 'Loans',
-    icon: <FiBook className="h-4 w-4" />,
-    children: [
-      { label: 'Loan Providers', href: '/admin/loans', icon: <FiBook className="h-4 w-4" />, moduleCode: 'loans' },
-    ],
-  },
+  // {
+  //   label: 'Scholarships',
+  //   icon: <FiBook className="h-4 w-4" />,
+  //   children: [
+  //     { label: 'Scholarships', href: '/admin/scholarships', icon: <FiBook className="h-4 w-4" />, moduleCode: 'scholarships' },
+  //   ],
+  // },
+  // {
+  //   label: 'Loans',
+  //   icon: <FiBook className="h-4 w-4" />,
+  //   children: [
+  //     { label: 'Loan Providers', href: '/admin/loans', icon: <FiBook className="h-4 w-4" />, moduleCode: 'loans' },
+  //   ],
+  // },
 ];
 
 const navItems: NavItem[] = [

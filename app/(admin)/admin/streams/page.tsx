@@ -265,6 +265,9 @@ export default function StreamsPage() {
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        UPDATED BY
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         LAST UPDATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -275,7 +278,7 @@ export default function StreamsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {streams.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
                           {streams.length < allStreams.length ? 'No streams found matching your search' : 'No streams found'}
                         </td>
                       </tr>
@@ -302,6 +305,9 @@ export default function StreamsPage() {
                               day: 'numeric',
                               year: 'numeric',
                             })}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
+                            {stream.updated_by_email || '—'}
                           </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(stream.updated_at).toLocaleDateString('en-US', {
@@ -487,9 +493,15 @@ export default function StreamsPage() {
                 </p>
               </div>
 
+              {/* Updated By */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated By</label>
+                <p className="text-sm text-gray-700">{viewingStream.updated_by_email || '—'}</p>
+              </div>
+
               {/* Updated At */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated At</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Last Updated On</label>
                 <p className="text-sm text-gray-700">
                   {new Date(viewingStream.updated_at).toLocaleString('en-US', {
                     month: 'short',
