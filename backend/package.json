@@ -9,9 +9,13 @@
     "dev:detached": "docker-compose up -d",
     "stop": "docker-compose down",
     "seed-three-exams": "node scripts/seedThreeExams.js",
+    "seed-mock-prompts": "node scripts/seedMockPrompts.js",
+    "migrate-exam-formats": "node scripts/migrateExamFormatsToNested.js",
     "create-superadmin": "node scripts/createSuperAdmin.js",
     "clear-mocks-and-questions": "node scripts/clearExamMocksAndQuestions.js",
+    "clear-mocks-except-first": "node scripts/clearMocksExceptFirst.js",
     "generate-jee-mock": "node scripts/generateJeeMainMockWithGemini.js",
+    "seed-jee-adv-mock": "node scripts/seedJeeAdvancedMock.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1153,12 +1153,17 @@ class TestController {
       const userId = req.user.id;
       const { examId } = req.query;
 
+      const examIdInt = examId ? parseInt(examId) : null;
+
       const [aggregate, attempts] = await Promise.all([
-        TestAttempt.getUserAnalytics(userId, examId ? parseInt(examId) : null),
+        TestAttempt.getUserAnalytics(userId, examIdInt),
         TestAttempt.findByUserId(userId, 50, 0)
       ]);
 
-      const completedAttempts = attempts.filter(a => a.completed_at);
+      let completedAttempts = attempts.filter(a => a.completed_at);
+      if (examIdInt != null) {
+        completedAttempts = completedAttempts.filter(a => a.exam_id === examIdInt);
+      }
 
       res.json({
         success: true,
@@ -1173,6 +1178,7 @@ class TestController {
           },
           attempts: completedAttempts.map(a => ({
             id: a.id,
+            exam_id: a.exam_id,
             test_title: a.test_title,
             exam_name: a.exam_name,
             total_score: a.total_score,

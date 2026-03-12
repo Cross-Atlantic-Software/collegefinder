@@ -9,12 +9,55 @@
 require('dotenv').config();
 const db = require('../src/config/database');
 
+/**
+ * Converts flat format to nested { formatId: config } structure.
+ * Adds duration_minutes, section names, and subsection.questions/marks_per_question for frontend display.
+ */
+function toNestedFormat(flat) {
+  const durationMinutes = flat.duration ? Math.round(flat.duration / 60) : 180;
+  const markingScheme = flat.marking_scheme || { correct: 4, incorrect: -1, unattempted: 0 };
+  const marksPerQuestion = markingScheme.correct ?? 4;
+  const sections = flat.sections || {};
+  const sectionsWithNames = {};
+  for (const [key, config] of Object.entries(sections)) {
+    const subsections = config.subsections || {};
+    const subsectionsWithMeta = {};
+    let sectionMarks = 0;
+    for (const [subKey, subConfig] of Object.entries(subsections)) {
+      const count = subConfig.count ?? subConfig.questions ?? 0;
+      subsectionsWithMeta[subKey] = {
+        ...subConfig,
+        type: subConfig.type || 'mcq_single',
+        questions: subConfig.questions ?? count,
+        marks_per_question: subConfig.marks_per_question ?? marksPerQuestion,
+      };
+      sectionMarks += (subConfig.questions ?? count) * (subConfig.marks_per_question ?? marksPerQuestion);
+    }
+    sectionsWithNames[key] = {
+      ...config,
+      name: config.name || key,
+      marks: config.marks ?? sectionMarks,
+      subsections: subsectionsWithMeta,
+    };
+  }
+  const config = {
+    name: flat.name,
+    duration_minutes: durationMinutes,
+    total_questions: flat.total_questions,
+    total_marks: flat.total_marks,
+    marking_scheme: markingScheme,
+    rules: flat.rules || [],
+    sections: sectionsWithNames,
+  };
+  return { default: config };
+}
+
 const EXAMS = [
   {
     name: 'JEE Main',
     code: 'JEE_MAIN',
     description: 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges',
-    format: {
+    format: toNestedFormat({
       name: 'JEE Main 2024',
       duration: 10800,
       total_questions: 90,
@@ -57,13 +100,13 @@ const EXAMS = [
           },
         },
       },
-    },
+    }),
   },
   {
     name: 'JEE Advanced',
     code: 'JEE_ADVANCED',
     description: 'Joint Entrance Examination Advanced - for admission to IITs',
-    format: {
+    format: toNestedFormat({
       name: 'JEE Advanced 2024',
       duration: 10800,
       total_questions: 54,
@@ -107,13 +150,13 @@ const EXAMS = [
           },
         },
       },
-    },
+    }),
   },
   {
     name: 'NEET',
     code: 'NEET',
     description: 'National Eligibility cum Entrance Test - for admission to medical and dental colleges',
-    format: {
+    format: toNestedFormat({
       name: 'NEET 2024',
       duration: 10800,
       total_questions: 200,
@@ -157,7 +200,7 @@ const EXAMS = [
           },
         },
       },
-    },
+    }),
   },
 ];
 

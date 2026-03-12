@@ -12,6 +12,9 @@ function startMockGenerationWorker() {
   const worker = new Worker(QUEUE_NAME, processMockGeneration, {
     connection: getRedisConnection(),
     concurrency: 2,
+    lockDuration: 120000,    // 2 min — mock generation can be long
+    stalledInterval: 30000, // check for stalled jobs every 30s
+    maxStalledCount: 5,     // allow more recoveries before failing
   });
 
   worker.on('completed', (job) => {

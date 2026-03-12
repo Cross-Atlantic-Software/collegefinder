@@ -129,7 +129,9 @@ class MockTestController {
           await MockTest.setStatus(mock.id, 'generating');
           const queue = getMockGenerationQueueLazy();
           if (queue) {
-            await queue.add('generate', { examId, mockNumber: nextMockNumber, mockTestId: mock.id });
+            await queue.add('generate', { examId, mockNumber: nextMockNumber, mockTestId: mock.id }, {
+              jobId: `mock-gen-${examId}-${nextMockNumber}`,
+            });
             console.log(`🔄 Re-triggered mock ${nextMockNumber} generation for exam ${examId} (BullMQ)`);
           } else {
             // Inline fallback
@@ -338,7 +340,9 @@ class MockTestController {
 
     const queue = getMockGenerationQueueLazy();
     if (queue) {
-      await queue.add('generate', { examId, mockNumber, mockTestId: created.id });
+      await queue.add('generate', { examId, mockNumber, mockTestId: created.id }, {
+        jobId: `mock-gen-${examId}-${mockNumber}`,
+      });
       console.log(`🚀 Triggered generation of mock ${mockNumber} for exam ${examId} (BullMQ)`);
       return;
     }

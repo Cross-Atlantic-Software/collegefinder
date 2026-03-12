@@ -183,6 +183,7 @@ export interface AggregateAnalytics {
 
 export interface AnalyticsSummaryAttempt {
   id: number;
+  exam_id?: number;
   test_title: string;
   exam_name: string;
   total_score: number;

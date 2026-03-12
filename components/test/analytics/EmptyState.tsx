@@ -1,6 +1,10 @@
 'use client'
 
-export default function EmptyState() {
+interface EmptyStateProps {
+  examId?: number;
+}
+
+export default function EmptyState({ examId }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
       <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
@@ -15,7 +19,9 @@ export default function EmptyState() {
       </div>
       <p className="text-lg font-medium text-white">No analytics yet</p>
       <p className="text-sm text-center max-w-xs">
-        Complete a practice test to see your detailed performance breakdown here.
+        {examId != null
+          ? 'No attempts for this exam yet. Complete a mock to see analytics.'
+          : 'Complete a practice test to see your detailed performance breakdown here.'}
       </p>
     </div>
   );

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
 import { getAllExams } from "@/api";
 import type { Exam } from "@/api/exams";
-import { getExamFormats, getTestRules, ExamFormat, FormatRules } from "@/api/tests";
+import { getExamFormats, getTestRules, getUserAnalyticsSummary, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
 
@@ -13,6 +13,7 @@ export default function TestModule() {
   const [activeTab, setActiveTab] = useState("practice");
   const [viewState, setViewState] = useState<ViewState>('exam-selection');
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [historyAnalyticsExam, setHistoryAnalyticsExam] = useState<Exam | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ExamFormat | null>(null);
   const [availableFormats, setAvailableFormats] = useState<{ [key: string]: ExamFormat }>({});
   const [formatRules, setFormatRules] = useState<FormatRules | null>(null);
@@ -21,10 +22,44 @@ export default function TestModule() {
   const [formatLoading, setFormatLoading] = useState(false);
   const [rulesLoading, setRulesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [examAttemptStats, setExamAttemptStats] = useState<Map<number, { lastAttemptedAt: string | null; totalMocks: number }>>(new Map());
+  const [historyStatsLoading, setHistoryStatsLoading] = useState(false);
 
   useEffect(() => {
     fetchExams();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "history-analytics" && !historyAnalyticsExam && exams.length > 0) {
+      const fetchHistoryStats = async () => {
+        setHistoryStatsLoading(true);
+        try {
+          const res = await getUserAnalyticsSummary();
+          if (res.success && res.data?.attempts) {
+            const attempts = res.data.attempts;
+            const byExam = new Map<number, { lastAttemptedAt: string | null; totalMocks: number }>();
+            for (const a of attempts) {
+              const examId = a.exam_id ?? (exams.find((e) => e.name === a.exam_name)?.id);
+              if (examId == null) continue;
+              const existing = byExam.get(examId);
+              const completedAt = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+              const prevLast = existing?.lastAttemptedAt ? new Date(existing.lastAttemptedAt).getTime() : 0;
+              byExam.set(examId, {
+                lastAttemptedAt: completedAt > prevLast ? a.completed_at! : (existing?.lastAttemptedAt ?? a.completed_at ?? null),
+                totalMocks: (existing?.totalMocks ?? 0) + 1,
+              });
+            }
+            setExamAttemptStats(byExam);
+          }
+        } catch {
+          setExamAttemptStats(new Map());
+        } finally {
+          setHistoryStatsLoading(false);
+        }
+      };
+      fetchHistoryStats();
+    }
+  }, [activeTab, historyAnalyticsExam, exams]);
 
   const fetchExams = async () => {
     try {
@@ -190,20 +225,12 @@ export default function TestModule() {
           Practice Tests
         </button>
         <button
-          onClick={() => setActiveTab("history")}
+          onClick={() => setActiveTab("history-analytics")}
           className={`flex-1 py-3 text-center transition ${
-            activeTab === "history" ? "bg-pink-600 text-white" : "hover:bg-white/5"
+            activeTab === "history-analytics" ? "bg-pink-600 text-white" : "hover:bg-white/5"
           }`}
         >
-          Test History
-        </button>
-        <button
-          onClick={() => setActiveTab("analytics")}
-          className={`flex-1 py-3 text-center transition ${
-            activeTab === "analytics" ? "bg-pink-600 text-white" : "hover:bg-white/5"
-          }`}
-        >
-          Analytics
+          History and Analytics
         </button>
       </div>
 
@@ -259,7 +286,7 @@ export default function TestModule() {
                         <div className="text-slate-400">Marks</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-pink-400 font-semibold">{Object.keys(format.sections).length}</div>
+                        <div className="text-pink-400 font-semibold">{Object.keys(format.sections || {}).length}</div>
                         <div className="text-slate-400">Sections</div>
                       </div>
                     </div>
@@ -268,7 +295,7 @@ export default function TestModule() {
                   <div className="mb-4">
                     <div className="text-xs text-slate-400 mb-2">Sections:</div>
                     <div className="flex flex-wrap gap-1">
-                      {Object.values(format.sections).map((section: any, index) => (
+                      {Object.values(format.sections || {}).map((section: any, index) => (
                         <span key={index} className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
                           {section.name}
                         </span>
@@ -368,21 +395,135 @@ export default function TestModule() {
         </div>
       )}
 
-      {activeTab === "history" && (
-        <div className="text-center py-12">
-          <div className="text-slate-400">
-            <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+      {activeTab === "history-analytics" && historyAnalyticsExam === null && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-white">Select an Exam</h2>
+              <p className="text-slate-300 text-sm">View history and analytics for an exam</p>
             </div>
-            <p className="text-lg font-medium mb-2">No test history yet</p>
-            <p className="text-sm">Your completed tests will appear here</p>
+            {error && (
+              <Button
+                onClick={fetchExams}
+                variant="themeButtonOutline"
+                size="sm"
+              >
+                Retry
+              </Button>
+            )}
           </div>
+
+          {error && (
+            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
+          {loading || historyStatsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white/10 rounded-lg p-4 animate-pulse">
+                  <div className="h-6 bg-white/20 rounded mb-2"></div>
+                  <div className="h-4 bg-white/10 rounded mb-3"></div>
+                  <div className="h-10 bg-white/20 rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {exams.length === 0 ? (
+                <div className="col-span-full text-center py-8">
+                  <div className="text-slate-400">
+                    <p className="text-lg font-medium mb-2">No exams available</p>
+                    <p className="text-sm">Please check back later or contact support.</p>
+                  </div>
+                </div>
+              ) : (
+                [...exams]
+                  .sort((a, b) => {
+                    const statsA = examAttemptStats.get(a.id);
+                    const statsB = examAttemptStats.get(b.id);
+                    const timeA = statsA?.lastAttemptedAt ? new Date(statsA.lastAttemptedAt).getTime() : 0;
+                    const timeB = statsB?.lastAttemptedAt ? new Date(statsB.lastAttemptedAt).getTime() : 0;
+                    return timeB - timeA;
+                  })
+                  .map((exam) => {
+                    const stats = examAttemptStats.get(exam.id);
+                    const lastAttempted = stats?.lastAttemptedAt
+                      ? new Date(stats.lastAttemptedAt).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : null;
+                    const totalMocks = stats?.totalMocks ?? 0;
+                    return (
+                      <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group flex flex-col h-full min-h-[200px]">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition">
+                            {exam.name}
+                          </h3>
+                          <span className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
+                            {exam.code}
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-sm mb-3 line-clamp-2">
+                          {exam.description || 'View your test history and performance analytics.'}
+                        </p>
+                        {(lastAttempted || totalMocks > 0) && (
+                          <div className="mb-3 space-y-2">
+                            {totalMocks > 0 && (
+                              <div className="inline-flex items-center gap-1.5 bg-pink-600/25 text-pink-200 px-2.5 py-1 rounded-lg text-sm font-medium">
+                                <span className="text-pink-300">Total mocks given:</span>
+                                <span className="font-semibold text-white">{totalMocks}</span>
+                              </div>
+                            )}
+                            {lastAttempted && (
+                              <p className="text-sm text-pink-200 font-medium bg-white/5 px-2.5 py-1.5 rounded-lg border border-pink-500/20">
+                                Last attempted: <span className="text-white font-semibold">{lastAttempted}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-end mt-auto pt-3">
+                          <Button
+                            onClick={() => setHistoryAnalyticsExam(exam)}
+                            variant="themeButton"
+                            size="sm"
+                            className="group-hover:scale-105 transition-transform"
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab === "analytics" && <AnalyticsTab />}
+      {activeTab === "history-analytics" && historyAnalyticsExam && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-white">{historyAnalyticsExam.name} - History & Analytics</h2>
+              <p className="text-slate-300 text-sm">Your performance across mocks and attempts</p>
+            </div>
+            <Button
+              onClick={() => setHistoryAnalyticsExam(null)}
+              variant="themeButtonOutline"
+              size="sm"
+            >
+              Back to Exams
+            </Button>
+          </div>
+          <AnalyticsTab examId={historyAnalyticsExam.id} />
+        </div>
+      )}
     </div>
   );
 }

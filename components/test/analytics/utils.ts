@@ -34,10 +34,15 @@ export function fmtTime(secs: number): string {
 }
 
 export function attemptLabel(a: AnalyticsSummaryAttempt): string {
-  const date = new Date(a.completed_at).toLocaleDateString('en-IN', {
+  return `${a.exam_name} ${a.test_title}`;
+}
+
+export function attemptTimestamp(a: AnalyticsSummaryAttempt): string {
+  return new Date(a.completed_at).toLocaleString('en-IN', {
     day: '2-digit',
     month: 'short',
-    year: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
-  return `${a.exam_name} — ${date}`;
 }

@@ -8,7 +8,7 @@ import {
   AnalyticsSummaryAttempt,
 } from '@/api/tests';
 
-export function useAnalyticsData() {
+export function useAnalyticsData(examId?: number) {
   const [aggregate, setAggregate] = useState<AggregateAnalytics | null>(null);
   const [attempts, setAttempts] = useState<AnalyticsSummaryAttempt[]>([]);
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null);
@@ -21,12 +21,15 @@ export function useAnalyticsData() {
     const load = async () => {
       try {
         setLoadingSummary(true);
-        const res = await getUserAnalyticsSummary();
+        setError(null);
+        const res = await getUserAnalyticsSummary(examId);
         if (res.success && res.data) {
           setAggregate(res.data.aggregate);
           setAttempts(res.data.attempts);
           if (res.data.attempts.length > 0) {
             setSelectedAttemptId(res.data.attempts[0].id);
+          } else {
+            setSelectedAttemptId(null);
           }
         } else {
           setError(res.message || 'Failed to load analytics');
@@ -38,7 +41,7 @@ export function useAnalyticsData() {
       }
     };
     load();
-  }, []);
+  }, [examId]);
 
   const loadAttemptAnalytics = useCallback(async (id: number) => {
     try {

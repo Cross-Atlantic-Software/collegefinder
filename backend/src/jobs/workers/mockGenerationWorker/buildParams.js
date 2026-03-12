@@ -145,7 +145,7 @@ async function buildQuestionParamsList(exam) {
         exam_name: exam.name,
         subject: 'General',
         section_name: 'General',
-        section_type: 'mcq_single',
+        section_type: 'MCQ',
         question_type: 'mcq_single',
         question_number: i + 1,
         total_in_section: total,

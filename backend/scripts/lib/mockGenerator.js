@@ -70,9 +70,16 @@ async function initGeminiAndDb() {
 
 /**
  * Look up the exam by name, then create (or reset) the exam_mocks row.
- * Returns { examId, mockTestId }.
+ * Returns { examId, mockTestId, existingCount }.
+ *
+ * @param {string} examName
+ * @param {number} orderIndex
+ * @param {object} [opts]
+ * @param {boolean} [opts.resume] — if true, keep existing questions and return count
  */
-async function setupMockTest(examName, orderIndex) {
+async function setupMockTest(examName, orderIndex, opts = {}) {
+  const resume = opts.resume === true;
+
   const examRow = await db.query(
     'SELECT id FROM exams_taxonomies WHERE LOWER(name) = LOWER($1)',
     [examName]
@@ -89,11 +96,23 @@ async function setupMockTest(examName, orderIndex) {
     [examId, orderIndex]
   );
   let mockTestId;
+  let existingCount = 0;
+
   if (existing.rows.length > 0) {
     mockTestId = existing.rows[0].id;
     await db.query("UPDATE exam_mocks SET status = 'generating' WHERE id = $1", [mockTestId]);
-    await db.query('DELETE FROM exam_mock_questions WHERE exam_mock_id = $1', [mockTestId]);
-    console.log(`♻️  Reusing existing Mock ${orderIndex}, clearing old questions\n`);
+
+    if (resume) {
+      const countRow = await db.query(
+        'SELECT COUNT(*)::int AS n FROM exam_mock_questions WHERE exam_mock_id = $1',
+        [mockTestId]
+      );
+      existingCount = countRow.rows[0].n;
+      console.log(`♻️  Resuming Mock ${orderIndex} — ${existingCount} questions already saved\n`);
+    } else {
+      await db.query('DELETE FROM exam_mock_questions WHERE exam_mock_id = $1', [mockTestId]);
+      console.log(`♻️  Reusing existing Mock ${orderIndex}, clearing old questions\n`);
+    }
   } else {
     const ins = await db.query(
       `INSERT INTO exam_mocks (exam_id, order_index, status, created_by)
@@ -103,7 +122,28 @@ async function setupMockTest(examName, orderIndex) {
     mockTestId = ins.rows[0].id;
     console.log(`✨ Created new Mock ${orderIndex}\n`);
   }
-  return { examId, mockTestId };
+  return { examId, mockTestId, existingCount };
+}
+
+/**
+ * Get question count per subject for a mock (from questions table via exam_mock_questions).
+ * @param {number} mockTestId
+ * @returns {Promise<Record<string, number>>} e.g. { Physics: 25, Chemistry: 20, Mathematics: 5 }
+ */
+async function getMockSubjectCounts(mockTestId) {
+  const result = await db.query(
+    `SELECT q.subject, COUNT(*)::int AS n
+     FROM exam_mock_questions emq
+     JOIN questions q ON q.id = emq.question_id
+     WHERE emq.exam_mock_id = $1
+     GROUP BY q.subject`,
+    [mockTestId]
+  );
+  const counts = {};
+  for (const row of result.rows) {
+    counts[row.subject] = parseInt(row.n, 10);
+  }
+  return counts;
 }
 
 // ─── Save batch to DB ─────────────────────────────────────────────────────────
@@ -181,6 +221,7 @@ async function saveBatchToDb(questions, { examId, mockTestId, startOrderIndex })
  * @param {object}   opts
  * @param {number}   opts.examId
  * @param {number}   opts.mockTestId
+ * @param {number}   [opts.existingCount=0] — when resuming, number of questions already in mock
  * @param {number}   [opts.questionsPerRequest=5]
  * @param {number}   [opts.concurrency=3]
  * @param {number}   [opts.saveBatchSize=10]
@@ -190,10 +231,12 @@ async function saveBatchToDb(questions, { examId, mockTestId, startOrderIndex })
 async function generateWithBatching(allParams, {
   examId,
   mockTestId,
+  existingCount     = 0,
   questionsPerRequest = 5,
   concurrency        = 3,
   saveBatchSize      = 10,
   delayBetweenBatchesMs = 1500,
+  startOrderIndex    = 1,
 } = {}) {
   const total       = allParams.length;
   const chunks      = chunk(allParams, questionsPerRequest);
@@ -205,6 +248,12 @@ async function generateWithBatching(allParams, {
   let attempted     = 0;
 
   console.log(`\n📊 Generating ${total} questions`);
+  if (existingCount > 0) {
+    console.log(`   Resuming: ${existingCount} already saved, ${total} remaining to generate`);
+  }
+  if (startOrderIndex > 1) {
+    console.log(`   Saving at order_index ${startOrderIndex}+`);
+  }
   console.log(`   API calls: ${chunks.length} × up to ${questionsPerRequest} (${concurrency} concurrent)`);
   console.log(`   Saving every ${saveBatchSize} questions\n`);
 
@@ -237,11 +286,20 @@ async function generateWithBatching(allParams, {
         }
         attempted += res.questions.length;
       } else {
+        // Retry each failed param one-at-a-time (more reliable than batch)
         for (const p of res.paramsChunk) {
-          failed.push({ params: p, error: res.error });
-          console.log(`  ✗ ${p.subject} — ${p.topic || '?'} → ${res.error}`);
+          try {
+            const [question] = await geminiService.generateFiveQuestions([p]);
+            successful.push({ question, params: p });
+            pendingSave.push(question);
+            console.log(`  ✓ ${p.subject} — ${p.topic || '?'} (${question.difficulty}) [retry]`);
+            attempted += 1;
+          } catch (retryErr) {
+            failed.push({ params: p, error: retryErr.message });
+            console.log(`  ✗ ${p.subject} — ${p.topic || '?'} → ${retryErr.message}`);
+            attempted += 1;
+          }
         }
-        attempted += res.paramsChunk.length;
       }
     }
 
@@ -249,7 +307,8 @@ async function generateWithBatching(allParams, {
     const doSave   = pendingSave.length >= saveBatchSize || (isLast && pendingSave.length > 0);
 
     if (doSave) {
-      const ids    = await saveBatchToDb(pendingSave, { examId, mockTestId, startOrderIndex: savedCount + 1 });
+      const batchStart = startOrderIndex + savedCount;
+      const ids    = await saveBatchToDb(pendingSave, { examId, mockTestId, startOrderIndex: batchStart });
       savedCount  += ids.length;
       console.log(`  💾 Cumulative saved: ${savedCount}/${total}`);
       pendingSave  = [];
@@ -355,6 +414,7 @@ module.exports = {
   buildDifficultyArray,
   initGeminiAndDb,
   setupMockTest,
+  getMockSubjectCounts,
   saveBatchToDb,
   generateWithBatching,
   finalizeMock,
