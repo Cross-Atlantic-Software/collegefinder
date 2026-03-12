@@ -43,9 +43,9 @@ export default function CourseCutoffsPage() {
       router.replace('/admin/login');
       return;
     }
-
     fetchData();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allCutoffs.length === 0) {

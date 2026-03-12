@@ -19,7 +19,7 @@ class Admin {
     return result.rows[0] || null;
   }
 
-  static async create(email, password, type = 'user', createdBy = null) {
+  static async create(email, password, type = 'data_entry', createdBy = null) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 

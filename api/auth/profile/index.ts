@@ -291,6 +291,27 @@ export async function updateCareerGoals(data: {
 }
 
 /**
+ * Get recommended colleges for the current user.
+ * Colleges whose recommended exams match user's recommended exam IDs (career goals + stream).
+ */
+export async function getRecommendedColleges(): Promise<ApiResponse<{
+  colleges: Array<{
+    id: number;
+    college_name: string;
+    college_location: string | null;
+    college_type: string | null;
+    college_logo: string | null;
+    created_at?: string;
+    updated_at?: string;
+  }>;
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_RECOMMENDED_COLLEGES, {
+    method: 'GET',
+  });
+}
+
+/**
  * Get profile completion percentage
  */
 export async function getProfileCompletion(): Promise<ApiResponse<{

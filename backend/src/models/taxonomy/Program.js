@@ -38,6 +38,14 @@ class Program {
   }
 
   /**
+   * Find program by name (case-insensitive, for bulk upload)
+   */
+  static async findByNameCaseInsensitive(name) {
+    const result = await db.query('SELECT * FROM programs WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))', [name]);
+    return result.rows[0] || null;
+  }
+
+  /**
    * Create a new program
    */
   static async create(data) {

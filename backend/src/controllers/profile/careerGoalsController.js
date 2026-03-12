@@ -1,16 +1,18 @@
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
 const User = require('../../models/user/User');
+const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class CareerGoalsTaxonomyController {
   /**
    * Get all career goals (for users - public endpoint)
    * GET /api/career-goals
+   * Only returns active career goals
    */
   static async getAll(req, res) {
     try {
-      const careerGoals = await CareerGoal.findAll();
+      const careerGoals = await CareerGoal.findActive(); // Only active goals for public
       res.json({
         success: true,
         data: { careerGoals }
@@ -56,7 +58,7 @@ class CareerGoalsTaxonomyController {
       if (!careerGoal) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
@@ -79,13 +81,13 @@ class CareerGoalsTaxonomyController {
    */
   static async create(req, res) {
     try {
-      const { label, logo } = req.body;
+      const { label, logo, logo_filename, description, status } = req.body;
 
-      // Validate required fields
-      if (!label || !logo) {
+      // Validate required fields (logo is optional)
+      if (!label) {
         return res.status(400).json({
           success: false,
-          message: 'Label and logo are required'
+          message: 'Label is required'
         });
       }
 
@@ -94,15 +96,22 @@ class CareerGoalsTaxonomyController {
       if (existing) {
         return res.status(400).json({
           success: false,
-          message: 'Career goal with this label already exists'
+          message: 'Interest with this label already exists'
         });
       }
 
-      const careerGoal = await CareerGoal.create({ label, logo });
+      const careerGoal = await CareerGoal.create({
+        label,
+        logo: logo || null,
+        logo_filename: logo_filename || null,
+        description: description || null,
+        status: status !== undefined ? status : true,
+        updated_by: req.admin?.id || null
+      });
       res.status(201).json({
         success: true,
         data: { careerGoal },
-        message: 'Career goal created successfully'
+        message: 'Interest created successfully'
       });
     } catch (error) {
       console.error('Error creating career goal:', error);
@@ -116,6 +125,7 @@ class CareerGoalsTaxonomyController {
   /**
    * Upload image to S3 (for admin)
    * POST /api/admin/career-goals/upload-image
+   * Returns imageUrl and logoFilename for storing logo_filename when creating/updating.
    */
   static async uploadImage(req, res) {
     try {
@@ -132,7 +142,7 @@ class CareerGoalsTaxonomyController {
 
       res.json({
         success: true,
-        data: { imageUrl: s3Url },
+        data: { imageUrl: s3Url, logoFilename: fileName },
         message: 'Image uploaded successfully'
       });
     } catch (error) {
@@ -151,13 +161,13 @@ class CareerGoalsTaxonomyController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { label, logo } = req.body;
+      const { label, logo, logo_filename, description, status } = req.body;
 
       const existing = await CareerGoal.findById(parseInt(id));
       if (!existing) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
@@ -167,17 +177,24 @@ class CareerGoalsTaxonomyController {
         if (duplicate && duplicate.id !== parseInt(id)) {
           return res.status(400).json({
             success: false,
-            message: 'Career goal with this label already exists'
+            message: 'Interest with this label already exists'
           });
         }
       }
 
       // If logo is being updated, delete old logo from S3
-      if (logo && logo !== existing.logo) {
+      if (logo !== undefined && logo !== existing.logo && existing.logo) {
         await deleteFromS3(existing.logo);
       }
 
-      const careerGoal = await CareerGoal.update(parseInt(id), { label, logo });
+      const careerGoal = await CareerGoal.update(parseInt(id), {
+        label,
+        logo,
+        logo_filename,
+        description,
+        status,
+        updated_by: req.admin?.id || null
+      });
       res.json({
         success: true,
         data: { careerGoal },
@@ -204,23 +221,134 @@ class CareerGoalsTaxonomyController {
       if (!careerGoal) {
         return res.status(404).json({
           success: false,
-          message: 'Career goal not found'
+          message: 'Interest not found'
         });
       }
 
-      // Delete logo from S3
-      await deleteFromS3(careerGoal.logo);
+      // Delete logo from S3 if it exists
+      if (careerGoal.logo) await deleteFromS3(careerGoal.logo);
 
       await CareerGoal.delete(parseInt(id));
       res.json({
         success: true,
-        message: 'Career goal deleted successfully'
+        message: 'Interest deleted successfully'
       });
     } catch (error) {
       console.error('Error deleting career goal:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete career goal'
+      });
+    }
+  }
+
+  /**
+   * Upload missing logos from a ZIP file.
+   * Matches files by logo_filename; updates career goals where logo is null.
+   * POST /api/admin/career-goals/upload-missing-logos
+   */
+  static async uploadMissingLogos(req, res) {
+    try {
+      const logosZipFile = req.files?.logos_zip?.[0] || req.file;
+      if (!logosZipFile || !logosZipFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No ZIP file uploaded. Use field name "logos_zip".'
+        });
+      }
+
+      const { parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+      const logoMap = parseLogosFromZip(logosZipFile.buffer);
+      if (logoMap.size === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
+        });
+      }
+
+      const result = await processMissingLogosFromZip(logoMap, {
+        findRecordsByFilename: (f) => CareerGoal.findMissingLogosByFilename(f),
+        uploadToS3,
+        s3Folder: 'career-goals-taxonomies',
+        logoColumn: 'logo',
+        updateRecord: (id, data) => CareerGoal.update(id, data),
+        toResultItem: (r) => ({ id: r.id, label: r.label, logo_filename: r.logo_filename })
+      });
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Added ${result.updated.length} logo(s). ${result.skipped.length} file(s) had no matching interests.`
+      });
+    } catch (error) {
+      console.error('Error uploading missing logos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload missing logos'
+      });
+    }
+  }
+
+  /**
+   * Download all career goals as Excel (Super Admin only)
+   * GET /api/admin/career-goals/download-excel
+   * Logo column contains full S3 URL from DB; logo_filename for matching.
+   */
+  static async downloadAllExcel(req, res) {
+    try {
+      const careerGoals = await CareerGoal.findAll();
+      const headers = ['id', 'label', 'logo', 'logo_filename', 'description', 'status', 'created_at', 'updated_at', 'updated_by_email'];
+      const rows = [headers];
+      for (const cg of careerGoals) {
+        const logoFilename = cg.logo_filename || (cg.logo && typeof cg.logo === 'string' ? cg.logo.split('/').pop() : '') || '';
+        rows.push([
+          cg.id,
+          cg.label || '',
+          cg.logo || '',
+          logoFilename,
+          cg.description || '',
+          cg.status !== false ? 'TRUE' : 'FALSE',
+          cg.created_at ? String(cg.created_at).slice(0, 19) : '',
+          cg.updated_at ? String(cg.updated_at).slice(0, 19) : '',
+          cg.updated_by_email || ''
+        ]);
+      }
+      const XLSX = require('xlsx');
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Interests');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=interests-all-data.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating interests export:', error);
+      res.status(500).json({ success: false, message: 'Failed to export interests data' });
+    }
+  }
+
+  /**
+   * Delete all career goals (Super Admin only)
+   * DELETE /api/admin/career-goals/all
+   */
+  static async deleteAll(req, res) {
+    try {
+      const all = await CareerGoal.findAll();
+      for (const cg of all) {
+        if (cg.logo) await deleteFromS3(cg.logo);
+        await CareerGoal.delete(cg.id);
+      }
+      // Clear user interests (they reference deleted IDs)
+      await db.query('UPDATE user_career_goals SET interests = NULL, updated_at = CURRENT_TIMESTAMP');
+      res.json({
+        success: true,
+        message: `All ${all.length} interests deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all career goals:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete all interests'
       });
     }
   }
@@ -304,7 +432,7 @@ class CareerGoalsTaxonomyController {
         data: {
           interests: interestsArray
         },
-        message: 'Career goals updated successfully'
+        message: 'Interests updated successfully'
       });
     } catch (error) {
       console.error('Error updating user career goals:', error);

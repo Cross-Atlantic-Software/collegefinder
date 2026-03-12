@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiUpload, FiX } from 'react-icons/fi';
+import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, uploadMissingLogosCareerGoals, CareerGoalAdmin } from '@/api';
+import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
@@ -19,13 +20,22 @@ export default function CareerGoalsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCareerGoal, setEditingCareerGoal] = useState<CareerGoalAdmin | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ label: '', logo: '' });
+  const [formData, setFormData] = useState({ label: '', logo: '', logo_filename: '', description: '', status: true });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
+  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
+  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
+  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [missingLogosResult, setMissingLogosResult] = useState<{ updated: { id: number; label: string }[]; skipped: string[]; summary: { logosAdded: number; filesSkipped: number; uploadErrors: number } } | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -34,9 +44,16 @@ export default function CareerGoalsPage() {
       router.replace('/admin/login');
       return;
     }
+    const adminUserStr = localStorage.getItem('admin_user');
+    if (adminUserStr) {
+      try {
+        setCurrentAdmin(JSON.parse(adminUserStr));
+      } catch (_) {}
+    }
 
     fetchCareerGoals();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allCareerGoals.length === 0) {
@@ -51,7 +68,8 @@ export default function CareerGoalsPage() {
       }
       const searchLower = searchQuery.toLowerCase();
       const filtered = allCareerGoals.filter(cg =>
-        cg.label.toLowerCase().includes(searchLower)
+        cg.label.toLowerCase().includes(searchLower) ||
+        (cg.description && cg.description.toLowerCase().includes(searchLower))
       );
       setCareerGoals(filtered);
     }, 300);
@@ -67,11 +85,11 @@ export default function CareerGoalsPage() {
         setAllCareerGoals(response.data.careerGoals);
         setCareerGoals(response.data.careerGoals);
       } else {
-        setError(response.message || 'Failed to fetch career goals');
+        setError(response.message || 'Failed to fetch interests');
       }
     } catch (err) {
-      setError('An error occurred while fetching career goals');
-      console.error('Error fetching career goals:', err);
+      setError('An error occurred while fetching interests');
+      console.error('Error fetching interests:', err);
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +100,8 @@ export default function CareerGoalsPage() {
       setUploading(true);
       const response = await uploadCareerGoalLogo(file);
       if (response.success && response.data) {
-        setFormData({ ...formData, logo: response.data.logoUrl });
+        const logoFilename = response.data.logoFilename ?? file.name;
+        setFormData((prev) => ({ ...prev, logo: response.data!.logoUrl, logo_filename: logoFilename }));
         setLogoPreview(response.data.logoUrl);
         setError(null);
         showSuccess('Logo uploaded successfully');
@@ -118,8 +137,8 @@ export default function CareerGoalsPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.label || !formData.logo) {
-      setError('Label and logo are required');
+    if (!formData.label) {
+      setError('Label is required');
       return;
     }
 
@@ -127,12 +146,12 @@ export default function CareerGoalsPage() {
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
-          showSuccess('Career goal updated successfully');
+          showSuccess('Interest updated successfully');
           setShowModal(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to update career goal';
+          const errorMsg = response.message || 'Failed to update interest';
           setError(errorMsg);
           showError(errorMsg);
         }
@@ -144,16 +163,16 @@ export default function CareerGoalsPage() {
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to create career goal';
+          const errorMsg = response.message || 'Failed to create interest';
           setError(errorMsg);
           showError(errorMsg);
         }
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while saving career goal';
+      const errorMsg = 'An error occurred while saving interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error saving career goal:', err);
+      console.error('Error saving interest:', err);
     }
   };
 
@@ -169,22 +188,22 @@ export default function CareerGoalsPage() {
       setIsDeleting(true);
       const response = await deleteCareerGoal(deletingId);
       if (response.success) {
-        showSuccess('Career goal deleted successfully');
+        showSuccess('Interest deleted successfully');
         setShowDeleteConfirm(false);
         setDeletingId(null);
         fetchCareerGoals();
       } else {
-        const errorMsg = response.message || 'Failed to delete career goal';
+        const errorMsg = response.message || 'Failed to delete interest';
         setError(errorMsg);
         showError(errorMsg);
         setShowDeleteConfirm(false);
         setDeletingId(null);
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while deleting career goal';
+      const errorMsg = 'An error occurred while deleting interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error deleting career goal:', err);
+      console.error('Error deleting interest:', err);
       setShowDeleteConfirm(false);
       setDeletingId(null);
     } finally {
@@ -194,8 +213,14 @@ export default function CareerGoalsPage() {
 
   const handleEdit = (careerGoal: CareerGoalAdmin) => {
     setEditingCareerGoal(careerGoal);
-    setFormData({ label: careerGoal.label, logo: careerGoal.logo });
-    setLogoPreview(careerGoal.logo);
+    setFormData({
+      label: careerGoal.label,
+      logo: careerGoal.logo ?? '',
+      logo_filename: careerGoal.logo_filename ?? '',
+      description: careerGoal.description || '',
+      status: careerGoal.status !== undefined ? careerGoal.status : true
+    });
+    setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
     setShowModal(true);
   };
@@ -207,16 +232,74 @@ export default function CareerGoalsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ label: '', logo: '' });
+    setFormData({ label: '', logo: '', logo_filename: '', description: '', status: true });
     setLogoFile(null);
     setLogoPreview(null);
     setError(null);
+  };
+
+  const handleMissingLogosSubmit = async () => {
+    if (!missingLogosZipFile) {
+      showError('Please select a ZIP file');
+      return;
+    }
+    setMissingLogosUploading(true);
+    setMissingLogosError(null);
+    setMissingLogosResult(null);
+    try {
+      const res = await uploadMissingLogosCareerGoals(missingLogosZipFile);
+      if (res.success && res.data) {
+        setMissingLogosResult(res.data);
+        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
+        fetchCareerGoals();
+      } else {
+        setMissingLogosError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setMissingLogosError(msg);
+      showError(msg);
+    } finally {
+      setMissingLogosUploading(false);
+    }
   };
 
   const handleModalClose = () => {
     setShowModal(false);
     setEditingCareerGoal(null);
     resetForm();
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadAllCareerGoalsExcel();
+      showSuccess('Excel downloaded');
+    } catch {
+      showError('Failed to download Excel');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllCareerGoals();
+      if (response.success) {
+        showSuccess(response.message || 'All interests deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchCareerGoals();
+      } else {
+        showError(response.message || 'Failed to delete all interests');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all interests');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
   };
 
   if (error && !isLoading) {
@@ -242,15 +325,15 @@ export default function CareerGoalsPage() {
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Career Goals Manager</h1>
-            <p className="text-sm text-gray-600">Manage career goal options that users can select.</p>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Interests Manager</h1>
+            <p className="text-sm text-gray-600">Manage interest options that users can select.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All goals</span>
+                <span className="text-xs font-medium text-gray-700">All interests</span>
                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
                   {allCareerGoals.length}
                 </span>
@@ -259,20 +342,59 @@ export default function CareerGoalsPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by label"
+                  placeholder="Search by label or description"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Career Goal
-            </button>
+            <div className="flex items-center gap-2">
+              {allCareerGoals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMissingLogosModal(true);
+                    setMissingLogosZipFile(null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  Upload missing logos
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && (
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={downloadingExcel}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allCareerGoals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Interest
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -282,10 +404,10 @@ export default function CareerGoalsPage() {
             </div>
           )}
 
-          {/* Career Goals Table */}
+          {/* Interests Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading career goals...</div>
+              <div className="p-4 text-center text-sm text-gray-500">Loading interests...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -298,7 +420,16 @@ export default function CareerGoalsPage() {
                         LABEL
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        DESCRIPTION
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        STATUS
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         CREATED
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        UPDATED BY
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         LAST UPDATED
@@ -311,8 +442,8 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
-                          {careerGoals.length < allCareerGoals.length ? 'No career goals found matching your search' : 'No career goals found'}
+                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-gray-500">
+                          {careerGoals.length < allCareerGoals.length ? 'No interests found matching your search' : 'No interests found'}
                         </td>
                       </tr>
                     ) : (
@@ -327,6 +458,7 @@ export default function CareerGoalsPage() {
                                   width={48}
                                   height={48}
                                   className="object-contain"
+                                  unoptimized
                                 />
                               ) : (
                                 <span className="text-xs text-gray-400">No logo</span>
@@ -336,12 +468,29 @@ export default function CareerGoalsPage() {
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-gray-900">{cg.label}</span>
                           </td>
+                          <td className="px-4 py-2">
+                            <span className="text-xs text-gray-600 line-clamp-2 max-w-xs">
+                              {cg.description || 'No description'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              cg.status !== false 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {cg.status !== false ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(cg.created_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
                             })}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
+                            {cg.updated_by_email || '—'}
                           </td>
                           <td className="px-4 py-2 text-xs text-gray-600">
                             {new Date(cg.updated_at).toLocaleDateString('en-US', {
@@ -351,20 +500,10 @@ export default function CareerGoalsPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEdit(cg)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(cg.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onEdit={() => handleEdit(cg)}
+                              onDelete={() => handleDeleteClick(cg.id)}
+                            />
                           </td>
                         </tr>
                       ))
@@ -377,14 +516,14 @@ export default function CareerGoalsPage() {
         </main>
       </div>
 
-      {/* Career Goal Modal */}
+      {/* Interest Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
-                {editingCareerGoal ? 'Edit Career Goal' : 'Create Career Goal'}
+                {editingCareerGoal ? 'Edit Interest' : 'Create Interest'}
               </h2>
               <button
                 onClick={handleModalClose}
@@ -413,7 +552,53 @@ export default function CareerGoalsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Logo <span className="text-pink">*</span>
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter a detailed description of the interest"
+                    rows={4}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Status <span className="text-pink">*</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="true"
+                        checked={formData.status === true}
+                        onChange={() => setFormData({ ...formData, status: true })}
+                        className="text-pink focus:ring-pink"
+                      />
+                      <span className="text-sm text-gray-700">Active</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="false"
+                        checked={formData.status === false}
+                        onChange={() => setFormData({ ...formData, status: false })}
+                        className="text-pink focus:ring-pink"
+                      />
+                      <span className="text-sm text-gray-700">Inactive</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only active interests will appear on the site
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Logo
                   </label>
                   <div className="space-y-2">
                     {logoPreview && (
@@ -423,6 +608,7 @@ export default function CareerGoalsPage() {
                           alt="Preview"
                           fill
                           className="object-contain"
+                          unoptimized
                         />
                       </div>
                     )}
@@ -470,7 +656,7 @@ export default function CareerGoalsPage() {
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={uploading || !formData.label || !formData.logo}
+                disabled={uploading || !formData.label}
                 className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingCareerGoal ? 'Update' : 'Create'}
@@ -488,12 +674,155 @@ export default function CareerGoalsPage() {
           setDeletingId(null);
         }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Career Goal"
-        message="Are you sure you want to delete this career goal? This action cannot be undone."
+        title="Delete Interest"
+        message="Are you sure you want to delete this interest? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      {/* Upload Missing Logos Modal */}
+      {showMissingLogosModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                aria-label="Close"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-auto space-y-5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_filename</code> stored for interests that have no logo yet.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={(e) => {
+                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
+                      setMissingLogosResult(null);
+                      setMissingLogosError(null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {missingLogosZipFile ? (
+                    <div className="flex flex-col items-center gap-2 p-4">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600">
+                        <FiUpload className="h-5 w-5" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
+                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
+                      <FiUpload className="h-8 w-8 opacity-60" />
+                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                      <span className="text-xs">.zip only</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+              {missingLogosError && (
+                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
+                  {missingLogosError}
+                </div>
+              )}
+              {missingLogosResult && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="font-semibold text-slate-900">
+                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
+                  </p>
+                  {missingLogosResult.summary.filesSkipped > 0 && (
+                    <p className="text-sm text-amber-700">Files skipped (no matching interest): {missingLogosResult.summary.filesSkipped}</p>
+                  )}
+                  {missingLogosResult.summary.uploadErrors > 0 && (
+                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
+                  )}
+                  {missingLogosResult.updated.length > 0 && (
+                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
+                      {missingLogosResult.updated.map((u, i) => (
+                        <li key={i}>{u.label}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {missingLogosResult.skipped.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
+                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
+                        {missingLogosResult.skipped.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMissingLogosSubmit}
+                disabled={!missingLogosZipFile || missingLogosUploading}
+                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {missingLogosUploading ? (
+                  <>
+                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Interests"
+        message="Are you sure you want to delete ALL interests? This will remove all interest options and clear user selections. This action cannot be undone."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

@@ -79,7 +79,8 @@ class StreamController {
 
       const stream = await Stream.create({ 
         name, 
-        status: status !== undefined ? status : true 
+        status: status !== undefined ? status : true,
+        updated_by: req.admin?.id || null
       });
 
       res.status(201).json({
@@ -134,7 +135,11 @@ class StreamController {
         }
       }
 
-      const stream = await Stream.update(parseInt(id), { name, status });
+      const stream = await Stream.update(parseInt(id), { 
+        name, 
+        status, 
+        updated_by: req.admin?.id || null 
+      });
 
       res.json({
         success: true,

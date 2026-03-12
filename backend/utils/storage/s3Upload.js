@@ -1,4 +1,5 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+// Use AWS SDK v2 (aws-sdk) - compatible with v3 API, works when @aws-sdk/client-s3 is not installed
+const AWS = require('aws-sdk');
 const path = require('path');
 const https = require('https');
 const http = require('http');
@@ -24,16 +25,10 @@ if (isPlaceholder(BUCKET_NAME, 'your_bucket_name')) {
   console.warn('⚠️  AWS_S3_BUCKET_NAME or S3_BUCKET not configured or using placeholder value');
 }
 
-const s3Client = new S3Client({
-  region: REGION,
-  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-    ? {
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-      }
-    : {}),
+const s3 = new AWS.S3({
+  region: process.env.AWS_REGION || 'us-east-1',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
 });
 
 function getPublicUrl(key) {
@@ -67,54 +62,44 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
 
     const contentType = getContentType(fileName);
     const isPDF = fileName.toLowerCase().endsWith('.pdf') || contentType === 'application/pdf';
-    const contentDisposition = isPDF ? 'inline' : undefined;
-
+    const contentDisposition = isPDF ? 'inline' : undefined; // 'inline' allows viewing in browser, 'attachment' forces download
+    
     const baseParams = {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
       ContentType: contentType,
-      ...(contentDisposition && { ContentDisposition: contentDisposition }),
+      ContentDisposition: contentDisposition,
     };
 
     try {
-      await s3Client.send(
-        new PutObjectCommand({
-          ...baseParams,
-          ACL: 'public-read',
-        })
-      );
+      await s3.putObject({ ...baseParams, ACL: 'public-read' }).promise();
     } catch (aclError) {
       if (aclError.name === 'InvalidRequest' || aclError.message?.includes('ACL')) {
         console.warn('⚠️  ACL not allowed, uploading without ACL. Ensure bucket policy allows public read access.');
-        await s3Client.send(new PutObjectCommand(baseParams));
+        await s3.putObject(baseParams).promise();
       } else {
         throw aclError;
       }
     }
 
-    const location = getPublicUrl(key);
+    const region = process.env.AWS_REGION || 'us-east-1';
+    const location = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
     console.log(`✅ Successfully uploaded to S3: ${location}`);
     return location;
   } catch (error) {
     console.error('❌ Error uploading to S3:', error);
-
+    
     const code = error.name || error.code;
-    const message = error.message || '';
-
     if (code === 'InvalidAccessKeyId') {
       throw new Error('Invalid AWS Access Key ID. Please check your AWS_ACCESS_KEY_ID in .env file.');
-    }
-    if (code === 'SignatureDoesNotMatch') {
+    } else if (code === 'SignatureDoesNotMatch') {
       throw new Error('Invalid AWS Secret Access Key. Please check your AWS_SECRET_ACCESS_KEY in .env file.');
-    }
-    if (code === 'NoSuchBucket') {
+    } else if (code === 'NoSuchBucket') {
       throw new Error(`S3 bucket "${BUCKET_NAME}" does not exist. Please check your AWS_S3_BUCKET_NAME in .env file.`);
-    }
-    if (code === 'AccessDenied') {
+    } else if (code === 'AccessDenied') {
       throw new Error('Access denied to S3 bucket. Please check IAM user permissions and bucket policy.');
-    }
-    if (code === 'InvalidRequest' || message.includes('ACL')) {
+    } else if (code === 'InvalidRequest' || error.message?.includes('ACL')) {
       throw new Error('The bucket does not allow ACLs. Please configure bucket policy for public access instead. See AWS_S3_SETUP.md for details.');
     }
     throw error.message ? error : new Error(`Failed to upload file to S3: ${message || 'Unknown error'}`);
@@ -131,12 +116,7 @@ const deleteFromS3 = async (s3Url) => {
     const url = new URL(s3Url);
     const key = url.pathname.substring(1);
 
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: key,
-      })
-    );
+    await s3.deleteObject({ Bucket: BUCKET_NAME, Key: key }).promise();
   } catch (error) {
     console.error('Error deleting from S3:', error);
   }

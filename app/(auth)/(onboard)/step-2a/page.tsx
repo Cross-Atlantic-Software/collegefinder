@@ -129,7 +129,7 @@ export default function StepTwoA() {
 
           {/* Select + Button */}
           <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble>Which stream are you pursuing or have completed?</Bubble>
+            <Bubble className="w-full max-w-none">Which stream are you pursuing or have completed?</Bubble>
 
             {error && (
               <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
@@ -137,13 +137,13 @@ export default function StepTwoA() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               {loadingStreams ? (
-                <div className="w-full rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm text-slate-400">
+                <div className="w-full min-h-[48px] flex items-center rounded-lg border border-white/15 bg-white/10 px-5 text-sm text-slate-400">
                   Loading streams...
                 </div>
               ) : streamOptions.length === 0 ? (
-                <div className="w-full rounded-full border border-yellow-500/50 bg-yellow-500/10 px-5 py-3 text-sm text-yellow-400">
+                <div className="w-full min-h-[48px] flex items-center rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-5 text-sm text-yellow-400">
                   No streams available. Please contact support.
                 </div>
               ) : (
@@ -161,7 +161,7 @@ export default function StepTwoA() {
                 type="submit"
                 variant="DarkGradient"
                 size="lg"
-                className="w-full rounded-full"
+                className="w-full rounded-full min-h-[48px]"
                 disabled={saving || !selectedStream || loadingStreams}
               >
                 {saving ? "Saving..." : "Continue"}

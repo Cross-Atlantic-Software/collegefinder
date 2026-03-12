@@ -21,7 +21,8 @@ export default function AdminDashboardPage() {
     setTimeout(() => {
       router.replace('/admin/dashboard/users');
     }, 0);
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isRedirecting) {
     return (

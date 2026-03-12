@@ -82,7 +82,7 @@ export default function CareerGoalsTableClient({ initialUsers }: CareerGoalsTabl
 
       <CareerGoalsTable users={users} isLoading={false} />
 
-      {/* Career Goals Taxonomy Modal */}
+      {/* Interests Taxonomy Modal */}
       <CareerGoalsTaxonomyModal
         isOpen={showTaxonomyModal}
         onClose={() => setShowTaxonomyModal(false)}

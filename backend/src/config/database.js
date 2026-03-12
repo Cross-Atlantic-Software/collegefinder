@@ -36,6 +36,19 @@ pool.on('error', (err) => {
 const init = async () => {
   try {
     const dbDir = path.join(__dirname, '../database/schema');
+    const migrationsDir = path.join(__dirname, '../database/migrations');
+
+    // Run schema fixes first (for existing DBs with older schema)
+    const fixCollegesPath = path.join(migrationsDir, 'fix_colleges_college_name.sql');
+    if (fs.existsSync(fixCollegesPath)) {
+      try {
+        const sql = fs.readFileSync(fixCollegesPath, 'utf8');
+        await pool.query(sql);
+        console.log('✅ Applied schema fix: fix_colleges_college_name.sql');
+      } catch (e) {
+        if (e.code !== '42P07') console.log('ℹ️  Schema fix skipped:', e.message);
+      }
+    }
 
     // Define schema files in execution order
     const schemaFiles = [
@@ -43,6 +56,8 @@ const init = async () => {
       'users.sql',            // Base users table
       'otps.sql',             // OTP table (depends on users)
       'admin_users.sql',      // Admin users table (self-referencing)
+      'modules.sql',          // Modules taxonomy (for admin role-based access)
+      'admin_user_modules.sql', // Admin user -> module assignment (data_entry/admin)
       'email_templates.sql',  // Email templates table
       'blogs.sql',            // Blogs table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
@@ -60,20 +75,10 @@ const init = async () => {
       'programs.sql',         // Programs taxonomy table
       'exam_city.sql',        // Exam city taxonomy table
       'categories.sql',       // Categories taxonomy table
-      'colleges.sql',         // Colleges table
-      'college_location.sql', // College locations table (depends on colleges)
-      'college_gallery.sql',  // College gallery table (depends on colleges)
-      'college_reviews.sql',  // College reviews table (depends on colleges and users)
-      'college_news.sql',     // College news table (depends on colleges)
-      'college_courses.sql', // College courses table (depends on colleges, streams, levels, programs)
-      'course_exams.sql',     // Course exams table (depends on college_courses)
-      'course_cutoffs.sql',   // Course cutoffs table (depends on college_courses and course_exams)
-      'course_subjects.sql',  // Course subjects table (depends on college_courses and subjects)
-      'college_faqs.sql',     // College FAQs table (depends on colleges)
-      'coachings.sql',        // Coachings table
-      'coaching_location.sql', // Coaching locations table (depends on coachings)
-      'coaching_gallery.sql',  // Coaching gallery table (depends on coachings)
-      'coaching_courses.sql',  // Coaching courses table (depends on coachings)
+      'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)
+      'institutes.sql',       // Institutes (Coachings) module: institutes + institute_details + institute_exams + institute_exam_specialization + institute_statistics + institute_courses
+      'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams
+      'loans.sql',            // Loans module: loan_providers + disbursement_process + eligible_countries + eligible_course_types
       'user_address.sql',      // User address table (depends on users)
       'government_identification.sql', // Government ID table (depends on users)
       'other_personal_details.sql', // Other personal details (depends on users)
@@ -125,14 +130,22 @@ const runMigrations = async () => {
   const migrationsDir = path.join(__dirname, '../database/migrations');
   const migrationFiles = [
     'update_government_identification_apaar_id.sql',
-    'add_questions_image_url.sql',
-    'add_total_mocks_generated_to_exams.sql',
-    'add_mock_test_id_to_test_attempts.sql',
-    'remove_exam_id_from_questions.sql',
-    'rename_test_tables_to_self_explanatory.sql',
-    'allow_any_question_type.sql',
-    'add_generation_prompt_to_exams.sql',
-    'create_exam_mock_prompts_table.sql'
+    'add_description_status_to_career_goals.sql',
+    'add_exam_fields_and_related_tables.sql',
+    'add_institutes_tables.sql',
+    'add_scholarships_tables.sql',
+    'add_loans_tables.sql',
+    'add_modules_and_admin_user_types.sql',
+    'add_college_program_duration.sql',
+    'add_career_programs.sql',
+    'add_logo_file_name_to_exams.sql',
+    'add_logo_filename_to_entities.sql',
+    'add_updated_by_to_streams.sql',
+    'add_updated_by_and_nullable_logo_to_career_goals.sql',
+    'add_exam_domicile_programs.sql',
+    'add_branch_to_college_seat_matrix.sql',
+    'add_branch_to_college_cutoffs.sql',
+    'rename_career_goals_to_interests_module.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
@@ -152,6 +165,8 @@ const runMigrations = async () => {
       .trim();
 
     try {
+      // If file contains dollar-quoted blocks (e.g. DO $$ ... END $$), run entire file as one script
+      // so that semicolons inside the block don't break the migration
       if (cleanedSql.includes('$$')) {
         await pool.query(cleanedSql);
       } else {

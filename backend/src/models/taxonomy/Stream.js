@@ -2,21 +2,27 @@ const db = require('../../config/database');
 
 class Stream {
   /**
-   * Find all streams
+   * Find all streams (with updated_by admin email)
    */
   static async findAll() {
     const result = await db.query(
-      'SELECT * FROM streams ORDER BY name ASC'
+      `SELECT s.*, a.email as updated_by_email
+       FROM streams s
+       LEFT JOIN admin_users a ON s.updated_by = a.id
+       ORDER BY s.name ASC`
     );
     return result.rows;
   }
 
   /**
-   * Find stream by ID
+   * Find stream by ID (with updated_by admin email)
    */
   static async findById(id) {
     const result = await db.query(
-      'SELECT * FROM streams WHERE id = $1',
+      `SELECT s.*, a.email as updated_by_email
+       FROM streams s
+       LEFT JOIN admin_users a ON s.updated_by = a.id
+       WHERE s.id = $1`,
       [id]
     );
     return result.rows[0] || null;
@@ -47,10 +53,10 @@ class Stream {
    * Create a new stream
    */
   static async create(data) {
-    const { name, status } = data;
+    const { name, status, updated_by } = data;
     const result = await db.query(
-      'INSERT INTO streams (name, status) VALUES ($1, $2) RETURNING *',
-      [name, status !== undefined ? status : true]
+      'INSERT INTO streams (name, status, updated_by) VALUES ($1, $2, $3) RETURNING *',
+      [name, status !== undefined ? status : true, updated_by || null]
     );
     return result.rows[0];
   }
@@ -59,7 +65,7 @@ class Stream {
    * Update a stream
    */
   static async update(id, data) {
-    const { name, status } = data;
+    const { name, status, updated_by } = data;
     
     const updates = [];
     const values = [];
@@ -72,6 +78,10 @@ class Stream {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+    if (updated_by !== undefined) {
+      updates.push(`updated_by = $${paramCount++}`);
+      values.push(updated_by);
     }
 
     if (updates.length === 0) {

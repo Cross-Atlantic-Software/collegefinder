@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  type VARCHAR(50) NOT NULL DEFAULT 'user' CHECK (type IN ('super_admin', 'user')),
+  type VARCHAR(50) NOT NULL DEFAULT 'data_entry' CHECK (type IN ('data_entry', 'admin', 'super_admin')),
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

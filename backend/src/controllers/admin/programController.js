@@ -1,3 +1,4 @@
+const XLSX = require('xlsx');
 const Program = require('../../models/taxonomy/Program');
 const { validationResult } = require('express-validator');
 
@@ -176,6 +177,144 @@ class ProgramController {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to delete program'
+      });
+    }
+  }
+
+  /**
+   * Download bulk upload template
+   * GET /api/admin/programs/bulk-upload-template
+   */
+  static async downloadBulkTemplate(req, res) {
+    try {
+      const headers = ['name', 'status'];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([
+        headers,
+        ['B.Tech', 'TRUE'],
+        ['B.E.', 'TRUE'],
+        ['MBBS', 'TRUE'],
+        ['BDS', 'TRUE']
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Programs');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=programs-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating programs bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Download all programs as Excel
+   * GET /api/admin/programs/download-excel
+   */
+  static async downloadAllExcel(req, res) {
+    try {
+      const programs = await Program.findAll();
+      const headers = ['id', 'name', 'status', 'created_at', 'updated_at'];
+      const rows = [headers];
+      for (const p of programs) {
+        rows.push([
+          p.id,
+          p.name || '',
+          p.status ? 'TRUE' : 'FALSE',
+          p.created_at ? String(p.created_at).slice(0, 10) : '',
+          p.updated_at ? String(p.updated_at).slice(0, 10) : ''
+        ]);
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Programs');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=programs-all-data.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error exporting programs:', error);
+      res.status(500).json({ success: false, message: 'Failed to export programs' });
+    }
+  }
+
+  /**
+   * Bulk upload programs from Excel
+   * POST /api/admin/programs/bulk-upload
+   */
+  static async bulkUpload(req, res) {
+    try {
+      const excelFile = req.files?.excel?.[0] || req.file;
+      if (!excelFile || !excelFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No Excel file uploaded. Use field name "excel".'
+        });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
+      } catch (parseErr) {
+        return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
+      }
+
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      if (!rows.length) {
+        return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
+      }
+
+      const created = [];
+      const errors = [];
+      const namesInFile = new Set();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const nameRaw = (row.name ?? row.Name ?? '').toString().trim();
+        if (!nameRaw) {
+          errors.push({ row: rowNum, message: 'name is required' });
+          continue;
+        }
+        if (namesInFile.has(nameRaw.toLowerCase())) {
+          errors.push({ row: rowNum, message: `duplicate name "${nameRaw}" in this file` });
+          continue;
+        }
+        const existing = await Program.findByNameCaseInsensitive(nameRaw);
+        if (existing) {
+          errors.push({ row: rowNum, message: `program "${nameRaw}" already exists` });
+          continue;
+        }
+
+        const statusRaw = (row.status ?? '').toString().trim();
+        const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
+
+        try {
+          const program = await Program.create({ name: nameRaw, status });
+          created.push({ id: program.id, name: program.name });
+          namesInFile.add(nameRaw.toLowerCase());
+        } catch (createErr) {
+          errors.push({ row: rowNum, message: createErr.message || 'Failed to create program' });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          created: created.length,
+          createdPrograms: created,
+          errors: errors.length,
+          errorDetails: errors
+        },
+        message: `Created ${created.length} program(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+      });
+    } catch (error) {
+      console.error('Error in programs bulk upload:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Bulk upload failed'
       });
     }
   }

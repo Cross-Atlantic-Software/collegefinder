@@ -59,6 +59,17 @@ const validateAdminLogin = [
 ];
 
 /**
+ * Strong password requirements for admin users
+ * - Min 8 characters
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one number
+ * - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+ */
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{}|;:,.<>?])[A-Za-z\d!@#$%^&*()_+\-=[\]{}|;:,.<>?]{8,}$/;
+const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
+
+/**
  * Validation rules for creating admin user
  */
 const validateCreateAdmin = [
@@ -68,12 +79,14 @@ const validateCreateAdmin = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
-    .isIn(['user', 'super_admin'])
-    .withMessage('Type must be either "user" or "super_admin"')
+    .isIn(['data_entry', 'admin', 'super_admin'])
+    .withMessage('Type must be data_entry, admin, or super_admin')
 ];
 
 /**
@@ -86,12 +99,14 @@ const validateUpdateAdmin = [
     .withMessage('Please provide a valid email address'),
   body('password')
     .optional()
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
-    .isIn(['user', 'super_admin'])
-    .withMessage('Type must be either "user" or "super_admin"'),
+    .isIn(['data_entry', 'admin', 'super_admin'])
+    .withMessage('Type must be data_entry, admin, or super_admin'),
   body('is_active')
     .optional()
     .isBoolean()
@@ -672,7 +687,11 @@ const validateCreateCareer = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array')
 ];
 
 /**
@@ -687,7 +706,11 @@ const validateUpdateCareer = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array')
 ];
 
 /**
@@ -1107,6 +1130,15 @@ const validateCreateCollege = [
     .withMessage('Logo URL must be a valid URL')
     .isLength({ max: 500 })
     .withMessage('Logo URL must be less than 500 characters')
+  ,
+  body('exam_type')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isIn(['Central', 'State', 'Private', 'Deemed'])
+    .withMessage('Exam type must be one of: Central, State, Private, Deemed')
 ];
 
 /**
@@ -1133,7 +1165,15 @@ const validateUpdateCollege = [
     .isURL()
     .withMessage('Logo URL must be a valid URL')
     .isLength({ max: 500 })
-    .withMessage('Logo URL must be less than 500 characters')
+    .withMessage('Logo URL must be less than 500 characters'),
+  body('exam_type')
+    .optional({ nullable: true, checkFalsy: true })
+    .customSanitizer((value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      return value;
+    })
+    .isIn(['Central', 'State', 'Private', 'Deemed'])
+    .withMessage('Exam type must be one of: Central, State, Private, Deemed')
 ];
 
 /**
@@ -1698,324 +1738,6 @@ const validateCreateCollegeFAQ = [
     .withMessage('Answer cannot be empty')
 ];
 
-/**
- * Validation rules for creating coaching
- */
-const validateCreateCoaching = [
-  body('name')
-    .notEmpty()
-    .withMessage('Name is required')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
-  body('description')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Description must be a string')
-    .isLength({ max: 2000 })
-    .withMessage('Description must be less than 2000 characters')
-];
-
-/**
- * Validation rules for updating coaching
- */
-const validateUpdateCoaching = [
-  body('name')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
-  body('description')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Description must be a string')
-    .isLength({ max: 2000 })
-    .withMessage('Description must be less than 2000 characters')
-];
-
-/**
- * Validation rules for creating coaching location
- */
-const validateCreateCoachingLocation = [
-  body('coaching_id')
-    .notEmpty()
-    .withMessage('Coaching ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('branch_title')
-    .notEmpty()
-    .withMessage('Branch title is required')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Branch title must be between 1 and 255 characters'),
-  body('address')
-    .notEmpty()
-    .withMessage('Address is required')
-    .trim()
-    .isLength({ min: 1, max: 1000 })
-    .withMessage('Address must be between 1 and 1000 characters'),
-  body('state')
-    .notEmpty()
-    .withMessage('State is required')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('State must be between 1 and 100 characters'),
-  body('city')
-    .notEmpty()
-    .withMessage('City is required')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('City must be between 1 and 100 characters'),
-  body('google_map_url')
-    .optional()
-    .isURL()
-    .withMessage('Google Maps URL must be a valid URL')
-    .isLength({ max: 1000 })
-    .withMessage('Google Maps URL must be less than 1000 characters')
-];
-
-/**
- * Validation rules for updating coaching location
- */
-const validateUpdateCoachingLocation = [
-  body('coaching_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('branch_title')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Branch title must be between 1 and 255 characters'),
-  body('address')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 1000 })
-    .withMessage('Address must be between 1 and 1000 characters'),
-  body('state')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('State must be between 1 and 100 characters'),
-  body('city')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('City must be between 1 and 100 characters'),
-  body('google_map_url')
-    .optional()
-    .isURL()
-    .withMessage('Google Maps URL must be a valid URL')
-    .isLength({ max: 1000 })
-    .withMessage('Google Maps URL must be less than 1000 characters')
-];
-
-/**
- * Validation rules for creating coaching gallery
- */
-const validateCreateCoachingGallery = [
-  body('coaching_id')
-    .notEmpty()
-    .withMessage('Coaching ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('caption')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Caption must be a string')
-    .isLength({ max: 500 })
-    .withMessage('Caption must be less than 500 characters'),
-  body('sort_order')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('Sort order must be a non-negative integer')
-];
-
-/**
- * Validation rules for updating coaching gallery
- */
-const validateUpdateCoachingGallery = [
-  body('coaching_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('caption')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Caption must be a string')
-    .isLength({ max: 500 })
-    .withMessage('Caption must be less than 500 characters'),
-  body('sort_order')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('Sort order must be a non-negative integer')
-];
-
-/**
- * Validation rules for creating coaching course
- */
-const validateCreateCoachingCourse = [
-  body('coaching_id')
-    .notEmpty()
-    .withMessage('Coaching ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('title')
-    .notEmpty()
-    .withMessage('Title is required')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Title must be between 1 and 255 characters'),
-  body('summary')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Summary must be a string')
-    .isLength({ max: 1000 })
-    .withMessage('Summary must be less than 1000 characters'),
-  body('duration')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Duration must be a string')
-    .isLength({ max: 100 })
-    .withMessage('Duration must be less than 100 characters'),
-  body('mode')
-    .optional()
-    .isIn(['Online', 'Offline', 'Hybrid'])
-    .withMessage('Mode must be Online, Offline, or Hybrid'),
-  body('fee')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isFloat({ min: 0 })
-    .withMessage('Fee must be a positive number'),
-  body('contact_email')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isEmail()
-    .withMessage('Contact email must be a valid email address')
-    .normalizeEmail(),
-  body('contact')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Contact must be a string')
-    .isLength({ max: 100 })
-    .withMessage('Contact must be less than 100 characters'),
-  body('rating')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isFloat({ min: 0, max: 5 })
-    .withMessage('Rating must be between 0 and 5')
-];
-
-/**
- * Validation rules for updating coaching course
- */
-const validateUpdateCoachingCourse = [
-  body('coaching_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Coaching ID must be a positive integer'),
-  body('title')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Title must be between 1 and 255 characters'),
-  body('summary')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Summary must be a string')
-    .isLength({ max: 1000 })
-    .withMessage('Summary must be less than 1000 characters'),
-  body('duration')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Duration must be a string')
-    .isLength({ max: 100 })
-    .withMessage('Duration must be less than 100 characters'),
-  body('mode')
-    .optional()
-    .isIn(['Online', 'Offline', 'Hybrid'])
-    .withMessage('Mode must be Online, Offline, or Hybrid'),
-  body('fee')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isFloat({ min: 0 })
-    .withMessage('Fee must be a positive number'),
-  body('contact_email')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isEmail()
-    .withMessage('Contact email must be a valid email address')
-    .normalizeEmail(),
-  body('contact')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isString()
-    .withMessage('Contact must be a string')
-    .isLength({ max: 100 })
-    .withMessage('Contact must be less than 100 characters'),
-  body('rating')
-    .optional({ nullable: true, checkFalsy: true })
-    .customSanitizer((value) => {
-      if (value === '' || value === null || value === undefined) return null;
-      return value;
-    })
-    .isFloat({ min: 0, max: 5 })
-    .withMessage('Rating must be between 0 and 5')
-];
 
 /**
  * Validation rules for updating college FAQ
@@ -2211,14 +1933,6 @@ module.exports = {
   validateUpdateCourseSubject,
   validateCreateCollegeFAQ,
   validateUpdateCollegeFAQ,
-  validateCreateCoaching,
-  validateUpdateCoaching,
-  validateCreateCoachingLocation,
-  validateUpdateCoachingLocation,
-  validateCreateCoachingGallery,
-  validateUpdateCoachingGallery,
-  validateCreateCoachingCourse,
-  validateUpdateCoachingCourse,
   validateGovernmentIdentification,
   validateCategoryAndReservation,
   validateOtherPersonalDetails,

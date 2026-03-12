@@ -5,6 +5,7 @@ import { FiPlay, FiCheck, FiClock, FiX, FiRefreshCw, FiUser, FiFileText, FiPlus,
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { WorkflowModal } from '@/components/admin/WorkflowModal';
+import { Dropdown } from '@/components/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
@@ -488,16 +489,13 @@ export default function ApplicationsPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Select Exam
                                 </label>
-                                <select
-                                    value={newAppExamId || ''}
-                                    onChange={(e) => setNewAppExamId(Number(e.target.value))}
-                                    className="w-full px-3 py-2 border rounded-lg text-gray-900"
-                                >
-                                    <option value="">Select an exam...</option>
-                                    {automationExams.map(exam => (
-                                        <option key={exam.id} value={exam.id}>{exam.name}</option>
-                                    ))}
-                                </select>
+                                <Dropdown<number>
+                                    value={newAppExamId ?? null}
+                                    onChange={(v) => setNewAppExamId(v)}
+                                    options={automationExams.map((exam) => ({ value: exam.id, label: exam.name }))}
+                                    placeholder="Select an exam..."
+                                    className="w-full"
+                                />
                             </div>
                         </div>
 

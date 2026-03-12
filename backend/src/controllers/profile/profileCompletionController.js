@@ -190,7 +190,7 @@ class ProfileCompletionController {
         if (hasValue) {
           completedFields++;
         } else {
-          missingFields.push({ section: 'Career Goals', field: field.label });
+          missingFields.push({ section: 'Interests', field: field.label });
         }
       });
 

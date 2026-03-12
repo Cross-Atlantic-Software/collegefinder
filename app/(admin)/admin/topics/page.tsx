@@ -6,7 +6,8 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllTopics, createTopic, updateTopic, deleteTopic, Topic } from '@/api';
 import { getAllSubjectsPublic } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiImage } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiImage } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
 
 export default function TopicsPage() {
@@ -47,7 +48,8 @@ export default function TopicsPage() {
 
     fetchTopics();
     fetchSubjects();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchSubjects = async () => {
     try {
@@ -372,29 +374,11 @@ export default function TopicsPage() {
                               })}
                             </td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleView(topic)}
-                                  className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                  title="View"
-                                >
-                                  <FiEye className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(topic)}
-                                  className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="Edit"
-                                >
-                                  <FiEdit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClick(topic.id)}
-                                  className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                  title="Delete"
-                                >
-                                  <FiTrash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                              <AdminTableActions
+                                onView={() => handleView(topic)}
+                                onEdit={() => handleEdit(topic)}
+                                onDelete={() => handleDeleteClick(topic.id)}
+                              />
                             </td>
                           </tr>
                         );

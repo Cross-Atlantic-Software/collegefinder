@@ -5,6 +5,7 @@ export { default as RightSidebar } from "./RightSidebar";
 export { default as UrgentImportantSwiper } from "./UrgentImportantSwiper";
 export { default as BasicInfoForm } from "./ProfileTabs/BasicInfoForm";
 export { default as ShortlistExams } from "./ShortlistExams";
+export { default as ShortlistColleges } from "./ShortlistColleges";
 export { default as ApplicationsPage } from "./Applications";
 export { default as ExamBox } from "./ExamBox";
 export { default as ExamPreparation } from "./ExamPreparation";

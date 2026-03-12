@@ -1,13 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +24,7 @@ export default function AdminLoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const text = await res.text();
@@ -45,11 +43,15 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_user', JSON.stringify(admin));
 
-        document.cookie = `admin_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-        document.cookie = `admin_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        // Set cookie for server-side access (must be set before navigation)
+        const maxAge = 60 * 60 * 24 * 7; // 7 days
+        document.cookie = `admin_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `admin_authenticated=true; path=/; max-age=${maxAge}; SameSite=Lax`;
 
-        window.location.href = '/admin/site-users';
-        return;
+        // Use full page navigation so the next request includes the new cookies.
+        // router.push() triggers client-side navigation and the server may receive the old (empty) cookie state, causing immediate redirect to login.
+        const isSuperAdmin = (admin as { type?: string })?.type === 'super_admin';
+        window.location.href = isSuperAdmin ? '/admin/site-users' : '/admin';
       } else {
         setError(data.message || 'Invalid email or password');
       }

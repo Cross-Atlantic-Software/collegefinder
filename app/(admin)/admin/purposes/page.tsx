@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllPurposes, createPurpose, updatePurpose, deletePurpose, Purpose } from '@/api/admin/purposes';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function PurposesPage() {
@@ -32,7 +33,8 @@ export default function PurposesPage() {
     }
 
     fetchPurposes();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (allPurposes.length === 0) {
@@ -300,20 +302,10 @@ export default function PurposesPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEdit(purpose)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(purpose.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onEdit={() => handleEdit(purpose)}
+                              onDelete={() => handleDeleteClick(purpose.id)}
+                            />
                           </td>
                         </tr>
                       ))

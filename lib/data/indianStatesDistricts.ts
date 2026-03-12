@@ -330,3 +330,18 @@ export function getAllStates(): string[] {
   return indianStatesDistricts.map(state => state.name);
 }
 
+/**
+ * Get all cities (districts + state names) for searchable dropdown
+ * Returns a flattened, sorted, unique list
+ */
+export function getAllCities(): string[] {
+  const districtSet = new Set<string>();
+  for (const state of indianStatesDistricts) {
+    districtSet.add(state.name);
+    for (const district of state.districts) {
+      districtSet.add(district);
+    }
+  }
+  return [...districtSet].sort((a, b) => a.localeCompare(b, 'en'));
+}
+

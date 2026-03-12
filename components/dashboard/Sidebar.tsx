@@ -7,6 +7,7 @@ import {
   FaHome,
   FaUserCircle,
   FaClipboardList,
+  FaUniversity,
   FaFileAlt,
   FaBookOpen,
   FaFlask,
@@ -19,6 +20,7 @@ type SectionId =
   | "dashboard"
   | "profile"
   | "exam-shortlist"
+  | "college-shortlist"
   | "applications"
   | "exam-prep"
   | "test-module";
@@ -57,6 +59,13 @@ const baseNavItems: {
     sub: "Exams selected",
     icon: FaClipboardList,
     getValue: () => "8",
+  },
+  {
+    id: "college-shortlist",
+    label: "College Shortlist",
+    sub: "Colleges matched",
+    icon: FaUniversity,
+    getValue: () => "",
   },
   {
     id: "applications",

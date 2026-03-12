@@ -5,8 +5,9 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   name VARCHAR(255) NOT NULL,
   code VARCHAR(50) NOT NULL, -- Short code like JEE_MAIN, NEET, etc.
   description TEXT,
-  format JSONB DEFAULT '{}'::jsonb, -- Format configuration including papers, sections, marking scheme
-  generation_prompt TEXT, -- Optional exam-specific prompt for question generation; if set, used instead of generic prompt
+  exam_logo VARCHAR(500), -- S3 URL for exam logo
+  exam_type VARCHAR(50) CHECK (exam_type IN ('National', 'State', 'Institute')), -- National, State, or Institute level
+  conducting_authority VARCHAR(255), -- Authority conducting the exam
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(name),
@@ -47,8 +48,5 @@ COMMENT ON COLUMN exams_taxonomies.code IS 'Short code for the exam (e.g., JEE_M
 COMMENT ON COLUMN exams_taxonomies.description IS 'Description of the exam';
 COMMENT ON COLUMN exams_taxonomies.format IS 'JSONB format configuration including papers, sections, question distribution, marking scheme, and rules';
 
--- Seed only JEE Main so the app works out of the box. No bulk seed — prevents re-adding 25 exams on every schema load.
--- To add more exams later, run: npm run seed-exams (or use admin/API). To keep only JEE: npm run keep-only-jee-exams.
-INSERT INTO exams_taxonomies (name, code, description, format) VALUES
-  ('JEE Main', 'JEE_MAIN', 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges', '{}'::jsonb)
-ON CONFLICT (code) DO NOTHING;
+-- Note: Comments for exam_logo, exam_type, and conducting_authority are added by migration file add_exam_fields_and_related_tables.sql
+-- Note: Related tables (exam_dates, exam_eligibility_criteria, exam_pattern, exam_cutoff) are created by migration file add_exam_fields_and_related_tables.sql

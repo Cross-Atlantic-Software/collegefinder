@@ -142,7 +142,105 @@ const sendOTPEmail = async (email, otp) => {
   }
 };
 
+/**
+ * Send admin welcome email with login credentials
+ * @param {string} email - Admin email
+ * @param {string} password - Plain text password (sent only once at creation)
+ * @param {string} type - Admin type (data_entry, admin, super_admin)
+ * @returns {Promise<boolean>} - Success status
+ */
+const sendAdminWelcomeEmail = async (email, password, type) => {
+  const transporter = createTransporter();
+
+  const typeLabel = type === 'super_admin' ? 'Super Admin' : type === 'admin' ? 'Admin' : 'Data Entry';
+  const loginUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const adminLoginUrl = `${loginUrl}/admin/login`;
+
+  const subject = 'Your College Finder Admin Panel Access';
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f5f5;">
+    <tr>
+      <td align="center" style="padding: 20px 0;">
+        <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #341050 0%, #8B1E8B 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">College Finder</h1>
+              <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Admin Panel Access</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 22px; font-weight: bold;">Welcome to the Admin Panel</h2>
+              <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                You have been granted <strong>${typeLabel}</strong> access to the College Finder admin panel. Please use the credentials below to log in.
+              </p>
+              <div style="background-color: #f9f9f9; border: 1px solid #eeeeee; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Login Email</p>
+                <p style="margin: 0 0 16px 0; color: #232f3e; font-size: 16px; font-family: monospace;">${email}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Password</p>
+                <p style="margin: 0; color: #232f3e; font-size: 16px; font-family: monospace;">${password}</p>
+              </div>
+              <p style="color: #666666; font-size: 14px; margin: 0 0 24px 0;">
+                <strong>Important:</strong> For security, please change your password after your first login. Do not share these credentials with anyone.
+              </p>
+              <a href="${adminLoginUrl}" style="display: inline-block; background: linear-gradient(135deg, #341050 0%, #8B1E8B 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; font-size: 16px;">Log in to Admin Panel</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee;">
+              <p style="margin: 0; color: #666666; font-size: 12px;">
+                © ${new Date().getFullYear()} College Finder. All rights reserved.
+              </p>
+              <p style="margin: 4px 0 0 0; color: #666666; font-size: 12px;">
+                This is an automated email. Please do not reply.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Welcome to College Finder Admin Panel\n\nYou have been granted ${typeLabel} access.\n\nLogin URL: ${adminLoginUrl}\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after your first login. Do not share these credentials.\n\n© ${new Date().getFullYear()} College Finder`;
+
+  if (!transporter) {
+    console.log('📧 [DEV] Admin welcome email would be sent to:', email);
+    console.log('📧 [DEV] Credentials: email=', email, 'password=', password);
+    return true;
+  }
+
+  const mailOptions = {
+    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject,
+    html,
+    text
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Admin welcome email sent to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending admin welcome email:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('⚠️  Email sending failed, but continuing in development mode');
+      return true;
+    }
+    throw new Error('Failed to send admin welcome email');
+  }
+};
+
 module.exports = {
-  sendOTPEmail
+  sendOTPEmail,
+  sendAdminWelcomeEmail
 };
 
