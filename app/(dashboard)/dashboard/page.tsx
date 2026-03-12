@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar} from "@/components/dashboard";
+import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 

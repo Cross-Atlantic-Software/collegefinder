@@ -1,8 +1,21 @@
-// Use AWS SDK v2 (aws-sdk) - compatible with v3 API, works when @aws-sdk/client-s3 is not installed
-const AWS = require('aws-sdk');
+// Use AWS SDK v2 (aws-sdk) - lazy load so app can start when package is missing (e.g. Docker rebuild needed)
 const path = require('path');
 const https = require('https');
 const http = require('http');
+
+let AWS;
+let s3;
+try {
+  AWS = require('aws-sdk');
+  s3 = new AWS.S3({
+    region: process.env.AWS_REGION || 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  });
+} catch (err) {
+  console.warn('⚠️  aws-sdk not installed. S3 uploads will fail. Run: npm install aws-sdk (or rebuild Docker image)');
+  s3 = null;
+}
 
 // Support both AWS_S3_BUCKET_NAME and S3_BUCKET variable names
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET;
@@ -25,12 +38,6 @@ if (isPlaceholder(BUCKET_NAME, 'your_bucket_name')) {
   console.warn('⚠️  AWS_S3_BUCKET_NAME or S3_BUCKET not configured or using placeholder value');
 }
 
-const s3 = new AWS.S3({
-  region: process.env.AWS_REGION || 'us-east-1',
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-});
-
 function getPublicUrl(key) {
   return `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
 }
@@ -44,6 +51,9 @@ function getPublicUrl(key) {
  */
 const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
   try {
+    if (!s3) {
+      throw new Error('aws-sdk is not installed. Run: npm install aws-sdk (or rebuild Docker: docker-compose build --no-cache)');
+    }
     if (!BUCKET_NAME || BUCKET_NAME.trim() === '') {
       throw new Error('AWS_S3_BUCKET_NAME or S3_BUCKET is not configured. Please set it in your .env file.');
     }
@@ -113,6 +123,9 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
  */
 const deleteFromS3 = async (s3Url) => {
   try {
+    if (!s3) {
+      throw new Error('aws-sdk is not installed. Run: npm install aws-sdk (or rebuild Docker: docker-compose build --no-cache)');
+    }
     const url = new URL(s3Url);
     const key = url.pathname.substring(1);
 

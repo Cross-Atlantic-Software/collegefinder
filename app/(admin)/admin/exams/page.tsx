@@ -16,6 +16,8 @@ import {
   downloadAllDataExcel,
   bulkUploadExams,
   uploadMissingLogos,
+  getExamPrompt,
+  updateExamPrompt,
   type Exam,
   type ExamDates,
   type ExamEligibilityCriteria,
@@ -115,6 +117,16 @@ export default function ExamsPage() {
     summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
   } | null>(null);
   const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'exams' | 'prompts'>('exams');
+  const [promptsByExamId, setPromptsByExamId] = useState<Record<number, { prompt: string; hasCustomPrompt: boolean }>>({});
+  const [savingPromptExamId, setSavingPromptExamId] = useState<number | null>(null);
+  const [promptsSectionLoading, setPromptsSectionLoading] = useState(false);
+  const [promptExam, setPromptExam] = useState<Exam | null>(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [promptValue, setPromptValue] = useState('');
+  const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptSaving, setPromptSaving] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -151,6 +163,34 @@ export default function ExamsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allExams]);
+
+  useEffect(() => {
+    if (activeSection !== 'prompts' || allExams.length === 0) return;
+    let cancelled = false;
+    const load = async () => {
+      setPromptsSectionLoading(true);
+      const next: Record<number, { prompt: string; hasCustomPrompt: boolean }> = {};
+      for (const exam of allExams) {
+        if (cancelled) return;
+        try {
+          const res = await getExamPrompt(exam.id);
+          if (res.success && res.data) {
+            next[exam.id] = { prompt: res.data.prompt || '', hasCustomPrompt: !!res.data.hasCustomPrompt };
+          } else {
+            next[exam.id] = { prompt: '', hasCustomPrompt: false };
+          }
+        } catch {
+          next[exam.id] = { prompt: '', hasCustomPrompt: false };
+        }
+      }
+      if (!cancelled) {
+        setPromptsByExamId(next);
+      }
+      setPromptsSectionLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [activeSection, allExams]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -585,7 +625,6 @@ export default function ExamsPage() {
     { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
 
-<<<<<<< HEAD
   const handleOpenPrompt = async (exam: Exam) => {
     setPromptExam(exam);
     setShowPromptModal(true);
@@ -662,115 +701,6 @@ export default function ExamsPage() {
     }
   };
 
-=======
-  const handleBulkTemplateDownload = async () => {
-    try {
-      await downloadBulkTemplate();
-      showSuccess('Template downloaded');
-    } catch {
-      showError('Failed to download template');
-    }
-  };
-
-  const handleDownloadAllExcel = async () => {
-    try {
-      setDownloadingExcel(true);
-      await downloadAllDataExcel();
-      showSuccess('Excel downloaded');
-    } catch {
-      showError('Failed to download Excel');
-    } finally {
-      setDownloadingExcel(false);
-    }
-  };
-
-  const handleDeleteAllConfirm = async () => {
-    try {
-      setIsDeletingAll(true);
-      const response = await deleteAllExams();
-      if (response.success) {
-        showSuccess(response.message || 'All exams deleted successfully');
-        setShowDeleteAllConfirm(false);
-        fetchData(true);
-      } else {
-        showError(response.message || 'Failed to delete all exams');
-        setShowDeleteAllConfirm(false);
-      }
-    } catch (err) {
-      showError('An error occurred while deleting all exams');
-      setShowDeleteAllConfirm(false);
-    } finally {
-      setIsDeletingAll(false);
-    }
-  };
-
-  const handleBulkSubmit = async () => {
-    if (!bulkExcelFile) {
-      showError('Please select an Excel file');
-      return;
-    }
-    setBulkUploading(true);
-    setBulkError(null);
-    setBulkResult(null);
-    try {
-      const res = await bulkUploadExams(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile);
-      if (res.success && res.data) {
-        setBulkResult(res.data);
-        showSuccess(res.message || `Created ${res.data.created} exam(s)`);
-        fetchData(true);
-      } else {
-        setBulkError(res.message || 'Bulk upload failed');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Bulk upload failed';
-      setBulkError(msg);
-      showError(msg);
-      const errData = err && typeof err === 'object' && 'data' in err ? (err as { data?: { errorDetails?: { row: number; message: string }[] } }).data : undefined;
-      if (errData?.errorDetails?.length) {
-        setBulkResult({ created: 0, createdExams: [], errors: errData.errorDetails.length, errorDetails: errData.errorDetails });
-      }
-    } finally {
-      setBulkUploading(false);
-    }
-  };
-
-  const handleMissingLogosSubmit = async () => {
-    if (!missingLogosZipFile) {
-      showError('Please select a ZIP file');
-      return;
-    }
-    setMissingLogosUploading(true);
-    setMissingLogosError(null);
-    setMissingLogosResult(null);
-    try {
-      const res = await uploadMissingLogos(missingLogosZipFile);
-      if (res.success && res.data) {
-        setMissingLogosResult(res.data);
-        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
-        fetchData(true);
-      } else {
-        setMissingLogosError(res.message || 'Upload failed');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
-      setMissingLogosError(msg);
-      showError(msg);
-    } finally {
-      setMissingLogosUploading(false);
-    }
-  };
-
-  type ExamFormTabId = 'basic' | 'dates' | 'eligibility' | 'pattern' | 'cutoff' | 'careerGoals';
-  const tabs: { id: ExamFormTabId; label: string; icon: typeof FiFileText }[] = [
-    { id: 'basic', label: 'Basic Info', icon: FiFileText },
-    { id: 'dates', label: 'Dates', icon: FiCalendar },
-    { id: 'eligibility', label: 'Eligibility', icon: FiUser },
-    { id: 'pattern', label: 'Pattern', icon: FiFileText },
-    { id: 'cutoff', label: 'Cutoff', icon: FiBarChart },
-    { id: 'careerGoals', label: 'Interests', icon: FiTarget },
-  ];
-
->>>>>>> main
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -907,6 +837,7 @@ export default function ExamsPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Error Message (Exams section) */}
           {activeSection === 'exams' && error && (

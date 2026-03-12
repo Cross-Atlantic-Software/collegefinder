@@ -698,12 +698,106 @@ class ExamsTaxonomyController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
+      const jeeMainFormat = JSON.stringify({
+        default: {
+          name: 'JEE Main 2024',
+          rules: [
+            'Total duration: 3 hours (180 minutes)',
+            'Total questions: 90 (75 MCQs + 15 Numerical)',
+            'Maximum marks: 300',
+            'Marking: +4 for correct, -1 for incorrect, 0 for unattempted',
+            'Section A (MCQ): Choose one correct option',
+            'Section B (Numerical): Answer must be a number between 0-9999'
+          ],
+          sections: {
+            Physics: {
+              name: 'Physics',
+              marks: 120,
+              subsections: {
+                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
+                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
+              },
+              total_questions: 30
+            },
+            Chemistry: {
+              name: 'Chemistry',
+              marks: 120,
+              subsections: {
+                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
+                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
+              },
+              total_questions: 30
+            },
+            Mathematics: {
+              name: 'Mathematics',
+              marks: 120,
+              subsections: {
+                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
+                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
+              },
+              total_questions: 30
+            }
+          },
+          total_marks: 300,
+          marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
+          total_questions: 90,
+          duration_minutes: 180
+        }
+      });
+      const neetFormat = JSON.stringify({
+        default: {
+          name: 'NEET 2024',
+          rules: [
+            'Total duration: 3 hours (180 minutes)',
+            'Total questions: 200 (180 to be attempted)',
+            'Maximum marks: 720',
+            'Marking: +4 for correct, -1 for incorrect, 0 for unattempted',
+            'All questions are multiple choice with single correct answer'
+          ],
+          sections: {
+            Physics: {
+              name: 'Physics',
+              marks: 200,
+              subsections: {
+                'Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
+                'Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
+              },
+              total_questions: 50
+            },
+            Chemistry: {
+              name: 'Chemistry',
+              marks: 200,
+              subsections: {
+                'Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
+                'Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
+              },
+              total_questions: 50
+            },
+            Biology: {
+              name: 'Biology',
+              marks: 400,
+              subsections: {
+                'Botany - Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
+                'Botany - Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 },
+                'Zoology - Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
+                'Zoology - Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
+              },
+              total_questions: 100
+            }
+          },
+          total_marks: 720,
+          marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
+          total_questions: 200,
+          duration_minutes: 180
+        }
+      });
       const headers = [
         'name',
         'code',
         'description',
         'exam_type',
         'conducting_authority',
+        'format',
         'logo_filename',
         'application_start_date',
         'application_close_date',
@@ -735,6 +829,7 @@ class ExamsTaxonomyController {
           'Engineering entrance exam for B.Tech admissions',
           'National',
           'NTA',
+          jeeMainFormat,
           'jee_main.png',
           '2025-12-01',
           '2026-01-15',
@@ -763,6 +858,7 @@ class ExamsTaxonomyController {
           'Medical entrance exam for MBBS and BDS admissions',
           'National',
           'NTA',
+          neetFormat,
           'neet.png',
           '2025-11-01',
           '2025-12-15',
@@ -817,7 +913,7 @@ class ExamsTaxonomyController {
       const careerGoalMap = new Map(allCareerGoals.map((c) => [c.id, c.label]));
 
       const headers = [
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'logo_filename', 'exam_logo',
+        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'format', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date',
         'Streams', 'Subjects', 'age_limit_min', 'age_limit_max', 'attempt_limit',
         'mode', 'number_of_questions', 'marking_scheme', 'duration_minutes',
@@ -839,12 +935,14 @@ class ExamsTaxonomyController {
         const streamNames = (Array.isArray(streamIds) ? streamIds : []).map((id) => streamMap.get(id) ?? id).filter(Boolean).join(', ');
         const subjectNames = (Array.isArray(subjectIds) ? subjectIds : []).map((id) => subjectMap.get(id) ?? id).filter(Boolean).join(', ');
         const interestNames = (Array.isArray(careerGoalIds) ? careerGoalIds : []).map((id) => careerGoalMap.get(id) ?? id).filter(Boolean).join(', ');
+        const formatStr = exam.format && typeof exam.format === 'object' ? JSON.stringify(exam.format) : (exam.format ? String(exam.format) : '');
         rows.push([
           exam.name || '',
           exam.code || '',
           exam.description || '',
           exam.exam_type || '',
           exam.conducting_authority || '',
+          formatStr,
           logoFilename,
           examLogoUrl,
           (dates && dates.application_start_date) ? String(dates.application_start_date).slice(0, 10) : '',
@@ -1180,6 +1278,16 @@ class ExamsTaxonomyController {
         const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
         const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
+        const formatRaw = getCell(row, 'format', 'Format') || getCellByKeyword(row, 'format') || '';
+        let formatObj = null;
+        if (formatRaw && String(formatRaw).trim()) {
+          try {
+            const parsed = JSON.parse(String(formatRaw).trim());
+            formatObj = typeof parsed === 'object' && parsed !== null ? parsed : null;
+          } catch (_) {
+            formatObj = null;
+          }
+        }
 
         let examLogoUrl = null;
         if (logoFilename) {
@@ -1207,7 +1315,8 @@ class ExamsTaxonomyController {
             exam_logo: examLogoUrl,
             exam_type: finalExamType,
             conducting_authority: conductingAuthority,
-            logo_file_name: logoFilename || null
+            logo_file_name: logoFilename || null,
+            format: formatObj
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code });
           codesInFile.add(code);

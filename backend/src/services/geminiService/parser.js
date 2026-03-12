@@ -36,6 +36,16 @@ function parseQuestionResponse(text, originalParams) {
     let jsonText = jsonMatch[0];
     jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
 
+    // Fix literal control characters inside JSON string values (Gemini sometimes returns unescaped \n, \r, \t)
+    jsonText = jsonText.replace(/"((?:[^"\\]|\\.)*)"/g, (_, content) => {
+      const fixed = content
+        .replace(/\r\n/g, '\\n')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+      return '"' + fixed + '"';
+    });
+
     const validEscapes = /^["\\/bfnrtu]$/;
     jsonText = jsonText.replace(/\\(.)/g, (_, c) => (validEscapes.test(c) ? '\\' + c : '\\\\' + c));
 
@@ -93,6 +103,21 @@ function parseQuestionResponse(text, originalParams) {
       } else if (parseError.message.includes('Bad escaped character')) {
         console.log('⚠️  Fixing bad escaped character (LaTeX backslashes)...');
         jsonText = jsonText.replace(/\\([A-Za-z])/g, (_, c) => (/[bfnrtu]/.test(c) ? '\\' + c : '\\\\' + c));
+        try {
+          parsed = JSON.parse(jsonText);
+        } catch (e) {
+          throw parseError;
+        }
+      } else if (parseError.message.includes('Bad control character')) {
+        console.log('⚠️  Fixing bad control character (unescaped newlines/tabs in strings)...');
+        jsonText = jsonText.replace(/"((?:[^"\\]|\\.)*)"/g, (_, content) => {
+          const fixed = content
+            .replace(/\r\n/g, '\\n')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t');
+          return '"' + fixed + '"';
+        });
         try {
           parsed = JSON.parse(jsonText);
         } catch (e) {

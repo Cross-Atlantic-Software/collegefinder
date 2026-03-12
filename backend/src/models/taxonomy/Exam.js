@@ -48,10 +48,11 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format } = data;
+    const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null]
+      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) RETURNING *',
+      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}']
     );
     return result.rows[0];
   }

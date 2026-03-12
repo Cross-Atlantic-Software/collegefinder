@@ -6,7 +6,7 @@ const GENERATION_CONFIG = {
   temperature: 0.7,
   topP: 0.8,
   topK: 40,
-  maxOutputTokens: 8192,
+  maxOutputTokens: 16384,
 };
 
 /** Model used for generating diagram images (text + image output). Uses REST API for responseModalities. */
