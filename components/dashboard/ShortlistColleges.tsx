@@ -51,7 +51,7 @@ export default function ShortlistColleges() {
         )}
         {!loading && colleges.length === 0 && (
           <div className="col-span-full py-6 text-center text-slate-400 text-sm">
-            {message || "No recommended colleges. Complete your profile (stream & career goals) and ensure colleges are linked to your recommended exams."}
+            {message || "No recommended colleges. Complete your profile (stream & interests) and ensure colleges are linked to your recommended exams."}
           </div>
         )}
         {!loading &&

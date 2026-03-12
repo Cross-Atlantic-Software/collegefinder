@@ -19,4 +19,4 @@ CREATE INDEX IF NOT EXISTS idx_career_goals_taxonomies_status ON career_goals_ta
 
 -- Add comments
 COMMENT ON COLUMN career_goals_taxonomies.description IS 'Detailed description of the career goal';
-COMMENT ON COLUMN career_goals_taxonomies.status IS 'Active status of the career goal (true = active, false = inactive). Only active career goals appear on the site.';
+COMMENT ON COLUMN career_goals_taxonomies.status IS 'Active status of the career goal (true = active, false = inactive). Only active interests appear on the site.';

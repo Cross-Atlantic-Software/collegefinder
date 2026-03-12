@@ -137,6 +137,10 @@ export async function deleteInstitute(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllInstitutes(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/all`, { method: 'DELETE' });
+}
+
 export interface InstitutesBulkUploadResult {
   created: number;
   createdInstitutes: { id: number; name: string }[];

@@ -278,6 +278,23 @@ class LoansController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await LoanProvider.findAll();
+      for (const p of all) {
+        if (p.logo) await deleteFromS3(p.logo);
+        await LoanProvider.delete(p.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} loan providers deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all loan providers:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all loan providers' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [

@@ -54,7 +54,7 @@ const navGroups: NavGroup[] = [
     icon: <FiLayers className="h-4 w-4" />,
     children: [
       {
-        label: 'Career Goals',
+        label: 'Interests',
         href: '/admin/career-goals',
         icon: <FiTarget className="h-4 w-4" />,
         moduleCode: 'career_goals',

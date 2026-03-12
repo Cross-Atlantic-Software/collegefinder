@@ -122,7 +122,7 @@ export default function CareerGoalsTab() {
             }
 
             setSuccess(true);
-            showSuccess("Career goals updated successfully!");
+            showSuccess("Interests updated successfully!");
             setTimeout(() => setSuccess(false), 3000);
         } catch (err: any) {
             console.error("Error updating data:", err);
@@ -146,9 +146,9 @@ export default function CareerGoalsTab() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
-            {/* Career Goals Section */}
+            {/* Interests Section */}
             <div className="space-y-5 rounded-md bg-white/5 p-6">
-                <h2 className="text-base font-semibold text-pink sm:text-lg">Career Goals</h2>
+                <h2 className="text-base font-semibold text-pink sm:text-lg">Interests</h2>
                 <p className="text-sm text-slate-300">Tell us what excites you! This helps us find the perfect matches.</p>
 
                 {error && (
@@ -169,7 +169,7 @@ export default function CareerGoalsTab() {
 
                 {success && (
                     <div className="rounded-md bg-emerald-500/20 border border-emerald-500/50 px-4 py-3 text-sm text-emerald-200">
-                        Career goals updated successfully!
+                        Interests updated successfully!
                     </div>
                 )}
 
@@ -191,15 +191,21 @@ export default function CareerGoalsTab() {
                                             : "bg-white/5 border-white/10 hover:bg-white/10",
                                     ].join(" ")}
                                 >
-                                    <Image
-                                        src={opt.logo}
-                                        alt={opt.label}
-                                        width={60}
-                                        height={60}
-                                        className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
-                                        priority
-                                        unoptimized
-                                    />
+                                    {opt.logo ? (
+                                        <Image
+                                            src={opt.logo}
+                                            alt={opt.label}
+                                            width={60}
+                                            height={60}
+                                            className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
+                                            priority
+                                            unoptimized
+                                        />
+                                    ) : (
+                                        <div className="mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 flex items-center justify-center">
+                                            <span className="text-lg font-bold text-slate-400">{opt.label.charAt(0)}</span>
+                                        </div>
+                                    )}
                                     <span
                                         className={`text-md font-semibold transition duration-500 ${
                                             active ? "text-white" : "text-slate-200 group-hover:text-white"
@@ -263,7 +269,7 @@ export default function CareerGoalsTab() {
                     className="w-full flex-1 rounded-full"
                     disabled={saving}
                 >
-                    {saving ? "Updating..." : "Update Career Goals"}
+                    {saving ? "Updating..." : "Update Interests"}
                 </Button>
             </div>
         </form>

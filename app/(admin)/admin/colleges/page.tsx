@@ -14,6 +14,7 @@ import {
   downloadCollegesBulkTemplate,
   downloadAllDataExcel,
   bulkUploadColleges,
+  deleteAllColleges,
   type College,
   type CollegeWithDetails,
 } from '@/api/admin/colleges';
@@ -73,6 +74,8 @@ export default function CollegesPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Run once on mount: auth check and load list + dropdowns. Empty deps prevent re-running and continuous API calls.
   useEffect(() => {
@@ -392,6 +395,26 @@ export default function CollegesPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllColleges();
+      if (response.success) {
+        showSuccess(response.message || 'All colleges deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all colleges');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all colleges');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -466,6 +489,17 @@ export default function CollegesPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allColleges.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -1063,6 +1097,18 @@ export default function CollegesPage() {
         confirmText="Delete"
         cancelText="Cancel"
         isLoading={isDeleting}
+        confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Colleges"
+        message={`Are you sure you want to delete all ${allColleges.length} colleges? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
         confirmButtonStyle="danger"
       />
     </div>

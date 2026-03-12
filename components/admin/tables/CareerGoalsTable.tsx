@@ -20,7 +20,7 @@ export default function CareerGoalsTable({ users, isLoading }: CareerGoalsTableP
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-        <div className="text-gray-500">Loading career goals data...</div>
+        <div className="text-gray-500">Loading interests data...</div>
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function CareerGoalsTable({ users, isLoading }: CareerGoalsTableP
                   </>
                 ) : (
                   <td colSpan={1} className="px-4 py-3 text-sm text-gray-500 text-center">
-                    No career goals data
+                    No interests data
                   </td>
                 )}
               </tr>

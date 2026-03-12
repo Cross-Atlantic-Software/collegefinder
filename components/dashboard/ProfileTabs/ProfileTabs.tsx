@@ -15,7 +15,7 @@ type TabKey = "basic" | "academics" | "career" | "other";
 const tabs: { key: TabKey; label: string; icon: ReactNode }[] = [
   { key: "basic", label: "Personal Details", icon: <FaUser className="text-base" /> },
   { key: "academics", label: "Academics", icon: <FaGraduationCap className="text-base" /> },
-  { key: "career", label: "Career Goals", icon: <FaBullseye className="text-base" /> },
+  { key: "career", label: "Interests", icon: <FaBullseye className="text-base" /> },
   { key: "other", label: "Other Info", icon: <FaInfoCircle className="text-base" /> },
 ];
 

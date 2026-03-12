@@ -9,11 +9,13 @@ import {
   createExam, 
   updateExam, 
   deleteExam, 
+  deleteAllExams,
   getExamById,
   uploadExamLogo,
   downloadBulkTemplate,
   downloadAllDataExcel,
   bulkUploadExams,
+  uploadMissingLogos,
   type Exam,
   type ExamDates,
   type ExamEligibilityCriteria,
@@ -97,8 +99,20 @@ export default function ExamsPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ created: number; createdExams: { id: number; name: string; code: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
+  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
+  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
+  const [missingLogosResult, setMissingLogosResult] = useState<{
+    updated: { id: number; name: string; code: string; logo_file_name?: string }[];
+    skipped: string[];
+    errors: { file: string; message: string }[];
+    summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+  } | null>(null);
+  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -489,6 +503,26 @@ export default function ExamsPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllExams();
+      if (response.success) {
+        showSuccess(response.message || 'All exams deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all exams');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all exams');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Please select an Excel file');
@@ -515,6 +549,32 @@ export default function ExamsPage() {
     }
   };
 
+  const handleMissingLogosSubmit = async () => {
+    if (!missingLogosZipFile) {
+      showError('Please select a ZIP file');
+      return;
+    }
+    setMissingLogosUploading(true);
+    setMissingLogosError(null);
+    setMissingLogosResult(null);
+    try {
+      const res = await uploadMissingLogos(missingLogosZipFile);
+      if (res.success && res.data) {
+        setMissingLogosResult(res.data);
+        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
+        fetchData(true);
+      } else {
+        setMissingLogosError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setMissingLogosError(msg);
+      showError(msg);
+    } finally {
+      setMissingLogosUploading(false);
+    }
+  };
+
   type ExamFormTabId = 'basic' | 'dates' | 'eligibility' | 'pattern' | 'cutoff' | 'careerGoals';
   const tabs: { id: ExamFormTabId; label: string; icon: typeof FiFileText }[] = [
     { id: 'basic', label: 'Basic Info', icon: FiFileText },
@@ -522,7 +582,7 @@ export default function ExamsPage() {
     { id: 'eligibility', label: 'Eligibility', icon: FiUser },
     { id: 'pattern', label: 'Pattern', icon: FiFileText },
     { id: 'cutoff', label: 'Cutoff', icon: FiBarChart },
-    { id: 'careerGoals', label: 'Career Goals', icon: FiTarget },
+    { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
 
   if (error && !isLoading) {
@@ -595,7 +655,22 @@ export default function ExamsPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {allExams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMissingLogosModal(true);
+                    setMissingLogosZipFile(null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  Upload missing logos
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allExams.length > 0 && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -604,6 +679,17 @@ export default function ExamsPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allExams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -1145,15 +1231,15 @@ export default function ExamsPage() {
                   </>
                 )}
 
-                {/* Career Goals Tab */}
+                {/* Interests Tab */}
                 {activeTab === 'careerGoals' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Related Career Goals
+                        Related Interests
                       </label>
                       <p className="text-xs text-gray-500 mb-2">
-                        Select career goals that are related to this exam
+                        Select interests that are related to this exam
                       </p>
                       <MultiSelect
                         options={careerGoals.map(cg => ({ value: cg.id.toString(), label: cg.label }))}
@@ -1162,7 +1248,7 @@ export default function ExamsPage() {
                           ...formData,
                           careerGoalIds: selected.map(s => parseInt(s))
                         })}
-                        placeholder="Select career goals"
+                        placeholder="Select interests"
                       />
                     </div>
                   </>
@@ -1301,7 +1387,7 @@ export default function ExamsPage() {
               )}
               {viewingExamData.careerGoalIds?.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Career Goals</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Interests</label>
                   <p className="text-sm text-gray-900">
                     {viewingExamData.careerGoalIds.map((id) => careerGoals.find((cg) => cg.id === id)?.label ?? id).join(', ') || viewingExamData.careerGoalIds.join(', ')}
                   </p>
@@ -1338,7 +1424,7 @@ export default function ExamsPage() {
             </div>
             <div className="p-4 overflow-auto space-y-4">
               <p className="text-sm text-gray-600">
-                Upload an Excel file. Required: <strong>name</strong>, <strong>code</strong>. Optional: description, exam_type (National/State/Institute), conducting_authority, logo_filename (match uploaded image names), dates (YYYY-MM-DD). For streams, subjects and career goals use <strong>names or labels</strong> (e.g. stream_ids: &quot;PCM, PCB&quot;, subject_ids: &quot;Physics, Chemistry&quot;, career_goal_ids: &quot;Engineering&quot;) or numeric IDs. For <strong>category_wise_cutoff</strong> use JSON in one cell with double-quoted keys (e.g. &quot;General&quot;: 95, &quot;OBC&quot;: 90). Also: eligibility, pattern, other cutoff fields. Download the template for all columns.
+                Upload an Excel file. Required: <strong>name</strong>, <strong>code</strong>. Optional: description, exam_type (National/State/Institute), conducting_authority, logo_filename (match uploaded image names), dates (YYYY-MM-DD). For streams, subjects and interests use <strong>names or labels</strong> (e.g. stream_ids: &quot;PCM, PCB&quot;, subject_ids: &quot;Physics, Chemistry&quot;, career_goal_ids: &quot;Engineering&quot;) or numeric IDs. For <strong>category_wise_cutoff</strong> use JSON in one cell with double-quoted keys (e.g. &quot;General&quot;: 95, &quot;OBC&quot;: 90). Also: eligibility, pattern, other cutoff fields. Download the template for all columns.
               </p>
               <button
                 type="button"
@@ -1427,6 +1513,103 @@ export default function ExamsPage() {
         </div>
       )}
 
+      {/* Upload Missing Logos Modal */}
+      {showMissingLogosModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Upload missing logos</h2>
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto space-y-4">
+              <p className="text-sm text-gray-600">
+                Upload a ZIP containing logo images. File names must match the <strong>logo_filename</strong> stored for exams that have no logo yet. Only exams with matching <strong>logo_file_name</strong> and no logo will be updated.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">ZIP file (required)</label>
+                <input
+                  type="file"
+                  accept=".zip,application/zip,application/x-zip-compressed"
+                  onChange={(e) => {
+                    setMissingLogosZipFile(e.target.files?.[0] ?? null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                    e.target.value = '';
+                  }}
+                  className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-pink/10 file:text-pink"
+                />
+                {missingLogosZipFile && (
+                  <span className="text-xs text-gray-500 mt-1 block flex items-center gap-1">
+                    {missingLogosZipFile.name}
+                    <button type="button" onClick={() => setMissingLogosZipFile(null)} className="text-red-600 hover:text-red-800 p-0.5" aria-label="Remove ZIP">
+                      <FiX className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+              </div>
+              {missingLogosError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+                  {missingLogosError}
+                </div>
+              )}
+              {missingLogosResult && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm space-y-2">
+                  <p className="font-medium text-gray-900">
+                    Logos added: {missingLogosResult.summary.logosAdded}
+                  </p>
+                  {missingLogosResult.summary.filesSkipped > 0 && (
+                    <p className="text-amber-700">Files skipped (no matching exam): {missingLogosResult.summary.filesSkipped}</p>
+                  )}
+                  {missingLogosResult.summary.uploadErrors > 0 && (
+                    <p className="text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
+                  )}
+                  {missingLogosResult.updated.length > 0 && (
+                    <ul className="text-xs text-gray-600 list-disc list-inside max-h-24 overflow-y-auto">
+                      {missingLogosResult.updated.map((u, i) => (
+                        <li key={i}>{u.name} ({u.code})</li>
+                      ))}
+                    </ul>
+                  )}
+                  {missingLogosResult.skipped.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 mb-1">Skipped files:</p>
+                      <ul className="text-xs text-gray-500 list-disc list-inside max-h-16 overflow-y-auto">
+                        {missingLogosResult.skipped.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMissingLogosSubmit}
+                disabled={!missingLogosZipFile || missingLogosUploading}
+                className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+              >
+                {missingLogosUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
@@ -1441,6 +1624,18 @@ export default function ExamsPage() {
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Exams"
+        message={`Are you sure you want to delete all ${allExams.length} exams? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

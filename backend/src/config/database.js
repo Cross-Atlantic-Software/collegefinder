@@ -117,7 +117,9 @@ const runMigrations = async () => {
     'add_scholarships_tables.sql',
     'add_loans_tables.sql',
     'add_modules_and_admin_user_types.sql',
-    'add_college_program_duration.sql'
+    'add_college_program_duration.sql',
+    'add_career_programs.sql',
+    'add_logo_file_name_to_exams.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

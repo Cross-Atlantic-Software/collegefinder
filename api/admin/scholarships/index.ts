@@ -113,6 +113,10 @@ export async function deleteScholarship(id: number): Promise<ApiResponse<null>> 
   return apiRequest(`${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllScholarships(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/all`, { method: 'DELETE' });
+}
+
 export interface ScholarshipsBulkUploadResult {
   created: number;
   createdScholarships: { id: number; name: string }[];

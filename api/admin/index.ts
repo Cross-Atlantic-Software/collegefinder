@@ -28,6 +28,8 @@ export {
   uploadCareerGoalLogo,
   updateCareerGoal,
   deleteCareerGoal,
+  downloadAllDataExcel as downloadAllCareerGoalsExcel,
+  deleteAllCareerGoals,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
 
@@ -69,6 +71,10 @@ export {
   createCareer,
   updateCareer,
   deleteCareer,
+  downloadAllCareersExcel,
+  downloadCareersBulkTemplate,
+  bulkUploadCareers,
+  deleteAllCareers,
 } from './careers';
 export type { Career } from './careers';
 

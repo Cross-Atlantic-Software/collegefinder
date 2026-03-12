@@ -14,6 +14,7 @@ import {
   downloadInstitutesBulkTemplate,
   downloadAllDataExcel,
   bulkUploadInstitutes,
+  deleteAllInstitutes,
   type Institute,
   type InstituteDetails,
   type InstituteStatistics,
@@ -97,6 +98,8 @@ export default function InstitutesPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -397,6 +400,26 @@ export default function InstitutesPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllInstitutes();
+      if (response.success) {
+        showSuccess(response.message || 'All institutes deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all institutes');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all institutes');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Select an Excel file');
@@ -535,6 +558,17 @@ export default function InstitutesPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allInstitutes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -1207,6 +1241,17 @@ export default function InstitutesPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Institutes"
+        message={`Are you sure you want to delete all ${allInstitutes.length} institutes? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

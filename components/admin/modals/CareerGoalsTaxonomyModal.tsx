@@ -99,7 +99,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
-          showSuccess('Career goal updated successfully');
+          showSuccess('Interest updated successfully');
           setShowForm(false);
           resetForm();
           fetchCareerGoals();
@@ -141,7 +141,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       setIsDeleting(true);
       const response = await deleteCareerGoal(deletingId);
       if (response.success) {
-        showSuccess('Career goal deleted successfully');
+        showSuccess('Interest deleted successfully');
         setShowDeleteConfirm(false);
         setDeletingId(null);
         fetchCareerGoals();
@@ -199,7 +199,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Career Goals Taxonomies</h2>
+          <h2 className="text-lg font-bold">Interests Taxonomies</h2>
           <button
             onClick={handleClose}
             className="text-white hover:text-gray-200 transition-colors"
@@ -368,8 +368,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           setDeletingId(null);
         }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Career Goal Taxonomy"
-        message="Are you sure you want to delete this career goal taxonomy? This will remove it from all users who have selected it. This action cannot be undone."
+        title="Delete Interest Taxonomy"
+        message="Are you sure you want to delete this interest taxonomy? This will remove it from all users who have selected it. This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonStyle="danger"

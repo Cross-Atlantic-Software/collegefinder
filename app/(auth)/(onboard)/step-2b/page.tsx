@@ -90,6 +90,10 @@ export default function StepTwoB() {
       setError("Please select at least one interest");
       return;
     }
+    if (selectedInterests.length > 3) {
+      setError("Please select up to 3 interests only");
+      return;
+    }
 
     if (!user) {
       setError("You must be logged in to save your interests");
@@ -140,7 +144,10 @@ export default function StepTwoB() {
 
           {/* Interests + Button */}
           <div className="flex flex-col gap-5 w-full max-w-2xl">
-            <Bubble>What interests you? Select all that apply.</Bubble>
+            <Bubble>
+              <span className="block mb-2">What interests you? Select all that apply.</span>
+              <span className="block text-sm text-slate-400 font-normal">Choose up to 3 interests.</span>
+            </Bubble>
 
             {error && (
               <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
@@ -163,6 +170,7 @@ export default function StepTwoB() {
                           key={opt.id}
                           type="button"
                           onClick={() => toggleInterest(opt.id)}
+                          disabled={!selectedInterests.includes(opt.id) && selectedInterests.length >= 3}
                           className={[
                             "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
                             "border group",
@@ -171,15 +179,21 @@ export default function StepTwoB() {
                               : "bg-white/5 border-white/10 hover:bg-white/10",
                           ].join(" ")}
                         >
-                          <Image
-                            src={opt.logo}
-                            alt={opt.label}
-                            width={60}
-                            height={60}
-                            className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
-                            priority
-                            unoptimized
-                          />
+                          {opt.logo ? (
+                            <Image
+                              src={opt.logo}
+                              alt={opt.label}
+                              width={60}
+                              height={60}
+                              className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
+                              priority
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 flex items-center justify-center">
+                              <span className="text-lg font-bold text-slate-400">{opt.label.charAt(0)}</span>
+                            </div>
+                          )}
                           <span
                             className={`text-md font-semibold transition duration-500 ${active ? "text-white" : "text-slate-200 group-hover:text-white"
                               }`}

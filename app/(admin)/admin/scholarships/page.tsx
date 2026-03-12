@@ -13,6 +13,7 @@ import {
   downloadScholarshipsBulkTemplate,
   downloadAllDataExcel,
   bulkUploadScholarships,
+  deleteAllScholarships,
   type Scholarship,
   type ScholarshipEligibleCategory,
   type ScholarshipApplicableState,
@@ -89,6 +90,8 @@ export default function ScholarshipsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -349,6 +352,26 @@ export default function ScholarshipsPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllScholarships();
+      if (response.success) {
+        showSuccess(response.message || 'All scholarships deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all scholarships');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all scholarships');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Select an Excel file');
@@ -483,6 +506,17 @@ export default function ScholarshipsPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allScholarships.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -933,6 +967,17 @@ export default function ScholarshipsPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Scholarships"
+        message={`Are you sure you want to delete all ${allScholarships.length} scholarships? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

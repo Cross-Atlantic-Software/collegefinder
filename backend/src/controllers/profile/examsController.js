@@ -130,6 +130,86 @@ class ExamsTaxonomyController {
   }
 
   /**
+   * Upload missing logos from a ZIP file.
+   * Matches files by logo_file_name; updates exams where exam_logo is null.
+   * POST /api/admin/exams/upload-missing-logos
+   */
+  static async uploadMissingLogos(req, res) {
+    try {
+      const logosZipFile = req.files?.logos_zip?.[0] || req.file;
+      if (!logosZipFile || !logosZipFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No ZIP file uploaded. Use field name "logos_zip".'
+        });
+      }
+
+      let logoMap;
+      try {
+        const zip = new AdmZip(logosZipFile.buffer);
+        const entries = zip.getEntries();
+        const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
+        logoMap = new Map();
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          if (entry.isDirectory) continue;
+          const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
+          if (!name || !imageExt.test(name)) continue;
+          const buffer = entry.getData();
+          if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
+        }
+      } catch (zipErr) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
+        });
+      }
+
+      const updated = [];
+      const skipped = [];
+      const errors = [];
+
+      for (const [filenameLower, file] of logoMap) {
+        const exams = await Exam.findMissingLogosByFilename(file.originalname);
+        if (exams.length === 0) {
+          skipped.push(file.originalname);
+          continue;
+        }
+        try {
+          const logoUrl = await uploadToS3(file.buffer, file.originalname, 'exam-logos');
+          for (const exam of exams) {
+            await Exam.update(exam.id, { exam_logo: logoUrl });
+            updated.push({ id: exam.id, name: exam.name, code: exam.code, logo_file_name: exam.logo_file_name });
+          }
+        } catch (uploadErr) {
+          errors.push({ file: file.originalname, message: uploadErr.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          updated,
+          skipped,
+          errors,
+          summary: {
+            logosAdded: updated.length,
+            filesSkipped: skipped.length,
+            uploadErrors: errors.length
+          }
+        },
+        message: `Added ${updated.length} logo(s). ${skipped.length} file(s) had no matching exams.`
+      });
+    } catch (error) {
+      console.error('Error uploading missing logos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload missing logos'
+      });
+    }
+  }
+
+  /**
    * Create new exam (for admin) - includes related data
    * POST /api/admin/exams
    */
@@ -389,6 +469,30 @@ class ExamsTaxonomyController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete exam'
+      });
+    }
+  }
+
+  /**
+   * Delete all exams (Super Admin only)
+   * DELETE /api/admin/exams/all
+   */
+  static async deleteAll(req, res) {
+    try {
+      const all = await Exam.findAll();
+      for (const ex of all) {
+        if (ex.exam_logo) await deleteFromS3(ex.exam_logo);
+        await Exam.delete(ex.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} exams deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all exams:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete all exams'
       });
     }
   }
@@ -674,13 +778,22 @@ class ExamsTaxonomyController {
    */
   static async downloadAllExcel(req, res) {
     try {
-      const exams = await Exam.findAll();
+      const [exams, allStreams, allSubjects, allCareerGoals] = await Promise.all([
+        Exam.findAll(),
+        Stream.findAll(),
+        Subject.findAll(),
+        CareerGoal.findAll()
+      ]);
+      const streamMap = new Map(allStreams.map((s) => [s.id, s.name]));
+      const subjectMap = new Map(allSubjects.map((s) => [s.id, s.name]));
+      const careerGoalMap = new Map(allCareerGoals.map((c) => [c.id, c.label]));
+
       const headers = [
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'logo_filename',
+        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date',
-        'stream_ids', 'subject_ids', 'age_limit_min', 'age_limit_max', 'attempt_limit',
+        'Streams', 'Subjects', 'age_limit_min', 'age_limit_max', 'attempt_limit',
         'mode', 'number_of_questions', 'marking_scheme', 'duration_minutes',
-        'previous_year_cutoff', 'ranks_percentiles', 'category_wise_cutoff', 'target_rank_range', 'career_goal_ids'
+        'previous_year_cutoff', 'ranks_percentiles', 'category_wise_cutoff', 'target_rank_range', 'Interests'
       ];
       const rows = [headers];
       for (const exam of exams) {
@@ -691,9 +804,13 @@ class ExamsTaxonomyController {
           ExamCutoff.findByExamId(exam.id),
           ExamCareerGoal.getCareerGoalIds(exam.id)
         ]);
-        const logoFilename = (exam.exam_logo && typeof exam.exam_logo === 'string' && exam.exam_logo.split('/').pop()) ? exam.exam_logo.split('/').pop() : '';
-        const streamIds = (eligibility && eligibility.stream_ids) ? (Array.isArray(eligibility.stream_ids) ? eligibility.stream_ids.join(',') : String(eligibility.stream_ids)) : '';
-        const subjectIds = (eligibility && eligibility.subject_ids) ? (Array.isArray(eligibility.subject_ids) ? eligibility.subject_ids.join(',') : String(eligibility.subject_ids)) : '';
+        const logoFilename = exam.logo_file_name || (exam.exam_logo && typeof exam.exam_logo === 'string' ? exam.exam_logo.split('/').pop() : '') || '';
+        const examLogoUrl = (exam.exam_logo && typeof exam.exam_logo === 'string') ? exam.exam_logo : '';
+        const streamIds = eligibility?.stream_ids;
+        const subjectIds = eligibility?.subject_ids;
+        const streamNames = (Array.isArray(streamIds) ? streamIds : []).map((id) => streamMap.get(id) ?? id).filter(Boolean).join(', ');
+        const subjectNames = (Array.isArray(subjectIds) ? subjectIds : []).map((id) => subjectMap.get(id) ?? id).filter(Boolean).join(', ');
+        const interestNames = (Array.isArray(careerGoalIds) ? careerGoalIds : []).map((id) => careerGoalMap.get(id) ?? id).filter(Boolean).join(', ');
         rows.push([
           exam.name || '',
           exam.code || '',
@@ -701,11 +818,12 @@ class ExamsTaxonomyController {
           exam.exam_type || '',
           exam.conducting_authority || '',
           logoFilename,
+          examLogoUrl,
           (dates && dates.application_start_date) ? String(dates.application_start_date).slice(0, 10) : '',
           (dates && dates.application_close_date) ? String(dates.application_close_date).slice(0, 10) : '',
           (dates && dates.exam_date) ? String(dates.exam_date).slice(0, 10) : '',
-          streamIds,
-          subjectIds,
+          streamNames,
+          subjectNames,
           (eligibility && eligibility.age_limit_min != null) ? String(eligibility.age_limit_min) : '',
           (eligibility && eligibility.age_limit_max != null) ? String(eligibility.age_limit_max) : '',
           (eligibility && eligibility.attempt_limit != null) ? String(eligibility.attempt_limit) : '',
@@ -717,7 +835,7 @@ class ExamsTaxonomyController {
           (cutoff && cutoff.ranks_percentiles) || '',
           (cutoff && cutoff.category_wise_cutoff) ? (typeof cutoff.category_wise_cutoff === 'object' ? JSON.stringify(cutoff.category_wise_cutoff) : String(cutoff.category_wise_cutoff)) : '',
           (cutoff && cutoff.target_rank_range) || '',
-          (careerGoalIds && careerGoalIds.length) ? careerGoalIds.join(',') : ''
+          interestNames
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -960,9 +1078,8 @@ class ExamsTaxonomyController {
             } catch (uploadErr) {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
-          } else {
-            errors.push({ row: rowNum, message: `logo file not found: "${logoFilename}"` });
           }
+          // If logo file not in ZIP: still create exam with logo_file_name; can upload later via "Upload missing logos"
         }
 
         const finalExamType = validTypes.includes(examType) ? examType : null;
@@ -974,7 +1091,8 @@ class ExamsTaxonomyController {
             description,
             exam_logo: examLogoUrl,
             exam_type: finalExamType,
-            conducting_authority: conductingAuthority
+            conducting_authority: conductingAuthority,
+            logo_file_name: logoFilename || null
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code });
           codesInFile.add(code);
