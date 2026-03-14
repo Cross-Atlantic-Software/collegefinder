@@ -8,7 +8,7 @@
 const db = require('../../../config/database');
 const geminiService = require('../../../services/geminiService');
 const { buildQuestionParamsList } = require('./buildParams');
-const { KNOWN_TYPES, BATCH_SIZE, GEMINI_CONCURRENCY } = require('./config');
+const { KNOWN_TYPES, BATCH_SIZE, GEMINI_CONCURRENCY, FAILED_QUESTION_RETRIES } = require('./config');
 
 /**
  * Extend job lock if available (BullMQ). No-op when running sync (no job).
@@ -129,6 +129,28 @@ async function processMockGeneration(job) {
     const insertedQuestions = [];
     const startOrderIndex = existingCount + i + 1;
 
+    // Retry failed questions in this batch (e.g. parse errors from malformed Gemini JSON)
+    if (batchResult.failed && batchResult.failed.length > 0) {
+      console.log(`🔄 [Worker] Retrying ${batchResult.failed.length} failed question(s) (max ${FAILED_QUESTION_RETRIES} attempts each)`);
+      for (const { index: failIndex, error } of batchResult.failed) {
+        const param = batchParams[failIndex];
+        if (!param) continue;
+        let question = null;
+        for (let attempt = 1; attempt <= FAILED_QUESTION_RETRIES && !question; attempt++) {
+          try {
+            question = await geminiService.generateQuestion(param);
+            batchResult.successful.push({ question, index: failIndex });
+            console.log(`✅ [Worker] Retry ${attempt} succeeded for question at index ${failIndex}`);
+          } catch (retryErr) {
+            console.warn(`⚠️  [Worker] Retry ${attempt}/${FAILED_QUESTION_RETRIES} failed for index ${failIndex}:`, retryErr.message);
+          }
+        }
+        if (!question) {
+          console.warn(`⚠️  [Worker] Question at index ${failIndex} failed after ${FAILED_QUESTION_RETRIES} retries (${error})`);
+        }
+      }
+    }
+
     for (const { question, index } of batchResult.successful) {
       try {
         const questionTypeToSave = (question.question_type && String(question.question_type).trim()) || 'mcq_single';
@@ -227,6 +249,14 @@ async function processMockGeneration(job) {
   const totalInserted = existingCount + allInserted.length;
   if (totalInserted === 0) {
     throw new Error('No questions could be saved to the database');
+  }
+
+  // Do not mark mock ready if we have fewer questions than needed (e.g. some generations failed after retries)
+  if (totalInserted < totalNeeded) {
+    const missing = totalNeeded - totalInserted;
+    throw new Error(
+      `Mock generation incomplete: ${totalInserted}/${totalNeeded} questions. ${missing} missing. Job will retry to fill the gap.`
+    );
   }
 
   await db.query(`

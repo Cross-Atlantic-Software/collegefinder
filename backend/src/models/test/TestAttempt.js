@@ -16,6 +16,7 @@ class TestAttempt {
     const result = await db.query(`
       SELECT
         ta.*,
+        mt.order_index AS mock_order_index,
         COALESCE(t.title, CONCAT('Mock ', mt.order_index)) as test_title,
         e.name as exam_name
       FROM user_exam_attempts ta

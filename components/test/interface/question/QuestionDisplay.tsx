@@ -13,6 +13,10 @@ interface QuestionDisplayProps {
   onSubmit: () => void;
   onSkip: () => void;
   onPrev: () => void;
+  /** Clear current answer (e.g. to free a numerical slot). Shown when question is answered. */
+  onClearAnswer?: () => void;
+  /** When true and question is numerical, disable submit and show cap message. */
+  numericalCapReached?: boolean;
 }
 
 export default function QuestionDisplay({
@@ -25,6 +29,8 @@ export default function QuestionDisplay({
   onSubmit,
   onSkip,
   onPrev,
+  onClearAnswer,
+  numericalCapReached = false,
 }: QuestionDisplayProps) {
   const [matchAnswers, setMatchAnswers] = useState<Record<string, string>>({});
 
@@ -377,6 +383,12 @@ export default function QuestionDisplay({
         {/* Render question type specific UI */}
         {renderQuestionByType()}
 
+        {numericalCapReached && question.question_type === 'numerical' && (
+          <p className="text-amber-400 text-sm mt-2 bg-amber-500/10 px-3 py-2 rounded-lg">
+            You have already attempted the maximum 5 numerical questions in this subject. Clear an answer above to attempt a different one.
+          </p>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
           <div className="flex gap-2">
@@ -387,13 +399,23 @@ export default function QuestionDisplay({
             )}
           </div>
           <div className="flex gap-3">
+            {questionStatus === 'answered' && onClearAnswer && (
+              <Button onClick={onClearAnswer} variant="themeButtonOutline" disabled={loading} size="sm">
+                Clear answer
+              </Button>
+            )}
             <Button onClick={onSkip} variant="themeButtonOutline" disabled={loading} size="sm">
               Skip →
             </Button>
             <Button
               onClick={onSubmit}
               variant="themeButton"
-              disabled={!isAnswered || loading || questionStatus === 'answered'}
+              disabled={
+                !isAnswered ||
+                loading ||
+                questionStatus === 'answered' ||
+                (numericalCapReached && question.question_type === 'numerical')
+              }
               size="sm"
             >
               {loading

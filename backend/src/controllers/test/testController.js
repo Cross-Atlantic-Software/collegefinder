@@ -2,9 +2,54 @@ const Test = require('../../models/test/Test');
 const Question = require('../../models/test/Question');
 const TestAttempt = require('../../models/test/TestAttempt');
 const QuestionAttempt = require('../../models/test/QuestionAttempt');
+const MockTest = require('../../models/test/MockTest');
 const geminiService = require('../../services/geminiService');
 const Exam = require('../../models/taxonomy/Exam');
 const { validationResult } = require('express-validator');
+
+/**
+ * Compute whether the selected option is correct for a question (shared by submitAnswer and completeTest mock flow).
+ */
+function computeIsCorrect(question, selected_option) {
+  const selectedStr = selected_option == null ? '' : (typeof selected_option === 'string' ? selected_option : JSON.stringify(selected_option));
+  const qType = question.question_type || 'mcq_single';
+  const correctOption = question.correct_option != null ? String(question.correct_option) : '';
+
+  switch (qType) {
+    case 'mcq_single':
+    case 'numerical':
+    case 'true_false':
+    case 'fill_blank':
+    case 'assertion_reason':
+    case 'paragraph':
+      return selectedStr === correctOption;
+
+    case 'mcq_multiple':
+      try {
+        const selected = Array.isArray(selected_option) ? [...selected_option].sort() : JSON.parse(selectedStr || '[]');
+        const correct = typeof question.correct_option === 'string' && question.correct_option.startsWith('[')
+          ? JSON.parse(question.correct_option)
+          : [question.correct_option];
+        const correctSorted = Array.isArray(correct) ? [...correct].sort() : [correct];
+        const selSorted = Array.isArray(selected) ? [...selected].sort() : [selected];
+        return JSON.stringify(selSorted) === JSON.stringify(correctSorted);
+      } catch (e) {
+        return false;
+      }
+
+    case 'match_following':
+      try {
+        const selectedMatches = typeof selected_option === 'object' ? selected_option : (selectedStr ? JSON.parse(selectedStr) : {});
+        const correctMatches = typeof question.correct_option === 'object' ? question.correct_option : (question.correct_option ? JSON.parse(question.correct_option) : {});
+        return JSON.stringify(selectedMatches) === JSON.stringify(correctMatches);
+      } catch (e) {
+        return false;
+      }
+
+    default:
+      return selectedStr === correctOption;
+  }
+}
 
 class TestController {
   /**
@@ -522,52 +567,8 @@ class TestController {
       }
 
       // Determine if answer is correct based on question type
-      let isCorrect = false;
+      const isCorrect = computeIsCorrect(question, selected_option);
       const selectedStr = selected_option == null ? '' : (typeof selected_option === 'string' ? selected_option : JSON.stringify(selected_option));
-      const qType = question.question_type || 'mcq_single';
-      const correctOption = question.correct_option != null ? String(question.correct_option) : '';
-
-      switch (qType) {
-        case 'mcq_single':
-        case 'numerical':
-        case 'true_false':
-        case 'fill_blank':
-        case 'assertion_reason':
-          isCorrect = selectedStr === correctOption;
-          break;
-
-        case 'mcq_multiple':
-          try {
-            const selected = Array.isArray(selected_option) ? [...selected_option].sort() : JSON.parse(selectedStr || '[]');
-            const correct = typeof question.correct_option === 'string' && question.correct_option.startsWith('[')
-              ? JSON.parse(question.correct_option)
-              : [question.correct_option];
-            const correctSorted = Array.isArray(correct) ? [...correct].sort() : [correct];
-            const selSorted = Array.isArray(selected) ? [...selected].sort() : [selected];
-            isCorrect = JSON.stringify(selSorted) === JSON.stringify(correctSorted);
-          } catch (e) {
-            isCorrect = false;
-          }
-          break;
-
-        case 'match_following':
-          try {
-            const selectedMatches = typeof selected_option === 'object' ? selected_option : (selectedStr ? JSON.parse(selectedStr) : {});
-            const correctMatches = typeof question.correct_option === 'object' ? question.correct_option : (question.correct_option ? JSON.parse(question.correct_option) : {});
-            isCorrect = JSON.stringify(selectedMatches) === JSON.stringify(correctMatches);
-          } catch (e) {
-            isCorrect = false;
-          }
-          break;
-
-        case 'paragraph':
-          isCorrect = selectedStr === correctOption;
-          break;
-
-        default:
-          console.warn(`Unknown question type: ${qType}`);
-          isCorrect = selectedStr === correctOption;
-      }
 
       // Attempt order: use existing order if row was pre-inserted, otherwise assign next order
       const answeredCount = existingAttempts.filter(qa => qa.selected_option != null && qa.selected_option !== '').length;
@@ -636,8 +637,56 @@ class TestController {
         });
       }
 
-      // Get all question attempts for this test
-      const questionAttempts = await QuestionAttempt.findByTestAttemptId(parseInt(testAttemptId));
+      const testAttemptIdInt = parseInt(testAttemptId);
+
+      // Mock tests: answers are sent only on final submit (not per question). Insert all answer rows now.
+      if (testAttempt.exam_mock_id != null) {
+        const answers = req.body?.answers;
+        if (!Array.isArray(answers) || answers.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Answers are required to complete this mock test'
+          });
+        }
+        const maxAnswers = 500;
+        const toInsert = answers.length > maxAnswers ? answers.slice(0, maxAnswers) : answers;
+        const questionIds = [...new Set(toInsert.map((a) => parseInt(a.question_id, 10)).filter((id) => !Number.isNaN(id)))];
+        if (questionIds.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid answers payload'
+          });
+        }
+        const questions = await Question.findByIds(questionIds);
+        const questionMap = Object.fromEntries(questions.map((q) => [q.id, q]));
+        const attemptRows = [];
+        for (let idx = 0; idx < toInsert.length; idx++) {
+          const a = toInsert[idx];
+          const q = questionMap[a.question_id];
+          if (!q) continue;
+          const selectedOption = a.selected_option ?? null;
+          const timeSpent = a.time_spent_seconds != null ? parseInt(a.time_spent_seconds, 10) : 0;
+          const selectedStr = selectedOption == null ? '' : (typeof selectedOption === 'string' ? selectedOption : JSON.stringify(selectedOption));
+          const isCorrect = computeIsCorrect(q, selectedOption);
+          attemptRows.push({
+            user_id: userId,
+            question_id: q.id,
+            test_attempt_id: testAttemptIdInt,
+            exam_id: testAttempt.exam_id,
+            mock_id: testAttempt.exam_mock_id,
+            selected_option: selectedStr,
+            is_correct: isCorrect,
+            time_spent_seconds: timeSpent,
+            attempt_order: idx + 1
+          });
+        }
+        if (attemptRows.length > 0) {
+          await QuestionAttempt.bulkCreate(attemptRows);
+        }
+      }
+
+      // Get all question attempts for this test (now populated for mock, or already present for non-mock)
+      const questionAttempts = await QuestionAttempt.findByTestAttemptId(testAttemptIdInt);
       
       // Calculate basic statistics
       const stats = await QuestionAttempt.getTestAttemptStats(parseInt(testAttemptId));
@@ -682,7 +731,7 @@ class TestController {
 
       // Complete the test attempt
       const completedAttempt = await TestAttempt.complete(parseInt(testAttemptId), {
-        total_score: Math.max(0, totalScore), // Ensure score doesn't go negative
+        total_score: totalScore,
         attempted_count: parseInt(stats.attempted_questions),
         correct_count: parseInt(stats.correct_answers),
         incorrect_count: parseInt(stats.incorrect_answers),
@@ -1155,9 +1204,10 @@ class TestController {
 
       const examIdInt = examId ? parseInt(examId) : null;
 
-      const [aggregate, attempts] = await Promise.all([
+      const [aggregate, attempts, totalPapers] = await Promise.all([
         TestAttempt.getUserAnalytics(userId, examIdInt),
-        TestAttempt.findByUserId(userId, 50, 0)
+        TestAttempt.findByUserId(userId, 50, 0),
+        examIdInt != null ? MockTest.countByExamId(examIdInt) : Promise.resolve(0)
       ]);
 
       let completedAttempts = attempts.filter(a => a.completed_at);
@@ -1165,36 +1215,101 @@ class TestController {
         completedAttempts = completedAttempts.filter(a => a.exam_id === examIdInt);
       }
 
-      res.json({
-        success: true,
-        data: {
-          aggregate: {
-            total_attempts: parseInt(aggregate.total_attempts) || 0,
-            completed_attempts: parseInt(aggregate.completed_attempts) || 0,
-            avg_score: parseFloat(aggregate.avg_score) || 0,
-            best_score: parseFloat(aggregate.best_score) || 0,
-            avg_accuracy: parseFloat(aggregate.avg_accuracy) || 0,
-            avg_time_minutes: parseFloat(aggregate.avg_time) || 0
-          },
-          attempts: completedAttempts.map(a => ({
-            id: a.id,
-            exam_id: a.exam_id,
-            test_title: a.test_title,
-            exam_name: a.exam_name,
-            total_score: a.total_score,
-            accuracy_percentage: parseFloat(a.accuracy_percentage) || 0,
-            percentile: parseFloat(a.percentile) || null,
-            rank_position: a.rank_position || null,
-            attempted_count: a.attempted_count,
-            correct_count: a.correct_count,
-            incorrect_count: a.incorrect_count,
-            skipped_count: a.skipped_count,
-            time_spent_minutes: a.time_spent_minutes,
-            subject_wise_stats: a.subject_wise_stats,
-            completed_at: a.completed_at
-          }))
+      const attemptPayload = completedAttempts.map(a => ({
+        id: a.id,
+        exam_id: a.exam_id,
+        exam_mock_id: a.exam_mock_id ?? null,
+        mock_order_index: a.mock_order_index != null ? parseInt(a.mock_order_index, 10) : null,
+        test_title: a.test_title,
+        exam_name: a.exam_name,
+        total_score: a.total_score,
+        accuracy_percentage: parseFloat(a.accuracy_percentage) || 0,
+        percentile: parseFloat(a.percentile) || null,
+        rank_position: a.rank_position || null,
+        attempted_count: a.attempted_count,
+        correct_count: a.correct_count,
+        incorrect_count: a.incorrect_count,
+        skipped_count: a.skipped_count,
+        time_spent_minutes: a.time_spent_minutes,
+        subject_wise_stats: a.subject_wise_stats,
+        completed_at: a.completed_at
+      }));
+
+      const data = {
+        aggregate: {
+          total_attempts: parseInt(aggregate.total_attempts) || 0,
+          completed_attempts: parseInt(aggregate.completed_attempts) || 0,
+          avg_score: parseFloat(aggregate.avg_score) || 0,
+          best_score: parseFloat(aggregate.best_score) || 0,
+          avg_accuracy: parseFloat(aggregate.avg_accuracy) || 0,
+          avg_time_minutes: parseFloat(aggregate.avg_time) || 0
+        },
+        attempts: attemptPayload
+      };
+      if (examIdInt != null) {
+        data.total_papers = totalPapers;
+      }
+
+      if (examIdInt != null && totalPapers > 1 && completedAttempts.length > 0) {
+        const mockAttempts = completedAttempts.filter(
+          a => a.exam_mock_id != null && a.mock_order_index != null && a.mock_order_index >= 1 && a.mock_order_index <= totalPapers
+        );
+        const byDay = {};
+        for (const a of mockAttempts) {
+          const dayKey = new Date(a.completed_at).toISOString().slice(0, 10);
+          if (!byDay[dayKey]) byDay[dayKey] = [];
+          byDay[dayKey].push(a);
         }
-      });
+        const sessions = [];
+        for (const dayKey of Object.keys(byDay).sort()) {
+          const dayAttempts = byDay[dayKey];
+          const byOrder = {};
+          for (const a of dayAttempts) {
+            const order = parseInt(a.mock_order_index, 10);
+            if (!byOrder[order] || new Date(a.completed_at) > new Date(byOrder[order].completed_at)) {
+              byOrder[order] = a;
+            }
+          }
+          const orders = Object.keys(byOrder).map(Number).sort((x, y) => x - y);
+          const hasAllPapers = orders.length === totalPapers && orders.every((o, i) => o === i + 1);
+          if (!hasAllPapers) continue;
+          const sessionAttempts = orders.map(o => byOrder[o]);
+          const combinedAttempted = sessionAttempts.reduce((s, a) => s + (parseInt(a.attempted_count, 10) || 0), 0);
+          const combinedCorrect = sessionAttempts.reduce((s, a) => s + (parseInt(a.correct_count, 10) || 0), 0);
+          const combinedIncorrect = sessionAttempts.reduce((s, a) => s + (parseInt(a.incorrect_count, 10) || 0), 0);
+          const combinedSkipped = sessionAttempts.reduce((s, a) => s + (parseInt(a.skipped_count, 10) || 0), 0);
+          const combinedScore = sessionAttempts.reduce((s, a) => s + (parseFloat(a.total_score) || 0), 0);
+          const combinedTime = sessionAttempts.reduce((s, a) => s + (parseInt(a.time_spent_minutes, 10) || 0), 0);
+          const combinedAccuracy = combinedAttempted > 0 ? (combinedCorrect / combinedAttempted) * 100 : 0;
+          const sessionCompletedAt = sessionAttempts[sessionAttempts.length - 1]?.completed_at ?? dayKey;
+          sessions.push({
+            attempt_ids: sessionAttempts.map(a => a.id),
+            completed_at: sessionCompletedAt,
+            combined_total_score: combinedScore,
+            combined_attempted: combinedAttempted,
+            combined_correct: combinedCorrect,
+            combined_incorrect: combinedIncorrect,
+            combined_skipped: combinedSkipped,
+            combined_accuracy: Math.round(combinedAccuracy * 100) / 100,
+            combined_time_minutes: combinedTime,
+            papers: sessionAttempts.map(a => ({
+              attempt_id: a.id,
+              mock_order_index: parseInt(a.mock_order_index, 10),
+              total_score: a.total_score,
+              accuracy_percentage: parseFloat(a.accuracy_percentage) || 0,
+              attempted_count: a.attempted_count,
+              correct_count: a.correct_count,
+              incorrect_count: a.incorrect_count,
+              skipped_count: a.skipped_count,
+              time_spent_minutes: a.time_spent_minutes,
+              completed_at: a.completed_at
+            }))
+          });
+        }
+        data.sessions = sessions;
+      }
+
+      res.json({ success: true, data });
     } catch (error) {
       console.error('Error fetching user analytics summary:', error);
       res.status(500).json({

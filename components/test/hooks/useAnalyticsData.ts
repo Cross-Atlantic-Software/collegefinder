@@ -6,11 +6,14 @@ import {
   AttemptAnalytics,
   AggregateAnalytics,
   AnalyticsSummaryAttempt,
+  CombinedSession,
 } from '@/api/tests';
 
 export function useAnalyticsData(examId?: number) {
   const [aggregate, setAggregate] = useState<AggregateAnalytics | null>(null);
   const [attempts, setAttempts] = useState<AnalyticsSummaryAttempt[]>([]);
+  const [totalPapers, setTotalPapers] = useState<number>(1);
+  const [sessions, setSessions] = useState<CombinedSession[]>([]);
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null);
   const [attemptAnalytics, setAttemptAnalytics] = useState<AttemptAnalytics | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -26,6 +29,8 @@ export function useAnalyticsData(examId?: number) {
         if (res.success && res.data) {
           setAggregate(res.data.aggregate);
           setAttempts(res.data.attempts);
+          setTotalPapers(res.data.total_papers ?? 1);
+          setSessions(res.data.sessions ?? []);
           if (res.data.attempts.length > 0) {
             setSelectedAttemptId(res.data.attempts[0].id);
           } else {
@@ -67,6 +72,8 @@ export function useAnalyticsData(examId?: number) {
   return {
     aggregate,
     attempts,
+    totalPapers,
+    sessions,
     selectedAttemptId,
     setSelectedAttemptId,
     attemptAnalytics,

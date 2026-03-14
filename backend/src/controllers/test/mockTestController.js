@@ -1,8 +1,6 @@
 const MockTest = require('../../models/test/MockTest');
 const MockQuestion = require('../../models/test/MockQuestion');
 const TestAttempt = require('../../models/test/TestAttempt');
-const QuestionAttempt = require('../../models/test/QuestionAttempt');
-const Question = require('../../models/test/Question');
 const Exam = require('../../models/taxonomy/Exam');
 const db = require('../../config/database');
 
@@ -189,24 +187,7 @@ class MockTestController {
 
       const attempt = testAttempt.rows[0];
 
-      // --- Pre-insert empty user_attempt_answers for all questions in the mock ---
-      const mockQuestions = await MockQuestion.findByMockTestId(mock.id);
-
-      if (mockQuestions.length > 0) {
-        const emptyAttempts = mockQuestions.map((mq, idx) => ({
-          user_id: userId,
-          question_id: mq.id,  // q.id from q.* in findByMockTestId JOIN result
-          test_attempt_id: attempt.id,
-          exam_id: examId,
-          mock_id: mock.id,
-          selected_option: null,
-          is_correct: false,
-          time_spent_seconds: 0,
-          attempt_order: idx + 1,
-        }));
-
-        await QuestionAttempt.bulkCreate(emptyAttempts);
-      }
+      // --- Do NOT pre-insert user_attempt_answers. Answers are saved only when user submits the test (completeTest with body.answers). ---
 
       // --- Trigger generation of mock N+1 (non-blocking) ---
       MockTestController._triggerNextMockGeneration(examId, nextMockNumber + 1).catch((err) => {

@@ -10,6 +10,9 @@ const BATCH_SIZE = 12;
 /** Max concurrent Gemini calls within each batch. */
 const GEMINI_CONCURRENCY = 3;
 
+/** Number of retries for a single question when generation or parse fails. */
+const FAILED_QUESTION_RETRIES = 2;
+
 /** Question types supported by the schema and Gemini prompts. */
 const KNOWN_TYPES = [
   'mcq_single',
@@ -27,4 +30,5 @@ module.exports = {
   KNOWN_TYPES,
   BATCH_SIZE,
   GEMINI_CONCURRENCY,
+  FAILED_QUESTION_RETRIES,
 };

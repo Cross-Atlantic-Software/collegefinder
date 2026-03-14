@@ -9,6 +9,15 @@ import AnalyticsTab from "@/components/test/AnalyticsTab";
 
 type ViewState = 'exam-selection' | 'format-selection' | 'test-active';
 
+function getFormatTotalQuestions(format: ExamFormat): number {
+  return Object.values(format.sections || {}).reduce(
+    (sum, section) =>
+      sum +
+      Object.values(section.subsections || {}).reduce((s, sub) => s + (sub?.questions ?? 0), 0),
+    0
+  );
+}
+
 export default function TestModule() {
   const [activeTab, setActiveTab] = useState("practice");
   const [viewState, setViewState] = useState<ViewState>('exam-selection');
@@ -89,30 +98,37 @@ export default function TestModule() {
       if (formatsResponse.success && formatsResponse.data && Object.keys(formatsResponse.data.formats).length > 0) {
         setAvailableFormats(formatsResponse.data.formats);
         const formatEntries = Object.entries(formatsResponse.data.formats);
-        // If only one format, skip format selection and go directly to rules notice
-        if (formatEntries.length === 1) {
-          const [formatId, format] = formatEntries[0];
-          const formatWithId = { ...format, format_id: formatId };
-          setSelectedFormat(formatWithId);
-          setRulesLoading(true);
+        // Same flow for single or multi-format: pick format, load rules, go to test (no format-selection screen)
+        let formatIndex = 0;
+        if (formatEntries.length > 1) {
           try {
-            const rulesResponse = await getTestRules(exam.id, formatId);
-            if (rulesResponse.success && rulesResponse.data) {
+            const analyticsRes = await getUserAnalyticsSummary(exam.id);
+            const attempts = analyticsRes.data?.attempts ?? [];
+            formatIndex = attempts.length % formatEntries.length;
+          } catch {
+            // use 0 (first paper) if analytics fail
+          }
+        }
+        const [formatId, format] = formatEntries[formatIndex];
+        const formatWithId = { ...format, format_id: formatId };
+        setSelectedFormat(formatWithId);
+        setRulesLoading(true);
+        setError(null);
+        try {
+          const rulesResponse = await getTestRules(exam.id, formatId);
+          if (rulesResponse.success && rulesResponse.data) {
               setFormatRules(rulesResponse.data);
               setViewState('test-active');
             } else {
               setError('Failed to load test rules');
-              setViewState('format-selection');
+              setViewState('exam-selection');
             }
           } catch (err) {
             console.error('Error fetching rules:', err);
             setError('Failed to load test rules');
-            setViewState('format-selection');
+            setViewState('exam-selection');
           } finally {
-            setRulesLoading(false);
-          }
-        } else {
-          setViewState('format-selection');
+          setRulesLoading(false);
         }
       } else {
         // No formats - go directly to fullscreen with basic format
@@ -276,7 +292,7 @@ export default function TestModule() {
                     <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition mb-2">
                       {format.name}
                     </h3>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                       <div className="text-center">
                         <div className="text-pink-400 font-semibold">{format.duration_minutes}m</div>
                         <div className="text-slate-400">Duration</div>
@@ -284,6 +300,10 @@ export default function TestModule() {
                       <div className="text-center">
                         <div className="text-pink-400 font-semibold">{format.total_marks}</div>
                         <div className="text-slate-400">Marks</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-pink-400 font-semibold">{getFormatTotalQuestions(format)}</div>
+                        <div className="text-slate-400">Questions</div>
                       </div>
                       <div className="text-center">
                         <div className="text-pink-400 font-semibold">{Object.keys(format.sections || {}).length}</div>
@@ -304,7 +324,7 @@ export default function TestModule() {
                   </div>
                   
                   <Button
-                    onClick={() => handleFormatSelect(format)}
+                    onClick={() => handleFormatSelect({ ...format, format_id: formatId })}
                     variant="themeButton"
                     size="sm"
                     className="w-full group-hover:scale-105 transition-transform"

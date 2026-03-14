@@ -136,21 +136,22 @@ class QuestionAttempt {
   }
 
   /**
-   * Get question attempt statistics for a test attempt
+   * Get question attempt statistics for a test attempt.
+   * "Attempted" = non-empty selected_option; "incorrect" = attempted but wrong; "skipped" = empty/null selected_option.
    */
   static async getTestAttemptStats(testAttemptId) {
     const result = await db.query(`
       SELECT 
         COUNT(*) as total_questions,
-        COUNT(CASE WHEN selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN TRIM(COALESCE(selected_option, '')) <> '' THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN is_correct = true THEN 1 END) as correct_answers,
-        COUNT(CASE WHEN is_correct = false AND selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
-        COUNT(CASE WHEN selected_option IS NULL THEN 1 END) as skipped_questions,
+        COUNT(CASE WHEN is_correct = false AND TRIM(COALESCE(selected_option, '')) <> '' THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN TRIM(COALESCE(selected_option, '')) = '' THEN 1 END) as skipped_questions,
         AVG(time_spent_seconds) as avg_time_per_question,
         SUM(time_spent_seconds) as total_time_seconds,
         ROUND(
           (COUNT(CASE WHEN is_correct = true THEN 1 END)::DECIMAL / 
-           NULLIF(COUNT(CASE WHEN selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+           NULLIF(COUNT(CASE WHEN TRIM(COALESCE(selected_option, '')) <> '' THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers
       WHERE user_exam_attempt_id = $1
@@ -166,16 +167,16 @@ class QuestionAttempt {
       SELECT
         q.subject,
         COUNT(*) as total_questions,
-        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
-        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
-        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COUNT(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) = '' THEN 1 END) as skipped_questions,
         COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
         COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
-        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
         ROUND(
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL /
-           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+           NULLIF(COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
@@ -194,13 +195,13 @@ class QuestionAttempt {
       SELECT 
         q.difficulty,
         COUNT(*) as total_questions,
-        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
-        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as incorrect_answers,
         AVG(qa.time_spent_seconds) as avg_time_per_question,
         ROUND(
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
-           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+           NULLIF(COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
@@ -268,16 +269,16 @@ class QuestionAttempt {
         q.topic,
         q.subject,
         COUNT(*) as total_questions,
-        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
-        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
-        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COUNT(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) = '' THEN 1 END) as skipped_questions,
         COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
         COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
-        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
         ROUND(
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
-           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+           NULLIF(COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
@@ -298,16 +299,16 @@ class QuestionAttempt {
         q.topic,
         q.subject,
         COUNT(*) as total_questions,
-        COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END) as attempted_questions,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as attempted_questions,
         COUNT(CASE WHEN qa.is_correct = true THEN 1 END) as correct_answers,
-        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as incorrect_answers,
-        COUNT(CASE WHEN qa.selected_option IS NULL THEN 1 END) as skipped_questions,
+        COUNT(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as incorrect_answers,
+        COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) = '' THEN 1 END) as skipped_questions,
         COALESCE(SUM(qa.time_spent_seconds), 0) as total_time_seconds,
         COALESCE(AVG(qa.time_spent_seconds), 0) as avg_time_per_question,
-        COALESCE(SUM(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
+        COALESCE(SUM(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN q.negative_marks ELSE 0 END), 0) as negative_marks_lost,
         ROUND(
           (COUNT(CASE WHEN qa.is_correct = true THEN 1 END)::DECIMAL / 
-           NULLIF(COUNT(CASE WHEN qa.selected_option IS NOT NULL THEN 1 END), 0)) * 100, 2
+           NULLIF(COUNT(CASE WHEN TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END), 0)) * 100, 2
         ) as accuracy_percentage
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
@@ -319,18 +320,18 @@ class QuestionAttempt {
   }
 
   /**
-   * Get overall negative marks lost for a test attempt
+   * Get overall negative marks lost for a test attempt (only for attempted-but-wrong answers).
    */
   static async getNegativeMarksStats(testAttemptId) {
     const result = await db.query(`
       SELECT 
         COALESCE(SUM(q.negative_marks), 0) as total_negative_marks_lost,
-        COUNT(CASE WHEN qa.is_correct = false AND qa.selected_option IS NOT NULL THEN 1 END) as wrong_answers
+        COUNT(CASE WHEN qa.is_correct = false AND TRIM(COALESCE(qa.selected_option, '')) <> '' THEN 1 END) as wrong_answers
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
       WHERE qa.user_exam_attempt_id = $1
         AND qa.is_correct = false
-        AND qa.selected_option IS NOT NULL
+        AND TRIM(COALESCE(qa.selected_option, '')) <> ''
     `, [testAttemptId]);
     return result.rows[0];
   }

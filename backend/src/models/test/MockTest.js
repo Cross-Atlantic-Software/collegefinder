@@ -13,6 +13,17 @@ class MockTest {
   }
 
   /**
+   * Count number of mock papers for an exam (for multi-paper analytics).
+   */
+  static async countByExamId(examId) {
+    const result = await db.query(
+      'SELECT COUNT(*)::int AS count FROM exam_mocks WHERE exam_id = $1',
+      [examId]
+    );
+    return result.rows[0]?.count ?? 0;
+  }
+
+  /**
    * Find all mock tests for an exam ordered by order_index
    */
   static async findByExamId(examId) {

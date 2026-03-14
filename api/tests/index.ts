@@ -33,6 +33,7 @@ export interface ExamFormat {
           type: 'MCQ' | 'Numerical';
           questions: number;
           marks_per_question: number;
+          required?: number; // e.g. 5 for numerical "attempt any 5 of 10"
         };
       };
     };
@@ -184,6 +185,8 @@ export interface AggregateAnalytics {
 export interface AnalyticsSummaryAttempt {
   id: number;
   exam_id?: number;
+  exam_mock_id?: number | null;
+  mock_order_index?: number | null;
   test_title: string;
   exam_name: string;
   total_score: number;
@@ -197,6 +200,34 @@ export interface AnalyticsSummaryAttempt {
   time_spent_minutes: number;
   subject_wise_stats: Record<string, unknown>;
   completed_at: string;
+}
+
+/** One paper within a combined full-exam session */
+export interface CombinedSessionPaper {
+  attempt_id: number;
+  mock_order_index: number;
+  total_score: number;
+  accuracy_percentage: number;
+  attempted_count: number;
+  correct_count: number;
+  incorrect_count: number;
+  skipped_count: number;
+  time_spent_minutes: number;
+  completed_at: string;
+}
+
+/** Full exam session: all papers completed on the same day */
+export interface CombinedSession {
+  attempt_ids: number[];
+  completed_at: string;
+  combined_total_score: number;
+  combined_attempted: number;
+  combined_correct: number;
+  combined_incorrect: number;
+  combined_skipped: number;
+  combined_accuracy: number;
+  combined_time_minutes: number;
+  papers: CombinedSessionPaper[];
 }
 
 // API Functions
@@ -311,9 +342,23 @@ export async function submitAnswer(
 }
 
 /**
- * Complete test attempt
+ * Payload for completing a mock test (answers saved only on submit).
  */
-export async function completeTest(testAttemptId: number): Promise<ApiResponse<{
+export interface CompleteTestAnswersPayload {
+  answers: Array<{
+    question_id: number;
+    selected_option?: string | null;
+    time_spent_seconds?: number;
+  }>;
+}
+
+/**
+ * Complete test attempt. For mock tests, pass answers so they are persisted in one go.
+ */
+export async function completeTest(
+  testAttemptId: number,
+  payload?: CompleteTestAnswersPayload
+): Promise<ApiResponse<{
   test_attempt: TestAttempt;
   summary: {
     total_score: number;
@@ -344,6 +389,7 @@ export async function completeTest(testAttemptId: number): Promise<ApiResponse<{
     };
   }>(`/tests/attempts/${testAttemptId}/complete`, {
     method: 'POST',
+    body: payload ? JSON.stringify(payload) : undefined,
   });
 }
 
@@ -411,7 +457,7 @@ export function calculateTestScore(
     }
   }
   
-  return Math.max(0, totalScore); // Ensure score doesn't go negative
+  return totalScore;
 }
 
 /**
@@ -592,12 +638,16 @@ export async function getAttemptAnalytics(testAttemptId: number): Promise<ApiRes
 export async function getUserAnalyticsSummary(examId?: number): Promise<ApiResponse<{
   aggregate: AggregateAnalytics;
   attempts: AnalyticsSummaryAttempt[];
+  total_papers?: number;
+  sessions?: CombinedSession[];
 }>> {
   const params = examId ? `?examId=${examId}` : '';
-  return apiRequest<{ aggregate: AggregateAnalytics; attempts: AnalyticsSummaryAttempt[] }>(
-    `/tests/analytics${params}`,
-    { method: 'GET' }
-  );
+  return apiRequest<{
+    aggregate: AggregateAnalytics;
+    attempts: AnalyticsSummaryAttempt[];
+    total_papers?: number;
+    sessions?: CombinedSession[];
+  }>(`/tests/analytics${params}`, { method: 'GET' });
 }
 
 /**

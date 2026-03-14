@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { ExamFormat } from '@/api/tests';
 import { TestRules } from './rules';
 import { TestHeader } from './interface/header';
-import { SectionNavigation, QuestionPalette } from './interface/sidebar';
+import { TestSidebars } from './interface/sidebar';
 import { QuestionDisplay, QuestionAreaEmpty } from './interface/question';
 import { TabChangeWarning, EndTestConfirmation, TestResults } from './interface/modals';
 import { useFullscreenTest } from './hooks/useFullscreenTest';
@@ -49,8 +49,10 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     startTest,
     loadQuestionForNumber,
     handleSubmitAnswer,
+    handleClearAnswer,
     handleSkip,
     handleSectionChange,
+    isNumericalCapReachedForCurrentSection,
     handleSubsectionChange,
     handleCompleteTest,
     handleBackToExams,
@@ -93,6 +95,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
         summary={testResults.summary}
         questionAttempts={testResults.question_attempts}
         onExit={onExit}
+        showQuestionExplanation={false}
       />
     );
   }
@@ -112,42 +115,44 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
         onSubmitTest={() => setShowEndTestConfirm(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        <SectionNavigation
+        <TestSidebars
+          mode="test"
           sections={format.sections}
           currentSection={currentSection}
           sectionProgress={sectionProgress}
           currentSubsection={currentSubsection}
           onSectionChange={handleSectionChange}
           onSubsectionChange={handleSubsectionChange}
-        />
-        <div className="flex-1 flex flex-col min-w-0">
-          {currentQuestion ? (
-            <QuestionDisplay
-              question={currentQuestion}
-              selectedOption={selectedOption}
-              questionStatus={currentSectionMap[questionNumber]?.status || 'not_visited'}
-              loading={loading}
-              showPrevButton={questionNumber > 1}
-              onOptionSelect={setSelectedOption}
-              onSubmit={handleSubmitAnswer}
-              onSkip={handleSkip}
-              onPrev={() => loadQuestionForNumber(questionNumber - 1)}
-            />
-          ) : (
-            <QuestionAreaEmpty
-              loading={loading}
-              error={error}
-              onRetry={() => loadQuestionForNumber(questionNumber || 1)}
-            />
-          )}
-        </div>
-        <QuestionPalette
-          totalQuestions={totalQuestionsInSection}
-          currentQuestionNumber={questionNumber}
+          totalQuestionsInSection={totalQuestionsInSection}
+          currentQuestionNumberInSection={questionNumber}
           questionStatuses={getQuestionStatuses()}
           loading={loading}
           onQuestionSelect={loadQuestionForNumber}
-        />
+        >
+          <div className="flex-1 flex flex-col min-w-0">
+            {currentQuestion ? (
+              <QuestionDisplay
+                question={currentQuestion}
+                selectedOption={selectedOption}
+                questionStatus={currentSectionMap[questionNumber]?.status || 'not_visited'}
+                loading={loading}
+                showPrevButton={questionNumber > 1}
+                onOptionSelect={setSelectedOption}
+                onSubmit={handleSubmitAnswer}
+                onSkip={handleSkip}
+                onPrev={() => loadQuestionForNumber(questionNumber - 1)}
+                onClearAnswer={handleClearAnswer}
+                numericalCapReached={isNumericalCapReachedForCurrentSection}
+              />
+            ) : (
+              <QuestionAreaEmpty
+                loading={loading}
+                error={error}
+                onRetry={() => loadQuestionForNumber(questionNumber || 1)}
+              />
+            )}
+          </div>
+        </TestSidebars>
       </div>
     </div>
   );

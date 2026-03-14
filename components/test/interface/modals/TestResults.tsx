@@ -28,6 +28,8 @@ interface TestResultsProps {
   questionAttempts: QuestionAttempt[];
   onExit: () => void;
   exitLabel?: string;
+  /** When false (e.g. post-submit screen), do not show question-wise explanation on click. Default true for history view. */
+  showQuestionExplanation?: boolean;
 }
 
 function getQuestionStatus(qa: QuestionAttempt): 'right' | 'wrong' | 'skipped' {
@@ -36,7 +38,7 @@ function getQuestionStatus(qa: QuestionAttempt): 'right' | 'wrong' | 'skipped' {
   return qa.is_correct ? 'right' : 'wrong';
 }
 
-export default function TestResults({ examName, summary, questionAttempts, onExit, exitLabel = 'Back to Exams' }: TestResultsProps) {
+export default function TestResults({ examName, summary, questionAttempts, onExit, exitLabel = 'Back to Exams', showQuestionExplanation = true }: TestResultsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedQa = selectedIndex != null ? questionAttempts[selectedIndex] : null;
 
@@ -72,13 +74,16 @@ export default function TestResults({ examName, summary, questionAttempts, onExi
         {/* Single grid of all question numbers: green=correct, red=wrong, grey=skipped */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4">Questions</h2>
-          <p className="text-slate-400 text-sm mb-4">Click any question to view explanation.</p>
+          {showQuestionExplanation && (
+            <p className="text-slate-400 text-sm mb-4">Click any question to view explanation.</p>
+          )}
           <div className="flex flex-wrap gap-2 mb-6">
             {questionAttempts.map((qa, idx) => {
               const num = idx + 1;
               const status = getQuestionStatus(qa);
-              const isSelected = selectedIndex === idx;
-              const baseStyle = 'min-w-[2.5rem] h-9 px-2 rounded-lg text-sm font-medium border transition hover:opacity-90';
+              const isSelected = showQuestionExplanation && selectedIndex === idx;
+              const baseStyle = 'min-w-[2.5rem] h-9 px-2 rounded-lg text-sm font-medium border transition';
+              const interactiveStyle = showQuestionExplanation ? 'hover:opacity-90 cursor-pointer' : 'cursor-default';
               const statusStyle =
                 status === 'right'
                   ? 'bg-green-900 text-green-200 border-green-600 hover:bg-green-800'
@@ -89,8 +94,9 @@ export default function TestResults({ examName, summary, questionAttempts, onExi
               return (
                 <button
                   key={idx}
-                  onClick={() => setSelectedIndex(idx)}
-                  className={`${baseStyle} ${statusStyle} ${selectedStyle}`}
+                  type="button"
+                  onClick={showQuestionExplanation ? () => setSelectedIndex(idx) : undefined}
+                  className={`${baseStyle} ${interactiveStyle} ${statusStyle} ${selectedStyle}`}
                 >
                   Q{num}
                 </button>
@@ -98,47 +104,49 @@ export default function TestResults({ examName, summary, questionAttempts, onExi
             })}
           </div>
 
-          {/* Detail panel for selected question - explanation */}
-          {selectedQa ? (
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm bg-pink-600/20 text-pink-300 px-2.5 py-1 rounded-lg font-medium">
-                  Q{selectedIndex! + 1}
-                </span>
-                <span className="text-sm text-slate-400">{selectedQa.subject}</span>
-                {getQuestionStatus(selectedQa) === 'right' && (
-                  <span className="text-sm text-green-400 font-medium">✓ Correct</span>
+          {/* Detail panel for selected question - explanation (only when showQuestionExplanation) */}
+          {showQuestionExplanation && (
+            selectedQa ? (
+              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm bg-pink-600/20 text-pink-300 px-2.5 py-1 rounded-lg font-medium">
+                    Q{selectedIndex! + 1}
+                  </span>
+                  <span className="text-sm text-slate-400">{selectedQa.subject}</span>
+                  {getQuestionStatus(selectedQa) === 'right' && (
+                    <span className="text-sm text-green-400 font-medium">✓ Correct</span>
+                  )}
+                  {getQuestionStatus(selectedQa) === 'wrong' && (
+                    <span className="text-sm text-red-400 font-medium">✗ Incorrect</span>
+                  )}
+                  {getQuestionStatus(selectedQa) === 'skipped' && (
+                    <span className="text-sm text-slate-400 font-medium">Skipped</span>
+                  )}
+                </div>
+                <p className="text-white leading-relaxed">{selectedQa.question_text}</p>
+                {selectedQa.selected_option != null && selectedQa.selected_option !== '' && (
+                  <p className="text-slate-400">
+                    Your answer:{' '}
+                    <span className={selectedQa.is_correct ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                      {selectedQa.selected_option}
+                    </span>
+                  </p>
                 )}
-                {getQuestionStatus(selectedQa) === 'wrong' && (
-                  <span className="text-sm text-red-400 font-medium">✗ Incorrect</span>
-                )}
-                {getQuestionStatus(selectedQa) === 'skipped' && (
-                  <span className="text-sm text-slate-400 font-medium">Skipped</span>
+                <p className="text-slate-300">
+                  Correct answer: <span className="text-pink-400 font-medium">{selectedQa.correct_option}</span>
+                </p>
+                {selectedQa.solution_text && (
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-sm font-medium text-slate-300 mb-2">Solution</p>
+                    <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{selectedQa.solution_text}</p>
+                  </div>
                 )}
               </div>
-              <p className="text-white leading-relaxed">{selectedQa.question_text}</p>
-              {selectedQa.selected_option != null && selectedQa.selected_option !== '' && (
-                <p className="text-slate-400">
-                  Your answer:{' '}
-                  <span className={selectedQa.is_correct ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
-                    {selectedQa.selected_option}
-                  </span>
-                </p>
-              )}
-              <p className="text-slate-300">
-                Correct answer: <span className="text-pink-400 font-medium">{selectedQa.correct_option}</span>
-              </p>
-              {selectedQa.solution_text && (
-                <div className="pt-2 border-t border-white/10">
-                  <p className="text-sm font-medium text-slate-300 mb-2">Solution</p>
-                  <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{selectedQa.solution_text}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-slate-800/80 rounded-xl p-8 text-center border border-dashed border-slate-600">
-              <p className="text-slate-500">Select a question to view its details, solution, and correct answer.</p>
-            </div>
+            ) : (
+              <div className="bg-slate-800/80 rounded-xl p-8 text-center border border-dashed border-slate-600">
+                <p className="text-slate-500">Select a question to view its details, solution, and correct answer.</p>
+              </div>
+            )
           )}
         </div>
 

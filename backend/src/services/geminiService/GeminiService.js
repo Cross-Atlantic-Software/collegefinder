@@ -192,12 +192,32 @@ class GeminiService {
       return processedData;
     };
 
+    const PARSE_ERROR_RETRIES = 2; // 2 retries (3 attempts total) when Gemini returns malformed JSON
+
     return apiLimit(async () => {
       try {
         console.log(`🤖 Generating ${question_type} question for ${exam_name} - ${subject}${question_number ? ` (Q${question_number}/${total_in_section})` : ''}`);
-        const processedData = await withRetry(doRequest, { operationName: 'generateContent' });
-        console.log('✅ Question generated successfully');
-        return processedData;
+        let lastError;
+        for (let parseAttempt = 1; parseAttempt <= PARSE_ERROR_RETRIES + 1; parseAttempt++) {
+          try {
+            const processedData = await withRetry(doRequest, { operationName: 'generateContent' });
+            console.log('✅ Question generated successfully');
+            return processedData;
+          } catch (error) {
+            const isParseError = error.message && (
+              error.message.includes('Invalid response format') ||
+              error.message.includes('Expected ') ||
+              (error.message.includes('JSON') && (error.message.includes('position') || error.message.includes('parse')))
+            );
+            if (!isParseError || parseAttempt === PARSE_ERROR_RETRIES + 1) {
+              throw error;
+            }
+            lastError = error;
+            console.warn(`⚠️  Parse failed (attempt ${parseAttempt}/${PARSE_ERROR_RETRIES + 1}), retrying generation...`);
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+        throw lastError;
       } catch (error) {
         const isModelUnavailable = error.message && (
           error.message.includes('404') ||

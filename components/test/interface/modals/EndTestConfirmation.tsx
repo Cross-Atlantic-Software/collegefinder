@@ -6,6 +6,10 @@ export interface SubmitSummary {
   skipped: number;
   unattempted: number;
   total: number;
+  /** When format has compulsory structure (e.g. JEE 75): total compulsory questions */
+  totalCompulsory?: number;
+  attemptedCompulsory?: number;
+  unattemptedCompulsory?: number;
 }
 
 interface EndTestConfirmationProps {
@@ -32,20 +36,38 @@ export default function EndTestConfirmation({
         </p>
         <div className="mb-6 rounded-lg bg-slate-700/60 border border-slate-600 p-4 space-y-2">
           <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Question summary</p>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            <span className="text-green-400">
-              <strong>{summary.attempted}</strong> attempted
-            </span>
-            <span className="text-amber-400">
-              <strong>{summary.skipped}</strong> skipped
-            </span>
-            <span className="text-slate-400">
-              <strong>{summary.unattempted}</strong> unattempted
-            </span>
-          </div>
-          <p className="text-slate-500 text-xs mt-1">
-            Total: {summary.total} questions
-          </p>
+          {summary.totalCompulsory != null && summary.totalCompulsory > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                <span className="text-green-400">
+                  <strong>{summary.attemptedCompulsory ?? summary.attempted}</strong> attempted
+                </span>
+                <span className="text-slate-400">
+                  <strong>{summary.unattemptedCompulsory ?? summary.unattempted}</strong> unattempted
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs mt-1">
+                Out of <strong>{summary.totalCompulsory}</strong> compulsory questions (total paper: {summary.total} questions)
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                <span className="text-green-400">
+                  <strong>{summary.attempted}</strong> attempted
+                </span>
+                <span className="text-amber-400">
+                  <strong>{summary.skipped}</strong> skipped
+                </span>
+                <span className="text-slate-400">
+                  <strong>{summary.unattempted}</strong> unattempted
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs mt-1">
+                Total: {summary.total} questions
+              </p>
+            </>
+          )}
         </div>
         {error && (
           <p className="text-red-400 text-sm mb-4">{error}</p>

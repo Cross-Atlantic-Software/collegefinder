@@ -4,14 +4,21 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   startMockTest,
   getMockQuestions,
-  submitAnswer,
   getSectionProgress,
   completeTest,
   getTestResults,
   ExamFormat,
 } from '@/api/tests';
 import type { Question, QuestionEntry, QuestionStatus, SectionProgress, TestResultsData } from '../interface/types';
-import { buildSectionMaps, computeSubmitSummary, getQuestionStatusesFromMap, normalizeTestResults } from '../utils';
+import {
+  buildSectionMaps,
+  computeSubmitSummary,
+  getNumericalAttemptedInSection,
+  getNumericalRequiredForSection,
+  getQuestionStatusesFromMap,
+  isQuestionInNumericalSubsection,
+  normalizeTestResults,
+} from '../utils';
 import { useFullscreenAndWarnings } from './useFullscreenAndWarnings';
 
 export interface UseFullscreenTestProps {
@@ -40,6 +47,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
   const sectionMapsRef = useRef(sectionMaps);
   const currentSectionRef = useRef(currentSection);
   const questionNumberRef = useRef(questionNumber);
+  const prevSectionKeyRef = useRef<{ section: string; subsection: string } | null>(null);
   sectionMapsRef.current = sectionMaps;
   currentSectionRef.current = currentSection;
   questionNumberRef.current = questionNumber;
@@ -142,8 +150,15 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     }
   }, []);
 
+  // When user switches section/subsection, jump to first question of that subsection.
+  // Do NOT run when sectionMaps updates (e.g. after Save & Next), or we'd reset to Q1.
   useEffect(() => {
-    if (testAttemptId && Object.keys(sectionMaps[currentSection] || {}).length > 0) {
+    if (!testAttemptId || Object.keys(sectionMaps[currentSection] || {}).length === 0) return;
+    const sectionKey = { section: currentSection, subsection: currentSubsection };
+    const prev = prevSectionKeyRef.current;
+    const sectionOrSubsectionChanged = prev === null || prev.section !== sectionKey.section || prev.subsection !== sectionKey.subsection;
+    prevSectionKeyRef.current = sectionKey;
+    if (sectionOrSubsectionChanged) {
       loadQuestionForNumber(firstQuestionNumberOfSubsection);
     }
   }, [currentSection, currentSubsection, testAttemptId, sectionMaps, firstQuestionNumberOfSubsection, loadQuestionForNumber]);
@@ -159,13 +174,48 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     }
   }, [testAttemptId]);
 
+  // Build answers array from sectionMaps in test order (sections then question numbers) for mock complete.
+  const buildAnswersPayload = useCallback(
+    (maps: Record<string, Record<number, QuestionEntry>>) => {
+      const answers: Array<{ question_id: number; selected_option: string | null; time_spent_seconds: number }> = [];
+      const sectionKeys = Object.keys(format.sections);
+      for (const sectionKey of sectionKeys) {
+        const map = maps[sectionKey];
+        if (!map) continue;
+        const nums = Object.keys(map)
+          .map(Number)
+          .filter((n) => !Number.isNaN(n))
+          .sort((a, b) => a - b);
+        for (const num of nums) {
+          const entry = map[num];
+          if (!entry?.question) continue;
+          const opt = entry.savedOption;
+          const selected_option =
+            opt == null || opt === ''
+              ? null
+              : typeof opt === 'string'
+                ? opt
+                : JSON.stringify(opt);
+          answers.push({
+            question_id: entry.question.id,
+            selected_option,
+            time_spent_seconds: 0,
+          });
+        }
+      }
+      return { answers };
+    },
+    [format.sections]
+  );
+
   // —— Complete test ——
   const handleCompleteTest = useCallback(async () => {
     if (!testAttemptId) return;
     try {
       setCompletingTest(true);
       setError(null);
-      const completeResponse = await completeTest(testAttemptId);
+      const payload = buildAnswersPayload(sectionMaps);
+      const completeResponse = await completeTest(testAttemptId, payload);
       if (completeResponse.success) {
         let resultsResponse: Awaited<ReturnType<typeof getTestResults>> | null = null;
         try {
@@ -188,7 +238,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
       setCompletingTest(false);
       setShowEndTestConfirm(false);
     }
-  }, [testAttemptId, onExit]);
+  }, [testAttemptId, onExit, sectionMaps, buildAnswersPayload]);
 
   // —— Timer: auto-submit when time runs out ——
   useEffect(() => {
@@ -205,55 +255,57 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     return () => clearInterval(timer);
   }, [timeRemaining, testAttemptId, handleCompleteTest]);
 
-  // —— Submit answer ——
-  const handleSubmitAnswer = useCallback(async () => {
+  // —— Submit answer (mock: save only in frontend state; persisted when user completes test) ——
+  const handleSubmitAnswer = useCallback(() => {
     const hasAnswer = Array.isArray(selectedOption)
       ? selectedOption.length > 0
       : selectedOption !== '';
-    if (!testAttemptId || !currentQuestion || !hasAnswer) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const timeSpentSeconds = Math.max(0, Math.floor((Date.now() - questionViewedAtRef.current) / 1000));
-      const response = await submitAnswer(testAttemptId, currentQuestion.id, {
-        selected_option: typeof selectedOption === 'string' ? selectedOption : JSON.stringify(selectedOption),
-        time_spent_seconds: timeSpentSeconds,
-      });
-      if (response.success) {
-        const answeredNum = questionNumber;
-        setSectionMaps((prev) => ({
-          ...prev,
-          [currentSection]: {
-            ...prev[currentSection],
-            [answeredNum]: { question: currentQuestion, status: 'answered', savedOption: selectedOption },
-          },
-        }));
-        await updateProgress();
-        if (answeredNum < totalQuestionsInSection) {
-          loadQuestionForNumber(answeredNum + 1);
-        } else {
-          setCurrentQuestion(null);
-          setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
-        }
-      } else {
-        setError(response.message || 'Failed to submit answer');
-      }
-    } catch (e) {
-      console.error('Error submitting answer:', e);
-      setError('An error occurred while submitting the answer');
-    } finally {
-      setLoading(false);
+    if (!currentQuestion || !hasAnswer) return;
+    const answeredNum = questionNumber;
+    // JEE: block submitting another numerical if this section already has 5 numericals attempted
+    const isNumerical = isQuestionInNumericalSubsection(currentSection, questionNumber, format);
+    if (isNumerical) {
+      const numAttempted = getNumericalAttemptedInSection(sectionMaps, currentSection, format);
+      const required = getNumericalRequiredForSection(format, currentSection);
+      if (numAttempted >= required) return;
+    }
+    setSectionMaps((prev) => ({
+      ...prev,
+      [currentSection]: {
+        ...prev[currentSection],
+        [answeredNum]: { question: currentQuestion, status: 'answered', savedOption: selectedOption },
+      },
+    }));
+    if (answeredNum < totalQuestionsInSection) {
+      loadQuestionForNumber(answeredNum + 1);
+    } else {
+      setCurrentQuestion(null);
+      setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
     }
   }, [
-    testAttemptId,
     currentQuestion,
     selectedOption,
     questionNumber,
     currentSection,
     totalQuestionsInSection,
     loadQuestionForNumber,
-    updateProgress,
+    sectionMaps,
+    format,
   ]);
+
+  // —— Clear current question answer (stays on same question, frees numerical slot if applicable) ——
+  const handleClearAnswer = useCallback(() => {
+    if (!currentQuestion) return;
+    const num = questionNumber;
+    setSectionMaps((prev) => ({
+      ...prev,
+      [currentSection]: {
+        ...prev[currentSection],
+        [num]: { question: currentQuestion, status: 'not_answered', savedOption: '' },
+      },
+    }));
+    setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
+  }, [currentQuestion, questionNumber, currentSection]);
 
   // —— Skip question ——
   const handleSkip = useCallback(() => {
@@ -305,7 +357,19 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     (): Record<number, QuestionStatus> => getQuestionStatusesFromMap(currentSectionMap),
     [currentSectionMap]
   );
-  const submitSummary = useMemo(() => computeSubmitSummary(sectionMaps), [sectionMaps]);
+  const submitSummary = useMemo(
+    () => computeSubmitSummary(sectionMaps, format),
+    [sectionMaps, format]
+  );
+
+  const isNumericalCapReachedForCurrentSection = useMemo(() => {
+    if (!currentQuestion) return false;
+    const isNumerical = isQuestionInNumericalSubsection(currentSection, questionNumber, format);
+    if (!isNumerical) return false;
+    const numAttempted = getNumericalAttemptedInSection(sectionMaps, currentSection, format);
+    const required = getNumericalRequiredForSection(format, currentSection);
+    return numAttempted >= required;
+  }, [currentQuestion, currentSection, questionNumber, sectionMaps, format]);
 
   return {
     currentSection,
@@ -334,8 +398,10 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     startTest,
     loadQuestionForNumber,
     handleSubmitAnswer,
+    handleClearAnswer,
     handleSkip,
     handleSectionChange,
+    isNumericalCapReachedForCurrentSection,
     handleSubsectionChange,
     handleCompleteTest,
     handleBackToExams,
