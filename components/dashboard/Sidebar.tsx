@@ -10,6 +10,7 @@ import {
   FaUniversity,
   FaFileAlt,
   FaBookOpen,
+  FaFlask,
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +22,8 @@ type SectionId =
   | "exam-shortlist"
   | "college-shortlist"
   | "applications"
-  | "exam-prep";
+  | "exam-prep"
+  | "test-module";
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -78,6 +80,13 @@ const baseNavItems: {
     sub: "Study time",
     icon: FaBookOpen,
     getValue: () => "156h",
+  },
+  {
+    id: "test-module",
+    label: "Test Module",
+    sub: "Practice tests",
+    icon: FaFlask,
+    getValue: () => "0",
   },
 ];
 

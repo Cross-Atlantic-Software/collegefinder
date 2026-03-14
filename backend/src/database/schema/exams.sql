@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   UNIQUE(code)
 );
 
+-- Ensure format column exists on older databases (only if table already exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'exams_taxonomies') THEN
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS format JSONB DEFAULT '{}'::jsonb;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS generation_prompt TEXT;
+  END IF;
+END $$;
+
 -- Create index on name and code for faster searches
 CREATE INDEX IF NOT EXISTS idx_exams_taxonomies_name ON exams_taxonomies(name);
 CREATE INDEX IF NOT EXISTS idx_exams_taxonomies_code ON exams_taxonomies(code);
@@ -37,6 +46,7 @@ COMMENT ON TABLE exams_taxonomies IS 'Taxonomy table for exam options that users
 COMMENT ON COLUMN exams_taxonomies.name IS 'Display name for the exam (e.g., JEE Main, NEET, CUET)';
 COMMENT ON COLUMN exams_taxonomies.code IS 'Short code for the exam (e.g., JEE_MAIN, NEET, CUET)';
 COMMENT ON COLUMN exams_taxonomies.description IS 'Description of the exam';
+COMMENT ON COLUMN exams_taxonomies.format IS 'JSONB format configuration including papers, sections, question distribution, marking scheme, and rules';
 
 -- Note: Comments for exam_logo, exam_type, and conducting_authority are added by migration file add_exam_fields_and_related_tables.sql
 -- Note: Related tables (exam_dates, exam_eligibility_criteria, exam_pattern, exam_cutoff) are created by migration file add_exam_fields_and_related_tables.sql

@@ -241,7 +241,7 @@ export function WorkflowModal({
                         )}
                     </div>
 
-                    {/* Logs Panel */}
+                    {/* Logs Panel - commented out
                     <div className="w-80 border-l border-gray-700 p-4 flex flex-col">
                         <h3 className="text-sm font-medium text-gray-400 mb-2">Activity Log</h3>
                         <div className="flex-1 overflow-y-auto bg-gray-800 rounded-lg p-3 font-mono text-xs">
@@ -263,6 +263,7 @@ export function WorkflowModal({
                             <div ref={logsEndRef} />
                         </div>
                     </div>
+                    */}
                 </div>
 
                 {/* Footer Actions */}

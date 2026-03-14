@@ -45,6 +45,14 @@ export {
 } from './exams';
 export type { Exam, ExamDates, ExamEligibilityCriteria, ExamPattern, ExamCutoff, ExamWithDetails } from './exams';
 
+// Export mock prompts (exam_mock_prompts table by exam ID)
+export {
+  getMockPromptsList,
+  getMockPrompt,
+  updateMockPrompt,
+} from './mock-prompts';
+export type { MockPromptItem } from './mock-prompts';
+
 // Export subjects taxonomy management APIs
 export {
   getAllSubjects,

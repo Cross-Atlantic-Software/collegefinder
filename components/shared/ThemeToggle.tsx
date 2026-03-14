@@ -12,31 +12,31 @@ export default function ThemeToggle() {
 
   // Initialize theme after component mounts (client-side only)
   useEffect(() => {
-    setMounted(true);
-    
-    // Get theme from localStorage or system preference
-    const stored = window.localStorage.getItem("theme") as Theme | null;
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored);
-      const root = document.documentElement;
-      if (stored === "dark") {
-        root.classList.add("dark");
+    queueMicrotask(() => {
+      setMounted(true);
+      const stored = window.localStorage.getItem("theme") as Theme | null;
+      if (stored === "light" || stored === "dark") {
+        setTheme(stored);
+        const root = document.documentElement;
+        if (stored === "dark") {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
       } else {
-        root.classList.remove("dark");
+        const systemPrefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        const initialTheme = systemPrefersDark ? "dark" : "light";
+        setTheme(initialTheme);
+        const root = document.documentElement;
+        if (initialTheme === "dark") {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
       }
-    } else {
-      const systemPrefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      const initialTheme = systemPrefersDark ? "dark" : "light";
-      setTheme(initialTheme);
-      const root = document.documentElement;
-      if (initialTheme === "dark") {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
-    }
+    });
   }, []);
 
   // Sync <html> + localStorage whenever theme changes

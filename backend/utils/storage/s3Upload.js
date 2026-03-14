@@ -1,11 +1,25 @@
-// Use AWS SDK v2 (aws-sdk) - compatible with v3 API, works when @aws-sdk/client-s3 is not installed
-const AWS = require('aws-sdk');
+// Use AWS SDK v2 (aws-sdk) - lazy load so app can start when package is missing (e.g. Docker rebuild needed)
 const path = require('path');
 const https = require('https');
 const http = require('http');
 
+let AWS;
+let s3;
+try {
+  AWS = require('aws-sdk');
+  s3 = new AWS.S3({
+    region: process.env.AWS_REGION || 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  });
+} catch (err) {
+  console.warn('⚠️  aws-sdk not installed. S3 uploads will fail. Run: npm install aws-sdk (or rebuild Docker image)');
+  s3 = null;
+}
+
 // Support both AWS_S3_BUCKET_NAME and S3_BUCKET variable names
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET;
+const REGION = process.env.AWS_REGION || 'us-east-1';
 
 // Validate AWS credentials (only warn if using placeholder values, not if values are different)
 const isPlaceholder = (value, placeholder) => {
@@ -24,11 +38,9 @@ if (isPlaceholder(BUCKET_NAME, 'your_bucket_name')) {
   console.warn('⚠️  AWS_S3_BUCKET_NAME or S3_BUCKET not configured or using placeholder value');
 }
 
-const s3 = new AWS.S3({
-  region: process.env.AWS_REGION || 'us-east-1',
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-});
+function getPublicUrl(key) {
+  return `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+}
 
 /**
  * Upload file to S3
@@ -39,7 +51,9 @@ const s3 = new AWS.S3({
  */
 const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
   try {
-    // Validate configuration - check if values exist (not checking for placeholder strings)
+    if (!s3) {
+      throw new Error('aws-sdk is not installed. Run: npm install aws-sdk (or rebuild Docker: docker-compose build --no-cache)');
+    }
     if (!BUCKET_NAME || BUCKET_NAME.trim() === '') {
       throw new Error('AWS_S3_BUCKET_NAME or S3_BUCKET is not configured. Please set it in your .env file.');
     }
@@ -52,12 +66,10 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
       throw new Error('AWS_SECRET_ACCESS_KEY is not configured. Please set it in your .env file.');
     }
 
-    // Generate unique file name
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const key = `${folder}/${timestamp}-${sanitizedFileName}`;
 
-    // Determine content type and content disposition
     const contentType = getContentType(fileName);
     const isPDF = fileName.toLowerCase().endsWith('.pdf') || contentType === 'application/pdf';
     const contentDisposition = isPDF ? 'inline' : undefined; // 'inline' allows viewing in browser, 'attachment' forces download
@@ -99,11 +111,8 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
       throw new Error('Access denied to S3 bucket. Please check IAM user permissions and bucket policy.');
     } else if (code === 'InvalidRequest' || error.message?.includes('ACL')) {
       throw new Error('The bucket does not allow ACLs. Please configure bucket policy for public access instead. See AWS_S3_SETUP.md for details.');
-    } else if (error.message) {
-      throw error; // Re-throw if it's already a helpful error message
-    } else {
-      throw new Error(`Failed to upload file to S3: ${error.message || 'Unknown error'}`);
     }
+    throw error.message ? error : new Error(`Failed to upload file to S3: ${message || 'Unknown error'}`);
   }
 };
 
@@ -114,14 +123,15 @@ const uploadToS3 = async (fileBuffer, fileName, folder = 'career-goals') => {
  */
 const deleteFromS3 = async (s3Url) => {
   try {
-    // Extract key from S3 URL
+    if (!s3) {
+      throw new Error('aws-sdk is not installed. Run: npm install aws-sdk (or rebuild Docker: docker-compose build --no-cache)');
+    }
     const url = new URL(s3Url);
-    const key = url.pathname.substring(1); // Remove leading '/'
+    const key = url.pathname.substring(1);
 
     await s3.deleteObject({ Bucket: BUCKET_NAME, Key: key }).promise();
   } catch (error) {
     console.error('Error deleting from S3:', error);
-    // Don't throw error - file might not exist or already deleted
   }
 };
 
@@ -154,47 +164,34 @@ const getContentType = (fileName) => {
  * @returns {Promise<string>} S3 URL of uploaded file
  */
 const downloadAndUploadToS3 = async (imageUrl, fileName, folder = 'profile-photos') => {
-  try {
-    return new Promise((resolve, reject) => {
-      // Determine protocol (http or https)
-      const protocol = imageUrl.startsWith('https') ? https : http;
-      
-      protocol.get(imageUrl, (response) => {
-        // Check if response is successful
+  return new Promise((resolve, reject) => {
+    const protocol = imageUrl.startsWith('https') ? https : http;
+
+    protocol
+      .get(imageUrl, (response) => {
         if (response.statusCode !== 200) {
           reject(new Error(`Failed to download image: ${response.statusCode} ${response.statusMessage}`));
           return;
         }
 
-        // Check content type
         const contentType = response.headers['content-type'];
         if (!contentType || !contentType.startsWith('image/')) {
           reject(new Error('URL does not point to an image'));
           return;
         }
 
-        // Collect image data
         const chunks = [];
-        response.on('data', (chunk) => {
-          chunks.push(chunk);
-        });
+        response.on('data', (chunk) => chunks.push(chunk));
 
         response.on('end', async () => {
           try {
             const imageBuffer = Buffer.concat(chunks);
-            // Determine file extension from content type
-            let ext = '.jpg'; // default
-            if (contentType.includes('jpeg') || contentType.includes('jpg')) {
-              ext = '.jpg';
-            } else if (contentType.includes('png')) {
-              ext = '.png';
-            } else if (contentType.includes('gif')) {
-              ext = '.gif';
-            } else if (contentType.includes('webp')) {
-              ext = '.webp';
-            }
-            
-            // Ensure fileName has the correct extension
+            let ext = '.jpg';
+            if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = '.jpg';
+            else if (contentType.includes('png')) ext = '.png';
+            else if (contentType.includes('gif')) ext = '.gif';
+            else if (contentType.includes('webp')) ext = '.webp';
+
             const baseFileName = fileName.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
             const fullFileName = `${baseFileName}${ext}`;
             const s3Url = await uploadToS3(imageBuffer, fullFileName, folder);
@@ -204,17 +201,10 @@ const downloadAndUploadToS3 = async (imageUrl, fileName, folder = 'profile-photo
           }
         });
 
-        response.on('error', (error) => {
-          reject(new Error(`Error downloading image: ${error.message}`));
-        });
-      }).on('error', (error) => {
-        reject(new Error(`Error downloading image: ${error.message}`));
-      });
-    });
-  } catch (error) {
-    console.error('Error in downloadAndUploadToS3:', error);
-    throw error;
-  }
+        response.on('error', (error) => reject(new Error(`Error downloading image: ${error.message}`)));
+      })
+      .on('error', (error) => reject(new Error(`Error downloading image: ${error.message}`)));
+  });
 };
 
 module.exports = {
@@ -222,4 +212,3 @@ module.exports = {
   deleteFromS3,
   downloadAndUploadToS3,
 };
-

@@ -5,6 +5,7 @@ const AdminController = require('../../controllers/admin/adminController');
 const AdminUsersController = require('../../controllers/admin/adminUsersController');
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
+const MockPromptsController = require('../../controllers/admin/mockPromptsController');
 const SubjectController = require('../../controllers/admin/subjectController');
 const StreamController = require('../../controllers/admin/streamController');
 const CareerController = require('../../controllers/admin/careerController');
@@ -408,6 +409,20 @@ router.post('/exams/bulk-upload', authenticateAdmin, requireModuleAccess('exams'
 router.post('/exams', authenticateAdmin, requireModuleAccess('exams'), ExamsController.create);
 
 /**
+ * @route   GET /api/admin/exams/:id/prompt
+ * @desc    Get exam generation prompt (for admin)
+ * @access  Private (Admin)
+ */
+router.get('/exams/:id/prompt', authenticateAdmin, ExamsController.getPrompt);
+
+/**
+ * @route   PUT /api/admin/exams/:id/prompt
+ * @desc    Update exam generation prompt (for admin)
+ * @access  Private (Admin)
+ */
+router.put('/exams/:id/prompt', authenticateAdmin, ExamsController.updatePrompt);
+
+/**
  * @route   GET /api/admin/exams/:id
  * @desc    Get exam by ID (for admin)
  * @access  Private (Admin)
@@ -434,6 +449,13 @@ router.delete('/exams/all', authenticateAdmin, requireModuleAccess('exams'), req
  * @access  Private (Admin)
  */
 router.delete('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), requireCanDelete, ExamsController.delete);
+
+/**
+ * Mock Prompts (exam_mock_prompts table by exam ID)
+ */
+router.get('/mock-prompts', authenticateAdmin, MockPromptsController.list);
+router.get('/mock-prompts/:examId', authenticateAdmin, MockPromptsController.get);
+router.put('/mock-prompts/:examId', authenticateAdmin, MockPromptsController.update);
 
 /**
  * Topics Routes

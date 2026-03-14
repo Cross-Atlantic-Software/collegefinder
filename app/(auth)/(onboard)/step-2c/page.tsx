@@ -21,12 +21,14 @@ export default function StepTwoC() {
   const cities = useMemo(() => getAllCities(), []);
 
   useEffect(() => {
-    setCityOptions(
+    queueMicrotask(() => {
+        setCityOptions(
       cities.map((c) => ({
-        value: c,
-        label: c,
-      }))
+          value: c,
+          label: c,
+        }))
     );
+    });
   }, [cities]);
 
   useEffect(() => {

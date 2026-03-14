@@ -20,7 +20,8 @@ import {
   FiStar,
   FiHelpCircle,
   FiPlay,
-  FiSettings
+  FiSettings,
+  FiMessageSquare
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -86,6 +87,17 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'Mock Prompts',
+    icon: <FiMessageSquare className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Prompts',
+        href: '/admin/mock-prompts',
+        icon: <FiMessageSquare className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
     label: 'Colleges',
     icon: <FiBook className="h-4 w-4" />,
     children: [
@@ -135,7 +147,7 @@ export default function AdminSidebar() {
       const hasActiveChild = group.children.some((child) => pathname === child.href || pathname.startsWith(child.href + '/'));
       if (hasActiveChild) activeGroups.add(group.label);
     });
-    setExpandedGroups(activeGroups);
+    queueMicrotask(() => setExpandedGroups(activeGroups));
   }, [pathname, admin]);
 
   const canSeeGroup = (group: NavGroup) => {

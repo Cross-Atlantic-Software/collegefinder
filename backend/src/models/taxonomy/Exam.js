@@ -48,10 +48,11 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format } = data;
+    const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null]
+      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) RETURNING *',
+      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}']
     );
     return result.rows[0];
   }
@@ -136,6 +137,111 @@ class Exam {
       [id]
     );
     return result.rows[0] || null;
+  }
+
+  /**
+   * Get available formats for an exam
+   */
+  static async getFormats(examId) {
+    const result = await db.query(
+      'SELECT format FROM exams_taxonomies WHERE id = $1',
+      [examId]
+    );
+    
+    if (!result.rows[0]) {
+      return null;
+    }
+    
+    const format = result.rows[0].format;
+    if (!format || Object.keys(format).length === 0) {
+      return null;
+    }
+    
+    return format;
+  }
+
+  /**
+   * Get specific format configuration for an exam
+   */
+  static async getFormatConfig(examId, formatId) {
+    const result = await db.query(
+      'SELECT format FROM exams_taxonomies WHERE id = $1',
+      [examId]
+    );
+    
+    if (!result.rows[0]) {
+      return null;
+    }
+    
+    const format = result.rows[0].format;
+    if (!format || !format[formatId]) {
+      return null;
+    }
+    
+    return format[formatId];
+  }
+
+  /**
+   * Update format configuration for an exam
+   */
+  static async updateFormat(examId, formatData) {
+    const result = await db.query(
+      'UPDATE exams_taxonomies SET format = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [JSON.stringify(formatData), examId]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get exam with format information
+   */
+  static async findByIdWithFormat(id) {
+    const result = await db.query(
+      'SELECT * FROM exams_taxonomies WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get generation prompt for an exam (for mock question generation)
+   */
+  static async getGenerationPrompt(examId) {
+    const result = await db.query(
+      'SELECT generation_prompt FROM exams_taxonomies WHERE id = $1',
+      [examId]
+    );
+    return result.rows[0] ? result.rows[0].generation_prompt : null;
+  }
+
+  /**
+   * Update generation prompt for an exam (persisted in exams_taxonomies.generation_prompt).
+   * Pass a non-empty string to save, or null/empty to clear.
+   */
+  static async updateGenerationPrompt(examId, generationPrompt) {
+    const value = (generationPrompt && String(generationPrompt).trim()) ? String(generationPrompt).trim() : null;
+    const result = await db.query(
+      'UPDATE exams_taxonomies SET generation_prompt = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [value, examId]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Check if exam has format configuration
+   */
+  static async hasFormat(examId) {
+    const result = await db.query(
+      'SELECT format FROM exams_taxonomies WHERE id = $1',
+      [examId]
+    );
+    
+    if (!result.rows[0]) {
+      return false;
+    }
+    
+    const format = result.rows[0].format;
+    return format && Object.keys(format).length > 0;
   }
 }
 

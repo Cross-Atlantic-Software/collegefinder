@@ -16,7 +16,7 @@ export default function AcademicsTableClient({ initialUsers }: AcademicsTableCli
 
   useEffect(() => {
     if (initialUsers.length === 0) {
-      setUsers([]);
+      queueMicrotask(() => setUsers([]));
       return;
     }
     

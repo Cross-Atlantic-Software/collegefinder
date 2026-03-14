@@ -1,8 +1,8 @@
 #!/bin/sh
-# Ensure node_modules is populated when using volume mounts (dev)
-# The anonymous volume /app/node_modules can be empty on first run
-if [ ! -d /app/node_modules/aws-sdk ]; then
-  echo "Installing dependencies (node_modules empty or missing)..."
+# Ensure node_modules is synced when using volume mounts (dev)
+# Anonymous volume /app/node_modules can be stale; always run npm install in dev
+if [ "$NODE_ENV" = "development" ] && [ -f /app/package.json ]; then
+  echo "Syncing dependencies (npm install)..."
   npm install
 fi
 exec "$@"

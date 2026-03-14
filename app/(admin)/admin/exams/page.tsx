@@ -16,6 +16,8 @@ import {
   downloadAllDataExcel,
   bulkUploadExams,
   uploadMissingLogos,
+  getExamPrompt,
+  updateExamPrompt,
   type Exam,
   type ExamDates,
   type ExamEligibilityCriteria,
@@ -115,6 +117,16 @@ export default function ExamsPage() {
     summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
   } | null>(null);
   const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'exams' | 'prompts'>('exams');
+  const [promptsByExamId, setPromptsByExamId] = useState<Record<number, { prompt: string; hasCustomPrompt: boolean }>>({});
+  const [savingPromptExamId, setSavingPromptExamId] = useState<number | null>(null);
+  const [promptsSectionLoading, setPromptsSectionLoading] = useState(false);
+  const [promptExam, setPromptExam] = useState<Exam | null>(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [promptValue, setPromptValue] = useState('');
+  const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptSaving, setPromptSaving] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -133,7 +145,7 @@ export default function ExamsPage() {
       setExams([]);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       if (!searchQuery.trim()) {
         setExams(allExams);
@@ -151,6 +163,34 @@ export default function ExamsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allExams]);
+
+  useEffect(() => {
+    if (activeSection !== 'prompts' || allExams.length === 0) return;
+    let cancelled = false;
+    const load = async () => {
+      setPromptsSectionLoading(true);
+      const next: Record<number, { prompt: string; hasCustomPrompt: boolean }> = {};
+      for (const exam of allExams) {
+        if (cancelled) return;
+        try {
+          const res = await getExamPrompt(exam.id);
+          if (res.success && res.data) {
+            next[exam.id] = { prompt: res.data.prompt || '', hasCustomPrompt: !!res.data.hasCustomPrompt };
+          } else {
+            next[exam.id] = { prompt: '', hasCustomPrompt: false };
+          }
+        } catch {
+          next[exam.id] = { prompt: '', hasCustomPrompt: false };
+        }
+      }
+      if (!cancelled) {
+        setPromptsByExamId(next);
+      }
+      setPromptsSectionLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [activeSection, allExams]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -585,6 +625,82 @@ export default function ExamsPage() {
     { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
 
+  const handleOpenPrompt = async (exam: Exam) => {
+    setPromptExam(exam);
+    setShowPromptModal(true);
+    setPromptValue('');
+    setHasCustomPrompt(false);
+    setPromptLoading(true);
+    try {
+      const res = await getExamPrompt(exam.id);
+      if (res.success && res.data) {
+        setPromptValue(res.data.prompt || '');
+        setHasCustomPrompt(!!res.data.hasCustomPrompt);
+      }
+    } catch {
+      showError('Failed to load prompt');
+    } finally {
+      setPromptLoading(false);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptExam) return;
+    setPromptSaving(true);
+    try {
+      const res = await updateExamPrompt(promptExam.id, promptValue);
+      if (res.success) {
+        showSuccess('Prompt updated. It will be used for mock question generation for this exam.');
+        setHasCustomPrompt(!!(promptValue && promptValue.trim()));
+      } else {
+        showError(res.message || 'Failed to save prompt');
+      }
+    } catch {
+      showError('Failed to save prompt');
+    } finally {
+      setPromptSaving(false);
+    }
+  };
+
+  const handleClosePromptModal = () => {
+    setShowPromptModal(false);
+    setPromptExam(null);
+    setPromptValue('');
+  };
+
+  const setPromptForExam = (examId: number, prompt: string) => {
+    setPromptsByExamId((prev) => ({
+      ...prev,
+      [examId]: {
+        ...prev[examId],
+        prompt,
+        hasCustomPrompt: prev[examId]?.hasCustomPrompt ?? false,
+      },
+    }));
+  };
+
+  const handleSavePromptInSection = async (exam: Exam) => {
+    const current = promptsByExamId[exam.id];
+    if (current === undefined) return;
+    setSavingPromptExamId(exam.id);
+    try {
+      const res = await updateExamPrompt(exam.id, current.prompt);
+      if (res.success) {
+        showSuccess(`Prompt saved for ${exam.name}`);
+        setPromptsByExamId((prev) => ({
+          ...prev,
+          [exam.id]: { ...prev[exam.id], prompt: current.prompt, hasCustomPrompt: !!(current.prompt && current.prompt.trim()) },
+        }));
+      } else {
+        showError(res.message || 'Failed to save prompt');
+      }
+    } catch {
+      showError('Failed to save prompt');
+    } finally {
+      setSavingPromptExamId(null);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -612,7 +728,34 @@ export default function ExamsPage() {
             <p className="text-sm text-gray-600">Manage exam options with all related information.</p>
           </div>
 
-          {/* Controls */}
+          {/* Section tabs: Exams | Generation prompts */}
+          <div className="mb-4 flex gap-1 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setActiveSection('exams')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeSection === 'exams'
+                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Exams
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('prompts')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeSection === 'prompts'
+                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Generation prompts
+            </button>
+          </div>
+
+          {/* Controls (only for Exams section) */}
+          {activeSection === 'exams' && (
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
@@ -694,15 +837,17 @@ export default function ExamsPage() {
               )}
             </div>
           </div>
+          )}
 
-          {/* Error Message */}
-          {error && (
+          {/* Error Message (Exams section) */}
+          {activeSection === 'exams' && error && (
             <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
               {error}
             </div>
           )}
 
           {/* Exams Table */}
+          {activeSection === 'exams' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {isLoading ? (
               <div className="p-4 text-center text-sm text-gray-500">Loading exams...</div>
@@ -777,6 +922,63 @@ export default function ExamsPage() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Generation prompts section: all exams from DB with prompt edit */}
+          {activeSection === 'prompts' && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Set an exam-specific prompt for mock question generation. When set, it is used instead of the generic prompt. Placeholders: {'{{exam_name}}'}, {'{{subject}}'}, {'{{difficulty}}'}, {'{{topic}}'}, {'{{section_name}}'}, {'{{section_type}}'}, {'{{question_type}}'}
+              </p>
+              {promptsSectionLoading ? (
+                <div className="py-8 text-center text-gray-500">Loading prompts for all exams...</div>
+              ) : (
+                <div className="space-y-4">
+                  {allExams.map((exam) => {
+                    const data = promptsByExamId[exam.id];
+                    const promptText = data?.prompt ?? '';
+                    const isSaving = savingPromptExamId === exam.id;
+                    return (
+                      <div
+                        key={exam.id}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-gray-900">{exam.name}</span>
+                            <span className="ml-2 text-sm text-gray-500 font-mono">{exam.code}</span>
+                            {data?.hasCustomPrompt && (
+                              <span className="ml-2 text-xs text-green-600 font-medium">Custom prompt set</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSavePromptInSection(exam)}
+                            disabled={isSaving || data === undefined}
+                            className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSaving ? 'Saving...' : 'Save prompt'}
+                          </button>
+                        </div>
+                        <div className="p-4">
+                          <textarea
+                            value={data === undefined ? '' : promptText}
+                            onChange={(e) => setPromptForExam(exam.id, e.target.value)}
+                            placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
+                            rows={8}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {allExams.length === 0 && (
+                    <p className="text-sm text-gray-500 py-4">No exams in the database. Add exams in the Exams tab first.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
 

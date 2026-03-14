@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar} from "@/components/dashboard";
+import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 
@@ -11,7 +11,8 @@ type SectionId =
   | "exam-shortlist"
   | "college-shortlist"
   | "applications"
-  | "exam-prep";
+  | "exam-prep"
+  | "test-module";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -62,6 +63,10 @@ export default function DashboardPage() {
 
               {activeSection === "exam-prep" && (
                 <ExamPreparation />
+              )}
+
+              {activeSection === "test-module" && (
+                <TestModule />
               )}
             </main>
 

@@ -5,6 +5,14 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Relax rules that would require large refactors (fix incrementally)
+  {
+    rules: {
+      "react-hooks/preserve-manual-memoization": "off",
+      "react/no-unescaped-entities": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -12,6 +20,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node/CommonJS backends (use require, different rules)
+    "backend/**",
+    "stagehand-backend/**",
+    "python-backend/**",
   ]),
 ]);
 

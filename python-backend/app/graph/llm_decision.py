@@ -216,6 +216,13 @@ BEFORE clicking submit, carefully scan the ENTIRE page for ANY empty input field
 - An empty captcha field means the previous captcha was WRONG - solve it again!
 - Fill unfilled fields ONE AT A TIME
 
+⚠️ ONLY FILL EMPTY FIELDS - NEVER RE-FILL FILLED ONES!
+- Look at the screenshot: if an input ALREADY HAS TEXT in it, do NOT suggest filling it.
+- Example: If "Email ID" already shows an email address, do NOT return fill_field for "Email ID". Only suggest filling "Confirm Email ID" if THAT field is empty.
+- Only return fill_field for fields that appear visually EMPTY (no text, or placeholder only).
+- If "Already filled" list includes a field (e.g. "email", "Email ID"), do NOT suggest filling it again.
+- One field per action: fill only the next EMPTY field you see.
+
 ### 5a. PASSWORD FIELDS (CRITICAL!)
 If you see password or confirm password fields:
 - Use the "password" value from user data for BOTH password and confirm password fields
@@ -228,6 +235,21 @@ If you see password or confirm password fields:
 - The captcha was likely wrong last time
 - DO NOT click submit!
 - READ the captcha image and FILL the captcha field first
+
+### 5b. DATE PICKER / CALENDAR (Avoid getting stuck!)
+When you see a date-of-birth or date field with a calendar widget (month/year dropdowns and a grid of days):
+- User's DOB is in dateOfBirth as DD/MM/YYYY (e.g. 15/06/2006 → year 2006, month June, day 15).
+- If the calendar is open but shows the WRONG year (e.g. "2011" when user's year is 2006):
+  - First action: OPEN the year selector. The prompt must ask to open the dropdown/list, not to "select" the displayed year.
+  - Good: "Click on the year text at the top of the calendar (e.g. '2011') to open the year dropdown or year selection list."
+  - Bad: "Click the '2011' button to select the year" (2011 is already shown; clicking it often does nothing or reopens the same view).
+- After the year list is open: the dropdown may appear in an unexpected place (to the right, above, or overlapping the calendar). Your prompt must target the LIST, not the header.
+  - Good: "Find the year selection list (the list showing years like 2004, 2005, 2006 — it may be to the right of or above the calendar) and click the year 2006."
+  - Good: "In the year dropdown that opened (wherever it is on the page), click the option 2006."
+  - Bad: "Click 2011" or "Click the year at the top" (that is the header, not the list; the list may be elsewhere).
+- Then select month (e.g. June), then day (e.g. 15) as needed.
+- If the calendar shows the correct year but wrong month: click the month dropdown/label to open month list, then click the correct month.
+- One step at a time: open dropdown first, then choose value in the next action.
 
 ### 6. SUBMIT BUTTON - ONLY if ALL fields are FILLED!
 BEFORE clicking Submit/Get OTP/Continue:
@@ -256,9 +278,12 @@ ONLY return "success" if you see EXPLICIT FINAL confirmation like:
 
 ## Stagehand Prompt Guidelines
 - For click_button: "Click the 'OK' button" or "Click the 'Submit' button"
+- For LONG links (e.g. notice/announcement text like "Re-opening of Online Application Portal for Common University... – 2026 – reg."): Do NOT put the full link text in the prompt — it often fails. Instead use: "Click the link that contains 'Re-opening of Online Application Portal' and '2026'" or "Click the first link under LATEST NEWS that mentions CUET UG 2026 application". Use short, unique key phrases so the tool can find the element.
 - For fill_field: "Find the email field and type 'test@email.com'"
+- For "Confirm Email ID" / "Re-enter Email" / "Confirm Email": Use a SHORT, clear prompt so the automation does not fail. Example: "Find the input labeled 'Confirm Email ID' (the second email box below the first) and type 'user@example.com' into it" — use the FULL email from user_data, no truncation. Keep the sentence simple so the tool can parse it.
 - For wait_for_human: stagehand_prompt can be empty or describe what's needed
 - For click_checkbox: "Click the checkbox next to 'I hereby declare...'"
+- For date picker when year is wrong: First say "Click on the year label at the top of the calendar to open the year selection list". After the list is open, say "Find the year selection list (it may be to the right of or above the calendar) and click the year 2006" — target the list of years by description, not the header, since the dropdown often opens in a different position.
 
 ## Output Format
 Return a JSON object with:
@@ -336,6 +361,7 @@ Captcha failures: {captcha_fail_count}{captcha_note}{account_note}
 Analyze the screenshot and decide the SINGLE next action to take.
 If there's an unchecked checkbox visible, click it first.
 If there are form fields, fill the next unfilled one from the remaining fields.
+If the Date of Birth field has a calendar open but shows the wrong year: first open the year selector (click the year label to open dropdown/list), then on the next step select the correct year from dateOfBirth.
 If all fields are filled (including captcha in Already filled list), click the submit button.
 """
 
@@ -343,14 +369,35 @@ If all fields are filled (including captcha in Already filled list), click the s
         # Decode image for Gemini
         image_data = base64.b64decode(screenshot_base64)
         
+        # OPTIMIZATION: Resize image to reduce payload and speed up LLM call
+        from PIL import Image
+        import io
+        
+        original_size = len(image_data)
+        img = Image.open(io.BytesIO(image_data))
+        
+        # Resize to max dimension of 1280px (good balance of detail vs speed)
+        max_dimension = 1280
+        if max(img.width, img.height) > max_dimension:
+            ratio = max_dimension / max(img.width, img.height)
+            new_size = (int(img.width * ratio), int(img.height * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+        
+        # Convert to JPEG with quality 85 (smaller than PNG, still clear)
+        buffer = io.BytesIO()
+        img.convert('RGB').save(buffer, format='JPEG', quality=85, optimize=True)
+        image_data = buffer.getvalue()
+        
+        print(f"[LLM] Image optimized: {original_size} → {len(image_data)} bytes ({len(image_data)/original_size*100:.1f}%)")
+        
         # Create the content with text and image using new google-genai format
         contents = [
             SYSTEM_PROMPT,
             user_context,
-            genai.types.Part.from_bytes(data=image_data, mime_type="image/png")
+            genai.types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
         ]
         
-        print(f"[LLM] Calling Gemini 3.0 Flash with {len(image_data)} bytes image...")
+        print(f"[LLM] Calling Gemini (gemini-2.5-flash) with optimized image...")
         
         # Generate response with timeout using new client API
         import asyncio
@@ -361,7 +408,7 @@ If all fields are filled (including captcha in Already filled list), click the s
                 loop.run_in_executor(
                     None, 
                     lambda: client.models.generate_content(
-                        model="gemini-3-flash-preview",
+                        model="gemini-2.5-flash",  # Supported model with vision (gemini-1.5-flash can 404)
                         contents=contents,
                         config=genai.types.GenerateContentConfig(
                             temperature=0.1,
@@ -370,14 +417,14 @@ If all fields are filled (including captcha in Already filled list), click the s
                         )
                     )
                 ),
-                timeout=45.0  # 45 second timeout (reduced from 60s for faster retries)
+                timeout=30.0  # Reduced to 30s since optimized image should be faster
             )
         except asyncio.TimeoutError:
-            print("[LLM] Gemini API call timed out after 45s")
+            print("[LLM] Gemini API call timed out after 30s")
             return ActionDecision(
                 action_type="retry",
                 stagehand_prompt="",
-                reasoning="LLM analysis timed out - retrying",
+                reasoning="LLM analysis timed out - retrying with optimized image",
                 error_message="Timeout"
             )
         
@@ -414,7 +461,11 @@ def build_fill_prompt(field_name: str, value: str) -> str:
     """Build a specific fill prompt based on field type."""
     field_lower = field_name.lower()
     
-    # Handle confirm/re-enter fields
+    # Handle confirm/re-enter email (short prompt to avoid Stagehand parse errors)
+    if ("confirm" in field_lower or "re-enter" in field_lower or "retype" in field_lower) and "email" in field_lower:
+        return f"Find the input labeled 'Confirm Email ID' (the second email box) and type '{value}' into it"
+    
+    # Handle other confirm/re-enter fields
     if "confirm" in field_lower or "re-enter" in field_lower or "retype" in field_lower:
         return f"Find the confirmation/re-enter field for {field_name.replace('confirm', '').strip()} and type '{value}' into it"
     

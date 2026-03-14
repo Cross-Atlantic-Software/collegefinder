@@ -46,6 +46,10 @@ def route_after_execute(state: GraphState) -> Literal["capture_screenshot", "suc
     if status == "completed":
         return "success"
     
+    if status == "stopped":
+        # User clicked Stop Workflow - no further API calls
+        return "success"
+    
     if status == "waiting_input":
         # Workflow pauses here - will be resumed when user provides input
         return "end"
@@ -148,7 +152,10 @@ async def run_workflow(
     Checks saved phase and resumes from correct phase if needed.
     """
     from app.graph.state import create_initial_state
-    from app.api.websocket import get_session, send_log
+    from app.api.websocket import get_session, send_log, is_session_cancelled
+    
+    if is_session_cancelled(session_id):
+        return {"status": "stopped", "result_message": "Stopped by user"}
     
     # Check if we have a saved session with phase information
     saved_session = await get_session(session_id)
