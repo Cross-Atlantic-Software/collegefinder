@@ -17,7 +17,14 @@ echo "[$(date -Iseconds)] Deploy: pull"
 git pull
 
 echo "[$(date -Iseconds)] Deploy: backend npm install"
-cd "$REPO_ROOT/backend" && npm install && cd "$REPO_ROOT"
+cd "$REPO_ROOT/backend"
+npm config set fetch-timeout 120000 fetch-retries 5 2>/dev/null || true
+for attempt in 1 2 3; do
+  if npm install; then break; fi
+  echo "[$(date -Iseconds)] Attempt $attempt failed, retrying in 10s..."
+  sleep 10
+done
+cd "$REPO_ROOT"
 
 echo "[$(date -Iseconds)] Deploy: frontend build"
 npm run build

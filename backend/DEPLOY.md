@@ -49,6 +49,17 @@ cat npm-install.log
 pm2 restart collegefinder-backend
 ```
 
+### If `npm install` fails with ETIMEDOUT on the server
+
+The deploy script retries up to 3 times and uses a longer npm fetch timeout. If it still fails (e.g. slow or restricted network to registry.npmjs.org), you can copy backend dependencies from your local machine:
+
+```bash
+# From your LOCAL machine (run in repo root):
+rsync -avz --exclude=node_modules/.cache ./backend/node_modules/ ubuntu@YOUR_SERVER_IP:/home/ubuntu/collegefinder/backend/node_modules/
+```
+
+Then on the server: `pm2 restart collegefinder-backend`.
+
 ### Option 3: Use `screen` or `tmux`
 
 On the **server**:
