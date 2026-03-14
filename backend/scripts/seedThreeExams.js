@@ -1,5 +1,5 @@
 /**
- * Seed 3 exams into exams_taxonomies: JEE Main, JEE Advanced, NEET.
+ * Seed 3 exams into exams_taxonomies: JEE Main, JEE Advanced, CUET.
  * Each exam has proper format configuration. JEE Advanced has 2 papers (Paper 1 and Paper 2).
  *
  * Run from repo root: node backend/scripts/seedThreeExams.js
@@ -196,6 +196,32 @@ function buildNeetFormat() {
   return { default: buildSinglePaperFormat(config) };
 }
 
+/**
+ * Build CUET (UG) format - Common University Entrance Test.
+ */
+function buildCuetFormat() {
+  const config = {
+    name: 'CUET UG',
+    duration_minutes: 180,
+    total_questions: 50,
+    total_marks: 200,
+    marking_scheme: { correct: 5, incorrect: -1, unattempted: 0 },
+    rules: [
+      'Common University Entrance Test (UG) - for central and participating universities',
+      'Multiple domain-specific papers; generic single-paper format here.',
+    ],
+    sections: {
+      'Domain / General': {
+        total_questions: 50,
+        subsections: {
+          'Section A': { type: 'mcq_single', count: 50, required: 40 },
+        },
+      },
+    },
+  };
+  return { default: buildSinglePaperFormat(config) };
+}
+
 const EXAMS = [
   {
     name: 'JEE Main',
@@ -210,16 +236,16 @@ const EXAMS = [
     format: buildJeeAdvancedFormat(),
   },
   {
-    name: 'NEET',
-    code: 'NEET',
-    description: 'National Eligibility cum Entrance Test - for admission to medical and dental colleges',
-    format: buildNeetFormat(),
+    name: 'CUET',
+    code: 'CUET',
+    description: 'Common University Entrance Test (UG) - for central and participating universities',
+    format: buildCuetFormat(),
   },
 ];
 
 async function main() {
   try {
-    console.log('🌱 Seeding exams_taxonomies with 3 exams...\n');
+    console.log('🌱 Seeding exams_taxonomies with JEE Main, JEE Advanced, CUET...\n');
 
     for (const exam of EXAMS) {
       const result = await db.query(
