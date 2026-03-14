@@ -73,6 +73,8 @@ stagehand-backend/.env
 # Backend
 backend/node_modules/
 backend/.env
+backend/npm-install.log
+deploy.log
 
 # IDE
 .idea/

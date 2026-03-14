@@ -18,6 +18,31 @@ function getFormatTotalQuestions(format: ExamFormat): number {
   );
 }
 
+/** Fallback format when API returns no format or empty sections (avoids client crash). */
+function buildFallbackFormat(exam: Exam): ExamFormat {
+  return {
+    format_id: 'default',
+    name: `${exam.name} Practice Test`,
+    duration_minutes: 60,
+    total_marks: 0,
+    sections: {
+      Practice: {
+        name: 'Practice',
+        marks: 0,
+        subsections: {
+          'Section A': { type: 'MCQ', questions: 1, marks_per_question: 1 },
+        },
+      },
+    },
+    marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
+    rules: [
+      'Practice mode - answer questions at your own pace',
+      'Questions are AI-generated based on exam syllabus',
+      'You can exit anytime - progress is saved',
+    ],
+  };
+}
+
 export default function TestModule() {
   const [activeTab, setActiveTab] = useState("practice");
   const [viewState, setViewState] = useState<ViewState>('exam-selection');
@@ -110,13 +135,25 @@ export default function TestModule() {
           }
         }
         const [formatId, format] = formatEntries[formatIndex];
-        const formatWithId = { ...format, format_id: formatId };
+        const hasSections = format?.sections && Object.keys(format.sections).length > 0;
+        const formatWithId = hasSections
+          ? { ...format, format_id: formatId }
+          : buildFallbackFormat(exam);
         setSelectedFormat(formatWithId);
-        setRulesLoading(true);
-        setError(null);
-        try {
-          const rulesResponse = await getTestRules(exam.id, formatId);
-          if (rulesResponse.success && rulesResponse.data) {
+        if (!hasSections) {
+          setFormatRules({
+            format: formatWithId,
+            rules: formatWithId.rules,
+            marking_scheme: formatWithId.marking_scheme,
+            sections: formatWithId.sections ?? {},
+          });
+          setViewState('test-active');
+        } else {
+          setRulesLoading(true);
+          setError(null);
+          try {
+            const rulesResponse = await getTestRules(exam.id, formatId);
+            if (rulesResponse.success && rulesResponse.data) {
               setFormatRules(rulesResponse.data);
               setViewState('test-active');
             } else {
@@ -128,49 +165,30 @@ export default function TestModule() {
             setError('Failed to load test rules');
             setViewState('exam-selection');
           } finally {
-          setRulesLoading(false);
+            setRulesLoading(false);
+          }
         }
       } else {
         // No formats - go directly to fullscreen with basic format
-        const fallbackFormat = {
-          format_id: 'default',
-          name: `${exam.name} Practice Test`,
-          duration_minutes: 60,
-          total_marks: 0,
-          sections: {},
-          marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
-          rules: [
-            'Practice mode - answer questions at your own pace',
-            'Questions are AI-generated based on exam syllabus',
-            'You can exit anytime - progress is saved'
-          ]
-        };
+        const fallbackFormat = buildFallbackFormat(exam);
         setSelectedFormat(fallbackFormat);
         setFormatRules({
           format: fallbackFormat,
           rules: fallbackFormat.rules,
           marking_scheme: fallbackFormat.marking_scheme,
-          sections: {}
+          sections: fallbackFormat.sections ?? {},
         });
         setViewState('test-active');
       }
     } catch (error) {
       console.error('Error fetching exam formats:', error);
-      const fallbackFormat = {
-        format_id: 'default',
-        name: `${exam.name} Practice Test`,
-        duration_minutes: 60,
-        total_marks: 0,
-        sections: {},
-        marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
-        rules: ['Click Start Test to begin your practice session']
-      };
+      const fallbackFormat = buildFallbackFormat(exam);
       setSelectedFormat(fallbackFormat);
       setFormatRules({
         format: fallbackFormat,
         rules: fallbackFormat.rules,
         marking_scheme: fallbackFormat.marking_scheme,
-        sections: {}
+        sections: fallbackFormat.sections ?? {},
       });
       setViewState('test-active');
     } finally {
