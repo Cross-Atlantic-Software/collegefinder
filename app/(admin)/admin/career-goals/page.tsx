@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, uploadMissingLogosCareerGoals, CareerGoalAdmin } from '@/api';
+import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
 import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
@@ -31,11 +31,6 @@ export default function CareerGoalsPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
-  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
-  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
-  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
-  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
-  const [missingLogosResult, setMissingLogosResult] = useState<{ updated: { id: number; label: string }[]; skipped: string[]; summary: { logosAdded: number; filesSkipped: number; uploadErrors: number } } | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -238,32 +233,6 @@ export default function CareerGoalsPage() {
     setError(null);
   };
 
-  const handleMissingLogosSubmit = async () => {
-    if (!missingLogosZipFile) {
-      showError('Please select a ZIP file');
-      return;
-    }
-    setMissingLogosUploading(true);
-    setMissingLogosError(null);
-    setMissingLogosResult(null);
-    try {
-      const res = await uploadMissingLogosCareerGoals(missingLogosZipFile);
-      if (res.success && res.data) {
-        setMissingLogosResult(res.data);
-        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
-        fetchCareerGoals();
-      } else {
-        setMissingLogosError(res.message || 'Upload failed');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
-      setMissingLogosError(msg);
-      showError(msg);
-    } finally {
-      setMissingLogosUploading(false);
-    }
-  };
-
   const handleModalClose = () => {
     setShowModal(false);
     setEditingCareerGoal(null);
@@ -350,21 +319,6 @@ export default function CareerGoalsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {allCareerGoals.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMissingLogosModal(true);
-                    setMissingLogosZipFile(null);
-                    setMissingLogosResult(null);
-                    setMissingLogosError(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <FiUpload className="h-4 w-4" />
-                  Upload missing logos
-                </button>
-              )}
               {currentAdmin?.type === 'super_admin' && (
                 <button
                   type="button"
@@ -681,136 +635,6 @@ export default function CareerGoalsPage() {
         confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
-
-      {/* Upload Missing Logos Modal */}
-      {showMissingLogosModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
-            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-white/20">
-                  <FiUpload className="h-5 w-5" />
-                </div>
-                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowMissingLogosModal(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                aria-label="Close"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-5 overflow-auto space-y-5">
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_filename</code> stored for interests that have no logo yet.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
-                  <input
-                    type="file"
-                    accept=".zip,application/zip,application/x-zip-compressed"
-                    className="hidden"
-                    onChange={(e) => {
-                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
-                      setMissingLogosResult(null);
-                      setMissingLogosError(null);
-                      e.target.value = '';
-                    }}
-                  />
-                  {missingLogosZipFile ? (
-                    <div className="flex flex-col items-center gap-2 p-4">
-                      <div className="p-2 rounded-full bg-green-100 text-green-600">
-                        <FiUpload className="h-5 w-5" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
-                      <button
-                        type="button"
-                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
-                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
-                      <FiUpload className="h-8 w-8 opacity-60" />
-                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
-                      <span className="text-xs">.zip only</span>
-                    </div>
-                  )}
-                </label>
-              </div>
-              {missingLogosError && (
-                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
-                  {missingLogosError}
-                </div>
-              )}
-              {missingLogosResult && (
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
-                  <p className="font-semibold text-slate-900">
-                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
-                  </p>
-                  {missingLogosResult.summary.filesSkipped > 0 && (
-                    <p className="text-sm text-amber-700">Files skipped (no matching interest): {missingLogosResult.summary.filesSkipped}</p>
-                  )}
-                  {missingLogosResult.summary.uploadErrors > 0 && (
-                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
-                  )}
-                  {missingLogosResult.updated.length > 0 && (
-                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
-                      {missingLogosResult.updated.map((u, i) => (
-                        <li key={i}>{u.label}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {missingLogosResult.skipped.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
-                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
-                        {missingLogosResult.skipped.map((f, i) => (
-                          <li key={i}>{f}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowMissingLogosModal(false)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleMissingLogosSubmit}
-                disabled={!missingLogosZipFile || missingLogosUploading}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {missingLogosUploading ? (
-                  <>
-                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Uploading…
-                  </>
-                ) : (
-                  <>
-                    <FiUpload className="h-4 w-4" />
-                    Upload
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete All Confirmation Modal */}
       <ConfirmationModal

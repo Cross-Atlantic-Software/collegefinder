@@ -17,11 +17,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <link rel="icon" href="/favicon.ico" sizes="any" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+          precedence="default"
+        />
+      </head>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -13,6 +13,7 @@ export interface Topic {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  exam_ids?: number[];
 }
 
 /**

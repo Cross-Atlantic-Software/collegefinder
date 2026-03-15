@@ -1,5 +1,19 @@
 const Topic = require('../../models/taxonomy/Topic');
 const { validationResult } = require('express-validator');
+
+function parseExamIdsBody(examIds) {
+  if (examIds == null || examIds === '') return [];
+  if (Array.isArray(examIds)) return examIds.slice(0, 10).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
+  if (typeof examIds === 'string') {
+    try {
+      const parsed = JSON.parse(examIds);
+      return Array.isArray(parsed) ? parsed.slice(0, 10).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n)) : [];
+    } catch {
+      return examIds.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n)).slice(0, 10);
+    }
+  }
+  return [];
+}
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const multer = require('multer');
 
@@ -26,9 +40,12 @@ class TopicController {
   static async getAllTopics(req, res) {
     try {
       const topics = await Topic.findAll();
+      const topicIds = topics.map((t) => t.id);
+      const examIdsByTopic = topicIds.length > 0 ? await Topic.getExamIdsByTopicIds(topicIds) : {};
+      const topicsWithExams = topics.map((t) => ({ ...t, exam_ids: examIdsByTopic[t.id] || [] }));
       res.json({
         success: true,
-        data: { topics }
+        data: { topics: topicsWithExams }
       });
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -46,7 +63,8 @@ class TopicController {
   static async getTopicById(req, res) {
     try {
       const { id } = req.params;
-      const topic = await Topic.findById(parseInt(id));
+      const topicId = parseInt(id);
+      const topic = await Topic.findById(topicId);
 
       if (!topic) {
         return res.status(404).json({
@@ -55,9 +73,10 @@ class TopicController {
         });
       }
 
+      const examIds = await Topic.getExamIds(topicId);
       res.json({
         success: true,
-        data: { topic }
+        data: { topic: { ...topic, exam_ids: examIds } }
       });
     } catch (error) {
       console.error('Error fetching topic:', error);
@@ -83,7 +102,7 @@ class TopicController {
         });
       }
 
-      const { sub_id, name, home_display, status, description, sort_order } = req.body;
+      const { sub_id, name, home_display, status, description, sort_order, exam_ids } = req.body;
 
       // Check if topic with same name exists for this subject
       const existing = await Topic.findByNameAndSubjectId(name, parseInt(sub_id));
@@ -112,10 +131,14 @@ class TopicController {
         sort_order: sort_order ? parseInt(sort_order) : 0
       });
 
+      const parsedExamIds = parseExamIdsBody(exam_ids);
+      if (parsedExamIds.length > 0) await Topic.setExamIds(topic.id, parsedExamIds);
+
+      const topicWithExams = { ...topic, exam_ids: parsedExamIds.length > 0 ? parsedExamIds : await Topic.getExamIds(topic.id) };
       res.status(201).json({
         success: true,
         message: 'Topic created successfully',
-        data: { topic }
+        data: { topic: topicWithExams }
       });
     } catch (error) {
       console.error('Error creating topic:', error);
@@ -151,7 +174,7 @@ class TopicController {
         });
       }
 
-      const { sub_id, name, home_display, status, description, sort_order } = req.body;
+      const { sub_id, name, home_display, status, description, sort_order, exam_ids } = req.body;
 
       // Check if name is being changed and if it already exists for this subject
       const subjectId = sub_id ? parseInt(sub_id) : existingTopic.sub_id;
@@ -187,11 +210,15 @@ class TopicController {
       if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order);
 
       const topic = await Topic.update(parseInt(id), updateData);
-
+      if (exam_ids !== undefined) {
+        const parsedExamIds = parseExamIdsBody(exam_ids);
+        await Topic.setExamIds(parseInt(id), parsedExamIds);
+      }
+      const examIds = await Topic.getExamIds(parseInt(id));
       res.json({
         success: true,
         message: 'Topic updated successfully',
-        data: { topic }
+        data: { topic: { ...topic, exam_ids: examIds } }
       });
     } catch (error) {
       console.error('Error updating topic:', error);

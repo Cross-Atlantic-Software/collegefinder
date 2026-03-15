@@ -1,6 +1,20 @@
 const Subtopic = require('../../models/taxonomy/Subtopic');
 const { validationResult } = require('express-validator');
 
+function parseExamIdsBody(examIds) {
+  if (examIds == null || examIds === '') return [];
+  if (Array.isArray(examIds)) return examIds.slice(0, 10).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
+  if (typeof examIds === 'string') {
+    try {
+      const parsed = JSON.parse(examIds);
+      return Array.isArray(parsed) ? parsed.slice(0, 10).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n)) : [];
+    } catch {
+      return examIds.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n)).slice(0, 10);
+    }
+  }
+  return [];
+}
+
 class SubtopicController {
   /**
    * Get all subtopics
@@ -9,9 +23,12 @@ class SubtopicController {
   static async getAllSubtopics(req, res) {
     try {
       const subtopics = await Subtopic.findAll();
+      const subtopicIds = subtopics.map((s) => s.id);
+      const examIdsBySubtopic = subtopicIds.length > 0 ? await Subtopic.getExamIdsBySubtopicIds(subtopicIds) : {};
+      const subtopicsWithExams = subtopics.map((s) => ({ ...s, exam_ids: examIdsBySubtopic[s.id] || [] }));
       res.json({
         success: true,
-        data: { subtopics }
+        data: { subtopics: subtopicsWithExams }
       });
     } catch (error) {
       console.error('Error fetching subtopics:', error);
@@ -29,7 +46,8 @@ class SubtopicController {
   static async getSubtopicById(req, res) {
     try {
       const { id } = req.params;
-      const subtopic = await Subtopic.findById(parseInt(id));
+      const subtopicId = parseInt(id);
+      const subtopic = await Subtopic.findById(subtopicId);
 
       if (!subtopic) {
         return res.status(404).json({
@@ -38,9 +56,10 @@ class SubtopicController {
         });
       }
 
+      const examIds = await Subtopic.getExamIds(subtopicId);
       res.json({
         success: true,
-        data: { subtopic }
+        data: { subtopic: { ...subtopic, exam_ids: examIds } }
       });
     } catch (error) {
       console.error('Error fetching subtopic:', error);
@@ -87,7 +106,7 @@ class SubtopicController {
         });
       }
 
-      const { topic_id, name, status, description, sort_order } = req.body;
+      const { topic_id, name, status, description, sort_order, exam_ids } = req.body;
 
       // Check if subtopic with same name exists for this topic
       const existing = await Subtopic.findByNameAndTopicId(name, parseInt(topic_id));
@@ -106,10 +125,14 @@ class SubtopicController {
         sort_order: sort_order ? parseInt(sort_order) : 0
       });
 
+      const parsedExamIds = parseExamIdsBody(exam_ids);
+      if (parsedExamIds.length > 0) await Subtopic.setExamIds(subtopic.id, parsedExamIds);
+
+      const subtopicWithExams = { ...subtopic, exam_ids: parsedExamIds.length > 0 ? parsedExamIds : await Subtopic.getExamIds(subtopic.id) };
       res.status(201).json({
         success: true,
         message: 'Subtopic created successfully',
-        data: { subtopic }
+        data: { subtopic: subtopicWithExams }
       });
     } catch (error) {
       console.error('Error creating subtopic:', error);
@@ -145,7 +168,7 @@ class SubtopicController {
         });
       }
 
-      const { topic_id, name, status, description, sort_order } = req.body;
+      const { topic_id, name, status, description, sort_order, exam_ids } = req.body;
 
       // Check if name is being changed and if it already exists for this topic
       const topicId = topic_id ? parseInt(topic_id) : existingSubtopic.topic_id;
@@ -167,11 +190,15 @@ class SubtopicController {
       if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order);
 
       const subtopic = await Subtopic.update(parseInt(id), updateData);
-
+      if (exam_ids !== undefined) {
+        const parsedExamIds = parseExamIdsBody(exam_ids);
+        await Subtopic.setExamIds(parseInt(id), parsedExamIds);
+      }
+      const examIds = await Subtopic.getExamIds(parseInt(id));
       res.json({
         success: true,
         message: 'Subtopic updated successfully',
-        data: { subtopic }
+        data: { subtopic: { ...subtopic, exam_ids: examIds } }
       });
     } catch (error) {
       console.error('Error updating subtopic:', error);
