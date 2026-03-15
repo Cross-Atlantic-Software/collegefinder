@@ -27,8 +27,9 @@ RUN if [ "$NODE_ENV" = "development" ]; then \
 COPY . .
 
 # Copy entrypoint for dev (ensures node_modules populated when volume-mounted)
+# Strip CRLF so script runs on Alpine (Windows line endings cause "no such file or directory")
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Expose port
 EXPOSE 5001

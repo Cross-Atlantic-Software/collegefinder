@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllSubtopics, getSubtopicsByTopicId, createSubtopic, updateSubtopic, deleteSubtopic, Subtopic } from '@/api';
+import { getAllSubtopics, getSubtopicsByTopicId, getSubtopicById, createSubtopic, updateSubtopic, deleteSubtopic, Subtopic } from '@/api';
 import { getAllTopics } from '@/api';
+import { getAllExamsAdmin } from '@/api/admin/exams';
 import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
+import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 
 export default function SubtopicsPage() {
   const router = useRouter();
@@ -25,9 +26,12 @@ export default function SubtopicsPage() {
     name: '', 
     status: true,
     description: '',
-    sort_order: 0
+    sort_order: 0,
+    exam_ids: [] as number[],
   });
   const [availableTopics, setAvailableTopics] = useState<SelectOption[]>([]);
+  const [availableExams, setAvailableExams] = useState<SelectOption[]>([]);
+  const MAX_EXAMS = 10;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -45,8 +49,20 @@ export default function SubtopicsPage() {
 
     fetchSubtopics();
     fetchTopics();
+    fetchExams();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchExams = async () => {
+    try {
+      const res = await getAllExamsAdmin();
+      if (res.success && res.data?.exams) {
+        setAvailableExams(res.data.exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` })));
+      }
+    } catch (err) {
+      console.error('Error fetching exams:', err);
+    }
+  };
 
   const fetchTopics = async () => {
     try {
@@ -114,7 +130,8 @@ export default function SubtopicsPage() {
         name: formData.name,
         status: formData.status,
         description: formData.description || undefined,
-        sort_order: formData.sort_order
+        sort_order: formData.sort_order,
+        exam_ids: (formData.exam_ids || []).slice(0, MAX_EXAMS),
       };
 
       let response;
@@ -147,14 +164,24 @@ export default function SubtopicsPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (subtopic: Subtopic) => {
+  const handleEdit = async (subtopic: Subtopic) => {
     setEditingSubtopic(subtopic);
+    let examIds = subtopic.exam_ids ?? [];
+    if (examIds.length === 0 && subtopic.id) {
+      try {
+        const res = await getSubtopicById(subtopic.id);
+        if (res.success && res.data?.subtopic?.exam_ids) {
+          examIds = res.data.subtopic.exam_ids;
+        }
+      } catch (_) {}
+    }
     setFormData({
       topic_id: String(subtopic.topic_id),
       name: subtopic.name,
       status: subtopic.status,
       description: subtopic.description || '',
-      sort_order: subtopic.sort_order
+      sort_order: subtopic.sort_order,
+      exam_ids: examIds,
     });
     setShowModal(true);
   };
@@ -196,7 +223,8 @@ export default function SubtopicsPage() {
       name: '', 
       status: true,
       description: '',
-      sort_order: 0
+      sort_order: 0,
+      exam_ids: [],
     });
     setError(null);
   };
@@ -391,6 +419,19 @@ export default function SubtopicsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Exams (optional, max {MAX_EXAMS})
+                  </label>
+                  <MultiSelect
+                    options={availableExams}
+                    value={(formData.exam_ids || []).slice(0, MAX_EXAMS).map(String)}
+                    onChange={(values) => setFormData({ ...formData, exam_ids: values.map(Number).slice(0, MAX_EXAMS) })}
+                    placeholder="Search and select exams..."
+                    isSearchable
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Description
                   </label>
                   <textarea
@@ -479,6 +520,16 @@ export default function SubtopicsPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                     <p className="text-sm text-gray-900">{viewingSubtopic.description}</p>
+                  </div>
+                )}
+                {(viewingSubtopic.exam_ids?.length ?? 0) > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Exams</label>
+                    <p className="text-sm text-gray-900">
+                      {viewingSubtopic.exam_ids!
+                        .map((id) => availableExams.find((e) => e.value === String(id))?.label ?? `Exam ${id}`)
+                        .join(', ')}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">

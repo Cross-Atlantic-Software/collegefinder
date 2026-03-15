@@ -66,7 +66,7 @@ class PurposeController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name, status, description } = req.body;
 
       // Check if name already exists
       const existing = await Purpose.findByName(name);
@@ -79,7 +79,8 @@ class PurposeController {
 
       const purpose = await Purpose.create({ 
         name, 
-        status: status !== undefined ? status : true 
+        status: status !== undefined ? status : true,
+        description: description || null
       });
 
       res.status(201).json({
@@ -112,7 +113,7 @@ class PurposeController {
       }
 
       const { id } = req.params;
-      const { name, status } = req.body;
+      const { name, status, description } = req.body;
 
       const existing = await Purpose.findById(parseInt(id));
       if (!existing) {
@@ -133,7 +134,7 @@ class PurposeController {
         }
       }
 
-      const purpose = await Purpose.update(parseInt(id), { name, status });
+      const purpose = await Purpose.update(parseInt(id), { name, status, description });
 
       res.json({
         success: true,

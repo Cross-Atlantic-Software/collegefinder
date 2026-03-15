@@ -817,8 +817,7 @@ class ExamsTaxonomyController {
         'category_wise_cutoff',
         'target_rank_range',
         'domicile',
-        'programs',
-        'recommended_colleges'
+        'programs'
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
@@ -849,8 +848,7 @@ class ExamsTaxonomyController {
           'General 95, OBC 90, SC 85, ST 80',
           'Top 10k',
           'All India',
-          'B.Tech, B.E.',
-          'IIT Delhi, NIT Trichy, BITS Pilani'
+          'B.Tech, B.E.'
         ],
         [
           'NEET',
@@ -878,8 +876,7 @@ class ExamsTaxonomyController {
           'General 98, OBC 95, SC 90, ST 85',
           'Top 50k',
           'All India',
-          'MBBS, BDS',
-          'AIIMS Delhi, AFMC Pune, JIPMER Puducherry'
+          'MBBS, BDS'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Exams');
@@ -902,31 +899,34 @@ class ExamsTaxonomyController {
    */
   static async downloadAllExcel(req, res) {
     try {
-      const [exams, allStreams, allSubjects, allCareerGoals] = await Promise.all([
+      const [exams, allStreams, allSubjects, allCareerGoals, allPrograms] = await Promise.all([
         Exam.findAll(),
         Stream.findAll(),
         Subject.findAll(),
-        CareerGoal.findAll()
+        CareerGoal.findAll(),
+        Program.findAll()
       ]);
       const streamMap = new Map(allStreams.map((s) => [s.id, s.name]));
       const subjectMap = new Map(allSubjects.map((s) => [s.id, s.name]));
       const careerGoalMap = new Map(allCareerGoals.map((c) => [c.id, c.label]));
+      const programMap = new Map(allPrograms.map((p) => [p.id, p.name]));
 
       const headers = [
         'name', 'code', 'description', 'exam_type', 'conducting_authority', 'format', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date',
         'Streams', 'Subjects', 'age_limit_min', 'age_limit_max', 'attempt_limit',
         'mode', 'number_of_questions', 'marking_scheme', 'duration_minutes',
-        'previous_year_cutoff', 'ranks_percentiles', 'category_wise_cutoff', 'target_rank_range', 'Interests'
+        'previous_year_cutoff', 'ranks_percentiles', 'category_wise_cutoff', 'target_rank_range', 'domicile', 'programs', 'Interests'
       ];
       const rows = [headers];
       for (const exam of exams) {
-        const [dates, eligibility, pattern, cutoff, careerGoalIds] = await Promise.all([
+        const [dates, eligibility, pattern, cutoff, careerGoalIds, programIds] = await Promise.all([
           ExamDates.findByExamId(exam.id),
           ExamEligibilityCriteria.findByExamId(exam.id),
           ExamPattern.findByExamId(exam.id),
           ExamCutoff.findByExamId(exam.id),
-          ExamCareerGoal.getCareerGoalIds(exam.id)
+          ExamCareerGoal.getCareerGoalIds(exam.id),
+          ExamProgram.getProgramIdsByExamId(exam.id)
         ]);
         const logoFilename = exam.logo_file_name || (exam.exam_logo && typeof exam.exam_logo === 'string' ? exam.exam_logo.split('/').pop() : '') || '';
         const examLogoUrl = (exam.exam_logo && typeof exam.exam_logo === 'string') ? exam.exam_logo : '';
@@ -935,6 +935,8 @@ class ExamsTaxonomyController {
         const streamNames = (Array.isArray(streamIds) ? streamIds : []).map((id) => streamMap.get(id) ?? id).filter(Boolean).join(', ');
         const subjectNames = (Array.isArray(subjectIds) ? subjectIds : []).map((id) => subjectMap.get(id) ?? id).filter(Boolean).join(', ');
         const interestNames = (Array.isArray(careerGoalIds) ? careerGoalIds : []).map((id) => careerGoalMap.get(id) ?? id).filter(Boolean).join(', ');
+        const programNames = (Array.isArray(programIds) ? programIds : []).map((id) => programMap.get(id) ?? id).filter(Boolean).join(', ');
+        const domicileStr = (eligibility && eligibility.domicile) ? String(eligibility.domicile).trim() : '';
         const formatStr = exam.format && typeof exam.format === 'object' ? JSON.stringify(exam.format) : (exam.format ? String(exam.format) : '');
         rows.push([
           exam.name || '',
@@ -961,6 +963,8 @@ class ExamsTaxonomyController {
           (cutoff && cutoff.ranks_percentiles) || '',
           (cutoff && cutoff.category_wise_cutoff) ? (typeof cutoff.category_wise_cutoff === 'object' ? JSON.stringify(cutoff.category_wise_cutoff) : String(cutoff.category_wise_cutoff)) : '',
           (cutoff && cutoff.target_rank_range) || '',
+          domicileStr,
+          programNames,
           interestNames
         ]);
       }
