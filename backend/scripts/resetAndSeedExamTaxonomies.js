@@ -226,6 +226,7 @@ const EXAMS = [
     description: 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges',
     exam_type: 'National',
     conducting_authority: 'NTA',
+    number_of_papers: 1,
     format: buildJeeMainFormat(),
   },
   {
@@ -234,6 +235,7 @@ const EXAMS = [
     description: 'Joint Entrance Examination Advanced - for admission to IITs. Two papers: Paper 1 and Paper 2.',
     exam_type: 'National',
     conducting_authority: 'IIT',
+    number_of_papers: 2,
     format: buildJeeAdvancedFormat(),
   },
   {
@@ -242,6 +244,7 @@ const EXAMS = [
     description: 'National Eligibility cum Entrance Test - for admission to medical and dental colleges',
     exam_type: 'National',
     conducting_authority: 'NTA',
+    number_of_papers: 1,
     format: buildNeetFormat(),
   },
   {
@@ -250,6 +253,7 @@ const EXAMS = [
     description: 'Common University Entrance Test - for admission to central and other participating universities',
     exam_type: 'National',
     conducting_authority: 'NTA',
+    number_of_papers: 1,
     format: buildCuetFormat(),
   },
 ];
@@ -268,8 +272,8 @@ async function main() {
 
     for (const exam of EXAMS) {
       const result = await db.query(
-        `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format, number_of_papers)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
          RETURNING id, name, code`,
         [
           exam.name,
@@ -278,6 +282,7 @@ async function main() {
           exam.exam_type || null,
           exam.conducting_authority || null,
           JSON.stringify(exam.format),
+          exam.number_of_papers || 1,
         ]
       );
 

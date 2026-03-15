@@ -24,12 +24,18 @@ import { useFullscreenAndWarnings } from './useFullscreenAndWarnings';
 export interface UseFullscreenTestProps {
   examId: number;
   format: ExamFormat;
+  paperNumber?: number;
   onExit: () => void;
 }
 
-export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestProps) {
+export function useFullscreenTest({ examId, format, paperNumber, onExit }: UseFullscreenTestProps) {
   const [currentSection, setCurrentSection] = useState<string>(() => Object.keys(format.sections)[0]);
-  const [currentSubsection, setCurrentSubsection] = useState<'section_a' | 'section_b'>('section_a');
+  const firstSubsection = useMemo(() => {
+    const firstSec = Object.keys(format.sections)[0];
+    const subKeys = firstSec ? Object.keys(format.sections[firstSec]?.subsections ?? {}) : [];
+    return subKeys[0] ?? 'section_a';
+  }, [format.sections]);
+  const [currentSubsection, setCurrentSubsection] = useState<string>(firstSubsection);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | string[]>('');
   const [questionNumber, setQuestionNumber] = useState(0);
@@ -57,6 +63,8 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     isFullscreen,
     tabChangeWarning,
     setTabChangeWarning,
+    fullscreenExitWarning,
+    setFullscreenExitWarning,
   } = useFullscreenAndWarnings({ testAttemptId });
 
   // —— Start test ——
@@ -64,7 +72,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     try {
       setLoading(true);
       setError(null);
-      const startRes = await startMockTest(examId);
+      const startRes = await startMockTest(examId, paperNumber);
       if (!startRes.success || !startRes.data) {
         setError(startRes.message || 'Failed to start test. Please try again shortly.');
         return;
@@ -92,7 +100,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     } finally {
       setLoading(false);
     }
-  }, [examId, format, enterFullscreen]);
+  }, [examId, format, paperNumber, enterFullscreen]);
 
   // First question index (1-based) for the current subsection within the current section
   const firstQuestionNumberOfSubsection = useMemo(() => {
@@ -129,16 +137,20 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     const entry = map[num];
     const prevNum = questionNumberRef.current;
     if (prevNum >= 1 && prevNum !== num) {
+      const elapsed = Math.max(0, Math.floor((Date.now() - questionViewedAtRef.current) / 1000));
       setSectionMaps((prev) => {
         const sectionMap = prev[section] || {};
         const prevEntry = sectionMap[prevNum];
-        if (!prevEntry || prevEntry.status !== 'not_visited') return prev;
+        if (!prevEntry) return prev;
+        const addedTime = (prevEntry.time_spent_seconds ?? 0) + elapsed;
+        const updatedEntry = {
+          ...prevEntry,
+          time_spent_seconds: addedTime,
+          ...(prevEntry.status === 'not_visited' ? { status: 'not_answered' as const } : {}),
+        };
         return {
           ...prev,
-          [section]: {
-            ...sectionMap,
-            [prevNum]: { ...prevEntry, status: 'not_answered' },
-          },
+          [section]: { ...sectionMap, [prevNum]: updatedEntry },
         };
       });
     }
@@ -179,6 +191,9 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     (maps: Record<string, Record<number, QuestionEntry>>) => {
       const answers: Array<{ question_id: number; selected_option: string | null; time_spent_seconds: number }> = [];
       const sectionKeys = Object.keys(format.sections);
+      const currentSec = currentSectionRef.current;
+      const currentNum = questionNumberRef.current;
+      const now = Date.now();
       for (const sectionKey of sectionKeys) {
         const map = maps[sectionKey];
         if (!map) continue;
@@ -196,10 +211,14 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
               : typeof opt === 'string'
                 ? opt
                 : JSON.stringify(opt);
+          let time = entry.time_spent_seconds ?? 0;
+          if (sectionKey === currentSec && num === currentNum) {
+            time += Math.max(0, Math.floor((now - questionViewedAtRef.current) / 1000));
+          }
           answers.push({
             question_id: entry.question.id,
             selected_option,
-            time_spent_seconds: 0,
+            time_spent_seconds: time,
           });
         }
       }
@@ -307,43 +326,99 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
   }, [currentQuestion, questionNumber, currentSection]);
 
-  // —— Skip question ——
-  const handleSkip = useCallback(() => {
+  // —— Next question (if option is selected, saves as "answered"; otherwise saves as "not_answered" / skip) ——
+  const handleNext = useCallback(() => {
     if (!currentQuestion) return;
-    const skippedNum = questionNumber;
-    setSectionMaps((prev) => ({
-      ...prev,
-      [currentSection]: {
-        ...prev[currentSection],
-        [skippedNum]: { question: currentQuestion, status: 'not_answered', savedOption: '' },
-      },
-    }));
-    if (skippedNum < totalQuestionsInSection) {
-      loadQuestionForNumber(skippedNum + 1);
+    const num = questionNumber;
+    const hasAnswer = Array.isArray(selectedOption)
+      ? selectedOption.length > 0
+      : selectedOption !== '';
+
+    if (hasAnswer) {
+      // JEE: block submitting another numerical if this section already has 5 numericals attempted
+      const isNumerical = isQuestionInNumericalSubsection(currentSection, questionNumber, format);
+      if (isNumerical) {
+        const numAttempted = getNumericalAttemptedInSection(sectionMaps, currentSection, format);
+        const required = getNumericalRequiredForSection(format, currentSection);
+        if (numAttempted >= required) {
+          // Skip to next question without saving answer (numerical cap reached)
+          if (num < totalQuestionsInSection) {
+            loadQuestionForNumber(num + 1);
+          } else {
+            setCurrentQuestion(null);
+            setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
+          }
+          return;
+        }
+      }
+
+      const elapsed = Math.max(0, Math.floor((Date.now() - questionViewedAtRef.current) / 1000));
+      const prevEntry = sectionMaps[currentSection]?.[num];
+      const addedTime = (prevEntry?.time_spent_seconds ?? 0) + elapsed;
+      // Save as answered
+      setSectionMaps((prev) => ({
+        ...prev,
+        [currentSection]: {
+          ...prev[currentSection],
+          [num]: {
+            question: currentQuestion,
+            status: 'answered',
+            savedOption: selectedOption,
+            time_spent_seconds: addedTime,
+          },
+        },
+      }));
+    } else {
+      const elapsed = Math.max(0, Math.floor((Date.now() - questionViewedAtRef.current) / 1000));
+      const prevEntry = sectionMaps[currentSection]?.[num];
+      const addedTime = (prevEntry?.time_spent_seconds ?? 0) + elapsed;
+      // Save as not_answered (skip)
+      setSectionMaps((prev) => ({
+        ...prev,
+        [currentSection]: {
+          ...prev[currentSection],
+          [num]: {
+            question: currentQuestion,
+            status: 'not_answered',
+            savedOption: '',
+            time_spent_seconds: addedTime,
+          },
+        },
+      }));
+    }
+
+    // Navigate to next question
+    if (num < totalQuestionsInSection) {
+      loadQuestionForNumber(num + 1);
     } else {
       setCurrentQuestion(null);
-      setSelectedOption('');
+      setSelectedOption(currentQuestion.question_type === 'mcq_multiple' ? [] : '');
     }
-  }, [currentQuestion, questionNumber, currentSection, totalQuestionsInSection, loadQuestionForNumber]);
+  }, [
+    currentQuestion,
+    selectedOption,
+    questionNumber,
+    currentSection,
+    totalQuestionsInSection,
+    loadQuestionForNumber,
+    sectionMaps,
+    format,
+  ]);
 
   // —— Section / subsection change ——
   const handleSectionChange = useCallback((sectionKey: string) => {
     const section = format.sections[sectionKey];
-    const firstSub = section?.subsections
-      ? (Object.keys(section.subsections)[0] as 'section_a' | 'section_b')
-      : 'section_a';
+    const firstSub = section?.subsections ? Object.keys(section.subsections)[0] : 'section_a';
     setCurrentSection(sectionKey);
-    setCurrentSubsection(firstSub);
-    setCurrentQuestion(null);
+    setCurrentSubsection(firstSub ?? 'section_a');
+    // Don't clear currentQuestion here — let the effect load the first question of the new section
     setSelectedOption('');
-    setQuestionNumber(0);
   }, [format.sections]);
 
-  const handleSubsectionChange = useCallback((subsection: 'section_a' | 'section_b') => {
+  const handleSubsectionChange = useCallback((subsection: string) => {
     setCurrentSubsection(subsection);
-    setCurrentQuestion(null);
+    // Don't clear currentQuestion here — let the effect load the first question of the new subsection
     setSelectedOption('');
-    setQuestionNumber(0);
   }, []);
 
   const handleBackToExams = useCallback(() => {
@@ -386,6 +461,8 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     error,
     tabChangeWarning,
     setTabChangeWarning,
+    fullscreenExitWarning,
+    setFullscreenExitWarning,
     isFullscreen,
     testCompleted,
     completingTest,
@@ -397,9 +474,7 @@ export function useFullscreenTest({ examId, format, onExit }: UseFullscreenTestP
     currentSectionMap,
     startTest,
     loadQuestionForNumber,
-    handleSubmitAnswer,
-    handleClearAnswer,
-    handleSkip,
+    handleNext,
     handleSectionChange,
     isNumericalCapReachedForCurrentSection,
     handleSubsectionChange,

@@ -15,6 +15,7 @@ export function useFullscreenAndWarnings({
 }: UseFullscreenAndWarningsOptions) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tabChangeWarning, setTabChangeWarning] = useState(false);
+  const [fullscreenExitWarning, setFullscreenExitWarning] = useState(false);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -37,31 +38,46 @@ export function useFullscreenAndWarnings({
     document.documentElement.requestFullscreen?.().catch(() => {});
   }, [testAttemptId]);
 
-  // Tab visibility and beforeunload
+  // Tab/window switch detection and beforeunload
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden && testAttemptId) setTabChangeWarning(true);
     };
+
+    const onWindowBlur = () => {
+      if (testAttemptId) setTabChangeWarning(true);
+    };
+
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (testAttemptId) {
         e.preventDefault();
         e.returnValue = 'Are you sure you want to leave? Your test progress may be lost.';
       }
     };
+
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', onWindowBlur);
     window.addEventListener('beforeunload', onBeforeUnload);
+
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onWindowBlur);
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [testAttemptId]);
 
-  // Track fullscreen state
+  // Track fullscreen state and warn when user exits fullscreen during test
   useEffect(() => {
-    const onFullscreen = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFullscreen = () => {
+      const inFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(inFullscreen);
+      if (!inFullscreen && testAttemptId) {
+        setFullscreenExitWarning(true);
+      }
+    };
     document.addEventListener('fullscreenchange', onFullscreen);
     return () => document.removeEventListener('fullscreenchange', onFullscreen);
-  }, []);
+  }, [testAttemptId]);
 
   // Exit fullscreen on unmount
   useEffect(() => {
@@ -77,5 +93,7 @@ export function useFullscreenAndWarnings({
     isFullscreen,
     tabChangeWarning,
     setTabChangeWarning,
+    fullscreenExitWarning,
+    setFullscreenExitWarning,
   };
 }

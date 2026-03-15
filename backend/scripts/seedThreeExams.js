@@ -201,18 +201,21 @@ const EXAMS = [
     name: 'JEE Main',
     code: 'JEE_MAIN',
     description: 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges',
+    number_of_papers: 1,
     format: buildJeeMainFormat(),
   },
   {
     name: 'JEE Advanced',
     code: 'JEE_ADVANCED',
     description: 'Joint Entrance Examination Advanced - for admission to IITs. Two papers: Paper 1 and Paper 2.',
+    number_of_papers: 2,
     format: buildJeeAdvancedFormat(),
   },
   {
     name: 'NEET',
     code: 'NEET',
     description: 'National Eligibility cum Entrance Test - for admission to medical and dental colleges',
+    number_of_papers: 1,
     format: buildNeetFormat(),
   },
 ];
@@ -223,15 +226,16 @@ async function main() {
 
     for (const exam of EXAMS) {
       const result = await db.query(
-        `INSERT INTO exams_taxonomies (name, code, description, format)
-         VALUES ($1, $2, $3, $4::jsonb)
+        `INSERT INTO exams_taxonomies (name, code, description, format, number_of_papers)
+         VALUES ($1, $2, $3, $4::jsonb, $5)
          ON CONFLICT (code)
          DO UPDATE SET
            name = EXCLUDED.name,
            description = EXCLUDED.description,
-           format = EXCLUDED.format
+           format = EXCLUDED.format,
+           number_of_papers = EXCLUDED.number_of_papers
          RETURNING id, name, code`,
-        [exam.name, exam.code, exam.description, JSON.stringify(exam.format)]
+        [exam.name, exam.code, exam.description, JSON.stringify(exam.format), exam.number_of_papers || 1]
       );
 
       if (result.rows.length > 0) {

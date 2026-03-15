@@ -14,7 +14,7 @@ class QuestionAttempt {
    */
   static async findByTestAttemptId(testAttemptId) {
     const result = await db.query(`
-      SELECT qa.*, q.question_text, q.correct_option, q.solution_text, q.options, q.marks, q.subject, q.difficulty
+      SELECT qa.*, q.question_text, q.correct_option, q.solution_text, q.options, q.marks, q.subject, q.difficulty, q.question_type
       FROM user_attempt_answers qa
       JOIN questions q ON qa.question_id = q.id
       WHERE qa.user_exam_attempt_id = $1

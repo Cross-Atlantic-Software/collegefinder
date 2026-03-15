@@ -34,7 +34,11 @@ export function fmtTime(secs: number): string {
 }
 
 export function attemptLabel(a: AnalyticsSummaryAttempt): string {
-  return `${a.exam_name} ${a.test_title}`;
+  const base = `${a.exam_name} ${a.test_title}`;
+  if (a.paper_number != null) {
+    return `${base} Paper ${a.paper_number}`;
+  }
+  return base;
 }
 
 export function attemptTimestamp(a: AnalyticsSummaryAttempt): string {

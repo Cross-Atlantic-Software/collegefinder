@@ -6,13 +6,14 @@ import { TestRules } from './rules';
 import { TestHeader } from './interface/header';
 import { TestSidebars } from './interface/sidebar';
 import { QuestionDisplay, QuestionAreaEmpty } from './interface/question';
-import { TabChangeWarning, EndTestConfirmation, TestResults } from './interface/modals';
+import { TabChangeWarning, FullscreenExitWarning, EndTestConfirmation, TestResults } from './interface/modals';
 import { useFullscreenTest } from './hooks/useFullscreenTest';
 import InstructionsScreen from './interface/InstructionsScreen';
 
 interface FullscreenTestInterfaceProps {
   exam: { id: number; name: string };
   format: ExamFormat;
+  paperNumber?: number;
   onExit: () => void;
 }
 
@@ -21,8 +22,8 @@ function fullscreenOverlay(content: ReactNode): ReactNode {
   return createPortal(content, document.body);
 }
 
-export default function FullscreenTestInterface({ exam, format, onExit }: FullscreenTestInterfaceProps) {
-  const api = useFullscreenTest({ examId: exam.id, format, onExit });
+export default function FullscreenTestInterface({ exam, format, paperNumber, onExit }: FullscreenTestInterfaceProps) {
+  const api = useFullscreenTest({ examId: exam.id, format, paperNumber, onExit });
   const {
     currentSection,
     currentSubsection,
@@ -37,6 +38,8 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     error,
     tabChangeWarning,
     setTabChangeWarning,
+    fullscreenExitWarning,
+    setFullscreenExitWarning,
     isFullscreen,
     testCompleted,
     completingTest,
@@ -48,9 +51,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
     totalForHeader,
     startTest,
     loadQuestionForNumber,
-    handleSubmitAnswer,
-    handleClearAnswer,
-    handleSkip,
+    handleNext,
     handleSectionChange,
     isNumericalCapReachedForCurrentSection,
     handleSubsectionChange,
@@ -63,6 +64,17 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
 
   if (tabChangeWarning) {
     return fullscreenOverlay(<TabChangeWarning onContinue={() => setTabChangeWarning(false)} />);
+  }
+
+  if (fullscreenExitWarning) {
+    return fullscreenOverlay(
+      <FullscreenExitWarning
+        onReenterFullscreen={async () => {
+          await enterFullscreen();
+          setFullscreenExitWarning(false);
+        }}
+      />
+    );
   }
 
   if (!testAttemptId) {
@@ -112,7 +124,7 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
         completingTest={completingTest}
         error={error}
         onEnterFullscreen={enterFullscreen}
-        onSubmitTest={() => setShowEndTestConfirm(true)}
+        onSubmitTest={handleCompleteTest}
       />
       <div className="flex flex-1 overflow-hidden">
         <TestSidebars
@@ -138,10 +150,8 @@ export default function FullscreenTestInterface({ exam, format, onExit }: Fullsc
                 loading={loading}
                 showPrevButton={questionNumber > 1}
                 onOptionSelect={setSelectedOption}
-                onSubmit={handleSubmitAnswer}
-                onSkip={handleSkip}
+                onNext={handleNext}
                 onPrev={() => loadQuestionForNumber(questionNumber - 1)}
-                onClearAnswer={handleClearAnswer}
                 numericalCapReached={isNumericalCapReachedForCurrentSection}
               />
             ) : (

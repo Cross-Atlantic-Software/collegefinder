@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
 import { getAllExams } from "@/api";
 import type { Exam } from "@/api/exams";
-import { getExamFormats, getTestRules, getUserAnalyticsSummary, ExamFormat, FormatRules } from "@/api/tests";
+import { getExamFormats, getTestRules, getUserAnalyticsSummary, getNextMockNumber, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
 
@@ -57,6 +57,7 @@ export default function TestModule() {
   const [rulesLoading, setRulesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examAttemptStats, setExamAttemptStats] = useState<Map<number, { lastAttemptedAt: string | null; totalMocks: number }>>(new Map());
+  const [nextMockByExam, setNextMockByExam] = useState<Map<number, number>>(new Map());
   const [historyStatsLoading, setHistoryStatsLoading] = useState(false);
 
   useEffect(() => {
@@ -100,6 +101,30 @@ export default function TestModule() {
     fetchHistoryStats();
   }, [activeTab, viewState, historyAnalyticsExam, exams]);
 
+  // Fetch next mock number per exam for Practice list (so multi-paper: if Mock 1 Paper 2 is pending, button shows "Start Mock 1").
+  useEffect(() => {
+    if (exams.length === 0 || activeTab !== "practice" || viewState !== "exam-selection") return;
+    const fetchNextMocks = async () => {
+      const results = await Promise.all(
+        exams.map(async (exam) => {
+          try {
+            const res = await getNextMockNumber(exam.id);
+            const n = res.success && res.data?.next_mock_number != null ? res.data.next_mock_number : null;
+            return { examId: exam.id, nextMock: n } as const;
+          } catch {
+            return { examId: exam.id, nextMock: null } as const;
+          }
+        })
+      );
+      const map = new Map<number, number>();
+      for (const { examId, nextMock } of results) {
+        if (nextMock != null) map.set(examId, nextMock);
+      }
+      setNextMockByExam(map);
+    };
+    fetchNextMocks();
+  }, [exams, activeTab, viewState]);
+
   const fetchExams = async () => {
     try {
       setLoading(true);
@@ -128,15 +153,17 @@ export default function TestModule() {
       if (formatsResponse.success && formatsResponse.data && Object.keys(formatsResponse.data.formats).length > 0) {
         setAvailableFormats(formatsResponse.data.formats);
         const formatEntries = Object.entries(formatsResponse.data.formats);
-        // Same flow for single or multi-format: pick format, load rules, go to test (no format-selection screen)
+        const examNumberOfPapers = exam.number_of_papers ?? 1;
+        // For multi-paper exams, always use the first format (MultiPaperTestInterface handles paper selection)
+        // For single-paper exams with multiple format variants, rotate based on analytics
         let formatIndex = 0;
-        if (formatEntries.length > 1) {
+        if (formatEntries.length > 1 && examNumberOfPapers <= 1) {
           try {
             const analyticsRes = await getUserAnalyticsSummary(exam.id);
             const attempts = analyticsRes.data?.attempts ?? [];
             formatIndex = attempts.length % formatEntries.length;
           } catch {
-            // use 0 (first paper) if analytics fail
+            // use 0 (first format) if analytics fail
           }
         }
         const [formatId, format] = formatEntries[formatIndex];
@@ -242,10 +269,13 @@ export default function TestModule() {
 
   // Render different views based on state
   if (viewState === 'test-active' && selectedExam) {
+    const examNumberOfPapers = selectedExam.number_of_papers ?? 1;
     return (
       <TestInterface 
         exam={{ id: selectedExam.id, name: selectedExam.name, description: selectedExam.description ?? '', code: selectedExam.code }}
         format={selectedFormat ?? undefined}
+        numberOfPapers={examNumberOfPapers}
+        formats={examNumberOfPapers > 1 ? availableFormats : undefined}
         onExit={handleBackToExams} 
       />
     );
@@ -412,7 +442,7 @@ export default function TestModule() {
               ) : (
                 exams.map((exam) => {
                   const attemptedMocks = examAttemptStats.get(exam.id)?.totalMocks ?? 0;
-                  const nextMockNumber = attemptedMocks + 1;
+                  const nextMockNumber = nextMockByExam.get(exam.id) ?? attemptedMocks + 1;
                   return (
                     <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group">
                       <div className="flex items-start justify-between mb-3">
