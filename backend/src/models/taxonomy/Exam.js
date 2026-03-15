@@ -48,11 +48,12 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers } = data;
     const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
+    const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) RETURNING *',
-      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}']
+      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9) RETURNING *',
+      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}', papers]
     );
     return result.rows[0];
   }
@@ -61,7 +62,7 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers } = data;
     
     const updates = [];
     const values = [];
@@ -94,6 +95,11 @@ class Exam {
     if (logo_file_name !== undefined) {
       updates.push(`logo_file_name = $${paramCount++}`);
       values.push(logo_file_name);
+    }
+    if (number_of_papers !== undefined) {
+      const papers = Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1));
+      updates.push(`number_of_papers = $${paramCount++}`);
+      values.push(papers);
     }
 
     if (updates.length === 0) {

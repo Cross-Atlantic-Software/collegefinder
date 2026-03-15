@@ -241,6 +241,7 @@ class ExamsTaxonomyController {
         exam_logo, 
         exam_type, 
         conducting_authority,
+        number_of_papers,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -280,7 +281,8 @@ class ExamsTaxonomyController {
         description,
         exam_logo,
         exam_type,
-        conducting_authority
+        conducting_authority,
+        number_of_papers
       });
 
       // Create related data if provided
@@ -349,6 +351,7 @@ class ExamsTaxonomyController {
         exam_logo,
         exam_type,
         conducting_authority,
+        number_of_papers,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -397,7 +400,8 @@ class ExamsTaxonomyController {
         description,
         exam_logo,
         exam_type,
-        conducting_authority
+        conducting_authority,
+        number_of_papers
       });
 
       // Update related data if provided
