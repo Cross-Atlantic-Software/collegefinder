@@ -41,13 +41,13 @@ class Purpose {
    * Create a new purpose
    */
   static async create(data) {
-    const { name, status = true } = data;
+    const { name, status = true, description } = data;
 
     const result = await db.query(
-      `INSERT INTO purposes (name, status)
-       VALUES ($1, $2)
+      `INSERT INTO purposes (name, status, description)
+       VALUES ($1, $2, $3)
        RETURNING *`,
-      [name, status]
+      [name, status, description || null]
     );
     return result.rows[0];
   }
@@ -56,7 +56,7 @@ class Purpose {
    * Update a purpose
    */
   static async update(id, data) {
-    const { name, status } = data;
+    const { name, status, description } = data;
 
     const updates = [];
     const values = [];
@@ -69,6 +69,10 @@ class Purpose {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      values.push(description);
     }
 
     if (updates.length === 0) {

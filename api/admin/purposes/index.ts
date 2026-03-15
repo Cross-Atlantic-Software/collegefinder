@@ -5,6 +5,7 @@ import { ApiResponse } from '../../types';
 export interface Purpose {
   id: number;
   name: string;
+  description: string | null;
   status: boolean;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ export async function getPurposeById(id: number): Promise<ApiResponse<{
  */
 export async function createPurpose(data: {
   name: string;
+  description?: string | null;
   status?: boolean;
 }): Promise<ApiResponse<{
   purpose: Purpose;
@@ -54,6 +56,7 @@ export async function updatePurpose(
   id: number,
   data: {
     name?: string;
+    description?: string | null;
     status?: boolean;
   }
 ): Promise<ApiResponse<{

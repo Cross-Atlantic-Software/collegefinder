@@ -243,15 +243,23 @@ class SubjectController {
    */
   static async downloadAllExcel(req, res) {
     try {
-      const subjects = await Subject.findAll();
-      const headers = ['id', 'name', 'stream_ids', 'status', 'created_at', 'updated_at'];
+      const [subjects, allStreams] = await Promise.all([
+        Subject.findAll(),
+        Stream.findAll()
+      ]);
+      const streamMap = new Map(allStreams.map((st) => [st.id, st.name]));
+      const headers = ['id', 'name', 'Streams', 'status', 'created_at', 'updated_at'];
       const rows = [headers];
       for (const s of subjects) {
-        const streamIds = Array.isArray(s.streams) ? s.streams.join(', ') : '';
+        const streamIds = Array.isArray(s.streams) ? s.streams : [];
+        const streamNames = streamIds
+          .map((id) => streamMap.get(id) ?? id)
+          .filter(Boolean)
+          .join(', ');
         rows.push([
           s.id,
           s.name || '',
-          streamIds,
+          streamNames,
           s.status ? 'TRUE' : 'FALSE',
           s.created_at ? String(s.created_at).slice(0, 10) : '',
           s.updated_at ? String(s.updated_at).slice(0, 10) : ''

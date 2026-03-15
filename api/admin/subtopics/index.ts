@@ -11,6 +11,7 @@ export interface Subtopic {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  exam_ids?: number[];
 }
 
 /**
@@ -55,6 +56,7 @@ export async function createSubtopic(data: {
   status?: boolean;
   description?: string;
   sort_order?: number;
+  exam_ids?: number[];
 }): Promise<ApiResponse<{
   subtopic: Subtopic;
 }>> {
@@ -75,6 +77,7 @@ export async function updateSubtopic(
     status?: boolean;
     description?: string;
     sort_order?: number;
+    exam_ids?: number[];
   }
 ): Promise<ApiResponse<{
   subtopic: Subtopic;

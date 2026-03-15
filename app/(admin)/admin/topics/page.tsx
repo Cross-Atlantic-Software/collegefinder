@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllTopics, createTopic, updateTopic, deleteTopic, Topic } from '@/api';
+import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, Topic } from '@/api';
 import { getAllSubjectsPublic } from '@/api';
+import { getAllExamsAdmin } from '@/api/admin/exams';
 import { FiPlus, FiSearch, FiX, FiImage } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
+import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 
 export default function TopicsPage() {
   const router = useRouter();
@@ -26,9 +27,12 @@ export default function TopicsPage() {
     home_display: false, 
     status: true,
     description: '',
-    sort_order: 0
+    sort_order: 0,
+    exam_ids: [] as number[],
   });
   const [availableSubjects, setAvailableSubjects] = useState<SelectOption[]>([]);
+  const [availableExams, setAvailableExams] = useState<SelectOption[]>([]);
+  const MAX_EXAMS = 10;
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -48,8 +52,20 @@ export default function TopicsPage() {
 
     fetchTopics();
     fetchSubjects();
+    fetchExams();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchExams = async () => {
+    try {
+      const res = await getAllExamsAdmin();
+      if (res.success && res.data?.exams) {
+        setAvailableExams(res.data.exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` })));
+      }
+    } catch (err) {
+      console.error('Error fetching exams:', err);
+    }
+  };
 
   const fetchSubjects = async () => {
     try {
@@ -119,6 +135,8 @@ export default function TopicsPage() {
       formDataToSend.append('status', String(formData.status));
       formDataToSend.append('description', formData.description || '');
       formDataToSend.append('sort_order', String(formData.sort_order));
+      const examIds = (formData.exam_ids || []).slice(0, MAX_EXAMS);
+      formDataToSend.append('exam_ids', JSON.stringify(examIds));
 
       if (thumbnailFile) {
         formDataToSend.append('thumbnail', thumbnailFile);
@@ -154,7 +172,7 @@ export default function TopicsPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (topic: Topic) => {
+  const handleEdit = async (topic: Topic) => {
     setEditingTopic(topic);
     setFormData({
       sub_id: String(topic.sub_id),
@@ -162,11 +180,20 @@ export default function TopicsPage() {
       home_display: topic.home_display,
       status: topic.status,
       description: topic.description || '',
-      sort_order: topic.sort_order
+      sort_order: topic.sort_order,
+      exam_ids: topic.exam_ids ?? [],
     });
     setThumbnailPreview(topic.thumbnail);
     setThumbnailFile(null);
     setShowModal(true);
+    if (!topic.exam_ids && topic.id) {
+      try {
+        const res = await getTopicById(topic.id);
+        if (res.success && res.data?.topic?.exam_ids) {
+          setFormData((prev) => ({ ...prev, exam_ids: res.data!.topic.exam_ids ?? [] }));
+        }
+      } catch (_) {}
+    }
   };
 
   const handleView = (topic: Topic) => {
@@ -219,7 +246,8 @@ export default function TopicsPage() {
       home_display: false, 
       status: true,
       description: '',
-      sort_order: 0
+      sort_order: 0,
+      exam_ids: [],
     });
     setThumbnailFile(null);
     setThumbnailPreview(null);
@@ -442,6 +470,19 @@ export default function TopicsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Exams (optional, max {MAX_EXAMS})
+                  </label>
+                  <MultiSelect
+                    options={availableExams}
+                    value={(formData.exam_ids || []).slice(0, MAX_EXAMS).map(String)}
+                    onChange={(values) => setFormData({ ...formData, exam_ids: values.map(Number).slice(0, MAX_EXAMS) })}
+                    placeholder="Search and select exams..."
+                    isSearchable
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Thumbnail
                   </label>
                   {thumbnailPreview && (
@@ -567,6 +608,16 @@ export default function TopicsPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                     <p className="text-sm text-gray-900">{viewingTopic.description}</p>
+                  </div>
+                )}
+                {(viewingTopic.exam_ids?.length ?? 0) > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Exams</label>
+                    <p className="text-sm text-gray-900">
+                      {viewingTopic.exam_ids!
+                        .map((id) => availableExams.find((e) => e.value === String(id))?.label ?? `Exam ${id}`)
+                        .join(', ')}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
