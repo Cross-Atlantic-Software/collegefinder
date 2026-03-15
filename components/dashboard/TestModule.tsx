@@ -63,37 +63,42 @@ export default function TestModule() {
     fetchExams();
   }, []);
 
+  // Fetch attempt stats when showing exam list (Practice or History tab) so we can show "Start Mock N" and sort History by analytics.
   useEffect(() => {
-    if (activeTab === "history-analytics" && !historyAnalyticsExam && exams.length > 0) {
-      const fetchHistoryStats = async () => {
-        setHistoryStatsLoading(true);
-        try {
-          const res = await getUserAnalyticsSummary();
-          if (res.success && res.data?.attempts) {
-            const attempts = res.data.attempts;
-            const byExam = new Map<number, { lastAttemptedAt: string | null; totalMocks: number }>();
-            for (const a of attempts) {
-              const examId = a.exam_id ?? (exams.find((e) => e.name === a.exam_name)?.id);
-              if (examId == null) continue;
-              const existing = byExam.get(examId);
-              const completedAt = a.completed_at ? new Date(a.completed_at).getTime() : 0;
-              const prevLast = existing?.lastAttemptedAt ? new Date(existing.lastAttemptedAt).getTime() : 0;
-              byExam.set(examId, {
-                lastAttemptedAt: completedAt > prevLast ? a.completed_at! : (existing?.lastAttemptedAt ?? a.completed_at ?? null),
-                totalMocks: (existing?.totalMocks ?? 0) + 1,
-              });
-            }
-            setExamAttemptStats(byExam);
+    const needStats =
+      exams.length > 0 &&
+      ((activeTab === "practice" && viewState === "exam-selection") ||
+        (activeTab === "history-analytics" && !historyAnalyticsExam));
+    if (!needStats) return;
+
+    const fetchHistoryStats = async () => {
+      setHistoryStatsLoading(true);
+      try {
+        const res = await getUserAnalyticsSummary();
+        if (res.success && res.data?.attempts) {
+          const attempts = res.data.attempts;
+          const byExam = new Map<number, { lastAttemptedAt: string | null; totalMocks: number }>();
+          for (const a of attempts) {
+            const examId = a.exam_id ?? (exams.find((e) => e.name === a.exam_name)?.id);
+            if (examId == null) continue;
+            const existing = byExam.get(examId);
+            const completedAt = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+            const prevLast = existing?.lastAttemptedAt ? new Date(existing.lastAttemptedAt).getTime() : 0;
+            byExam.set(examId, {
+              lastAttemptedAt: completedAt > prevLast ? a.completed_at! : (existing?.lastAttemptedAt ?? a.completed_at ?? null),
+              totalMocks: (existing?.totalMocks ?? 0) + 1,
+            });
           }
-        } catch {
-          setExamAttemptStats(new Map());
-        } finally {
-          setHistoryStatsLoading(false);
+          setExamAttemptStats(byExam);
         }
-      };
-      fetchHistoryStats();
-    }
-  }, [activeTab, historyAnalyticsExam, exams]);
+      } catch {
+        setExamAttemptStats(new Map());
+      } finally {
+        setHistoryStatsLoading(false);
+      }
+    };
+    fetchHistoryStats();
+  }, [activeTab, viewState, historyAnalyticsExam, exams]);
 
   const fetchExams = async () => {
     try {
@@ -249,19 +254,23 @@ export default function TestModule() {
   return (
     <div className="w-full space-y-5">
       {/* Tab Navigation */}
-      <div className="flex w-full rounded-md bg-white/10 text-sm font-medium text-slate-300 overflow-hidden">
+      <div className="flex w-full rounded-lg bg-white/10 p-1 gap-0.5">
         <button
           onClick={() => setActiveTab("practice")}
-          className={`flex-1 py-3 text-center transition ${
-            activeTab === "practice" ? "bg-pink-600 text-white" : "hover:bg-white/5"
+          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium text-center transition-all ${
+            activeTab === "practice"
+              ? "bg-pink-600 text-white shadow-md ring-2 ring-pink-400 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
+              : "text-slate-400 hover:text-slate-300 hover:bg-white/5 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
           }`}
         >
           Practice Tests
         </button>
         <button
           onClick={() => setActiveTab("history-analytics")}
-          className={`flex-1 py-3 text-center transition ${
-            activeTab === "history-analytics" ? "bg-pink-600 text-white" : "hover:bg-white/5"
+          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium text-center transition-all ${
+            activeTab === "history-analytics"
+              ? "bg-pink-600 text-white shadow-md ring-2 ring-pink-400 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
+              : "text-slate-400 hover:text-slate-300 hover:bg-white/5 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
           }`}
         >
           History and Analytics
@@ -401,32 +410,38 @@ export default function TestModule() {
                   </div>
                 </div>
               ) : (
-                exams.map((exam) => (
-                  <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition">
-                        {exam.name}
-                      </h3>
-                      <span className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
-                        {exam.code}
-                      </span>
+                exams.map((exam) => {
+                  const attemptedMocks = examAttemptStats.get(exam.id)?.totalMocks ?? 0;
+                  const nextMockNumber = attemptedMocks + 1;
+                  return (
+                    <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition">
+                          {exam.name}
+                        </h3>
+                        <span className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
+                          {exam.code}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 text-sm mb-4 line-clamp-2">
+                        {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
+                      </p>
+                      <div className="flex items-center justify-end">
+                        <Button
+                          onClick={() => handleExamSelect(exam)}
+                          variant="themeButton"
+                          size="sm"
+                          className="group-hover:scale-105 transition-transform"
+                          disabled={formatLoading}
+                        >
+                          {formatLoading && selectedExam?.id === exam.id
+                            ? 'Loading...'
+                            : `Start Mock ${nextMockNumber}`}
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-slate-300 text-sm mb-4 line-clamp-2">
-                      {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
-                    </p>
-                    <div className="flex items-center justify-end">
-                      <Button
-                        onClick={() => handleExamSelect(exam)}
-                        variant="themeButton"
-                        size="sm"
-                        className="group-hover:scale-105 transition-transform"
-                        disabled={formatLoading}
-                      >
-                        {formatLoading && selectedExam?.id === exam.id ? 'Loading...' : 'Start Practice'}
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
@@ -481,6 +496,9 @@ export default function TestModule() {
                   .sort((a, b) => {
                     const statsA = examAttemptStats.get(a.id);
                     const statsB = examAttemptStats.get(b.id);
+                    const hasAnalyticsA = (statsA?.totalMocks ?? 0) > 0;
+                    const hasAnalyticsB = (statsB?.totalMocks ?? 0) > 0;
+                    if (hasAnalyticsA !== hasAnalyticsB) return hasAnalyticsB ? 1 : -1;
                     const timeA = statsA?.lastAttemptedAt ? new Date(statsA.lastAttemptedAt).getTime() : 0;
                     const timeB = statsB?.lastAttemptedAt ? new Date(statsB.lastAttemptedAt).getTime() : 0;
                     return timeB - timeA;
@@ -497,6 +515,7 @@ export default function TestModule() {
                         })
                       : null;
                     const totalMocks = stats?.totalMocks ?? 0;
+                    const hasAnalytics = totalMocks > 0 || !!lastAttempted;
                     return (
                       <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group flex flex-col h-full min-h-[200px]">
                         <div className="flex items-start justify-between mb-3">
@@ -526,14 +545,20 @@ export default function TestModule() {
                           </div>
                         )}
                         <div className="flex items-center justify-end mt-auto pt-3">
-                          <Button
-                            onClick={() => setHistoryAnalyticsExam(exam)}
-                            variant="themeButton"
-                            size="sm"
-                            className="group-hover:scale-105 transition-transform"
-                          >
-                            View
-                          </Button>
+                          {hasAnalytics ? (
+                            <Button
+                              onClick={() => setHistoryAnalyticsExam(exam)}
+                              variant="themeButton"
+                              size="sm"
+                              className="group-hover:scale-105 transition-transform"
+                            >
+                              View
+                            </Button>
+                          ) : (
+                            <p className="text-slate-400 text-sm italic text-center py-2 px-3 bg-white/5 rounded-lg border border-white/10">
+                              No analytics to view. First attempt a mock to view analytics.
+                            </p>
+                          )}
                         </div>
                       </div>
                     );

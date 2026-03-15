@@ -88,7 +88,11 @@ const EXAM_CODES = ['JEE_MAIN', 'JEE_ADVANCED', 'NEET', 'CUET'];
 
 async function main() {
   try {
-    console.log('Seeding exam_mock_prompts for 4 exams...\n');
+    console.log('Deleting all rows from exam_mock_prompts...\n');
+    await db.query('DELETE FROM exam_mock_prompts');
+    console.log('  exam_mock_prompts cleared.\n');
+
+    console.log('Seeding exam_mock_prompts for all 4 exams...\n');
 
     for (const code of EXAM_CODES) {
       const examRes = await db.query(
