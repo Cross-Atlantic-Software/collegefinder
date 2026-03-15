@@ -212,6 +212,8 @@ async function processMockGeneration(job) {
         `, [mockTestId, qId, examId, orderIndex]);
       } catch (insertErr) {
         console.warn(`⚠️  [Worker] Failed to insert question:`, insertErr.message);
+        if (insertErr.code) console.warn(`    DB code: ${insertErr.code}`);
+        if (insertErr.detail) console.warn(`    Detail: ${insertErr.detail}`);
         if (insertErr.message?.includes('violates check constraint')) {
           unknownTypes.add(question.question_type || 'unknown');
           try {

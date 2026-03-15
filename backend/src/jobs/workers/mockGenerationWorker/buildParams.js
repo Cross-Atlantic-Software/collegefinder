@@ -36,7 +36,9 @@ async function buildQuestionParamsList(exam) {
   let generation_prompt = null;
   try {
     generation_prompt = await ExamMockPrompt.getByExamId(exam.id);
-  } catch (_) {}
+  } catch (err) {
+    console.warn(`[buildParams] Could not load exam_mock_prompts for exam ${exam.id}:`, err.message);
+  }
   if (!generation_prompt && exam.generation_prompt && String(exam.generation_prompt).trim()) {
     generation_prompt = exam.generation_prompt.trim();
   }
