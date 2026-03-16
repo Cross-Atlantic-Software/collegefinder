@@ -187,6 +187,7 @@ export interface AnalyticsSummaryAttempt {
   exam_id?: number;
   exam_mock_id?: number | null;
   mock_order_index?: number | null;
+  paper_number?: number | null;
   test_title: string;
   exam_name: string;
   total_score: number;
@@ -205,7 +206,7 @@ export interface AnalyticsSummaryAttempt {
 /** One paper within a combined full-exam session */
 export interface CombinedSessionPaper {
   attempt_id: number;
-  mock_order_index: number;
+  paper_number: number;
   total_score: number;
   accuracy_percentage: number;
   attempted_count: number;
@@ -216,9 +217,11 @@ export interface CombinedSessionPaper {
   completed_at: string;
 }
 
-/** Full exam session: all papers completed on the same day */
+/** Full exam session: all papers of a mock completed */
 export interface CombinedSession {
   attempt_ids: number[];
+  mock_order_index: number;
+  exam_name: string;
   completed_at: string;
   combined_total_score: number;
   combined_attempted: number;
@@ -533,17 +536,68 @@ export interface MockQuestion extends Question {
  * Start a mock test attempt.
  * Uses the pre-generated mock that matches the user's progression (completed mocks + 1).
  * Also triggers background generation of the next mock.
+ * For multi-paper exams, pass paperNumber to specify which paper to start.
  */
-export async function startMockTest(examId: number): Promise<ApiResponse<{
+export async function startMockTest(examId: number, paperNumber?: number): Promise<ApiResponse<{
   test_attempt_id: number;
   mock_test_id: number;
   mock_number: number;
   total_questions: number;
   is_resume: boolean;
+  paper_number: number;
+  number_of_papers: number;
   status?: string;
   next_mock_number?: number;
 }>> {
-  return apiRequest(`/mock-tests/exams/${examId}/start`, { method: 'POST' });
+  return apiRequest(`/mock-tests/exams/${examId}/start`, {
+    method: 'POST',
+    body: paperNumber ? JSON.stringify({ paper_number: paperNumber }) : undefined,
+  });
+}
+
+/**
+ * Get the next mock number for an exam (respects multi-paper: if Mock 1 Paper 2 is pending, returns 1).
+ */
+export async function getNextMockNumber(examId: number): Promise<ApiResponse<{
+  mock: { id: number; order_index: number; status: string; total_questions: number } | null;
+  next_mock_number: number;
+  completed_mocks?: number;
+  number_of_papers?: number;
+  status?: string;
+  message?: string;
+}>> {
+  return apiRequest(`/mock-tests/exams/${examId}/next`, { method: 'GET' });
+}
+
+/** Status of one paper within a multi-paper mock */
+export interface PaperStatusItem {
+  paper_number: number;
+  status: 'locked' | 'unlocked' | 'in_progress' | 'completed' | 'generating' | 'not_generated';
+  mock_id: number | null;
+  attempt_id: number | null;
+  attempt_data: {
+    total_score: number;
+    attempted_count: number;
+    correct_count: number;
+    incorrect_count: number;
+    skipped_count: number;
+    accuracy_percentage: number;
+    time_spent_minutes: number;
+    completed_at: string;
+  } | null;
+  total_questions: number;
+}
+
+/**
+ * Get paper status for a specific mock number of a multi-paper exam.
+ */
+export async function getMockPaperStatus(examId: number, mockNumber: number): Promise<ApiResponse<{
+  exam_id: number;
+  mock_number: number;
+  number_of_papers: number;
+  papers: PaperStatusItem[];
+}>> {
+  return apiRequest(`/mock-tests/exams/${examId}/mock/${mockNumber}/paper-status`);
 }
 
 /**

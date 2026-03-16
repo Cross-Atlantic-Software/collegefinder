@@ -29,7 +29,11 @@ class GeminiService {
     }
 
     try {
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const pkg = require('@google/generative-ai');
+      const GoogleGenerativeAI = pkg.GoogleGenerativeAI || (pkg.default && pkg.default.GoogleGenerativeAI) || pkg.default;
+      if (!GoogleGenerativeAI || typeof GoogleGenerativeAI !== 'function') {
+        throw new Error('@google/generative-ai did not export GoogleGenerativeAI constructor (got ' + typeof pkg.GoogleGenerativeAI + ')');
+      }
       this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
       if (process.env.GEMINI_MODEL) {
         this._modelName = process.env.GEMINI_MODEL;

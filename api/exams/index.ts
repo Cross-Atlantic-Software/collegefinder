@@ -6,6 +6,7 @@ export interface Exam {
   name: string;
   code: string;
   description: string | null;
+  number_of_papers?: number;
   created_at: string;
   updated_at: string;
 }

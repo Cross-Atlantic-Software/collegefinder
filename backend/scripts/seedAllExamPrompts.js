@@ -84,23 +84,38 @@ STYLE:
 - Solution must be complete, step-by-step, and suitable for CUET preparation.`,
 };
 
-const EXAM_CODES = ['JEE_MAIN', 'JEE_ADVANCED', 'NEET', 'CUET'];
+/** Generic prompt for any exam not listed in PROMPTS (ensures every exam has a prompt). */
+const GENERIC_PROMPT = `You are an expert paper setter. Generate one question per call for {{exam_name}}.
+
+SLOT: Question {{question_number}} of {{total_in_section}} in {{section_name}} ({{section_type}}), {{exam_name}}.
+QUESTION TYPE: {{question_type}}
+
+SYLLABUS for {{subject}}: Cover core topics from the subject appropriate for this exam. Ensure broad coverage across the section; avoid repeating the same topic in consecutive questions.
+
+DIFFICULTY: For question {{question_number}} of {{total_in_section}}, set difficulty (easy / medium / hard) with a mix: first 30% easier, middle 50% medium, last 20% harder.
+
+STYLE:
+- Multiple choice, single correct answer; exactly 4 options; plausible distractors; clarity and precision.
+- Use standard symbols; in JSON escape LaTeX with double backslashes (e.g. \\\\Omega, \\\\frac{1}{2}).
+- Solution must be complete, step-by-step, and suitable for exam preparation.`;
 
 async function main() {
   try {
-    console.log('Seeding exam_mock_prompts for 4 exams...\n');
+    console.log('Fetching all exams from exams_taxonomies...\n');
+    const examsRes = await db.query(
+      'SELECT id, name, code FROM exams_taxonomies ORDER BY id'
+    );
+    const exams = examsRes.rows;
 
-    for (const code of EXAM_CODES) {
-      const examRes = await db.query(
-        'SELECT id, name FROM exams_taxonomies WHERE code = $1',
-        [code]
-      );
-      if (examRes.rows.length === 0) {
-        console.log(`  Skipped ${code}: exam not found in exams_taxonomies`);
-        continue;
-      }
-      const exam = examRes.rows[0];
-      const prompt = PROMPTS[code];
+    if (exams.length === 0) {
+      console.log('No exams found. Seed exams first (e.g. resetAndSeedExamTaxonomies.js).');
+      return;
+    }
+
+    console.log(`Seeding/updating prompts for ${exams.length} exam(s)...\n`);
+
+    for (const exam of exams) {
+      const prompt = PROMPTS[exam.code] || GENERIC_PROMPT.replace(/\{\{exam_name\}\}/g, exam.name);
       await db.query(
         `INSERT INTO exam_mock_prompts (exam_id, prompt, updated_at)
          VALUES ($1, $2, CURRENT_TIMESTAMP)
@@ -109,10 +124,11 @@ async function main() {
            updated_at = CURRENT_TIMESTAMP`,
         [exam.id, prompt]
       );
-      console.log(`  ${exam.name} (${code}) - ID: ${exam.id}`);
+      const source = PROMPTS[exam.code] ? 'specific' : 'generic';
+      console.log(`  ${exam.name} (${exam.code}) - ID: ${exam.id} [${source}]`);
     }
 
-    console.log('\nDone. All 4 exam prompts seeded.');
+    console.log(`\nDone. Prompts added/updated for all ${exams.length} exam(s).`);
   } catch (err) {
     console.error('Error:', err.message);
     process.exit(1);

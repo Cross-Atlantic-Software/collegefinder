@@ -40,6 +40,8 @@ export interface QuestionEntry {
   question: Question;
   status: QuestionStatus;
   savedOption: string | string[]; // string[] for mcq_multiple and match_following
+  /** Seconds spent on this question (set when leaving or on submit). */
+  time_spent_seconds?: number;
 }
 
 export interface SectionProgress {
@@ -73,5 +75,6 @@ export interface TestResultsData {
     subject: string;
     selected_option?: string;
     is_correct: boolean;
+    question_type?: string;
   }>;
 }

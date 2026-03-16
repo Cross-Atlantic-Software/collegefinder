@@ -49,13 +49,6 @@ function parseQuestionResponse(text, originalParams) {
     const validEscapes = /^["\\/bfnrtu]$/;
     jsonText = jsonText.replace(/\\(.)/g, (_, c) => (validEscapes.test(c) ? '\\' + c : '\\\\' + c));
 
-    const maxSolutionLength = 2800;
-    const solutionMatch = jsonText.match(/"solution_text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-    if (solutionMatch && solutionMatch[1].length > maxSolutionLength) {
-      const truncated = solutionMatch[1].substring(0, maxSolutionLength).replace(/\\.?$/, '') + ' [Solution truncated for length.]';
-      jsonText = jsonText.replace(/"solution_text"\s*:\s*"((?:[^"\\]|\\.)*)"/, '"solution_text": "' + truncated.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
-    }
-
     const openBraces = (jsonText.match(/\{/g) || []).length;
     const closeBraces = (jsonText.match(/\}/g) || []).length;
 
@@ -75,9 +68,19 @@ function parseQuestionResponse(text, originalParams) {
           const valueStart = jsonText.indexOf('"', solStart + 15) + 1;
           if (valueStart > 0) {
             console.log('⚠️  Fixing truncated or invalid solution_text in JSON...');
+            const rawSol = jsonText.substring(valueStart);
+            let salvaged = '';
+            for (let ci = 0; ci < rawSol.length; ci++) {
+              const ch = rawSol[ci];
+              if (ch === '"' && (ci === 0 || rawSol[ci - 1] !== '\\')) break;
+              if (ch === '\n' || ch === '\r' || ch === '\t') { salvaged += ' '; continue; }
+              salvaged += ch;
+            }
+            salvaged = salvaged.replace(/\\$/, '');
+            if (salvaged.length < 20) salvaged = 'Solution could not be fully parsed from AI response.';
             const before = jsonText.substring(0, valueStart);
             const closeNeeded = Math.max(1, (jsonText.match(/\{/g) || []).length - (jsonText.match(/\}/g) || []).length);
-            jsonText = before + '[Solution truncated.]"';
+            jsonText = before + salvaged.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
             for (let i = 0; i < closeNeeded; i++) jsonText += '}';
             try {
               parsed = JSON.parse(jsonText);

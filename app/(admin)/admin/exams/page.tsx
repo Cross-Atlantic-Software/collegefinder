@@ -63,6 +63,7 @@ export default function ExamsPage() {
     exam_logo: '',
     exam_type: '' as 'National' | 'State' | 'Institute' | '',
     conducting_authority: '',
+    number_of_papers: '1',
     examDates: {
       application_start_date: '',
       application_close_date: '',
@@ -283,6 +284,7 @@ export default function ExamsPage() {
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
         conducting_authority: formData.conducting_authority || null,
+        number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
           application_close_date: formData.examDates.application_close_date || null,
@@ -397,6 +399,7 @@ export default function ExamsPage() {
           exam_logo: e?.exam_logo ?? '',
           exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
           conducting_authority: e?.conducting_authority ?? '',
+          number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
@@ -480,6 +483,7 @@ export default function ExamsPage() {
       exam_logo: '',
       exam_type: '',
       conducting_authority: '',
+      number_of_papers: '1',
       examDates: {
         application_start_date: '',
         application_close_date: '',
@@ -1127,6 +1131,22 @@ export default function ExamsPage() {
                         className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Number of papers (mock tests)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={formData.number_of_papers}
+                        onChange={(e) => setFormData({ ...formData, number_of_papers: e.target.value })}
+                        placeholder="1"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
+                    </div>
                   </>
                 )}
 
@@ -1521,6 +1541,12 @@ export default function ExamsPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Conducting Authority</label>
                   <p className="text-sm text-gray-900">{viewingExamData.exam.conducting_authority}</p>
+                </div>
+              )}
+              {viewingExamData.exam.number_of_papers != null && viewingExamData.exam.number_of_papers !== 1 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Number of papers (mock tests)</label>
+                  <p className="text-sm text-gray-900">{viewingExamData.exam.number_of_papers}</p>
                 </div>
               )}
               {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date) && (

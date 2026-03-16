@@ -9,11 +9,17 @@ interface AggregateKPISectionProps {
 }
 
 export default function AggregateKPISection({ aggregate }: AggregateKPISectionProps) {
+  const showPaperCount = aggregate.total_attempts !== aggregate.completed_attempts;
+
   return (
     <div>
       <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Overall Performance</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard label="Tests Taken" value={String(aggregate.completed_attempts)} />
+        <KPICard
+          label="Tests Taken"
+          value={String(aggregate.completed_attempts)}
+          sub={showPaperCount ? `${aggregate.total_attempts} papers` : undefined}
+        />
         <KPICard label="Best Score" value={fmt(aggregate.best_score)} accent />
         <KPICard label="Avg Score" value={fmt(aggregate.avg_score, 1)} />
         <KPICard
@@ -33,7 +39,10 @@ export default function AggregateKPISection({ aggregate }: AggregateKPISectionPr
           label="Avg Time"
           value={formatTimeSpent(Math.round(aggregate.avg_time_minutes * 60))}
         />
-        <KPICard label="Total Attempts" value={String(aggregate.total_attempts)} />
+        <KPICard
+          label="Total Attempts"
+          value={String(aggregate.completed_attempts)}
+        />
       </div>
     </div>
   );

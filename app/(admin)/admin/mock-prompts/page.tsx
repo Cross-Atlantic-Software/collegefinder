@@ -6,7 +6,7 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getMockPromptsList, updateMockPrompt, type MockPromptItem } from '@/api/admin/mock-prompts';
 import { useToast } from '@/components/shared';
-import { FiSearch, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiSearch, FiChevronDown, FiChevronRight, FiEdit2, FiX } from 'react-icons/fi';
 
 /** Example prompt for JEE Main — copy into the textarea for that exam. Updated for NTA JEE Main 2025/2026 pattern. */
 const JEE_MAIN_EXAMPLE_PROMPT = `You are an expert JEE Main (NTA) paper setter. Generate one question per call matching the current NTA JEE Main Paper 1 (B.E./B.Tech) pattern.
@@ -29,6 +29,65 @@ STYLE:
 - Use standard symbols; in JSON escape LaTeX with double backslashes (e.g. \\\\Omega, \\\\frac{1}{2}).
 - Solution must be complete, step-by-step, and suitable for JEE Main preparation.`;
 
+interface PromptModalProps {
+  item: MockPromptItem | null;
+  promptValue: string;
+  onPromptChange: (value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+}
+
+function PromptModal({ item, promptValue, onPromptChange, onSave, onClose, saving }: PromptModalProps) {
+  if (!item) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Edit prompt — {item.exam_name}
+            <span className="ml-2 text-sm font-normal text-gray-500 font-mono">{item.exam_code}</span>
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            aria-label="Close"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-4 overflow-hidden flex flex-col min-h-0">
+          <textarea
+            value={promptValue}
+            onChange={(e) => onPromptChange(e.target.value)}
+            placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
+            rows={14}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
+          />
+        </div>
+        <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="px-4 py-2 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Saving...' : 'Save prompt'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MockPromptsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
@@ -38,6 +97,7 @@ export default function MockPromptsPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showExample, setShowExample] = useState(false);
+  const [modalExam, setModalExam] = useState<MockPromptItem | null>(null);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return items;
@@ -90,6 +150,7 @@ export default function MockPromptsPage() {
         setItems((prev) =>
           prev.map((i) => (i.exam_id === examId ? { ...i, prompt } : i))
         );
+        setModalExam(null);
       } else {
         showError(res.message || 'Failed to save');
       }
@@ -99,6 +160,9 @@ export default function MockPromptsPage() {
       setSavingId(null);
     }
   };
+
+  const openModal = (item: MockPromptItem) => setModalExam(item);
+  const closeModal = () => setModalExam(null);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -142,50 +206,74 @@ export default function MockPromptsPage() {
           {loading ? (
             <div className="py-8 text-center text-gray-500">Loading...</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {items.length === 0 ? (
                 <p className="text-sm text-gray-500 py-4">No exams in the database. Add exams first from the Exams section.</p>
               ) : filteredItems.length === 0 ? (
                 <p className="text-sm text-gray-500 py-4">No exams match your search.</p>
               ) : (
-                filteredItems.map((item) => (
-                  <div
-                    key={item.exam_id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                  >
-                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                      <div>
-                        <span className="font-medium text-gray-900">{item.exam_name}</span>
-                        <span className="ml-2 text-sm text-gray-500 font-mono">{item.exam_code}</span>
-                        {item.prompt && item.prompt.trim() && (
-                          <span className="ml-2 text-xs text-green-600 font-medium">Custom prompt set</span>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleSave(item.exam_id)}
-                        disabled={savingId === item.exam_id}
-                        className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {savingId === item.exam_id ? 'Saving...' : 'Save prompt'}
-                      </button>
-                    </div>
-                    <div className="p-4">
-                      <textarea
-                        value={edits[item.exam_id] ?? ''}
-                        onChange={(e) => setEdit(item.exam_id, e.target.value)}
-                        placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
-                        rows={8}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
-                      />
-                    </div>
-                  </div>
-                ))
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Exam</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Code</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredItems.map((item) => (
+                        <tr
+                          key={item.exam_id}
+                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50"
+                        >
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-gray-900">{item.exam_name}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-500 font-mono">{item.exam_code}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {item.prompt && item.prompt.trim() ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                Custom prompt set
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                                Uses generic prompt
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => openModal(item)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                              Edit prompt
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}
         </main>
       </div>
+
+      <PromptModal
+        item={modalExam}
+        promptValue={modalExam ? (edits[modalExam.exam_id] ?? '') : ''}
+        onPromptChange={(value) => modalExam && setEdit(modalExam.exam_id, value)}
+        onSave={() => modalExam && handleSave(modalExam.exam_id)}
+        onClose={closeModal}
+        saving={modalExam !== null && savingId === modalExam.exam_id}
+      />
     </div>
   );
 }

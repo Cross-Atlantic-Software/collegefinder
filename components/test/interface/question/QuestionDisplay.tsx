@@ -10,11 +10,8 @@ interface QuestionDisplayProps {
   loading: boolean;
   showPrevButton: boolean;
   onOptionSelect: (option: string | string[]) => void;
-  onSubmit: () => void;
-  onSkip: () => void;
+  onNext: () => void;
   onPrev: () => void;
-  /** Clear current answer (e.g. to free a numerical slot). Shown when question is answered. */
-  onClearAnswer?: () => void;
   /** When true and question is numerical, disable submit and show cap message. */
   numericalCapReached?: boolean;
 }
@@ -26,10 +23,8 @@ export default function QuestionDisplay({
   loading,
   showPrevButton,
   onOptionSelect,
-  onSubmit,
-  onSkip,
+  onNext,
   onPrev,
-  onClearAnswer,
   numericalCapReached = false,
 }: QuestionDisplayProps) {
   const [matchAnswers, setMatchAnswers] = useState<Record<string, string>>({});
@@ -399,30 +394,13 @@ export default function QuestionDisplay({
             )}
           </div>
           <div className="flex gap-3">
-            {questionStatus === 'answered' && onClearAnswer && (
-              <Button onClick={onClearAnswer} variant="themeButtonOutline" disabled={loading} size="sm">
-                Clear answer
-              </Button>
-            )}
-            <Button onClick={onSkip} variant="themeButtonOutline" disabled={loading} size="sm">
-              Skip →
-            </Button>
             <Button
-              onClick={onSubmit}
+              onClick={onNext}
               variant="themeButton"
-              disabled={
-                !isAnswered ||
-                loading ||
-                questionStatus === 'answered' ||
-                (numericalCapReached && question.question_type === 'numerical')
-              }
+              disabled={loading}
               size="sm"
             >
-              {loading
-                ? 'Saving…'
-                : questionStatus === 'answered'
-                  ? 'Answered ✓'
-                  : 'Save & Next →'}
+              {loading ? 'Saving…' : 'Next →'}
             </Button>
           </div>
         </div>

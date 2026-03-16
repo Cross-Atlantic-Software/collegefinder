@@ -14,23 +14,54 @@ function resolveQuestionType(rawType) {
   if (t === 'numerical' || t === 'integer') return 'numerical';
   if (t === 'mcq_single' || t === 'mcq') return 'mcq_single';
   if (t === 'mcq_multiple') return 'mcq_multiple';
-  // Old shape used "Numerical" string
   if (t.includes('numerical') || t.includes('integer')) return 'numerical';
-  // Fallback: any MCQ variant
   return 'mcq_single';
 }
 
 /**
+ * Resolve the format object for a specific paper from the exam's format JSONB.
+ * Handles:
+ *   - Flat: { name, sections: {...} } — single paper, paperNumber ignored
+ *   - Nested: { "paper1": { sections: {...} }, "paper2": { sections: {...} } }
+ *
+ * @param {object} rawFormat - The format JSONB from exams_taxonomies
+ * @param {number} paperNumber - 1-based paper number
+ * @returns {object|null} The resolved format object with sections
+ */
+function resolveFormatForPaper(rawFormat, paperNumber = 1) {
+  if (!rawFormat || typeof rawFormat !== 'object') return null;
+
+  const isFlatFormat = rawFormat.sections && typeof rawFormat.sections === 'object';
+  if (isFlatFormat) return rawFormat;
+
+  // Nested shape: keys are format IDs like "paper1", "paper2", "default", etc.
+  const keys = Object.keys(rawFormat).filter(
+    (k) => rawFormat[k] && typeof rawFormat[k] === 'object' && rawFormat[k].sections
+  );
+
+  if (keys.length === 0) return null;
+
+  // Try to match by paper number: "paper1" for paperNumber=1, "paper2" for paperNumber=2
+  const paperKey = `paper${paperNumber}`;
+  if (rawFormat[paperKey]?.sections) return rawFormat[paperKey];
+
+  // Fallback: pick by index (0-based from paperNumber)
+  const idx = paperNumber - 1;
+  if (idx < keys.length) return rawFormat[keys[idx]];
+
+  // Last resort: first key
+  return rawFormat[keys[0]];
+}
+
+/**
  * Build params for geminiService.generateQuestion from an exam row.
- * Handles two format shapes stored in exams_taxonomies.format:
- *   - Flat: { name, total_questions, sections: { Subject: { total_questions, subsections: { ... } } } }
- *   - Nested: { "FORMAT_ID": { sections: { Subject: { subsections: { "Section A": { type, questions, ... } } } } } }
  * Prefers prompt from exam_mock_prompts.
  *
  * @param {object} exam - Row from exams_taxonomies
+ * @param {number} [paperNumber=1] - 1-based paper number for multi-paper exams
  * @returns {Promise<Array<object>>} Array of params for geminiService.generateQuestion
  */
-async function buildQuestionParamsList(exam) {
+async function buildQuestionParamsList(exam, paperNumber = 1) {
   const rawFormat = exam.format && typeof exam.format === 'object' ? exam.format : {};
 
   let generation_prompt = null;
@@ -43,20 +74,7 @@ async function buildQuestionParamsList(exam) {
     generation_prompt = exam.generation_prompt.trim();
   }
 
-  // Detect flat format shape: has a "sections" key directly on the format object
-  const isFlatFormat = rawFormat.sections && typeof rawFormat.sections === 'object';
-
-  // Resolve to the format object that contains { sections: { ... }, marking_scheme: { ... } }
-  let format;
-  if (isFlatFormat) {
-    format = rawFormat;
-  } else {
-    // Nested shape: pick the first format id whose value has a sections object
-    const firstKey = Object.keys(rawFormat).find(
-      (k) => rawFormat[k] && typeof rawFormat[k] === 'object' && rawFormat[k].sections
-    );
-    format = firstKey ? rawFormat[firstKey] : null;
-  }
+  const format = resolveFormatForPaper(rawFormat, paperNumber);
 
   if (!format) {
     const params = [];
@@ -90,7 +108,6 @@ async function buildQuestionParamsList(exam) {
     const subsections = sectionConfig.subsections || {};
 
     if (Object.keys(subsections).length === 0) {
-      // Flat section with no subsections: use count or total_questions
       const questionCount = sectionConfig.count || sectionConfig.questions || sectionConfig.total_questions || 5;
       const rawType = sectionConfig.type || 'MCQ';
       const sectionType = rawType;
@@ -114,7 +131,6 @@ async function buildQuestionParamsList(exam) {
       }
     } else {
       for (const [subsectionKey, subsectionConfig] of Object.entries(subsections)) {
-        // Flat subsection uses "count"; nested uses "questions"
         const questionCount = subsectionConfig.count || subsectionConfig.questions || 5;
         const rawType = subsectionConfig.type || subsectionConfig.section_type || 'MCQ';
         const sectionType = rawType;

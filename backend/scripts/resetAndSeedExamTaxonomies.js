@@ -1,16 +1,15 @@
 /**
- * Seed 3 exams into exams_taxonomies: JEE Main, JEE Advanced, NEET.
- * Each exam has proper format configuration. JEE Advanced has 2 papers (Paper 1 and Paper 2).
+ * Delete all data from exams_taxonomies, then seed with exams in the new (nested) format.
+ * New format: format JSONB with keys like "default" or "paper1"/"paper2", each with
+ * name, duration_minutes, total_questions, total_marks, marking_scheme, rules, sections (with subsections).
  *
- * Run from repo root: node backend/scripts/seedThreeExams.js
+ * Run from backend: node scripts/resetAndSeedExamTaxonomies.js
+ * Or from repo root: node backend/scripts/resetAndSeedExamTaxonomies.js
  */
 
 require('dotenv').config();
 const db = require('../src/config/database');
 
-/**
- * Build a single-paper format config (nested structure).
- */
 function buildSinglePaperFormat(config) {
   const durationMinutes = config.duration_minutes ?? 180;
   const markingScheme = config.marking_scheme || { correct: 4, incorrect: -1, unattempted: 0 };
@@ -53,9 +52,6 @@ function buildSinglePaperFormat(config) {
   };
 }
 
-/**
- * Build JEE Main format (single paper, 90 questions).
- */
 function buildJeeMainFormat() {
   const config = {
     name: 'JEE Main 2024',
@@ -98,9 +94,6 @@ function buildJeeMainFormat() {
   return { default: buildSinglePaperFormat(config) };
 }
 
-/**
- * Build JEE Advanced format (2 papers: Paper 1 and Paper 2).
- */
 function buildJeeAdvancedFormat() {
   const paperConfig = {
     duration_minutes: 180,
@@ -149,9 +142,6 @@ function buildJeeAdvancedFormat() {
   };
 }
 
-/**
- * Build NEET format (single paper, 200 questions).
- */
 function buildNeetFormat() {
   const config = {
     name: 'NEET 2024',
@@ -196,11 +186,46 @@ function buildNeetFormat() {
   return { default: buildSinglePaperFormat(config) };
 }
 
+function buildCuetFormat() {
+  return {
+    default: {
+      name: 'CUET (UG)',
+      duration_minutes: 180,
+      total_questions: 50,
+      total_marks: 200,
+      marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
+      rules: [
+        'Total duration: 3 hours (180 minutes)',
+        'Section I - General Test: 50 questions',
+        'Marking: +4 for correct, -1 for incorrect, 0 for unattempted',
+        'Multiple choice - choose one correct option',
+      ],
+      sections: {
+        'Section I - General Test': {
+          name: 'Section I - General Test',
+          total_questions: 50,
+          marks: 200,
+          subsections: {
+            'Section A': {
+              type: 'mcq_single',
+              questions: 50,
+              marks_per_question: 4,
+              required: 50,
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 const EXAMS = [
   {
     name: 'JEE Main',
     code: 'JEE_MAIN',
     description: 'Joint Entrance Examination Main - for admission to NITs, IIITs, and other engineering colleges',
+    exam_type: 'National',
+    conducting_authority: 'NTA',
     number_of_papers: 1,
     format: buildJeeMainFormat(),
   },
@@ -208,6 +233,8 @@ const EXAMS = [
     name: 'JEE Advanced',
     code: 'JEE_ADVANCED',
     description: 'Joint Entrance Examination Advanced - for admission to IITs. Two papers: Paper 1 and Paper 2.',
+    exam_type: 'National',
+    conducting_authority: 'IIT',
     number_of_papers: 2,
     format: buildJeeAdvancedFormat(),
   },
@@ -215,32 +242,53 @@ const EXAMS = [
     name: 'NEET',
     code: 'NEET',
     description: 'National Eligibility cum Entrance Test - for admission to medical and dental colleges',
+    exam_type: 'National',
+    conducting_authority: 'NTA',
     number_of_papers: 1,
     format: buildNeetFormat(),
+  },
+  {
+    name: 'CUET',
+    code: 'CUET',
+    description: 'Common University Entrance Test - for admission to central and other participating universities',
+    exam_type: 'National',
+    conducting_authority: 'NTA',
+    number_of_papers: 1,
+    format: buildCuetFormat(),
   },
 ];
 
 async function main() {
   try {
-    console.log('🌱 Seeding exams_taxonomies with 3 exams...\n');
+    console.log('🗑️  Deleting all rows from exams_taxonomies (CASCADE will clear exam_mock_prompts etc.)...\n');
+
+    await db.query('DELETE FROM exams_taxonomies');
+    const seqResult = await db.query(
+      "SELECT setval(pg_get_serial_sequence('exams_taxonomies', 'id'), 1, false)"
+    );
+    console.log('   exams_taxonomies cleared; id sequence reset.\n');
+
+    console.log('🌱 Seeding exams_taxonomies with new (nested) format...\n');
 
     for (const exam of EXAMS) {
       const result = await db.query(
-        `INSERT INTO exams_taxonomies (name, code, description, format, number_of_papers)
-         VALUES ($1, $2, $3, $4::jsonb, $5)
-         ON CONFLICT (code)
-         DO UPDATE SET
-           name = EXCLUDED.name,
-           description = EXCLUDED.description,
-           format = EXCLUDED.format,
-           number_of_papers = EXCLUDED.number_of_papers
+        `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format, number_of_papers)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
          RETURNING id, name, code`,
-        [exam.name, exam.code, exam.description, JSON.stringify(exam.format), exam.number_of_papers || 1]
+        [
+          exam.name,
+          exam.code,
+          exam.description,
+          exam.exam_type || null,
+          exam.conducting_authority || null,
+          JSON.stringify(exam.format),
+          exam.number_of_papers || 1,
+        ]
       );
 
       if (result.rows.length > 0) {
         const formats = Object.keys(exam.format).join(', ');
-        console.log(`✅ ${result.rows[0].name} (${result.rows[0].code}) - ID: ${result.rows[0].id} [formats: ${formats}]`);
+        console.log(`   ✅ ${result.rows[0].name} (${result.rows[0].code}) - ID: ${result.rows[0].id} [formats: ${formats}]`);
       }
     }
 
@@ -250,7 +298,7 @@ async function main() {
       console.log(`   ${row.id}: ${row.name} (${row.code})`);
     });
 
-    console.log('\n✨ Done! Successfully seeded exams with formats.');
+    console.log('\n✨ Done. Exam taxonomies reset and seeded with new format.');
   } catch (err) {
     console.error('❌ Error:', err.message);
     console.error(err.stack);

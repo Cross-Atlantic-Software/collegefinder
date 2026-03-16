@@ -43,9 +43,9 @@ type SectionNavProps = {
   sections: Record<string, SectionDef>;
   currentSection: string;
   sectionProgress: Record<string, { name: string; attempted: number; total: number }>;
-  currentSubsection: 'section_a' | 'section_b';
+  currentSubsection: string;
   onSectionChange: (sectionKey: string) => void;
-  onSubsectionChange: (subsection: 'section_a' | 'section_b') => void;
+  onSubsectionChange: (subsection: string) => void;
 };
 
 // ─── Discriminated union for mode ────────────────────────────────────────────

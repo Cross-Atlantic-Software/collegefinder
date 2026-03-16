@@ -46,9 +46,9 @@ function updateProgress(job, completed, total) {
 }
 
 async function processMockGeneration(job) {
-  const { examId, mockNumber, mockTestId } = job.data;
+  const { examId, mockNumber, mockTestId, paperNumber = 1 } = job.data;
 
-  console.log(`🔄 [Worker] Starting mock generation: exam=${examId}, mock=${mockNumber}, id=${mockTestId}`);
+  console.log(`🔄 [Worker] Starting mock generation: exam=${examId}, mock=${mockNumber}, paper=${paperNumber}, id=${mockTestId}`);
 
   const examResult = await db.query('SELECT * FROM exams_taxonomies WHERE id = $1', [examId]);
   const exam = examResult.rows[0];
@@ -76,7 +76,7 @@ async function processMockGeneration(job) {
     console.log(`📋 [Worker] Resuming from question ${existingCount + 1} (${existingCount} already saved)`);
   }
 
-  const questionParams = await buildQuestionParamsList(exam);
+  const questionParams = await buildQuestionParamsList(exam, paperNumber);
   const totalNeeded = questionParams.length;
   const paramsToGenerate = questionParams.slice(existingCount);
 
@@ -206,10 +206,10 @@ async function processMockGeneration(job) {
 
         const orderIndex = startOrderIndex + index;
         await db.query(`
-          INSERT INTO exam_mock_questions (exam_mock_id, question_id, exam_id, order_index)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO exam_mock_questions (exam_mock_id, question_id, exam_id, order_index, paper_number)
+          VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (exam_mock_id, question_id) DO NOTHING
-        `, [mockTestId, qId, examId, orderIndex]);
+        `, [mockTestId, qId, examId, orderIndex, paperNumber]);
       } catch (insertErr) {
         console.warn(`⚠️  [Worker] Failed to insert question:`, insertErr.message);
         if (insertErr.code) console.warn(`    DB code: ${insertErr.code}`);
@@ -273,7 +273,7 @@ async function processMockGeneration(job) {
     WHERE id = $1
   `, [examId]);
 
-  console.log(`✅ [Worker] Mock ${mockNumber} ready for exam "${exam.name}" — ${totalInserted} questions`);
+  console.log(`✅ [Worker] Mock ${mockNumber} paper ${paperNumber} ready for exam "${exam.name}" — ${totalInserted} questions`);
 }
 
 async function handleFailed(job, err) {
