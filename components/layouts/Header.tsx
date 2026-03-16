@@ -1,177 +1,163 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import {
-    FiBell,
-    FiMessageCircle,
-    FiUser,
+    FiChevronDown,
     FiMenu,
     FiX,
-    FiLogOut,
 } from "react-icons/fi";
 
-import { Button, Logo, Navigation, ThemeToggle } from "../shared";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-const mobileNavLinks = [
-    { label: "Career & Exams", href: "/career" },
-    { label: "Apply", href: "/apply" },
-    { label: "Prepare", href: "/prepare" },
-    { label: "College", href: "/college" },
-    { label: "Finance", href: "/finance" },
-    { label: "Knowledge Center", href: "/knowledge-center" },
+const navLinks = [
+    { label: "Home", href: "/" },
+    { label: "Unitracko", href: "#" },
+    { label: "Our Process", href: "#", hasDropdown: true },
+    { label: "Our Edge", href: "#", hasDropdown: true },
+    { label: "Resources", href: "#" },
 ];
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const { isAuthenticated, logout, user } = useAuth();
+    const [isScrolled, setIsScrolled] = useState(false);
+    const { isAuthenticated, logout } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
+    const isHomePage = pathname === "/";
+
+    useEffect(() => {
+        if (!isHomePage) {
+            return;
+        }
+
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 16);
+        };
+
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
+    }, [isHomePage]);
 
     const handleLogout = () => {
         logout();
     };
 
-    const handleProfileClick = () => {
-        router.push('/dashboard');
-    };
+    const isSolidHeader = !isHomePage || isScrolled || mobileOpen;
+    const headerPositionClass = isHomePage ? "fixed inset-x-0 top-0" : "sticky top-0";
+    const headerSurfaceClass = isSolidHeader
+        ? "border-b border-black/10 bg-white/95 shadow-sm backdrop-blur-md"
+        : "border-b border-transparent bg-transparent";
+    const brandTextClass = isSolidHeader ? "text-black" : "text-white";
+    const navTextClass = isSolidHeader
+        ? "text-black/70 hover:text-black"
+        : "text-white/80 hover:text-white";
+    const secondaryActionClass = isSolidHeader
+        ? "text-black/80 hover:text-black"
+        : "text-white/85 hover:text-white";
+    const menuButtonClass = isSolidHeader
+        ? "border-black/20 text-black"
+        : "border-white/30 text-white";
+    const primaryActionClass = isSolidHeader
+        ? "bg-black text-white hover:bg-black/85"
+        : "bg-white text-black hover:bg-white/90";
 
     return (
-        <header className="bg-white py-3 dark:bg-[#050816]">
+        <header
+            className={`${headerPositionClass} z-50 transition-all duration-300 ease-out ${headerSurfaceClass}`}
+        >
             <div className="appContainer">
                 <div className="mx-auto">
                     {/* DESKTOP HEADER */}
-                    <div className="hidden h-16 items-center justify-between lg:flex lg:h-20">
-                        {/* Left: logo + nav */}
-                        <div className="flex flex-col items-start gap-6">
-                            <Logo href="/" />
-                            <Navigation />
-                        </div>
+                    <div className="hidden h-[72px] items-center justify-between gap-8 lg:flex">
+                        <Link
+                            href="/"
+                            className={`text-3xl font-extrabold tracking-tight transition-colors duration-300 ${brandTextClass}`}
+                            aria-label="Unitracko"
+                        >
+                            unitracko
+                        </Link>
 
-                        {/* Right: icons + CTA */}
+                        <nav className="flex items-center gap-7 text-sm font-medium">
+                            {navLinks.map((item) => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
+                                >
+                                    {item.label}
+                                    {item.hasDropdown && <FiChevronDown className="text-sm" />}
+                                </Link>
+                            ))}
+                        </nav>
+
                         <div className="flex items-center gap-4">
-                            <button
-                                type="button"
-                                aria-label="Notifications"
-                                className="relative inline-flex items-center justify-center rounded-full p-2 transition hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                <FiBell className="text-[18px] text-black dark:text-gray-100" />
-                                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff0080]" />
-                            </button>
-
-                            <button
-                                type="button"
-                                aria-label="Messages"
-                                className="inline-flex items-center justify-center rounded-full p-2 transition hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                <FiMessageCircle className="text-[18px] text-black dark:text-gray-100" />
-                            </button>
-
-                            <ThemeToggle />
-
                             {isAuthenticated ? (
-                                <div className="flex items-center gap-2">
+                                <>
                                     <button
                                         type="button"
-                                        aria-label="Profile"
-                                        onClick={handleProfileClick}
-                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-6 py-3 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
+                                        onClick={() => router.push("/dashboard")}
+                                        className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
-                                        {user?.profile_photo ? (
-                                            <div className="relative h-6 w-6 overflow-hidden rounded-full">
-                                                <Image
-                                                    src={user.profile_photo}
-                                                    alt="Profile"
-                                                    fill
-                                                    className="object-cover"
-                                                    unoptimized
-                                                />
-                                            </div>
-                                        ) : (
-                                            <FiUser className="text-[18px]" />
-                                        )}
-                                        {user?.name && <span>{user.name}</span>}
+                                        Dashboard
                                     </button>
                                     <button
                                         type="button"
-                                        aria-label="Logout"
                                         onClick={handleLogout}
-                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-6 py-3 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
+                                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-300 ${
+                                            isSolidHeader
+                                                ? "border-black/20 text-black hover:bg-black hover:text-white"
+                                                : "border-white/35 text-white hover:bg-white hover:text-black"
+                                        }`}
                                     >
-                                        <FiLogOut className="text-[18px]" />
+                                        Log out
                                     </button>
-                                </div>
+                                </>
                             ) : (
-                                <Button variant="LightGradient" size="sm" href="/login">
-                                    Sign in
-                                </Button>
+                                <>
+                                    <Link
+                                        href="/login"
+                                        className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
+                                    >
+                                        Log in
+                                    </Link>
+                                    <Link
+                                        href="/login"
+                                        className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${primaryActionClass}`}
+                                    >
+                                        Start free trial
+                                    </Link>
+                                </>
                             )}
                         </div>
                     </div>
 
                     {/* MOBILE HEADER */}
-                    <div className="flex h-14 items-center justify-between lg:hidden">
-                        <Logo href="/" />
+                    <div className="flex h-[64px] items-center justify-between lg:hidden">
+                        <Link
+                            href="/"
+                            className={`text-2xl font-extrabold tracking-tight transition-colors duration-300 ${brandTextClass}`}
+                            aria-label="Unitracko"
+                        >
+                            unitracko
+                        </Link>
 
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                aria-label="Notifications"
-                                className="relative inline-flex items-center justify-center rounded-full p-2 transition hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                <FiBell className="text-[18px] text-black dark:text-gray-100" />
-                                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff0080]" />
-                            </button>
-
-                            <ThemeToggle />
-
-                            {isAuthenticated ? (
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        aria-label="Profile"
-                                        onClick={handleProfileClick}
-                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-4 py-2 text-sm rounded-full font-medium inline-flex items-center justify-center gap-2"
-                                    >
-                                        {user?.profile_photo ? (
-                                            <div className="relative h-5 w-5 overflow-hidden rounded-full">
-                                                <Image
-                                                    src={user.profile_photo}
-                                                    alt="Profile"
-                                                    fill
-                                                    className="object-cover"
-                                                    unoptimized
-                                                />
-                                            </div>
-                                        ) : (
-                                            <FiUser className="text-[16px]" />
-                                        )}
-                                        {user?.name && <span className="hidden sm:inline">{user.name}</span>}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-label="Logout"
-                                        onClick={handleLogout}
-                                        className="bg-gradient-to-r from-[#FBEDF7] to-[#DAF1FF] text-pink hover:bg-gradient-to-r hover:from-[#DAF1FF] hover:to-[#FBEDF7] transition-colors duration-500 px-4 py-2 text-sm rounded-full font-medium inline-flex items-center justify-center"
-                                    >
-                                        <FiLogOut className="text-[16px]" />
-                                    </button>
-                                </div>
-                            ) : null}
-
-                            {/* Hamburger */}
-                            <button
-                                type="button"
                                 aria-label="Toggle navigation"
                                 onClick={() => setMobileOpen((prev) => !prev)}
-                                className="ms-2"
+                                className={`inline-flex items-center justify-center rounded-full border p-2 transition-all duration-300 ${menuButtonClass}`}
                             >
                                 {mobileOpen ? (
-                                    <FiX className="text-[20px] text-black dark:text-gray-100" />
+                                    <FiX className="text-[20px]" />
                                 ) : (
-                                    <FiMenu className="text-[20px] text-black dark:text-gray-100" />
+                                    <FiMenu className="text-[20px]" />
                                 )}
                             </button>
                         </div>
@@ -179,31 +165,65 @@ export default function Header() {
 
                     {/* MOBILE NAV MENU */}
                     {mobileOpen && (
-                        <nav className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 text-sm text-gray-800 dark:border-gray-800 dark:text-gray-200 lg:hidden">
-                            {mobileNavLinks.map((link) => (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className="py-1.5 text-sm transition hover:text-black dark:hover:text-white"
-                                    onClick={() => setMobileOpen(false)}
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-
-                            {!isAuthenticated && (
-                                <div className="mt-3">
-                                    <Button
-                                        variant="LightGradient"
-                                        size="sm"
-                                        className="w-full justify-center"
-                                        href="/login"
+                        <div className="border-t border-black/10 py-4 lg:hidden">
+                            <nav className="flex flex-col gap-3 text-sm font-medium text-black/80">
+                                {navLinks.map((link) => (
+                                    <Link
+                                        key={link.label}
+                                        href={link.href}
+                                        className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
+                                        onClick={() => setMobileOpen(false)}
                                     >
-                                        Sign in
-                                    </Button>
-                                </div>
-                            )}
-                        </nav>
+                                        {link.label}
+                                        {link.hasDropdown ? <FiChevronDown className="text-sm" /> : null}
+                                    </Link>
+                                ))}
+                            </nav>
+
+                            <div className="mt-4 flex items-center gap-3">
+                                {isAuthenticated ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMobileOpen(false);
+                                                router.push("/dashboard");
+                                            }}
+                                            className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
+                                        >
+                                            Dashboard
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMobileOpen(false);
+                                                handleLogout();
+                                            }}
+                                            className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
+                                        >
+                                            Log out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link
+                                            href="/login"
+                                            className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
+                                            onClick={() => setMobileOpen(false)}
+                                        >
+                                            Log in
+                                        </Link>
+                                        <Link
+                                            href="/login"
+                                            className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
+                                            onClick={() => setMobileOpen(false)}
+                                        >
+                                            Start free trial
+                                        </Link>
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

@@ -14,7 +14,7 @@ module.exports = {
         pink: '#DB0078',
       },
       fontFamily: {
-        sans: ['var(--font-manrope-sans)', 'Manrope', 'Arial', 'Helvetica', 'sans-serif'],
+        sans: ['var(--font-inter-sans)', 'Inter', 'Arial', 'Helvetica', 'sans-serif'],
       },
       backgroundImage: {
         'light-gradient': 'linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%)',

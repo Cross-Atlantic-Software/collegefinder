@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../shared";
 import { BsStars } from "react-icons/bs";
 import { FiChevronRight } from "react-icons/fi";
 import Link from "next/link";
+import { RoughNotation } from "react-rough-notation";
 
 const experienceList = [
     "Bachelor of Engineering",
@@ -16,8 +18,25 @@ const experienceList = [
 ];
 
 export default function CareerGuidanceSection() {
+    const [isVisible, setIsVisible] = useState(false);
+    const sectionRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.25 }
+        );
+        if (sectionRef.current) observer.observe(sectionRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <section className="relative overflow-hidden bg-white py-16 dark:bg-[#050816]">
+        <section ref={sectionRef} className="relative overflow-hidden bg-white py-16 dark:bg-[#050816]">
             <div className="appContainer">
                 <div className="grid items-center gap-12 lg:grid-cols-[45%_55%] lg:gap-20">
                     {/* LEFT SIDE */}
@@ -34,7 +53,17 @@ export default function CareerGuidanceSection() {
                             <br />
                             That Actually
                             <br />
-                            Delivers
+                            <RoughNotation
+                                type="underline"
+                                show={isVisible}
+                                color="#f0c544"
+                                strokeWidth={3}
+                                padding={3}
+                                animationDelay={500}
+                                animationDuration={1300}
+                            >
+                                Delivers
+                            </RoughNotation>
                         </h2>
 
                         {/* Description */}

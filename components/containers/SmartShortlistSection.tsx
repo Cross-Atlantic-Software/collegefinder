@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import { Button } from "../shared";
 import Heading from "../shared/Typography";
+import { RoughNotation } from "react-rough-notation";
 
 const features = [
     {
@@ -24,11 +26,49 @@ const features = [
 ];
 
 export default function SmartShortlistSection() {
+    const [isVisible, setIsVisible] = useState(false);
+    const sectionRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.25 }
+        );
+        if (sectionRef.current) observer.observe(sectionRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <section className="relative overflow-hidden bg-lightGradient dark:bg-none py-16 dark:bg-[#050816]">
+        <section ref={sectionRef} className="relative overflow-hidden bg-lightGradient dark:bg-none py-16 dark:bg-[#050816]">
             <div className="appContainer">
                 {/* Heading */}
-                <Heading align="center" head="Smart Shortlist Exam" description="Explore how our university serves as a hub of excellence, bringing together top-tier education, cutting-edge research, and groundbreaking innovation to transform the world."/>
+                <div className="flex flex-col items-center gap-3 text-center">
+                    <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-4xl">
+                        Smart{" "}
+                        <RoughNotation
+                            type="underline"
+                            show={isVisible}
+                            color="#f0c544"
+                            strokeWidth={3}
+                            padding={3}
+                            animationDelay={500}
+                            animationDuration={1300}
+                        >
+                            Shortlist
+                        </RoughNotation>
+                        {" "}Exam
+                    </h2>
+                    <p className="max-w-2xl text-sm text-slate-600 dark:text-slate-300 md:text-base">
+                        Explore how our university serves as a hub of excellence, bringing together
+                        top-tier education, cutting-edge research, and groundbreaking innovation to
+                        transform the world.
+                    </p>
+                </div>
 
                 {/* Search bar */}
                 <div className="mt-8 flex justify-center">
