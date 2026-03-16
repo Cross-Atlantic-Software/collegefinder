@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
+import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
+import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 
 type SectionId =
   | "dashboard"
@@ -12,7 +14,9 @@ type SectionId =
   | "college-shortlist"
   | "applications"
   | "exam-prep"
-  | "test-module";
+  | "test-module"
+  | "know-your-strengths"
+  | "admission-help";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -67,6 +71,14 @@ export default function DashboardPage() {
 
               {activeSection === "test-module" && (
                 <TestModule />
+              )}
+
+              {activeSection === "know-your-strengths" && (
+                <KnowYourStrengths onSectionChange={setActiveSection} />
+              )}
+
+              {activeSection === "admission-help" && (
+                <AdmissionHelp onSectionChange={setActiveSection} />
               )}
             </main>
 

@@ -6,6 +6,7 @@
 const AdmZip = require('adm-zip');
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp)$/i;
+const PDF_EXT = /\.pdf$/i;
 
 /**
  * Parse a ZIP buffer and extract image files.
@@ -33,6 +34,34 @@ function parseLogosFromZip(zipBuffer) {
     // Return empty map on parse error; caller handles validation
   }
   return logoMap;
+}
+
+/**
+ * Parse a ZIP buffer and extract PDF files.
+ * Returns Map<lowercaseFilename, { buffer, originalname }>
+ * @param {Buffer} zipBuffer - Raw ZIP file buffer
+ * @returns {Map<string, { buffer: Buffer, originalname: string }>}
+ */
+function parsePdfsFromZip(zipBuffer) {
+  const pdfMap = new Map();
+  if (!zipBuffer || !Buffer.isBuffer(zipBuffer)) return pdfMap;
+  try {
+    const zip = new AdmZip(zipBuffer);
+    const entries = zip.getEntries();
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.isDirectory) continue;
+      const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
+      if (!name || !PDF_EXT.test(name)) continue;
+      const buffer = entry.getData();
+      if (buffer && buffer.length) {
+        pdfMap.set(name.toLowerCase(), { buffer, originalname: name });
+      }
+    }
+  } catch (_) {
+    // Return empty map on parse error
+  }
+  return pdfMap;
 }
 
 /**
@@ -120,7 +149,9 @@ async function processMissingLogosFromZip(logoMap, options) {
 
 module.exports = {
   parseLogosFromZip,
+  parsePdfsFromZip,
   buildLogoMapFromRequest,
   processMissingLogosFromZip,
-  IMAGE_EXT
+  IMAGE_EXT,
+  PDF_EXT
 };

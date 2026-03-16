@@ -143,13 +143,33 @@ const requireCanDownloadExcel = async (req, res, next) => {
   next();
 };
 
+/**
+ * Allow counsellor and super_admin only
+ */
+const requireCounsellor = async (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  if (req.admin.type !== 'counsellor' && req.admin.type !== 'super_admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Counsellor or super admin access required'
+    });
+  }
+  next();
+};
+
 module.exports = {
   authenticateAdmin,
   requireSuperAdmin,
   requireModuleAccess,
   requireCanDelete,
   requireCanEdit,
-  requireCanDownloadExcel
+  requireCanDownloadExcel,
+  requireCounsellor
 };
 
 
