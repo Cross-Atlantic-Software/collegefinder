@@ -29,6 +29,7 @@ yarn.lock
 # misc
 .DS_Store
 *.pem
+aws.txt
 
 # SSH keys and private keys
 *.pub
