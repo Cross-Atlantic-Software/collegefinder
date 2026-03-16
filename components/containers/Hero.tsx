@@ -34,7 +34,7 @@ export default function Hero() {
     return (
         <section ref={sectionRef} className="relative isolate min-h-[100svh] overflow-hidden">
             <Image
-                src="/landing-page/hero.png"
+                src="/landing-page/hero-1.png"
                 alt="Admission journey background"
                 fill
                 priority
