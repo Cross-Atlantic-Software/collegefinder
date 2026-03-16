@@ -1,5 +1,10 @@
 export { default as Hero } from './Hero';
 export { default as InfoSection } from './InfoSection';
 export { default as Features } from './Features';
+export { default as FeatureStackSection } from './FeatureStackSection';
+export { default as HowItWorksSection } from './HowItWorksSection';
+export { default as AudienceSection } from './AudienceSection';
+export { default as ContactSection } from './ContactSection';
+export { default as FaqSection } from './FaqSection';
 export { default as CareerGuidanceSection } from './CareerGuidanceSection';
 export { default as SmartShortlistSection } from './SmartShortlistSection';

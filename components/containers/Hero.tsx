@@ -1,80 +1,93 @@
 "use client";
 
 import Image from "next/image";
-import { PiMapPinSimpleAreaLight } from "react-icons/pi";
-import { Button } from "../shared";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
+import { PiCompassRoseBold } from "react-icons/pi";
+import { RoughNotation } from "react-rough-notation";
+
+const painPoints = [
+    { label: "No scattered portals", Icon: PiCompassRoseBold },
+    { label: "No forgotten forms", Icon: FiFileText },
+    { label: "No last minute chaos", Icon: FiClock },
+];
 
 export default function Hero() {
+    const sectionRef = useRef<HTMLElement>(null);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.3 }
+        );
+        if (sectionRef.current) observer.observe(sectionRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <section className="relative overflow-hidden bg-lightGradient py-10 dark:bg-none dark:bg-[#050816]">
-            <div className="appContainer">
-                <div className="mx-auto flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:px-0">
-                    {/* LEFT COLUMN */}
-                    <div className="flex w-full max-w-xl flex-col gap-6 lg:max-w-xl">
-                        {/* Badge */}
-                        <div className="inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-medium text-pink shadow-sm shadow-pink/20 dark:bg-slate-900 dark:text-pink">
-                            <PiMapPinSimpleAreaLight className="text-xl text-pink" />
-                            <span>Top Exams in Delhi</span>
-                        </div>
+        <section ref={sectionRef} className="relative isolate min-h-[100svh] overflow-hidden">
+            <Image
+                src="/landing-page/hero.png"
+                alt="Admission journey background"
+                fill
+                priority
+                className="object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/50" />
 
-                        {/* Heading */}
-                        <h1 className="text-3xl font-bold leading-tight text-slate-900 md:text-5xl lg:text-6xl dark:text-white">
-                            Your college{" "}
-                            <br className="hidden sm:block" />
-                            journey,{" "}
-                            <span className="bg-gradient-to-r from-[#ff0080] to-[#7A00FF] bg-clip-text text-transparent">
-                                simplified
-                            </span>
-                        </h1>
+            <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-16 md:py-20 lg:pb-24">
+                <div className="max-w-3xl">
+                    <h1 className="text-4xl font-extrabold leading-tight text-white md:text-6xl">
+                        Your Entire Admission Journey
+                        <span className="mt-1 block">
+                            <RoughNotation
+                                type="underline"
+                                show={isVisible}
+                                color="#f0c544"
+                                strokeWidth={3}
+                                padding={4}
+                                animationDelay={700}
+                                animationDuration={1400}
+                            >
+                                <span className="text-[#f0c544]">Finally Under Control</span>
+                            </RoughNotation>
+                        </span>
+                    </h1>
 
-                        {/* Subtext */}
-                        <p className="text-sm leading-relaxed text-slate-700 md:text-base dark:text-slate-300">
-                            From career guidance to college admission – we&apos;ve got you covered
-                            every step of the way. No stress, just success!
-                        </p>
+                    <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/90 md:text-xl">
+                        The exam you missed. The deadline you forgot. The college you never knew
+                        existed. It happens to thousands of students every year. It doesn&apos;t have
+                        to happen to you.
+                    </p>
 
-                        {/* Buttons */}
-                        <div className="flex flex-wrap items-center gap-3">
-                            <Button variant="themeButton" size="md" href="/get-started">
-                                Start Your Journey
-                            </Button>
-                            <Button variant="themeButtonOutline" size="md">
-                                Explore Programs
-                            </Button>
-                        </div>
-
-                        {/* Social proof chips */}
-                        <div className="mt-4 flex flex-wrap items-center gap-3">
-                            <div className="flex items-center">
-                                {["A", "B", "C", "D"].map((letter, index) => (
-                                    <div
-                                        key={letter}
-                                        className={`flex h-8 w-8 md:h-12 md:w-12 items-center justify-center rounded-full bg-pink text-sm md:text-lg font-semibold text-white border border-white ${index !== 0 ? "-ml-3 md:-ml-4" : ""}`}
-                                    >
-                                        {letter}
-                                    </div>
-                                ))}
+                    <div className="mt-8 flex flex-wrap items-center gap-5 md:gap-8">
+                        {painPoints.map(({ label, Icon }) => (
+                            <div
+                                key={label}
+                                className="inline-flex items-center gap-2 text-sm font-medium text-white"
+                            >
+                                <span className="inline-flex h-9 w-9 items-center justify-center text-white">
+                                    <Icon className="text-[15px]" />
+                                </span>
+                                <span>{label}</span>
                             </div>
-                            <p className="text-sm text-slate-700 md:text-lg dark:text-slate-200">
-                                <span className="font-semibold">10,000+ students</span> already on
-                                their path
-                            </p>
-                        </div>
+                        ))}
                     </div>
 
-                    {/* RIGHT COLUMN – Illustration */}
-                    <div className="flex w-full max-w-xl justify-center lg:max-w-none lg:flex-1">
-                        <div className="relative h-auto w-full max-w-xl">
-                            <Image
-                                src="/hero.png"
-                                alt="College journey illustration"
-                                width={1100}
-                                height={1100}
-                                priority
-                                className="h-auto w-full object-contain"
-                            />
-                        </div>
-                    </div>
+                    <Link
+                        href="/login"
+                        className="landing-cta group mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+                    >
+                        Start your Journey
+                        <FiArrowUpRight className="landing-icon-slide text-base" />
+                    </Link>
                 </div>
             </div>
         </section>
