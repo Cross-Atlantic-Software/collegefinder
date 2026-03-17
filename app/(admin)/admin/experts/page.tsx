@@ -693,15 +693,16 @@ export default function ExpertsPage() {
       {/* Delete Confirmation */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
-        onConfirm={handleDelete}
-        onCancel={() => {
+        onClose={() => {
           setShowDeleteConfirm(false);
           setDeletingId(null);
         }}
+        onConfirm={handleDelete}
         title="Delete Expert"
         message="Are you sure you want to delete this expert? This action cannot be undone."
-        confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
-        isDestructive
+        confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+        confirmButtonStyle="danger"
+        isLoading={isDeleting}
       />
     </div>
   );
