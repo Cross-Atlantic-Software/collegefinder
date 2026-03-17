@@ -74,11 +74,11 @@ export default function DashboardPage() {
               )}
 
               {activeSection === "know-your-strengths" && (
-                <KnowYourStrengths onSectionChange={setActiveSection} />
+                <KnowYourStrengths onSectionChange={(section) => setActiveSection(section as SectionId)} />
               )}
 
               {activeSection === "admission-help" && (
-                <AdmissionHelp onSectionChange={setActiveSection} />
+                <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
               )}
             </main>
 
