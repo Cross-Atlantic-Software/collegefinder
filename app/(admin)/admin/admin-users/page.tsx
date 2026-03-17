@@ -34,19 +34,19 @@ export default function AdminUsersPage() {
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Form state
+  // Form state (type includes counsellor to match API)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin' | 'counsellor',
     module_ids: [] as number[],
   });
 
-  // Edit form state
+  // Edit form state (type includes counsellor to match AdminUser from API)
   const [editFormData, setEditFormData] = useState({
     email: '',
     password: '',
-    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin' | 'counsellor',
     is_active: true,
     module_ids: [] as number[],
   });
@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
       const updateData: {
         email?: string;
         password?: string;
-        type?: 'data_entry' | 'admin' | 'super_admin';
+        type?: 'data_entry' | 'admin' | 'super_admin' | 'counsellor';
         is_active?: boolean;
         module_ids?: number[];
       } = {};
