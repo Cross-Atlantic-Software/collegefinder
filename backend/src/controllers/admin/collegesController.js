@@ -10,6 +10,7 @@ const CollegeDocumentsRequired = require('../../models/college/CollegeDocumentsR
 const CollegeCounsellingProcess = require('../../models/college/CollegeCounsellingProcess');
 const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
 const Program = require('../../models/taxonomy/Program');
+const Branch = require('../../models/taxonomy/Branch');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
@@ -41,11 +42,18 @@ async function resolveCollegePrograms(collegeId, collegePrograms) {
       if (p) programId = p.id;
     }
     if (!programId) continue;
+    let branchId = null;
+    const branchName = prog.branch_course ? String(prog.branch_course).trim() : '';
+    if (branchName) {
+      const branch = await Branch.findByNameCaseInsensitive(branchName);
+      if (branch) branchId = branch.id;
+    }
     const cp = await CollegeProgram.create({
       college_id: collegeId,
       program_id: programId,
       intake_capacity: prog.intake_capacity != null ? parseInt(prog.intake_capacity, 10) : null,
       duration_years: prog.duration_years != null ? parseInt(prog.duration_years, 10) : null,
+      branch_id: branchId,
       branch_course: prog.branch_course || null,
       program_description: prog.program_description || null,
       duration_unit: prog.duration_unit || 'years',
@@ -203,6 +211,7 @@ class CollegesController {
         college_location,
         college_type,
         college_logo,
+        logo_filename,
         college_description,
         google_map_link,
         website,
@@ -229,6 +238,7 @@ class CollegesController {
         college_location: college_location ? college_location.trim() : null,
         college_type: college_type || null,
         college_logo: college_logo || null,
+        logo_filename: logo_filename ? String(logo_filename).trim() || null : null,
         google_map_link: google_map_link ? google_map_link.trim() : null,
         website: website ? website.trim() : null
       });
@@ -310,6 +320,7 @@ class CollegesController {
         college_location,
         college_type,
         college_logo,
+        logo_filename,
         college_description,
         google_map_link,
         website,
@@ -338,6 +349,7 @@ class CollegesController {
         college_location: college_location !== undefined ? (college_location && college_location.trim()) || null : undefined,
         college_type: college_type !== undefined ? college_type || null : undefined,
         college_logo: college_logo !== undefined ? college_logo : undefined,
+        logo_filename: logo_filename !== undefined ? (logo_filename ? String(logo_filename).trim() || null : null) : undefined,
         google_map_link: google_map_link !== undefined ? (google_map_link ? google_map_link.trim() : null) : undefined,
         website: website !== undefined ? (website ? website.trim() : null) : undefined
       });
@@ -994,13 +1006,19 @@ class CollegesController {
               }
               if (eids.length > 0) progRecommendedExamIds = eids.join(',');
             }
+            const branchNameExcel = branchCourses[idx] ? String(branchCourses[idx]).trim() : '';
+            let branchId = null;
+            if (branchNameExcel) {
+              const branch = await Branch.findByNameCaseInsensitive(branchNameExcel);
+              if (branch) branchId = branch.id;
+            }
             const cp = await CollegeProgram.create({
               college_id: college.id,
               program_id: programId,
               intake_capacity: isNaN(intake_capacity) ? null : intake_capacity,
               duration_years: isNaN(duration_years) ? null : duration_years,
+              branch_id: branchId,
               branch_course: branchCourses[idx] || null,
-              program_description: programDescriptions[idx] || null,
               duration_unit: programDurationUnits[idx] || 'years',
               key_dates_summary: keyDatesSummaries[idx] || null,
               fee_per_semester: feePerSemesters[idx] ? parseFloat(feePerSemesters[idx]) : null,

@@ -26,6 +26,7 @@ import {
 } from '@/api/admin/exams';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
+import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage, FiGlobe, FiCheckSquare, FiLayout } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
@@ -40,6 +41,7 @@ export default function ExamsPage() {
   const [allExams, setAllExams] = useState<Exam[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [careerGoals, setCareerGoals] = useState<CareerGoalAdmin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export default function ExamsPage() {
     examPattern: ExamPattern | null;
     examCutoff: ExamCutoff | null;
     careerGoalIds: number[];
+    programIds: number[];
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,6 +66,7 @@ export default function ExamsPage() {
     exam_logo: '',
     exam_type: '' as 'National' | 'State' | 'Institute' | '',
     conducting_authority: '',
+    format: '',
     number_of_papers: '1',
     website: '',
     examDates: {
@@ -91,6 +95,7 @@ export default function ExamsPage() {
       target_rank_range: '',
     },
     careerGoalIds: [] as number[],
+    programIds: [] as number[],
   });
   const [, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -200,16 +205,18 @@ export default function ExamsPage() {
       if (!silent) setIsLoading(true);
       // Fetch exams (required for this module). Dropdowns (streams, subjects, career goals) are optional
       // and may 403 if user doesn't have those modules — use allSettled so one 403 doesn't break the page.
-      const [examsRes, streamsRes, subjectsRes, careerGoalsRes] = await Promise.allSettled([
+      const [examsRes, streamsRes, subjectsRes, programsRes, careerGoalsRes] = await Promise.allSettled([
         getAllExamsAdmin(),
         getAllStreams(),
         getAllSubjects(),
+        getAllPrograms(),
         getAllCareerGoalsAdmin(),
       ]);
 
       const examsData = examsRes.status === 'fulfilled' ? examsRes.value : null;
       const streamsData = streamsRes.status === 'fulfilled' ? streamsRes.value : null;
       const subjectsData = subjectsRes.status === 'fulfilled' ? subjectsRes.value : null;
+      const programsData = programsRes.status === 'fulfilled' ? programsRes.value : null;
       const careerGoalsData = careerGoalsRes.status === 'fulfilled' ? careerGoalsRes.value : null;
 
       if (examsData?.success && examsData?.data) {
@@ -223,6 +230,9 @@ export default function ExamsPage() {
       }
       if (subjectsData?.success && subjectsData?.data) {
         setSubjects(subjectsData.data.subjects.filter((s: Subject) => s.status));
+      }
+      if (programsData?.success && programsData?.data?.programs) {
+        setPrograms(programsData.data.programs.filter((p: Program) => p.status));
       }
       if (careerGoalsData?.success && careerGoalsData?.data) {
         setCareerGoals(careerGoalsData.data.careerGoals.filter((cg: CareerGoalAdmin) => cg.status !== false));
@@ -286,6 +296,15 @@ export default function ExamsPage() {
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
         conducting_authority: formData.conducting_authority || null,
+        format: (() => {
+          const v = formData.format?.trim();
+          if (!v) return undefined;
+          try {
+            return JSON.parse(v) as unknown;
+          } catch {
+            return undefined;
+          }
+        })(),
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         website: formData.website || null,
         examDates: {
@@ -319,6 +338,7 @@ export default function ExamsPage() {
           target_rank_range: formData.examCutoff.target_rank_range || null,
         },
         careerGoalIds: formData.careerGoalIds || [],
+        programIds: formData.programIds || [],
       };
 
       if (editingExam) {
@@ -403,6 +423,7 @@ export default function ExamsPage() {
           exam_logo: e?.exam_logo ?? '',
           exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
           conducting_authority: e?.conducting_authority ?? '',
+          format: e?.format != null ? (typeof e.format === 'object' ? JSON.stringify(e.format, null, 2) : String(e.format)) : '',
           number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
           website: e?.website ?? '',
           examDates: {
@@ -431,6 +452,7 @@ export default function ExamsPage() {
             target_rank_range: data.examCutoff?.target_rank_range ?? '',
           },
           careerGoalIds: toNumArray(data.careerGoalIds),
+          programIds: toNumArray(data.programIds),
         };
         setEditingExam(e ?? exam);
         setFormData(nextForm);
@@ -489,6 +511,7 @@ export default function ExamsPage() {
       exam_logo: '',
       exam_type: '',
       conducting_authority: '',
+      format: '',
       number_of_papers: '1',
       website: '',
       examDates: {
@@ -517,6 +540,7 @@ export default function ExamsPage() {
         target_rank_range: '',
       },
       careerGoalIds: [],
+      programIds: [],
     });
     setLogoFile(null);
     setLogoPreview(null);
@@ -1156,6 +1180,20 @@ export default function ExamsPage() {
                       />
                       <p className="text-xs text-gray-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Format (JSON)
+                      </label>
+                      <textarea
+                        value={formData.format}
+                        onChange={(e) => setFormData({ ...formData, format: e.target.value })}
+                        placeholder='e.g. {"Physics": {"marks": 100}, "Chemistry": {"marks": 100}}'
+                        rows={4}
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Optional. JSON object describing exam format/structure. Same as in bulk template.</p>
+                    </div>
                   </>
                 )}
 
@@ -1331,6 +1369,19 @@ export default function ExamsPage() {
                         })}
                         placeholder="e.g., 3"
                         className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Programs
+                      </label>
+                      <MultiSelect
+                        options={programs.map((p) => ({ value: p.id.toString(), label: p.name }))}
+                        value={formData.programIds.map((id) => id.toString())}
+                        onChange={(selected) => setFormData({ ...formData, programIds: selected.map((s) => parseInt(s, 10)) })}
+                        placeholder="Select programs (e.g. B.Tech, MBBS)"
+                        className="w-full"
                       />
                     </div>
                   </>
@@ -1652,6 +1703,20 @@ export default function ExamsPage() {
                   <p className="text-sm text-gray-900">
                     {viewingExamData.careerGoalIds.map((id) => careerGoals.find((cg) => cg.id === id)?.label ?? id).join(', ') || viewingExamData.careerGoalIds.join(', ')}
                   </p>
+                </div>
+              )}
+              {viewingExamData.programIds?.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Programs</label>
+                  <p className="text-sm text-gray-900">
+                    {viewingExamData.programIds.map((id) => programs.find((p) => p.id === id)?.name ?? id).join(', ')}
+                  </p>
+                </div>
+              )}
+              {viewingExamData.exam.format != null && typeof viewingExamData.exam.format === 'object' && Object.keys(viewingExamData.exam.format as object).length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Format</label>
+                  <pre className="text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-auto max-h-40">{JSON.stringify(viewingExamData.exam.format, null, 2)}</pre>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">

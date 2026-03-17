@@ -158,7 +158,8 @@ const runMigrations = async () => {
     'widen_expert_photo_and_strength_report.sql',
     'add_expert_phone_email_description.sql',
     'add_website_to_exams.sql',
-    'restructure_colleges_programs.sql'
+    'restructure_colleges_programs.sql',
+    'add_branch_id_to_college_programs.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
