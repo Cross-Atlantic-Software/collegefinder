@@ -73,6 +73,7 @@ const init = async () => {
       'purposes.sql',         // Purposes table and lecture_purposes junction table
       'levels.sql',           // Levels taxonomy table
       'programs.sql',         // Programs taxonomy table
+      'branches.sql',         // Branches / Courses taxonomy table
       'exam_city.sql',        // Exam city taxonomy table
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)

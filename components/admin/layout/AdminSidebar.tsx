@@ -71,6 +71,7 @@ const navGroups: NavGroup[] = [
       // { label: 'Levels', href: '/admin/levels', icon: <FiBook className="h-4 w-4" />, moduleCode: 'levels' },
       { label: 'Program Categories', href: '/admin/programs', icon: <FiBook className="h-4 w-4" />, moduleCode: 'programs' },
       { label: 'Categories', href: '/admin/categories', icon: <FiBook className="h-4 w-4" />, moduleCode: 'categories' },
+      { label: 'Branches / Courses', href: '/admin/branches', icon: <FiBook className="h-4 w-4" />, moduleCode: 'branches' },
       { label: 'Exam Cities', href: '/admin/exam-cities', icon: <FiMapPin className="h-4 w-4" />, moduleCode: 'exam_cities' },
     ],
   },

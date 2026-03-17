@@ -90,6 +90,7 @@ export const API_ENDPOINTS = {
     COUNSELLOR_SEARCH: '/admin/counsellor/search',
     COUNSELLOR_RESULTS: '/admin/counsellor/results',
     EXPERTS: '/admin/experts',
+    BRANCHES: '/admin/branches',
   },
 
   // Strength endpoints (user-facing)
