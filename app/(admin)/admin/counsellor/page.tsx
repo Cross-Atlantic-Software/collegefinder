@@ -126,7 +126,7 @@ export default function CounsellorPage() {
       setAssignedExpertIds(ids.map(String));
     } else {
       const single = (results as { assigned_expert_id?: number | null }).assigned_expert_id;
-      setAssignedExpertIds(single != null && single !== '' ? [String(single)] : []);
+      setAssignedExpertIds(single != null ? [String(single)] : []);
     }
   };
 
