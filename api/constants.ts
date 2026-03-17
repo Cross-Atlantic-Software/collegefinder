@@ -86,7 +86,22 @@ export const API_ENDPOINTS = {
     LOANS: '/admin/loans',
     AUTOMATION_EXAMS: '/admin/automation-exams',
     AUTOMATION_EXAMS_FULL: '/admin/automation-exams-full',
+    COUNSELLOR: '/admin/counsellor',
+    COUNSELLOR_SEARCH: '/admin/counsellor/search',
+    COUNSELLOR_RESULTS: '/admin/counsellor/results',
+    EXPERTS: '/admin/experts',
   },
+
+  // Strength endpoints (user-facing)
+  STRENGTH: {
+    PAYMENT_STATUS: '/strength/payment-status',
+    FORM_DATA: '/strength/form-data',
+    PAY: '/strength/pay',
+    RESULTS: '/strength/results',
+  },
+
+  // Public experts endpoint
+  EXPERTS: '/experts',
 
   // Automation endpoints (python-backend at port 8000)
   AUTOMATION: {

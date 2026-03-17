@@ -239,8 +239,89 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
   }
 };
 
+/**
+ * Send payment notification email to admin when a student pays for Strength Analysis
+ * @param {Object} studentData - Student information
+ * @param {number} studentData.id - Student user ID
+ * @param {string} studentData.name - Student name
+ * @param {string} studentData.email - Student email
+ * @param {string} studentData.phone - Student phone
+ * @param {string} studentData.class_info - Student class
+ * @param {string} studentData.school - Student school
+ * @returns {Promise<boolean>}
+ */
+const sendStrengthPaymentNotification = async (studentData) => {
+  const transporter = createTransporter();
+  const recipientEmail = 'sharmaharsh634@gmail.com';
+
+  const subject = `Strength Analysis Payment - Student ID #${studentData.id}`;
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background-color:#f5f5f5;">
+    <tr><td align="center" style="padding:20px 0;">
+      <table role="presentation" style="max-width:600px;width:100%;border-collapse:collapse;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <tr><td style="background:linear-gradient(135deg,#0f4c75 0%,#3282b8 100%);padding:30px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:bold;">College Finder</h1>
+          <p style="margin:8px 0 0 0;color:rgba(255,255,255,0.9);font-size:14px;">Strength Analysis Payment Notification</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="margin:0 0 20px 0;color:#232f3e;font-size:22px;font-weight:bold;">New Payment Received</h2>
+          <p style="color:#232f3e;font-size:16px;line-height:1.6;margin:0 0 24px 0;">
+            A student has successfully completed payment for the Strength Analysis test.
+          </p>
+          <div style="background-color:#f9f9f9;border:1px solid #eeeeee;border-radius:6px;padding:20px;margin:0 0 24px 0;">
+            <p style="margin:0 0 12px 0;"><strong>Student ID:</strong> ${studentData.id}</p>
+            <p style="margin:0 0 12px 0;"><strong>Name:</strong> ${studentData.name || 'N/A'}</p>
+            <p style="margin:0 0 12px 0;"><strong>Email:</strong> ${studentData.email || 'N/A'}</p>
+            <p style="margin:0 0 12px 0;"><strong>Phone:</strong> ${studentData.phone || 'N/A'}</p>
+            <p style="margin:0 0 12px 0;"><strong>Class:</strong> ${studentData.class_info || 'N/A'}</p>
+            <p style="margin:0;"><strong>School:</strong> ${studentData.school || 'N/A'}</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:24px 40px;background-color:#f9f9f9;border-top:1px solid #eeeeee;">
+          <p style="margin:0;color:#666666;font-size:12px;">© ${new Date().getFullYear()} College Finder. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Strength Analysis Payment Notification\n\nStudent ID: ${studentData.id}\nName: ${studentData.name}\nEmail: ${studentData.email}\nPhone: ${studentData.phone}\nClass: ${studentData.class_info}\nSchool: ${studentData.school}`;
+
+  if (!transporter) {
+    console.log('📧 [DEV] Strength payment notification would be sent to:', recipientEmail);
+    console.log('📧 [DEV] Student data:', studentData);
+    return true;
+  }
+
+  const mailOptions = {
+    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    to: recipientEmail,
+    subject,
+    html,
+    text
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Strength payment notification sent for student #${studentData.id}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending strength payment notification:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('⚠️  Email sending failed, but continuing in development mode');
+      return true;
+    }
+    throw new Error('Failed to send strength payment notification');
+  }
+};
+
 module.exports = {
   sendOTPEmail,
-  sendAdminWelcomeEmail
+  sendAdminWelcomeEmail,
+  sendStrengthPaymentNotification
 };
 

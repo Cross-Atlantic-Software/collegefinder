@@ -168,6 +168,7 @@ export default function AdminUsersPage() {
   const typeLabel = (t: string) => {
     if (t === 'super_admin') return 'Super Admin';
     if (t === 'admin') return 'Admin';
+    if (t === 'counsellor') return 'Counsellor';
     return 'Data Entry';
   };
 
@@ -420,6 +421,7 @@ export default function AdminUsersPage() {
                                   options={[
                                     { value: 'data_entry', label: 'Data Entry' },
                                     { value: 'admin', label: 'Admin' },
+                                    { value: 'counsellor', label: 'Counsellor' },
                                   ]}
                                   size="sm"
                                 />
@@ -430,7 +432,9 @@ export default function AdminUsersPage() {
                                       ? 'bg-purple-100 text-purple-800'
                                       : admin.type === 'admin'
                                         ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-800'
+                                        : admin.type === 'counsellor'
+                                          ? 'bg-teal-100 text-teal-800'
+                                          : 'bg-gray-100 text-gray-800'
                                   }`}
                                 >
                                   {isSuperAdminType ? (
@@ -658,12 +662,13 @@ export default function AdminUsersPage() {
                     options={[
                       { value: 'data_entry', label: 'Data Entry' },
                       { value: 'admin', label: 'Admin' },
+                      { value: 'counsellor', label: 'Counsellor' },
                       { value: 'super_admin', label: 'Super Admin' },
                     ]}
                     className="w-full"
                   />
                 </div>
-                {(formData.type === 'data_entry' || formData.type === 'admin') && (
+                {(formData.type === 'data_entry' || formData.type === 'admin' || formData.type === 'counsellor') && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
                     <MultiSelect
@@ -792,6 +797,7 @@ export default function AdminUsersPage() {
                         options={[
                           { value: 'data_entry', label: 'Data Entry' },
                           { value: 'admin', label: 'Admin' },
+                          { value: 'counsellor', label: 'Counsellor' },
                         ]}
                         disabled={isUpdating}
                         className="w-full"

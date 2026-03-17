@@ -11,6 +11,8 @@ import {
   FaFileAlt,
   FaBookOpen,
   FaFlask,
+  FaBrain,
+  FaHandsHelping,
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +25,9 @@ type SectionId =
   | "college-shortlist"
   | "applications"
   | "exam-prep"
-  | "test-module";
+  | "test-module"
+  | "know-your-strengths"
+  | "admission-help";
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -83,10 +87,24 @@ const baseNavItems: {
   },
   {
     id: "test-module",
-    label: "Test Module",
+    label: "Mock Test",
     sub: "Practice tests",
     icon: FaFlask,
-    getValue: () => "0", // overridden with examsCount in navItems
+    getValue: () => "0",
+  },
+  {
+    id: "know-your-strengths",
+    label: "Know Your Strengths",
+    sub: "Discover yourself",
+    icon: FaBrain,
+    getValue: () => "",
+  },
+  {
+    id: "admission-help",
+    label: "Admission Help",
+    sub: "Expert guidance",
+    icon: FaHandsHelping,
+    getValue: () => "",
   },
 ];
 
@@ -131,7 +149,7 @@ export default function Sidebar({
     fetchExamsCount();
   }, []);
 
-  // Create navItems with dynamic values (Test Module shows exams/practice tests count)
+  // Create navItems with dynamic values (Mock Test shows exams/practice tests count)
   const navItems = baseNavItems.map(item => ({
     ...item,
     value:

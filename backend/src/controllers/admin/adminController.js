@@ -54,7 +54,7 @@ class AdminController {
 
       const AdminUserModule = require('../../models/admin/AdminUserModule');
       const Module = require('../../models/taxonomy/Module');
-      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin')
+      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin' || admin.type === 'counsellor')
         ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
       const moduleCodes = [];
       for (const mid of moduleIds) {
@@ -100,7 +100,7 @@ class AdminController {
       const AdminUserModule = require('../../models/admin/AdminUserModule');
       const Module = require('../../models/taxonomy/Module');
       const admin = await Admin.findById(req.admin.id);
-      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin')
+      const moduleIds = (admin.type === 'data_entry' || admin.type === 'admin' || admin.type === 'counsellor')
         ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
       const moduleCodes = [];
       for (const mid of moduleIds) {
@@ -235,7 +235,7 @@ class AdminController {
 
       const admin = await Admin.create(email, password, type, req.admin.id);
 
-      if ((type === 'data_entry' || type === 'admin') && Array.isArray(module_ids) && module_ids.length > 0) {
+      if ((type === 'data_entry' || type === 'admin' || type === 'counsellor') && Array.isArray(module_ids) && module_ids.length > 0) {
         await AdminUserModule.setModulesForAdminUser(admin.id, module_ids);
       }
 
@@ -244,7 +244,7 @@ class AdminController {
         console.error('Failed to send admin welcome email:', err);
       });
 
-      const moduleIds = (type === 'data_entry' || type === 'admin') ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
+      const moduleIds = (type === 'data_entry' || type === 'admin' || type === 'counsellor') ? await AdminUserModule.getModuleIdsByAdminUserId(admin.id) : [];
       res.status(201).json({
         success: true,
         message: 'Admin user created successfully',
@@ -330,7 +330,7 @@ class AdminController {
         updatedAdmin = await Admin.updateActiveStatus(id, is_active);
       }
 
-      if (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin') {
+      if (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin' || updatedAdmin.type === 'counsellor') {
         if (module_ids !== undefined && Array.isArray(module_ids)) {
           await AdminUserModule.setModulesForAdminUser(id, module_ids);
         }
@@ -338,7 +338,7 @@ class AdminController {
         await AdminUserModule.setModulesForAdminUser(id, []);
       }
 
-      const moduleIds = (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin')
+      const moduleIds = (updatedAdmin.type === 'data_entry' || updatedAdmin.type === 'admin' || updatedAdmin.type === 'counsellor')
         ? await AdminUserModule.getModuleIdsByAdminUserId(id) : [];
       res.json({
         success: true,

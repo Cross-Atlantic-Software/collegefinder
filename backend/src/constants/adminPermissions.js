@@ -15,6 +15,7 @@ const ADMIN_TYPES = {
   DATA_ENTRY: 'data_entry',
   ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
+  COUNSELLOR: 'counsellor',
 };
 
 /** Only super_admin can delete records */
@@ -32,6 +33,9 @@ const canCreateAdminUsers = (type) => type === ADMIN_TYPES.SUPER_ADMIN;
 /** Users module (site users, admin users, modules) - super_admin only */
 const canAccessUsersModule = (type) => type === ADMIN_TYPES.SUPER_ADMIN;
 
+/** Counsellor and super_admin can access the counsellor panel */
+const canAccessCounsellor = (type) => type === ADMIN_TYPES.COUNSELLOR || type === ADMIN_TYPES.SUPER_ADMIN;
+
 module.exports = {
   ADMIN_TYPES,
   canDelete,
@@ -39,4 +43,5 @@ module.exports = {
   canDownloadExcel,
   canCreateAdminUsers,
   canAccessUsersModule,
+  canAccessCounsellor,
 };

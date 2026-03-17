@@ -270,12 +270,45 @@ export default function ApplicationsPage() {
             <AdminSidebar />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <AdminHeader />
-                <main className="flex-1 p-6 overflow-auto">
+                <main className="flex-1 p-4 overflow-auto">
                     {/* Header */}
-                    <div className="mb-6 flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Exam Applications</h1>
-                            <p className="text-gray-600">Manage and automate exam registrations</p>
+                    <div className="mb-3">
+                        <h1 className="text-xl font-bold text-gray-900 mb-1">Exam Applications</h1>
+                        <p className="text-sm text-gray-600">Manage and automate exam registrations</p>
+                    </div>
+
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Controls: filters + refresh + New Application */}
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                                {(['all', 'pending', 'approved', 'running', 'completed', 'failed'] as const).map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setFilter(tab)}
+                                        className={`min-w-[72px] px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                                            filter === tab
+                                                ? 'bg-pink text-white'
+                                                : 'bg-white text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={fetchApplications}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
+                                title="Refresh"
+                            >
+                                <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            </button>
                         </div>
                         <button
                             onClick={() => {
@@ -283,92 +316,67 @@ export default function ApplicationsPage() {
                                 fetchAutomationExams();
                                 searchUsers('');
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
                         >
-                            <FiPlus className="w-4 h-4" />
+                            <FiPlus className="h-4 w-4" />
                             New Application
                         </button>
                     </div>
 
-                    {/* Filter Tabs */}
-                    <div className="flex gap-2 mb-6">
-                        {(['all', 'pending', 'approved', 'running', 'completed', 'failed'] as const).map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setFilter(tab)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filter === tab
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100'
-                                    }`}
-                            >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                            </button>
-                        ))}
-                        <button
-                            onClick={fetchApplications}
-                            className="ml-auto px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                            title="Refresh"
-                        >
-                            <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
-
-                    {/* Error Message */}
-                    {error && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
-                            {error}
-                        </div>
-                    )}
-
                     {/* Applications Table */}
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         {isLoading ? (
-                            <div className="p-12 text-center text-gray-500">
-                                <FiRefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-                                Loading applications...
-                            </div>
+                            <div className="p-4 text-center text-sm text-gray-500">Loading applications...</div>
                         ) : (
+                            <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b">
+                                <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exam</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">USER</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">EXAM</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">STATUS</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">APPLIED</th>
+                                        <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">ACTIONS</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {applications.map((app) => (
-                                        <tr key={app.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                        <FiUser className="w-5 h-5 text-blue-600" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{app.user_name || 'Unknown'}</p>
-                                                        <p className="text-sm text-gray-500">{app.user_email}</p>
-                                                    </div>
-                                                </div>
+                                <tbody className="divide-y divide-gray-200">
+                                    {applications.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                                                No applications found for this filter.
                                             </td>
-                                            <td className="px-6 py-4">
+                                        </tr>
+                                    ) : (
+                                        applications.map((app) => (
+                                        <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <FiFileText className="w-4 h-4 text-gray-400" />
-                                                    <span className="text-gray-900">{app.exam_name}</span>
+                                                    <div className="w-8 h-8 rounded-full bg-pink/10 flex items-center justify-center shrink-0">
+                                                        <FiUser className="w-4 h-4 text-pink" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium text-gray-900 text-sm truncate">{app.user_name || 'Unknown'}</p>
+                                                        <p className="text-xs text-gray-500 truncate">{app.user_email}</p>
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <FiFileText className="w-4 h-4 text-gray-400 shrink-0" />
+                                                    <span className="text-gray-900 text-sm">{app.exam_name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2">
                                                 {getStatusBadge(app.status)}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500 text-sm">
+                                            <td className="px-4 py-2 text-gray-600 text-xs">
                                                 {new Date(app.created_at).toLocaleDateString('en-IN', {
                                                     day: 'numeric',
                                                     month: 'short',
                                                     year: 'numeric',
                                                 })}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-4 py-2 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     {app.status === 'pending' && (
                                                         <button
@@ -434,14 +442,10 @@ export default function ApplicationsPage() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    ))
+                                    )}
                                 </tbody>
                             </table>
-                        )}
-
-                        {!isLoading && applications.length === 0 && (
-                            <div className="p-12 text-center text-gray-500">
-                                No applications found for this filter.
                             </div>
                         )}
                     </div>
@@ -450,15 +454,20 @@ export default function ApplicationsPage() {
 
             {/* Create Application Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">New Application</h2>
-
-                        <div className="space-y-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+                            <h2 className="text-lg font-bold">New Application</h2>
+                            <button
+                                onClick={() => setShowCreateModal(false)}
+                                className="text-white hover:text-gray-200 transition-colors"
+                            >
+                                <FiX className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Search User
-                                </label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Search User</label>
                                 <input
                                     type="text"
                                     placeholder="Search by name, email or phone..."
@@ -467,28 +476,26 @@ export default function ApplicationsPage() {
                                         setUserSearch(e.target.value);
                                         searchUsers(e.target.value);
                                     }}
-                                    className="w-full px-3 py-2 border rounded-lg text-gray-900"
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none text-gray-900"
                                 />
                                 {users.length > 0 && (
-                                    <div className="mt-2 border rounded-lg max-h-40 overflow-auto">
+                                    <div className="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-auto">
                                         {users.map(user => (
                                             <button
                                                 key={user.id}
+                                                type="button"
                                                 onClick={() => setNewAppUserId(user.id)}
-                                                className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${newAppUserId === user.id ? 'bg-blue-50' : ''}`}
+                                                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${newAppUserId === user.id ? 'bg-pink/10' : ''}`}
                                             >
-                                                <p className="font-medium">{user.name || user.email}</p>
-                                                <p className="text-sm text-gray-500">{user.email}</p>
+                                                <p className="font-medium text-gray-900">{user.name || user.email}</p>
+                                                <p className="text-xs text-gray-500">{user.email}</p>
                                             </button>
                                         ))}
                                     </div>
                                 )}
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Select Exam
-                                </label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Select Exam</label>
                                 <Dropdown<number>
                                     value={newAppExamId ?? null}
                                     onChange={(v) => setNewAppExamId(v)}
@@ -498,18 +505,17 @@ export default function ApplicationsPage() {
                                 />
                             </div>
                         </div>
-
-                        <div className="flex gap-3 mt-6">
+                        <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCreateApplication}
                                 disabled={isCreating || !newAppUserId || !newAppExamId}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isCreating ? 'Creating...' : 'Create'}
                             </button>

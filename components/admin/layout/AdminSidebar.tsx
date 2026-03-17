@@ -21,7 +21,9 @@ import {
   FiHelpCircle,
   FiPlay,
   FiSettings,
-  FiMessageSquare
+  FiMessageSquare,
+  FiActivity,
+  FiUserPlus,
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -125,8 +127,15 @@ const navItems: NavItem[] = [
   { label: 'Blogs', href: '/admin/blogs', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'blogs' },
   { label: 'Lectures', href: '/admin/lectures', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'lectures' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
-  { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
+  // { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
+  { label: 'Add Experts', href: '/admin/experts', icon: <FiUserPlus className="h-4 w-4" /> },
 ];
+
+const counsellorNavItem: NavItem = {
+  label: 'Counsellor Panel',
+  href: '/admin/counsellor',
+  icon: <FiActivity className="h-4 w-4" />,
+};
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -166,6 +175,7 @@ export default function AdminSidebar() {
     children: group.children.filter(canSeeItem),
   })).filter((g) => g.children.length > 0);
   const filteredNavItems = navItems.filter(canSeeItem);
+  const showCounsellor = admin?.type === 'counsellor' || admin?.type === 'super_admin';
 
   const handleLogout = () => {
     localStorage.removeItem('admin_authenticated');
@@ -257,6 +267,27 @@ export default function AdminSidebar() {
             </div>
           );
         })}
+
+        {/* Counsellor Panel - visible to counsellor and super_admin */}
+        {showCounsellor && (() => {
+          const isActive = pathname === counsellorNavItem.href || pathname.startsWith(counsellorNavItem.href + '/');
+          return (
+            <Link
+              href={counsellorNavItem.href}
+              className={`
+                flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm
+                ${isActive
+                  ? 'bg-pink text-white shadow-lg'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                }
+              `}
+            >
+              {counsellorNavItem.icon}
+              <span className="font-medium text-sm">{counsellorNavItem.label}</span>
+              {isActive && <FiChevronRight className="h-3.5 w-3.5 ml-auto" />}
+            </Link>
+          );
+        })()}
 
         {/* Regular Navigation Items */}
         {filteredNavItems.map((item) => {
