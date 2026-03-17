@@ -6,8 +6,10 @@ export interface College {
   id: number;
   college_name: string;
   college_location: string | null;
-  college_type: 'Central' | 'State' | 'Private' | 'Deemed' | null;
+  college_type: string | null;
   college_logo: string | null;
+  google_map_link: string | null;
+  website: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +18,7 @@ export interface CollegeDetails {
   id: number;
   college_id: number;
   college_description: string | null;
+  major_program_ids: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +30,20 @@ export interface CollegeProgram {
   program_name?: string;
   intake_capacity: number | null;
   duration_years?: number | null;
+  branch_course?: string | null;
+  program_description?: string | null;
+  duration_unit?: string | null;
+  key_dates_summary?: string | null;
+  fee_per_semester?: number | null;
+  total_fee?: number | null;
+  placement?: string | null;
+  scholarship?: string | null;
+  counselling_process?: string | null;
+  documents_required?: string | null;
+  recommended_exam_ids?: string | null;
+  contact_email?: string | null;
+  contact_number?: string | null;
+  brochure_url?: string | null;
   created_at?: string;
   previousCutoffs?: { exam_id?: number; exam_name?: string; branch?: string; category?: string; cutoff_rank?: number; year?: number }[];
   expectedCutoffs?: { exam_id?: number; exam_name?: string; branch?: string; category?: string; expected_rank?: number; year?: number }[];
@@ -97,19 +114,7 @@ export async function uploadCollegeLogo(file: File): Promise<ApiResponse<{ logoU
   return data;
 }
 
-export async function createCollege(data: {
-  college_name: string;
-  college_location?: string | null;
-  college_type?: 'Central' | 'State' | 'Private' | 'Deemed' | null;
-  college_logo?: string | null;
-  college_description?: string | null;
-  collegePrograms?: CollegeProgram[];
-  collegeKeyDates?: { event_name?: string; event_date?: string }[];
-  collegeDocumentsRequired?: { document_name?: string }[];
-  collegeCounsellingProcess?: { step_number?: number; description?: string }[];
-  recommendedExamIds?: number[];
-  recommendedExamNames?: string[];
-}): Promise<ApiResponse<{ college: College }>> {
+export async function createCollege(data: Record<string, unknown>): Promise<ApiResponse<{ college: College }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.COLLEGES, {
     method: 'POST',
     body: JSON.stringify(data),
@@ -118,19 +123,7 @@ export async function createCollege(data: {
 
 export async function updateCollege(
   id: number,
-  data: {
-    college_name?: string;
-    college_location?: string | null;
-    college_type?: 'Central' | 'State' | 'Private' | 'Deemed' | null;
-    college_logo?: string | null;
-    college_description?: string | null;
-    collegePrograms?: CollegeProgram[];
-    collegeKeyDates?: { event_name?: string; event_date?: string }[];
-    collegeDocumentsRequired?: { document_name?: string }[];
-    collegeCounsellingProcess?: { step_number?: number; description?: string }[];
-    recommendedExamIds?: number[];
-    recommendedExamNames?: string[];
-  }
+  data: Record<string, unknown>
 ): Promise<ApiResponse<{ college: College }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/${id}`, {
     method: 'PUT',

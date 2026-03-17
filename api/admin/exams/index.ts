@@ -12,6 +12,7 @@ export interface Exam {
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
   number_of_papers?: number;
+  website?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +35,7 @@ export interface ExamEligibilityCriteria {
   age_limit_min: number | null;
   age_limit_max: number | null;
   attempt_limit: number | null;
+  domicile?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +140,7 @@ export async function createExam(data: {
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
   number_of_papers?: number;
+  website?: string | null;
   examDates?: Partial<ExamDates>;
   eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
   examPattern?: Partial<ExamPattern>;
@@ -170,6 +173,7 @@ export async function updateExam(
     exam_type?: 'National' | 'State' | 'Institute' | null;
     conducting_authority?: string | null;
     number_of_papers?: number;
+    website?: string | null;
     examDates?: Partial<ExamDates>;
     eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
     examPattern?: Partial<ExamPattern>;

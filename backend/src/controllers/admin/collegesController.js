@@ -45,7 +45,21 @@ async function resolveCollegePrograms(collegeId, collegePrograms) {
       college_id: collegeId,
       program_id: programId,
       intake_capacity: prog.intake_capacity != null ? parseInt(prog.intake_capacity, 10) : null,
-      duration_years: prog.duration_years != null ? parseInt(prog.duration_years, 10) : null
+      duration_years: prog.duration_years != null ? parseInt(prog.duration_years, 10) : null,
+      branch_course: prog.branch_course || null,
+      program_description: prog.program_description || null,
+      duration_unit: prog.duration_unit || 'years',
+      key_dates_summary: prog.key_dates_summary || null,
+      fee_per_semester: prog.fee_per_semester != null ? parseFloat(prog.fee_per_semester) : null,
+      total_fee: prog.total_fee != null ? parseFloat(prog.total_fee) : null,
+      placement: prog.placement || null,
+      scholarship: prog.scholarship || null,
+      counselling_process: prog.counselling_process || null,
+      documents_required: prog.documents_required || null,
+      recommended_exam_ids: prog.recommended_exam_ids || null,
+      contact_email: prog.contact_email || null,
+      contact_number: prog.contact_number || null,
+      brochure_url: prog.brochure_url || null
     });
     if (cp && cp.id) {
       if (prog.previousCutoffs && Array.isArray(prog.previousCutoffs)) {
@@ -190,6 +204,9 @@ class CollegesController {
         college_type,
         college_logo,
         college_description,
+        google_map_link,
+        website,
+        major_program_ids,
         collegePrograms,
         collegeKeyDates,
         collegeDocumentsRequired,
@@ -211,11 +228,19 @@ class CollegesController {
         college_name: college_name.trim(),
         college_location: college_location ? college_location.trim() : null,
         college_type: college_type || null,
-        college_logo: college_logo || null
+        college_logo: college_logo || null,
+        google_map_link: google_map_link ? google_map_link.trim() : null,
+        website: website ? website.trim() : null
       });
 
-      if (college_description) {
-        await CollegeDetails.create({ college_id: college.id, college_description: college_description.trim() });
+      const majorProgramIdsStr = Array.isArray(major_program_ids) && major_program_ids.length > 0
+        ? major_program_ids.join(',') : (typeof major_program_ids === 'string' ? major_program_ids : null);
+      if (college_description || majorProgramIdsStr) {
+        await CollegeDetails.create({
+          college_id: college.id,
+          college_description: college_description ? college_description.trim() : null,
+          major_program_ids: majorProgramIdsStr
+        });
       }
 
       if (collegeKeyDates && Array.isArray(collegeKeyDates)) {
@@ -286,6 +311,9 @@ class CollegesController {
         college_type,
         college_logo,
         college_description,
+        google_map_link,
+        website,
+        major_program_ids,
         collegePrograms,
         collegeKeyDates,
         collegeDocumentsRequired,
@@ -309,11 +337,19 @@ class CollegesController {
         college_name: college_name !== undefined ? college_name.trim() : undefined,
         college_location: college_location !== undefined ? (college_location && college_location.trim()) || null : undefined,
         college_type: college_type !== undefined ? college_type || null : undefined,
-        college_logo: college_logo !== undefined ? college_logo : undefined
+        college_logo: college_logo !== undefined ? college_logo : undefined,
+        google_map_link: google_map_link !== undefined ? (google_map_link ? google_map_link.trim() : null) : undefined,
+        website: website !== undefined ? (website ? website.trim() : null) : undefined
       });
 
-      if (college_description !== undefined) {
-        await CollegeDetails.create({ college_id: collegeId, college_description: college_description ? college_description.trim() : null });
+      const majorProgramIdsStr = Array.isArray(major_program_ids) && major_program_ids.length > 0
+        ? major_program_ids.join(',') : (typeof major_program_ids === 'string' ? major_program_ids : null);
+      if (college_description !== undefined || major_program_ids !== undefined) {
+        await CollegeDetails.create({
+          college_id: collegeId,
+          college_description: college_description !== undefined ? (college_description ? college_description.trim() : null) : undefined,
+          major_program_ids: major_program_ids !== undefined ? majorProgramIdsStr : undefined
+        });
       }
 
       await CollegeKeyDates.deleteByCollegeId(collegeId);
@@ -408,19 +444,33 @@ class CollegesController {
       const headers = [
         'college_name',
         'college_location',
+        'google_map_link',
         'college_type',
+        'major_program_names',
+        'website',
         'logo_filename',
         'college_description',
-        'key_dates',
-        'documents_required',
-        'counselling_process',
-        'recommended_exam_names',
         'program_names',
-        'intake_capacities',
+        'branch_courses',
+        'program_descriptions',
+        'program_duration_units',
         'program_durations',
-        'seat_matrix',
+        'intake_capacities',
         'previous_year_cutoff',
-        'expected_cutoff'
+        'expected_cutoff',
+        'key_dates_summaries',
+        'fee_per_semesters',
+        'total_fees',
+        'counselling_processes',
+        'documents_requireds',
+        'placements',
+        'scholarships',
+        'recommended_exam_names',
+        'contact_emails',
+        'contact_numbers',
+        'brochure_urls',
+        'seat_matrix',
+        'key_dates',
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
@@ -428,36 +478,64 @@ class CollegesController {
         [
           'IIT Delhi',
           'New Delhi',
-          'Central',
+          'https://maps.google.com/?q=IIT+Delhi',
+          'Central,State',
+          'B.Tech, M.Tech',
+          'https://www.iitd.ac.in',
           'iit_delhi.png',
           'Premier engineering institute.',
-          'Admission Start|2025-01-01, Last Date|2025-02-28',
-          'Aadhar, Marksheet, Photo',
-          'JOSAA counselling',
-          'JEE Advanced, JEE Main',
-          'B.Tech, M.Tech',
-          '120, 60',
-          '4, 2',
-          'CSE-general:50, CSE-OBC:30',
+          'B.Tech; M.Tech',
+          'Computer Science; Electronics',
+          'Undergraduate program; Postgraduate program',
+          'years; years',
+          '4; 2',
+          '120; 60',
           'JEE Main|CSE-GEN:1000,CSE-OBC:1500|2024; JEE Main|CSE-GEN:900|2025',
-          'JEE Main|CSE-GEN:2000|2024; JEE Main|CSE-GEN:1800|2025'
+          'JEE Main|CSE-GEN:2000|2024; JEE Main|CSE-GEN:1800|2025',
+          'Admissions start Jan 2025; Admissions start Feb 2025',
+          '150000; 200000',
+          '600000; 400000',
+          'JOSAA counselling; JOSAA counselling',
+          'Aadhar, Marksheet, Photo; Aadhar, Degree',
+          'Average 12 LPA; Average 10 LPA',
+          'Merit-based scholarship available; Research fellowship',
+          'JEE Advanced, JEE Main; GATE',
+          'admissions@iitd.ac.in; pg@iitd.ac.in',
+          '011-12345678; 011-87654321',
+          'https://iitd.ac.in/btech.pdf; https://iitd.ac.in/mtech.pdf',
+          'CSE-general:50, CSE-OBC:30',
+          'Admission Start|2025-01-01, Last Date|2025-02-28',
         ],
         [
           'State College of Engineering',
           'Mumbai',
+          '',
           'State',
+          'B.Tech',
+          'https://www.sce.ac.in',
           'state_eng.png',
           'State level engineering college.',
-          'Application Start|2025-02-01',
-          'Marksheet',
-          'JOSAA counselling',
-          'JEE Main',
           'B.Tech',
-          '100',
+          'Computer Science',
+          'Undergraduate engineering program',
+          'years',
           '4',
-          'CSE-general:80, CSE-OBC:20',
+          '100',
           'JEE Main|CSE-GEN:2000|2024',
-          'JEE Main|CSE-GEN:1800|2025'
+          'JEE Main|CSE-GEN:1800|2025',
+          'Applications open Feb 2025',
+          '80000',
+          '320000',
+          'State counselling',
+          'Marksheet',
+          'Average 6 LPA',
+          'SC/ST fee waiver',
+          'JEE Main',
+          'admissions@sce.ac.in',
+          '022-12345678',
+          'https://sce.ac.in/brochure.pdf',
+          'CSE-general:80, CSE-OBC:20',
+          'Application Start|2025-02-01',
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Colleges');
@@ -476,9 +554,14 @@ class CollegesController {
     try {
       const colleges = await College.findAll();
       const headers = [
-        'college_name', 'college_location', 'college_type', 'logo_filename', 'college_description',
-        'key_dates', 'documents_required', 'counselling_process', 'recommended_exam_names', 'program_names', 'intake_capacities',
-        'program_durations', 'seat_matrix', 'previous_year_cutoff', 'expected_cutoff'
+        'college_name', 'college_location', 'google_map_link', 'college_type', 'major_program_names', 'website',
+        'logo_filename', 'college_description',
+        'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
+        'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
+        'key_dates_summaries', 'fee_per_semesters', 'total_fees',
+        'counselling_processes', 'documents_requireds', 'placements', 'scholarships', 'recommended_exam_names',
+        'contact_emails', 'contact_numbers', 'brochure_urls',
+        'seat_matrix', 'key_dates'
       ];
       const rows = [headers];
       for (const c of colleges) {
@@ -505,6 +588,20 @@ class CollegesController {
         const programNamesArr = [];
         const intakeArr = [];
         const durationArr = [];
+        const branchCoursesArr = [];
+        const programDescsArr = [];
+        const durationUnitsArr = [];
+        const keyDatesSummariesArr = [];
+        const feePerSemArr = [];
+        const totalFeeArr = [];
+        const counsellingArr = [];
+        const documentsArr = [];
+        const placementsArr = [];
+        const scholarshipsArr = [];
+        const progRecExamsArr = [];
+        const contactEmailsArr = [];
+        const contactNumbersArr = [];
+        const brochureUrlsArr = [];
         const seatMatrixBlocks = [];
         const previousCutoffBlocks = [];
         const expectedCutoffBlocks = [];
@@ -513,6 +610,30 @@ class CollegesController {
           programNamesArr.push(prog && prog.name ? prog.name : String(p.program_id));
           intakeArr.push(p.intake_capacity != null ? String(p.intake_capacity) : '');
           durationArr.push(p.duration_years != null ? String(p.duration_years) : '');
+          branchCoursesArr.push(p.branch_course || '');
+          programDescsArr.push(p.program_description || '');
+          durationUnitsArr.push(p.duration_unit || 'years');
+          keyDatesSummariesArr.push(p.key_dates_summary || '');
+          feePerSemArr.push(p.fee_per_semester != null ? String(p.fee_per_semester) : '');
+          totalFeeArr.push(p.total_fee != null ? String(p.total_fee) : '');
+          counsellingArr.push(p.counselling_process || '');
+          documentsArr.push(p.documents_required || '');
+          placementsArr.push(p.placement || '');
+          scholarshipsArr.push(p.scholarship || '');
+          contactEmailsArr.push(p.contact_email || '');
+          contactNumbersArr.push(p.contact_number || '');
+          brochureUrlsArr.push(p.brochure_url || '');
+          if (p.recommended_exam_ids) {
+            const eids = p.recommended_exam_ids.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+            const enames = [];
+            for (const eid of eids) {
+              const ex = await Exam.findById(eid);
+              if (ex && ex.name) enames.push(ex.name);
+            }
+            progRecExamsArr.push(enames.join(', '));
+          } else {
+            progRecExamsArr.push('');
+          }
           const [prevCutoffs, expCutoffs, seatMatrix] = await Promise.all([
             CollegePreviousCutoff.findByCollegeProgramId(p.id),
             CollegeExpectedCutoff.findByCollegeProgramId(p.id),
@@ -563,22 +684,47 @@ class CollegesController {
         const logoFilename = (c.college_logo && typeof c.college_logo === 'string' && c.college_logo.split('/').pop()) ? c.college_logo.split('/').pop() : '';
         const collegeDetails = await CollegeDetails.findByCollegeId(c.id);
         const desc = collegeDetails && collegeDetails.college_description ? collegeDetails.college_description : '';
+        const majorIds = collegeDetails && collegeDetails.major_program_ids ? collegeDetails.major_program_ids : '';
+        let majorProgramNamesStr = '';
+        if (majorIds) {
+          const mids = majorIds.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+          const mnames = [];
+          for (const mid of mids) {
+            const mp = await Program.findById(mid);
+            if (mp && mp.name) mnames.push(mp.name);
+          }
+          majorProgramNamesStr = mnames.join(', ');
+        }
         rows.push([
           c.college_name || '',
           c.college_location || '',
+          c.google_map_link || '',
           c.college_type || '',
+          majorProgramNamesStr,
+          c.website || '',
           logoFilename,
           desc,
+          programNamesArr.join('; '),
+          branchCoursesArr.join('; '),
+          programDescsArr.join('; '),
+          durationUnitsArr.join('; '),
+          durationArr.join('; '),
+          intakeArr.join('; '),
+          previousCutoffBlocks.join('; '),
+          expectedCutoffBlocks.join('; '),
+          keyDatesSummariesArr.join('; '),
+          feePerSemArr.join('; '),
+          totalFeeArr.join('; '),
+          counsellingArr.join('; '),
+          documentsArr.join('; '),
+          placementsArr.join('; '),
+          scholarshipsArr.join('; '),
+          progRecExamsArr.join('; '),
+          contactEmailsArr.join('; '),
+          contactNumbersArr.join('; '),
+          brochureUrlsArr.join('; '),
+          seatMatrixBlocks.join('; '),
           keyDatesStr,
-          docsStr,
-          counsellingStr,
-          recNamesStr,
-          programNamesArr.join(';'),
-          intakeArr.join(','),
-          durationArr.join(','),
-          seatMatrixBlocks.join(';'),
-          previousCutoffBlocks.join(';'),
-          expectedCutoffBlocks.join(';')
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -683,9 +829,13 @@ class CollegesController {
 
         const location = (row.college_location ?? row.college_Location ?? '').toString().trim() || null;
         const typeRaw = (row.college_type ?? row.college_Type ?? '').toString().trim();
-        const collegeType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
+        const typeParts = typeRaw.split(',').map(s => s.trim()).filter(Boolean);
+        const collegeType = typeParts.length > 0 ? typeParts.filter(t => validTypes.find(v => v.toLowerCase() === t.toLowerCase())).map(t => validTypes.find(v => v.toLowerCase() === t.toLowerCase())).join(',') : null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
+        const googleMapLink = (row.google_map_link ?? '').toString().trim() || null;
+        const websiteVal = (row.website ?? '').toString().trim() || null;
+        const majorProgramNamesRaw = (row.major_program_names ?? '').toString().trim();
 
         const keyDatesRaw = (row.key_dates ?? row.key_Dates ?? '').toString().trim();
         const documentsRaw = (row.documents_required ?? row.documents_Required ?? '').toString().trim();
@@ -699,6 +849,20 @@ class CollegesController {
         const seatMatrixRaw = (row.seat_matrix ?? row.seat_Matrix ?? '').toString().trim();
         const previousYearCutoffRaw = (row.previous_year_cutoff ?? row.previous_year_Cutoff ?? '').toString().trim();
         const expectedCutoffRaw = (row.expected_cutoff ?? row.expected_Cutoff ?? '').toString().trim();
+
+        const branchCoursesRaw = (row.branch_courses ?? '').toString().trim();
+        const programDescriptionsRaw = (row.program_descriptions ?? '').toString().trim();
+        const programDurationUnitsRaw = (row.program_duration_units ?? '').toString().trim();
+        const keyDatesSummariesRaw = (row.key_dates_summaries ?? '').toString().trim();
+        const feePerSemestersRaw = (row.fee_per_semesters ?? '').toString().trim();
+        const totalFeesRaw = (row.total_fees ?? '').toString().trim();
+        const counsellingProcessesRaw = (row.counselling_processes ?? '').toString().trim();
+        const documentsRequiredsRaw = (row.documents_requireds ?? '').toString().trim();
+        const placementsRaw = (row.placements ?? '').toString().trim();
+        const scholarshipsRaw = (row.scholarships ?? '').toString().trim();
+        const contactEmailsRaw = (row.contact_emails ?? '').toString().trim();
+        const contactNumbersRaw = (row.contact_numbers ?? '').toString().trim();
+        const brochureUrlsRaw = (row.brochure_urls ?? '').toString().trim();
 
         let collegeLogoUrl = null;
         if (logoFilename) {
@@ -719,10 +883,22 @@ class CollegesController {
             college_location: location,
             college_type: collegeType,
             college_logo: collegeLogoUrl,
-            logo_filename: logoFilename || null
+            logo_filename: logoFilename || null,
+            google_map_link: googleMapLink,
+            website: websiteVal
           });
-          if (description) {
-            await CollegeDetails.create({ college_id: college.id, college_description: description });
+          let majorProgramIdsStr = null;
+          if (majorProgramNamesRaw) {
+            const mpNames = splitList(majorProgramNamesRaw);
+            const mpIds = [];
+            for (const mpn of mpNames) {
+              const mp = await Program.findByName(mpn.trim());
+              if (mp) mpIds.push(mp.id);
+            }
+            if (mpIds.length > 0) majorProgramIdsStr = mpIds.join(',');
+          }
+          if (description || majorProgramIdsStr) {
+            await CollegeDetails.create({ college_id: college.id, college_description: description, major_program_ids: majorProgramIdsStr });
           }
           if (keyDatesRaw) {
             const parts = splitList(keyDatesRaw);
@@ -774,11 +950,26 @@ class CollegesController {
 
           const programNames = programNamesRaw ? splitList(programNamesRaw) : [];
           const programIds = programIdsRaw ? programIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n)) : [];
-          const intakeCapacities = intakeCapacitiesRaw ? intakeCapacitiesRaw.split(',').map((s) => s.trim()) : [];
-          const programDurations = programDurationsRaw ? programDurationsRaw.split(',').map((s) => s.trim()) : [];
+          const intakeCapacities = intakeCapacitiesRaw ? splitList(intakeCapacitiesRaw) : [];
+          const programDurations = programDurationsRaw ? splitList(programDurationsRaw) : [];
           const seatMatrixBlocks = seatMatrixRaw ? seatMatrixRaw.split(';').map((s) => s.trim()) : [];
           const previousCutoffBlocks = previousYearCutoffRaw ? previousYearCutoffRaw.split(';').map((s) => s.trim()) : [];
           const expectedCutoffBlocks = expectedCutoffRaw ? expectedCutoffRaw.split(';').map((s) => s.trim()) : [];
+
+          const branchCourses = branchCoursesRaw ? splitList(branchCoursesRaw) : [];
+          const programDescriptions = programDescriptionsRaw ? splitList(programDescriptionsRaw) : [];
+          const programDurationUnits = programDurationUnitsRaw ? splitList(programDurationUnitsRaw) : [];
+          const keyDatesSummaries = keyDatesSummariesRaw ? splitList(keyDatesSummariesRaw) : [];
+          const feePerSemesters = feePerSemestersRaw ? splitList(feePerSemestersRaw) : [];
+          const totalFees = totalFeesRaw ? splitList(totalFeesRaw) : [];
+          const counsellingProcesses = counsellingProcessesRaw ? splitList(counsellingProcessesRaw) : [];
+          const documentsRequireds = documentsRequiredsRaw ? splitList(documentsRequiredsRaw) : [];
+          const placements = placementsRaw ? splitList(placementsRaw) : [];
+          const scholarships = scholarshipsRaw ? splitList(scholarshipsRaw) : [];
+          const contactEmails = contactEmailsRaw ? splitList(contactEmailsRaw) : [];
+          const contactNumbers = contactNumbersRaw ? splitList(contactNumbersRaw) : [];
+          const brochureUrls = brochureUrlsRaw ? splitList(brochureUrlsRaw) : [];
+          const recExamNamesByProg = recommendedExamNamesRaw ? splitList(recommendedExamNamesRaw) : [];
 
           const numPrograms = Math.max(programNames.length, programIds.length);
           for (let idx = 0; idx < numPrograms; idx++) {
@@ -792,11 +983,36 @@ class CollegesController {
             const intake_capacity = intakeVal ? parseInt(intakeVal, 10) : null;
             const durVal = programDurations[idx];
             const duration_years = durVal ? parseInt(durVal, 10) : null;
+            let progRecommendedExamIds = null;
+            const progRecExamNamesStr = recExamNamesByProg[idx];
+            if (progRecExamNamesStr) {
+              const enames = progRecExamNamesStr.split(',').map(s => s.trim()).filter(Boolean);
+              const eids = [];
+              for (const en of enames) {
+                const ex = await Exam.findByName(en);
+                if (ex) eids.push(ex.id);
+              }
+              if (eids.length > 0) progRecommendedExamIds = eids.join(',');
+            }
             const cp = await CollegeProgram.create({
               college_id: college.id,
               program_id: programId,
               intake_capacity: isNaN(intake_capacity) ? null : intake_capacity,
-              duration_years: isNaN(duration_years) ? null : duration_years
+              duration_years: isNaN(duration_years) ? null : duration_years,
+              branch_course: branchCourses[idx] || null,
+              program_description: programDescriptions[idx] || null,
+              duration_unit: programDurationUnits[idx] || 'years',
+              key_dates_summary: keyDatesSummaries[idx] || null,
+              fee_per_semester: feePerSemesters[idx] ? parseFloat(feePerSemesters[idx]) : null,
+              total_fee: totalFees[idx] ? parseFloat(totalFees[idx]) : null,
+              placement: placements[idx] || null,
+              scholarship: scholarships[idx] || null,
+              counselling_process: counsellingProcesses[idx] || null,
+              documents_required: documentsRequireds[idx] || null,
+              recommended_exam_ids: progRecommendedExamIds,
+              contact_email: contactEmails[idx] || null,
+              contact_number: contactNumbers[idx] || null,
+              brochure_url: brochureUrls[idx] || null
             });
             if (cp && cp.id) {
               const seatEntries = seatMatrixBlocks[idx] ? seatMatrixBlocks[idx].split(',').map((s) => s.trim()) : [];
