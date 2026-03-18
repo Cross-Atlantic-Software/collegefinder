@@ -21,6 +21,7 @@ import {
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
+import { getAllBranches, type Branch } from '@/api/admin/branches';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile, FiImage } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
@@ -69,10 +70,12 @@ export default function CollegesPage() {
     major_program_ids: [] as number[],
     website: '',
     college_logo: '',
+    logo_filename: '',
     college_description: '',
     collegePrograms: [{ ...emptyProgram }] as (typeof emptyProgram)[],
   });
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [recommendedExamOptions, setRecommendedExamOptions] = useState<{ value: string; label: string }[]>([]);
   const [, setLogoFile] = useState<File | null>(null);
@@ -117,8 +120,9 @@ export default function CollegesPage() {
     fetchData();
     (async () => {
       try {
-        const [progRes, examRes] = await Promise.all([getAllPrograms(), getAllExamsAdmin()]);
+        const [progRes, branchesRes, examRes] = await Promise.all([getAllPrograms(), getAllBranches(), getAllExamsAdmin()]);
         if (progRes.success && progRes.data?.programs) setPrograms(progRes.data.programs);
+        if (branchesRes.success && branchesRes.data?.branches) setBranches(branchesRes.data.branches.filter((b: Branch) => b.status));
         if (examRes.success && examRes.data?.exams) {
           setExams(examRes.data.exams);
           setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.name || String(e.id) })));
@@ -206,6 +210,7 @@ export default function CollegesPage() {
         major_program_ids: formData.major_program_ids,
         website: formData.website.trim() || null,
         college_logo: formData.college_logo || null,
+        logo_filename: formData.logo_filename.trim() || null,
         college_description: formData.college_description.trim() || null,
         collegePrograms: formData.collegePrograms.filter((p) => p.program_id).map((p) => ({
           program_id: p.program_id,
@@ -304,6 +309,7 @@ export default function CollegesPage() {
           major_program_ids: majorIds,
           website: d.college.website ?? '',
           college_logo: d.college.college_logo ?? '',
+          logo_filename: d.college.logo_filename ?? '',
           college_description: d.collegeDetails?.college_description ?? '',
           collegePrograms: (d.collegePrograms || []).length > 0 ? (d.collegePrograms || []).map((p) => ({
             program_id: p.program_id,
@@ -376,6 +382,7 @@ export default function CollegesPage() {
       major_program_ids: [],
       website: '',
       college_logo: '',
+      logo_filename: '',
       college_description: '',
       collegePrograms: [{ ...emptyProgram }],
     });
@@ -726,6 +733,17 @@ export default function CollegesPage() {
                 {uploading && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Logo file name</label>
+                <input
+                  type="text"
+                  value={formData.logo_filename}
+                  onChange={(e) => setFormData({ ...formData, logo_filename: e.target.value })}
+                  placeholder="e.g. iit_delhi.png"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Used to match files when using &quot;Upload missing logos&quot; (ZIP file names must match this).</p>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={formData.college_description} onChange={(e) => setFormData({ ...formData, college_description: e.target.value })} placeholder="Brief description..." rows={3} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none" />
               </div>
@@ -749,7 +767,13 @@ export default function CollegesPage() {
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-0.5">Branch / Course</label>
-                      <input type="text" placeholder="e.g. Computer Science" value={p.branch_course} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], branch_course: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      <Dropdown<string>
+                        value={p.branch_course || null}
+                        onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], branch_course: v ?? '' }; setFormData({ ...formData, collegePrograms: next }); }}
+                        options={[{ value: '', label: 'Select branch/course' }, ...branches.map((b) => ({ value: b.name, label: b.name }))]}
+                        placeholder="Select branch/course"
+                        className="w-full"
+                      />
                     </div>
                   </div>
                   <div>
@@ -922,6 +946,7 @@ export default function CollegesPage() {
                   <p className="text-sm text-gray-600"><strong>Type:</strong> {viewingData.college_type || '-'}</p>
                   {viewingData.google_map_link && <p className="text-sm text-gray-600"><strong>Map:</strong> <a href={viewingData.google_map_link} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">View on Google Maps</a></p>}
                   {viewingData.website && <p className="text-sm text-gray-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">{viewingData.website}</a></p>}
+                  {viewingData.logo_filename && <p className="text-sm text-gray-600"><strong>Logo file name:</strong> <code className="px-1 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-xs">{viewingData.logo_filename}</code></p>}
                 </div>
               </div>
               <button type="button" onClick={() => setViewingData(null)} className="text-gray-500 hover:text-gray-700 flex-shrink-0">

@@ -125,11 +125,14 @@ class ExamsTaxonomyController {
       }
 
       // Get all related data
-      const examDates = await ExamDates.findByExamId(parseInt(id));
-      const eligibilityCriteria = await ExamEligibilityCriteria.findByExamId(parseInt(id));
-      const examPattern = await ExamPattern.findByExamId(parseInt(id));
-      const examCutoff = await ExamCutoff.findByExamId(parseInt(id));
-      const careerGoalIds = await ExamCareerGoal.getCareerGoalIds(parseInt(id));
+      const [examDates, eligibilityCriteria, examPattern, examCutoff, careerGoalIds, programIds] = await Promise.all([
+        ExamDates.findByExamId(parseInt(id)),
+        ExamEligibilityCriteria.findByExamId(parseInt(id)),
+        ExamPattern.findByExamId(parseInt(id)),
+        ExamCutoff.findByExamId(parseInt(id)),
+        ExamCareerGoal.getCareerGoalIds(parseInt(id)),
+        ExamProgram.getProgramIdsByExamId(parseInt(id))
+      ]);
 
       res.json({
         success: true,
@@ -139,7 +142,8 @@ class ExamsTaxonomyController {
           eligibilityCriteria: eligibilityCriteria || null,
           examPattern: examPattern || null,
           examCutoff: examCutoff || null,
-          careerGoalIds: careerGoalIds || []
+          careerGoalIds: careerGoalIds || [],
+          programIds: programIds || []
         }
       });
     } catch (error) {
@@ -241,13 +245,15 @@ class ExamsTaxonomyController {
         exam_logo, 
         exam_type, 
         conducting_authority,
+        format,
         number_of_papers,
         website,
         examDates,
         eligibilityCriteria,
         examPattern,
         examCutoff,
-        careerGoalIds
+        careerGoalIds,
+        programIds
       } = req.body;
 
       // Validate required fields
@@ -283,6 +289,7 @@ class ExamsTaxonomyController {
         exam_logo,
         exam_type,
         conducting_authority,
+        format,
         number_of_papers,
         website
       });
@@ -316,6 +323,10 @@ class ExamsTaxonomyController {
 
       if (careerGoalIds && Array.isArray(careerGoalIds) && careerGoalIds.length > 0) {
         createdCareerGoals = await ExamCareerGoal.setCareerGoalsForExam(exam.id, careerGoalIds);
+      }
+
+      if (programIds && Array.isArray(programIds) && programIds.length > 0) {
+        await ExamProgram.setProgramsForExam(exam.id, programIds);
       }
 
       res.status(201).json({
@@ -353,13 +364,15 @@ class ExamsTaxonomyController {
         exam_logo,
         exam_type,
         conducting_authority,
+        format,
         number_of_papers,
         website,
         examDates,
         eligibilityCriteria,
         examPattern,
         examCutoff,
-        careerGoalIds
+        careerGoalIds,
+        programIds
       } = req.body;
 
       const existing = await Exam.findById(parseInt(id));
@@ -404,6 +417,7 @@ class ExamsTaxonomyController {
         exam_logo,
         exam_type,
         conducting_authority,
+        format,
         number_of_papers,
         website
       });
@@ -433,6 +447,10 @@ class ExamsTaxonomyController {
           cutoffPayload.category_wise_cutoff = JSON.stringify(cutoffPayload.category_wise_cutoff);
         }
         updatedCutoff = await ExamCutoff.upsert({ exam_id: parseInt(id), ...cutoffPayload });
+      }
+
+      if (programIds !== undefined) {
+        await ExamProgram.setProgramsForExam(parseInt(id), Array.isArray(programIds) ? programIds : []);
       }
 
       if (careerGoalIds !== undefined) {
@@ -807,6 +825,7 @@ class ExamsTaxonomyController {
         'exam_type',
         'conducting_authority',
         'format',
+        'number_of_papers',
         'logo_filename',
         // Exam Details
         'application_start_date',
@@ -846,6 +865,7 @@ class ExamsTaxonomyController {
           'National',
           'NTA',
           jeeMainFormat,
+          '1',
           'jee_main.png',
           // Exam Details
           '2025-12-01',
@@ -854,7 +874,7 @@ class ExamsTaxonomyController {
           'Online',
           'All India',
           // Criteria
-          'PCM, PCB',
+          'Science (PCM), Science (PCB)',
           'Physics, Chemistry, Mathematics',
           '17',
           '25',
@@ -882,6 +902,7 @@ class ExamsTaxonomyController {
           'National',
           'NTA',
           neetFormat,
+          '1',
           'neet.png',
           // Exam Details
           '2025-11-01',
@@ -890,7 +911,7 @@ class ExamsTaxonomyController {
           'Offline',
           'All India',
           // Criteria
-          'PCB',
+          'Science (PCB)',
           'Physics, Chemistry, Biology',
           '17',
           '25',
@@ -945,7 +966,7 @@ class ExamsTaxonomyController {
 
       const headers = [
         // Basic Info
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'format', 'logo_filename', 'exam_logo',
+        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'format', 'number_of_papers', 'logo_filename', 'exam_logo',
         // Exam Details
         'application_start_date', 'application_close_date', 'exam_date', 'mode', 'domicile',
         // Criteria
@@ -979,6 +1000,7 @@ class ExamsTaxonomyController {
         const programNames = (Array.isArray(programIds) ? programIds : []).map((id) => programMap.get(id) ?? id).filter(Boolean).join(', ');
         const domicileStr = (eligibility && eligibility.domicile) ? String(eligibility.domicile).trim() : '';
         const formatStr = exam.format && typeof exam.format === 'object' ? JSON.stringify(exam.format) : (exam.format ? String(exam.format) : '');
+        const numPapers = exam.number_of_papers != null ? String(exam.number_of_papers) : '1';
         rows.push([
           // Basic Info
           exam.name || '',
@@ -987,6 +1009,7 @@ class ExamsTaxonomyController {
           exam.exam_type || '',
           exam.conducting_authority || '',
           formatStr,
+          numPapers,
           logoFilename,
           examLogoUrl,
           // Exam Details
@@ -1345,6 +1368,11 @@ class ExamsTaxonomyController {
         const websiteRaw = getCell(row, 'website', 'Website') || getCellByKeyword(row, 'website');
         const websiteVal = websiteRaw ? websiteRaw.trim() : null;
 
+        const numPapersRaw = getCell(row, 'number_of_papers', 'Number_Of_Papers') || row.number_of_papers || row.Number_Of_Papers || '';
+        const numberOfPapers = (numPapersRaw !== '' && !isNaN(parseInt(String(numPapersRaw), 10)))
+          ? Math.max(1, Math.min(10, parseInt(String(numPapersRaw), 10)))
+          : 1;
+
         let examLogoUrl = null;
         if (logoFilename) {
           const logoFile = logoMap.get(logoFilename.toLowerCase());
@@ -1373,6 +1401,7 @@ class ExamsTaxonomyController {
             conducting_authority: conductingAuthority,
             logo_file_name: logoFilename || null,
             format: formatObj,
+            number_of_papers: numberOfPapers,
             website: websiteVal
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code });

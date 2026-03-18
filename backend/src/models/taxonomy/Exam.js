@@ -62,7 +62,7 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website } = data;
     
     const updates = [];
     const values = [];
@@ -95,6 +95,11 @@ class Exam {
     if (logo_file_name !== undefined) {
       updates.push(`logo_file_name = $${paramCount++}`);
       values.push(logo_file_name);
+    }
+    if (format !== undefined) {
+      const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
+      updates.push(`format = $${paramCount++}::jsonb`);
+      values.push(formatJson || '{}');
     }
     if (number_of_papers !== undefined) {
       const papers = Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1));

@@ -8,6 +8,7 @@ export interface College {
   college_location: string | null;
   college_type: string | null;
   college_logo: string | null;
+  logo_filename: string | null;
   google_map_link: string | null;
   website: string | null;
   created_at: string;
