@@ -25,7 +25,11 @@ export default function InfoSection() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="landing-section bg-white">
+        <section
+            id="problem"
+            ref={sectionRef}
+            className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
+        >
             <div className="appContainer">
                 <div className="landing-grid-gap grid items-center lg:grid-cols-[1fr_0.95fr]">
                     <div>
@@ -35,9 +39,9 @@ export default function InfoSection() {
 
                         <h2 className="mt-5 text-4xl font-extrabold leading-tight text-black md:text-5xl">
                             <span className="text-black/45">
-                                1k+ exams, 4k+ colleges
+                                1k+ exams, 40k+ colleges
                                 <br />
-                                and 17 million students.
+                                and 17 Mn students.
                             </span>
                             <br />
                             You&apos;re expected to

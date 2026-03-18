@@ -32,9 +32,13 @@ export default function Hero() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="relative isolate min-h-[100svh] overflow-hidden">
+        <section
+            id="home"
+            ref={sectionRef}
+            className="relative isolate min-h-[100svh] overflow-hidden scroll-mt-20 md:scroll-mt-24"
+        >
             <Image
-                src="/landing-page/hero.png"
+                src="/landing-page/hero-1.png"
                 alt="Admission journey background"
                 fill
                 priority
@@ -42,9 +46,9 @@ export default function Hero() {
             />
             <div className="absolute inset-0 bg-black/50" />
 
-            <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-16 md:py-20 lg:pb-24">
-                <div className="max-w-3xl">
-                    <h1 className="text-4xl font-extrabold leading-tight text-white md:text-6xl">
+            <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
+                <div className="max-w-3xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)] md:pb-0">
+                    <h1 className="text-[2rem] font-extrabold leading-[1.12] text-white sm:text-4xl md:text-6xl">
                         Your Entire Admission Journey
                         <span className="mt-1 block">
                             <RoughNotation
@@ -61,20 +65,20 @@ export default function Hero() {
                         </span>
                     </h1>
 
-                    <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/90 md:text-xl">
+                    <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/90 sm:mt-6 sm:text-base md:text-xl">
                         The exam you missed. The deadline you forgot. The college you never knew
                         existed. It happens to thousands of students every year. It doesn&apos;t have
                         to happen to you.
                     </p>
 
-                    <div className="mt-8 flex flex-wrap items-center gap-5 md:gap-8">
+                    <div className="mt-7 grid w-full gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-5 md:gap-8">
                         {painPoints.map(({ label, Icon }) => (
                             <div
                                 key={label}
-                                className="inline-flex items-center gap-2 text-sm font-medium text-white"
+                                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-white"
                             >
-                                <span className="inline-flex h-9 w-9 items-center justify-center text-white">
-                                    <Icon className="text-[15px]" />
+                                <span className="inline-flex h-8 w-8 items-center justify-center text-white sm:h-9 sm:w-9">
+                                    <Icon className="text-[14px] sm:text-[15px]" />
                                 </span>
                                 <span>{label}</span>
                             </div>
@@ -83,7 +87,7 @@ export default function Hero() {
 
                     <Link
                         href="/login"
-                        className="landing-cta group mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+                        className="landing-cta group mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
                     >
                         Start your Journey
                         <FiArrowUpRight className="landing-icon-slide text-base" />
