@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import {
-    FiChevronDown,
     FiMenu,
     FiX,
 } from "react-icons/fi";
@@ -12,12 +11,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 
 const navLinks = [
-    { label: "Home", href: "/" },
-    { label: "Unitracko", href: "#" },
-    { label: "Our Process", href: "#", hasDropdown: true },
-    { label: "Our Edge", href: "#", hasDropdown: true },
-    { label: "Resources", href: "#" },
+    { label: "Home", href: "/#home" },
+    { label: "The Problem", href: "/#problem" },
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "FAQ", href: "/#faq" },
 ];
+
+const HEADER_SCROLL_OFFSET_PX = 12;
+const ANCHOR_SCROLL_DURATION_MS = 700;
+
+const easeInOutCubic = (value: number) => {
+    return value < 0.5
+        ? 4 * value * value * value
+        : 1 - Math.pow(-2 * value + 2, 3) / 2;
+};
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -67,9 +75,89 @@ export default function Header() {
         ? "bg-black text-white hover:bg-black/85"
         : "bg-white text-black hover:bg-white/90";
 
+    const smoothScrollToY = (targetY: number) => {
+        const reducedMotionEnabled = window
+            .matchMedia("(prefers-reduced-motion: reduce)")
+            .matches;
+        const clampedTargetY = Math.max(0, targetY);
+
+        if (reducedMotionEnabled) {
+            window.scrollTo(0, clampedTargetY);
+            return;
+        }
+
+        const startY = window.scrollY;
+        const deltaY = clampedTargetY - startY;
+
+        if (Math.abs(deltaY) < 2) {
+            return;
+        }
+
+        const startTime = performance.now();
+
+        const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / ANCHOR_SCROLL_DURATION_MS, 1);
+            const easedProgress = easeInOutCubic(progress);
+            window.scrollTo(0, startY + deltaY * easedProgress);
+
+            if (progress < 1) {
+                window.requestAnimationFrame(animate);
+            }
+        };
+
+        window.requestAnimationFrame(animate);
+    };
+
+    const scrollToSection = (sectionId: string) => {
+        const targetSection = document.getElementById(sectionId);
+        if (!targetSection) {
+            return;
+        }
+
+        const siteHeader = document.querySelector("header");
+        const fallbackHeaderHeight = window.innerWidth >= 1024 ? 72 : 64;
+        const siteHeaderHeight =
+            siteHeader instanceof HTMLElement ? siteHeader.offsetHeight : fallbackHeaderHeight;
+        const targetY =
+            targetSection.getBoundingClientRect().top +
+            window.scrollY -
+            siteHeaderHeight -
+            HEADER_SCROLL_OFFSET_PX;
+
+        smoothScrollToY(targetY);
+    };
+
+    const handleNavLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+        setMobileOpen(false);
+
+        if (!isHomePage) {
+            return;
+        }
+
+        const hashIndex = href.indexOf("#");
+        if (hashIndex === -1) {
+            return;
+        }
+
+        const targetId = href.slice(hashIndex + 1);
+        if (!targetId) {
+            return;
+        }
+
+        const sectionExists = document.getElementById(targetId);
+        if (!sectionExists) {
+            return;
+        }
+
+        event.preventDefault();
+        window.history.replaceState(null, "", `/#${targetId}`);
+        scrollToSection(targetId);
+    };
+
     return (
         <header
-            className={`${headerPositionClass} z-50 transition-all duration-300 ease-out ${headerSurfaceClass}`}
+            className={`${headerPositionClass} z-50 transition-all duration-300 ease-in-out ${headerSurfaceClass}`}
         >
             <div className="appContainer">
                 <div className="mx-auto">
@@ -86,12 +174,12 @@ export default function Header() {
                         <nav className="flex items-center gap-7 text-sm font-medium">
                             {navLinks.map((item) => (
                                 <Link
-                                    key={item.label}
+                                    key={item.href}
                                     href={item.href}
+                                    onClick={(event) => handleNavLinkClick(event, item.href)}
                                     className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
                                 >
                                     {item.label}
-                                    {item.hasDropdown && <FiChevronDown className="text-sm" />}
                                 </Link>
                             ))}
                         </nav>
@@ -169,13 +257,12 @@ export default function Header() {
                             <nav className="flex flex-col gap-3 text-sm font-medium text-black/80">
                                 {navLinks.map((link) => (
                                     <Link
-                                        key={link.label}
+                                        key={link.href}
                                         href={link.href}
                                         className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
-                                        onClick={() => setMobileOpen(false)}
+                                        onClick={(event) => handleNavLinkClick(event, link.href)}
                                     >
                                         {link.label}
-                                        {link.hasDropdown ? <FiChevronDown className="text-sm" /> : null}
                                     </Link>
                                 ))}
                             </nav>

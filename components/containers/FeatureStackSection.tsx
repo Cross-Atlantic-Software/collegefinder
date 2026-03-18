@@ -30,7 +30,7 @@ const featureCards: FeatureCard[] = [
         highlightWord: "Tracking",
         description:
             "Stay fully updated directly through Unitracko. Track exams, admits, and deadlines from one dashboard. No confusion, no overlap.",
-        image: "/landing-page/feature-2.png",
+        image: "/landing-page/features-2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",
     },
@@ -39,7 +39,7 @@ const featureCards: FeatureCard[] = [
         highlightWord: "Clarity",
         description:
             "Before 1,000 decisions, compare not one, but every option side-by-side. Explore fees, cutoff trends and fit clarity.",
-        image: "/landing-page/feature-3.png",
+        image: "/landing-page/features-3.png",
         imageAlt: "Clarity engine comparison",
         bgClass: "bg-sky-100",
     },
@@ -48,16 +48,25 @@ const featureCards: FeatureCard[] = [
         highlightWord: "One\u2011Click",
         description:
             "Auto-fill almost all college forms accurately with your data and save hours. No repeated entries, less errors, total clarity.",
-        image: "/landing-page/feature-4.png",
+        image: "/landing-page/features-4.png",
         imageAlt: "One click form filling",
         bgClass: "bg-amber-100",
+    },
+    {
+        title: "Psycho-Analytical\nProfiling",
+        highlightWord: "Profiling",
+        description:
+            "Go beyond basic quizzes. Analyze personality, cognitive style, and risk appetite to discover where you are most likely to succeed.",
+        image: "/landing-page/features-5.png",
+        imageAlt: "Psycho analytical profiling insights",
+        bgClass: "bg-[#cfe0f1]",
     },
     {
         title: "Perfect Fit\nAlgorithm",
         highlightWord: "Perfect Fit",
         description:
             "Assessments-based aptitude mapping recommends exams, courses and careers aligned to your strengths. Clarity for students and peace of mind for parents.",
-        image: "/landing-page/feature-6.png",
+        image: "/landing-page/features-6.png",
         imageAlt: "Perfect fit algorithm",
         bgClass: "bg-amber-100",
     },
@@ -274,19 +283,25 @@ export default function FeatureStackSection() {
                 </div>
 
                 <div className="relative h-52 w-full overflow-hidden md:h-full">
-                    <Image
-                        src={card.image}
-                        alt={card.imageAlt}
-                        fill
-                        className="origin-bottom-right scale-[0.9] object-contain object-right-bottom transition-transform duration-500 ease-out group-hover:scale-[0.935] md:scale-[0.86] md:group-hover:scale-[0.895]"
-                    />
+                    <div
+                        className={`absolute inset-x-0 top-0 ${
+                            index === 1 || index === 4 ? "-bottom-3 md:-bottom-5" : "bottom-0"
+                        }`}
+                    >
+                        <Image
+                            src={card.image}
+                            alt={card.imageAlt}
+                            fill
+                            className="origin-bottom-right scale-[0.9] object-contain object-right-bottom transition-transform duration-500 ease-out group-hover:scale-[0.935] md:scale-[0.86] md:group-hover:scale-[0.895]"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
     );
 
     return (
-        <section className="landing-section bg-white">
+        <section id="features" className="landing-section scroll-mt-20 bg-white md:scroll-mt-24">
             <div className="appContainer">
                 <div ref={stackSceneRef} className="relative mx-auto max-w-6xl">
                     <div className="relative">

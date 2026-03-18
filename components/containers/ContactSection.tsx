@@ -38,7 +38,11 @@ export default function ContactSection() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="landing-section bg-white">
+        <section
+            id="contact"
+            ref={sectionRef}
+            className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
+        >
             <div className="appContainer">
                 <div className="relative landing-grid-gap grid items-start lg:grid-cols-[0.46fr_0.54fr]">
                     <div>

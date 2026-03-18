@@ -104,7 +104,11 @@ export default function HowItWorksSection() {
     }, [isInView]);
 
     return (
-        <section ref={sectionRef} className="landing-section bg-white">
+        <section
+            id="how-it-works"
+            ref={sectionRef}
+            className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
+        >
             <div className="appContainer">
                 <div className="landing-grid-gap grid items-start lg:grid-cols-[0.42fr_0.58fr]">
                     <div>

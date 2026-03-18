@@ -63,7 +63,11 @@ export default function FaqSection() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="landing-section bg-white">
+        <section
+            id="faq"
+            ref={sectionRef}
+            className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
+        >
             <div className="appContainer">
                 <h3 className="text-center text-4xl font-extrabold leading-tight text-black md:text-5xl">
                     Frequently Asked
