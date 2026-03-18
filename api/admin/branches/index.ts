@@ -2,6 +2,10 @@ import { apiRequest } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
+// Same as client: in browser use relative /api so requests go through Next proxy; on server use env or localhost
+const getApiBase = () =>
+  typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+
 export interface Branch {
   id: number;
   name: string;
@@ -33,7 +37,7 @@ export async function deleteBranch(id: number): Promise<ApiResponse<null>> {
 
 export async function downloadBranchesBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBase();
   const res = await fetch(`${base}${API_ENDPOINTS.ADMIN.BRANCHES}/bulk-upload-template`, {
     method: 'GET', headers: { Authorization: `Bearer ${adminToken}` },
   });
@@ -48,7 +52,7 @@ export async function downloadBranchesBulkTemplate(): Promise<void> {
 
 export async function downloadAllBranchesExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBase();
   const res = await fetch(`${base}${API_ENDPOINTS.ADMIN.BRANCHES}/download-excel`, {
     method: 'GET', headers: { Authorization: `Bearer ${adminToken}` },
   });
@@ -71,7 +75,7 @@ export async function bulkUploadBranches(file: File): Promise<ApiResponse<{
   formData.append('excel', file);
   const adminToken = localStorage.getItem('admin_token');
   if (!adminToken) throw new Error('Admin token not found');
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBase();
   const response = await fetch(`${base}${API_ENDPOINTS.ADMIN.BRANCHES}/bulk-upload`, {
     method: 'POST', headers: { Authorization: `Bearer ${adminToken}` }, body: formData,
   });
