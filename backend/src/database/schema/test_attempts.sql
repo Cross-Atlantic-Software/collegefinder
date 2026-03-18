@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS user_exam_attempts (
   test_id INTEGER REFERENCES tests(id) ON DELETE CASCADE,
   exam_id INTEGER NOT NULL REFERENCES exams_taxonomies(id) ON DELETE CASCADE,
   exam_mock_id INTEGER REFERENCES exam_mocks(id) ON DELETE SET NULL,
+  paper_number INTEGER NOT NULL DEFAULT 1,
   total_score INTEGER NOT NULL DEFAULT 0,
   percentile DECIMAL(5,2),
   rank_position INTEGER,
@@ -29,6 +30,9 @@ CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_completed_at ON user_exam_atte
 CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_total_score ON user_exam_attempts(total_score);
 CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_user_exam ON user_exam_attempts(user_id, exam_id);
 CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_exam_score ON user_exam_attempts(exam_id, total_score DESC);
+CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_paper_number ON user_exam_attempts(paper_number);
+CREATE INDEX IF NOT EXISTS idx_user_exam_attempts_mock_paper ON user_exam_attempts(exam_mock_id, paper_number);
 
 COMMENT ON TABLE user_exam_attempts IS 'One row per user attempt at an exam/mock; aggregates score and stats when completed';
 COMMENT ON COLUMN user_exam_attempts.exam_mock_id IS 'Set when attempt is for an exam mock (exam_mocks)';
+COMMENT ON COLUMN user_exam_attempts.paper_number IS 'Which paper this attempt is for (1-based, e.g. Paper 1 or Paper 2 for JEE Advanced)';

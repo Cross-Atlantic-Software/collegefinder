@@ -220,7 +220,7 @@ export default function MockReviewScreen({
     if (sec) setCurrentIndex(sec.startIndex);
   };
 
-  const goToSubsection = (subsectionKey: 'section_a' | 'section_b') => {
+  const goToSubsection = (subsectionKey: string) => {
     const block = blocks.find((b) => b.sectionKey === currentSectionKey && b.subsectionKey === subsectionKey);
     if (block) {
       setCurrentIndex(block.startIndex);
@@ -265,7 +265,7 @@ export default function MockReviewScreen({
           sections={sectionDefs}
           currentSection={currentSectionKey}
           sectionProgress={sectionProgress}
-          currentSubsection={currentSubsectionKey as 'section_a' | 'section_b'}
+          currentSubsection={currentSubsectionKey}
           onSectionChange={goToSection}
           onSubsectionChange={goToSubsection}
           totalQuestionsInSection={totalInSection || 1}

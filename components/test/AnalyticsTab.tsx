@@ -1,6 +1,7 @@
 'use client';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronDown, Check, Layers } from 'lucide-react';
 import { Button } from '@/components/shared';
 import { getTestResults, getExamFormats } from '@/api/tests';
 import { normalizeTestResults } from './utils';
@@ -15,7 +16,7 @@ import {
   ChartsSection,
   ScoreTrendSection,
 } from './analytics/sections';
-import { attemptLabel, attemptTimestamp, fmt } from './analytics/utils';
+import { attemptLabel, attemptTimestamp, fmt, accuracyColor } from './analytics/utils';
 import type { Dimension } from './analytics/utils';
 import type { AnalyticsSummaryAttempt, ExamFormat, CombinedSession } from '@/api/tests';
 
@@ -25,8 +26,97 @@ interface AnalyticsTabProps {
 
 type ReviewData = {
   summary: { total_score: number; total_questions: number; attempted: number; correct: number; incorrect: number; skipped: number; accuracy: number; time_taken: number };
-  question_attempts: Array<{ question_text: string; correct_option: string; solution_text?: string; options?: Array<{ key: string; text: string }>; marks: number; subject: string; selected_option?: string; is_correct: boolean }>;
+  question_attempts: Array<{ question_text: string; correct_option: string; solution_text?: string; options?: Array<{ key: string; text: string }>; marks: number; subject: string; selected_option?: string; is_correct: boolean; question_type?: string }>;
 };
+
+function SessionSelector({
+  sessions,
+  selectedIndex,
+  onSelect,
+}: {
+  sessions: CombinedSession[];
+  selectedIndex: number;
+  onSelect: (idx: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = sessions[selectedIndex] ?? sessions[0];
+  if (!selected) return null;
+
+  function sessionLabel(s: CombinedSession) {
+    return `${s.exam_name} Mock ${s.mock_order_index}`;
+  }
+
+  function sessionDate(s: CombinedSession) {
+    return new Date(s.completed_at).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <label className="text-xs text-slate-400 uppercase tracking-wider whitespace-nowrap mb-1 block">
+        Session
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-white/20 px-4 py-2.5 text-left transition focus:outline-none focus:ring-2 focus:ring-pink-500/50"
+      >
+        <Layers className="w-4 h-4 text-pink-400 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-white truncate block">{sessionLabel(selected)}</span>
+          <span className="text-xs text-slate-500">{sessionDate(selected)} · {selected.papers.map((p) => `P${p.paper_number}`).join(' + ')}</span>
+        </div>
+        <span className={`text-xs flex-shrink-0 ${accuracyColor(selected.combined_accuracy)}`}>
+          {fmt(selected.combined_accuracy, 0)}%
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full max-h-72 overflow-y-auto rounded-xl bg-[#1a1a2e]/95 backdrop-blur-xl border border-white/15 shadow-2xl shadow-black/40 py-1.5">
+          {sessions.map((s, i) => {
+            const isSelected = i === selectedIndex;
+            return (
+              <button
+                key={s.completed_at + i}
+                type="button"
+                onClick={() => { onSelect(i); setOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10 ${isSelected ? 'bg-pink-500/10' : ''}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className={`text-sm font-medium truncate block ${isSelected ? 'text-pink-300' : 'text-white'}`}>
+                    {sessionLabel(s)}
+                  </span>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs text-slate-500">{sessionDate(s)}</span>
+                    <span className="text-xs text-pink-400/70">{s.combined_total_score} pts</span>
+                    <span className={`text-xs ${accuracyColor(s.combined_accuracy)}`}>{fmt(s.combined_accuracy, 0)}% acc</span>
+                  </div>
+                </div>
+                <div className="w-5 flex-shrink-0 flex justify-center">
+                  {isSelected && <Check className="w-4 h-4 text-pink-400" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
   const [dimension, setDimension] = useState<Dimension>('total');
@@ -49,7 +139,7 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
     error,
   } = useAnalyticsData(examId);
 
-  const [viewMode, setViewMode] = useState<'by_attempt' | 'full_exam'>('by_attempt');
+  const [viewMode, setViewMode] = useState<'by_attempt' | 'full_exam'>('full_exam');
   const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
 
   const selectedAttempt = attempts.find((a) => a.id === selectedAttemptId) ?? null;
@@ -59,14 +149,15 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
   const combinedOverallForStats = useMemo(() => {
     if (!selectedSession) return null;
     const attempted = selectedSession.combined_attempted;
+    const totalQs = attempted + selectedSession.combined_skipped;
     const totalTimeSecs = selectedSession.combined_time_minutes * 60;
     return {
-      total_questions: attempted,
-      attempted: selectedSession.combined_attempted,
+      total_questions: totalQs,
+      attempted,
       correct: selectedSession.combined_correct,
       incorrect: selectedSession.combined_incorrect,
       skipped: selectedSession.combined_skipped,
-      attempt_rate: attempted > 0 ? 100 : 0,
+      attempt_rate: totalQs > 0 ? (attempted / totalQs) * 100 : 0,
       accuracy_percentage: selectedSession.combined_accuracy,
       total_score: selectedSession.combined_total_score,
       total_marks: undefined,
@@ -215,7 +306,7 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
               viewMode === 'by_attempt' ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
           >
-            By attempt
+            By Paper
           </button>
           <button
             type="button"
@@ -224,30 +315,18 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
               viewMode === 'full_exam' ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Full exam (combined)
+            Combined (Full Test)
           </button>
         </div>
       )}
       {viewMode === 'full_exam' && selectedSession && combinedOverallForStats ? (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-            <label className="text-sm text-slate-400">Session</label>
-            <select
-              value={selectedSessionIndex}
-              onChange={(e) => setSelectedSessionIndex(Number(e.target.value))}
-              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            >
-              {sessions.map((s, i) => (
-                <option key={s.completed_at + i} value={i}>
-                  {new Date(s.completed_at).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  })}{' '}
-                  – Paper 1 + Paper 2
-                </option>
-              ))}
-            </select>
+            <SessionSelector
+              sessions={sessions}
+              selectedIndex={selectedSessionIndex}
+              onSelect={setSelectedSessionIndex}
+            />
             <Button
               onClick={() => setShowHistoryList(true)}
               variant="themeButtonOutline"
@@ -272,10 +351,10 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
                 </thead>
                 <tbody>
                   {selectedSession.papers
-                    .sort((a, b) => a.mock_order_index - b.mock_order_index)
+                    .sort((a, b) => a.paper_number - b.paper_number)
                     .map((p) => (
                       <tr key={p.attempt_id} className="border-b border-white/5">
-                        <td className="py-2 pr-4 text-white font-medium">Paper {p.mock_order_index}</td>
+                        <td className="py-2 pr-4 text-white font-medium">Paper {p.paper_number}</td>
                         <td className="py-2 pr-4 text-pink-400">{fmt(p.total_score)}</td>
                         <td className="py-2 pr-4 text-slate-300">{fmt(p.accuracy_percentage, 1)}%</td>
                         <td className="py-2 pr-4 text-slate-300">{p.attempted_count}</td>
@@ -291,6 +370,8 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
             aggregate={aggregate}
             selectedAttemptId={selectedAttemptId}
             onSelectAttempt={setSelectedAttemptId}
+            sessions={sessions}
+            useSessionView
           />
         </>
       ) : (
@@ -330,6 +411,8 @@ export default function AnalyticsTab({ examId }: AnalyticsTabProps) {
                 aggregate={aggregate}
                 selectedAttemptId={selectedAttemptId}
                 onSelectAttempt={setSelectedAttemptId}
+                sessions={!showFullExamMode && sessions.length > 0 ? sessions : undefined}
+                useSessionView={!showFullExamMode && sessions.length > 0}
               />
             </>
           )}

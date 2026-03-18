@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { FiLogOut, FiSettings } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProfileCompletion } from "@/api";
+import { getProfileCompletion, getAllExams } from "@/api";
 
 type SectionId =
   | "dashboard"
@@ -86,7 +86,7 @@ const baseNavItems: {
     label: "Test Module",
     sub: "Practice tests",
     icon: FaFlask,
-    getValue: () => "0",
+    getValue: () => "0", // overridden with examsCount in navItems
   },
 ];
 
@@ -99,6 +99,7 @@ export default function Sidebar({
   const { logout, user } = useAuth();
   const userName = user?.name || "User";
   const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [examsCount, setExamsCount] = useState(0);
 
   useEffect(() => {
     const fetchCompletion = async () => {
@@ -115,10 +116,30 @@ export default function Sidebar({
     fetchCompletion();
   }, []);
 
-  // Create navItems with dynamic values
+  useEffect(() => {
+    const fetchExamsCount = async () => {
+      try {
+        const response = await getAllExams();
+        if (response.success && response.data?.exams) {
+          setExamsCount(response.data.exams.length);
+        }
+      } catch (err) {
+        console.error("Error fetching exams count:", err);
+      }
+    };
+
+    fetchExamsCount();
+  }, []);
+
+  // Create navItems with dynamic values (Test Module shows exams/practice tests count)
   const navItems = baseNavItems.map(item => ({
     ...item,
-    value: item.getValue ? item.getValue(completionPercentage) : undefined,
+    value:
+      item.id === "test-module"
+        ? String(examsCount)
+        : item.getValue
+          ? item.getValue(completionPercentage)
+          : undefined,
   }));
 
   const handleLogout = () => {

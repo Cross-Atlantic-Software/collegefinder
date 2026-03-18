@@ -147,7 +147,9 @@ const runMigrations = async () => {
     'add_branch_to_college_cutoffs.sql',
     'rename_career_goals_to_interests_module.sql',
     'create_exam_mock_prompts_table.sql',
-    'add_topic_subtopic_exams_and_purpose_description.sql'
+    'add_total_mocks_generated_to_exams.sql',
+    'add_topic_subtopic_exams_and_purpose_description.sql',
+    'add_multi_paper_support.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

@@ -1201,25 +1201,70 @@ class TestController {
     try {
       const userId = req.user.id;
       const { examId } = req.query;
-
       const examIdInt = examId ? parseInt(examId) : null;
 
-      const [aggregate, attempts, totalPapers] = await Promise.all([
-        TestAttempt.getUserAnalytics(userId, examIdInt),
-        TestAttempt.findByUserId(userId, 50, 0),
-        examIdInt != null ? MockTest.countByExamId(examIdInt) : Promise.resolve(0)
+      const [allAttempts, examRow] = await Promise.all([
+        TestAttempt.findByUserId(userId, 200, 0),
+        examIdInt != null ? Exam.findById(examIdInt) : Promise.resolve(null)
       ]);
 
-      let completedAttempts = attempts.filter(a => a.completed_at);
+      let completedAttempts = allAttempts.filter(a => a.completed_at);
       if (examIdInt != null) {
         completedAttempts = completedAttempts.filter(a => a.exam_id === examIdInt);
       }
+
+      const totalPapers = examRow?.number_of_papers
+        || (completedAttempts.length > 0 ? parseInt(completedAttempts[0].exam_total_papers) || 1 : 1);
+
+      // ── Build session-level entries for correct aggregate computation ──
+      // Single-paper exams: each attempt = one session
+      // Multi-paper exams: group by (exam_id, mock_order_index), combine all papers
+      const singleEntries = [];
+      const multiGroups = {};
+
+      for (const a of completedAttempts) {
+        const examPapers = parseInt(a.exam_total_papers) || 1;
+        if (examPapers === 1) {
+          singleEntries.push({
+            score: parseFloat(a.total_score) || 0,
+            accuracy: parseFloat(a.accuracy_percentage) || 0,
+            time: parseInt(a.time_spent_minutes) || 0,
+          });
+        } else {
+          const key = `${a.exam_id}_${a.mock_order_index}`;
+          if (!multiGroups[key]) multiGroups[key] = { exam_total_papers: examPapers, papers: {} };
+          const pn = parseInt(a.paper_number, 10) || 1;
+          const existing = multiGroups[key].papers[pn];
+          if (!existing || new Date(a.completed_at) > new Date(existing.completed_at)) {
+            multiGroups[key].papers[pn] = a;
+          }
+        }
+      }
+
+      for (const group of Object.values(multiGroups)) {
+        const paperNums = Object.keys(group.papers).map(Number).sort();
+        if (paperNums.length < group.exam_total_papers) continue;
+        const papers = paperNums.map(p => group.papers[p]);
+        const combinedScore = papers.reduce((s, a) => s + (parseFloat(a.total_score) || 0), 0);
+        const combinedAttempted = papers.reduce((s, a) => s + (parseInt(a.attempted_count) || 0), 0);
+        const combinedCorrect = papers.reduce((s, a) => s + (parseInt(a.correct_count) || 0), 0);
+        const combinedAccuracy = combinedAttempted > 0 ? (combinedCorrect / combinedAttempted) * 100 : 0;
+        const combinedTime = papers.reduce((s, a) => s + (parseInt(a.time_spent_minutes) || 0), 0);
+        singleEntries.push({ score: combinedScore, accuracy: combinedAccuracy, time: combinedTime });
+      }
+
+      const testsTaken = singleEntries.length;
+      const avgScore = testsTaken > 0 ? singleEntries.reduce((s, e) => s + e.score, 0) / testsTaken : 0;
+      const bestScore = testsTaken > 0 ? Math.max(...singleEntries.map(e => e.score)) : 0;
+      const avgAccuracy = testsTaken > 0 ? singleEntries.reduce((s, e) => s + e.accuracy, 0) / testsTaken : 0;
+      const avgTime = testsTaken > 0 ? singleEntries.reduce((s, e) => s + e.time, 0) / testsTaken : 0;
 
       const attemptPayload = completedAttempts.map(a => ({
         id: a.id,
         exam_id: a.exam_id,
         exam_mock_id: a.exam_mock_id ?? null,
         mock_order_index: a.mock_order_index != null ? parseInt(a.mock_order_index, 10) : null,
+        paper_number: a.paper_number != null ? parseInt(a.paper_number, 10) : null,
         test_title: a.test_title,
         exam_name: a.exam_name,
         total_score: a.total_score,
@@ -1237,43 +1282,39 @@ class TestController {
 
       const data = {
         aggregate: {
-          total_attempts: parseInt(aggregate.total_attempts) || 0,
-          completed_attempts: parseInt(aggregate.completed_attempts) || 0,
-          avg_score: parseFloat(aggregate.avg_score) || 0,
-          best_score: parseFloat(aggregate.best_score) || 0,
-          avg_accuracy: parseFloat(aggregate.avg_accuracy) || 0,
-          avg_time_minutes: parseFloat(aggregate.avg_time) || 0
+          total_attempts: completedAttempts.length,
+          completed_attempts: testsTaken,
+          avg_score: Math.round(avgScore * 100) / 100,
+          best_score: Math.round(bestScore * 100) / 100,
+          avg_accuracy: Math.round(avgAccuracy * 100) / 100,
+          avg_time_minutes: Math.round(avgTime * 100) / 100,
         },
         attempts: attemptPayload
       };
+
       if (examIdInt != null) {
         data.total_papers = totalPapers;
       }
 
-      if (examIdInt != null && totalPapers > 1 && completedAttempts.length > 0) {
-        const mockAttempts = completedAttempts.filter(
-          a => a.exam_mock_id != null && a.mock_order_index != null && a.mock_order_index >= 1 && a.mock_order_index <= totalPapers
-        );
-        const byDay = {};
-        for (const a of mockAttempts) {
-          const dayKey = new Date(a.completed_at).toISOString().slice(0, 10);
-          if (!byDay[dayKey]) byDay[dayKey] = [];
-          byDay[dayKey].push(a);
-        }
-        const sessions = [];
-        for (const dayKey of Object.keys(byDay).sort()) {
-          const dayAttempts = byDay[dayKey];
-          const byOrder = {};
-          for (const a of dayAttempts) {
-            const order = parseInt(a.mock_order_index, 10);
-            if (!byOrder[order] || new Date(a.completed_at) > new Date(byOrder[order].completed_at)) {
-              byOrder[order] = a;
-            }
+      // ── Build combined sessions for any multi-paper exams ──
+      const multiPaperAttempts = completedAttempts.filter(a => (parseInt(a.exam_total_papers) || 1) > 1);
+      if (multiPaperAttempts.length > 0) {
+        const byKey = {};
+        for (const a of multiPaperAttempts) {
+          const key = `${a.exam_id}_${a.mock_order_index}`;
+          if (!byKey[key]) byKey[key] = { exam_id: a.exam_id, exam_total_papers: parseInt(a.exam_total_papers) || 2, papers: {} };
+          const pn = parseInt(a.paper_number, 10) || 1;
+          const existing = byKey[key].papers[pn];
+          if (!existing || new Date(a.completed_at) > new Date(existing.completed_at)) {
+            byKey[key].papers[pn] = a;
           }
-          const orders = Object.keys(byOrder).map(Number).sort((x, y) => x - y);
-          const hasAllPapers = orders.length === totalPapers && orders.every((o, i) => o === i + 1);
-          if (!hasAllPapers) continue;
-          const sessionAttempts = orders.map(o => byOrder[o]);
+        }
+
+        const sessions = [];
+        for (const group of Object.values(byKey)) {
+          const paperNums = Object.keys(group.papers).map(Number).sort();
+          if (paperNums.length < group.exam_total_papers) continue;
+          const sessionAttempts = paperNums.map(p => group.papers[p]);
           const combinedAttempted = sessionAttempts.reduce((s, a) => s + (parseInt(a.attempted_count, 10) || 0), 0);
           const combinedCorrect = sessionAttempts.reduce((s, a) => s + (parseInt(a.correct_count, 10) || 0), 0);
           const combinedIncorrect = sessionAttempts.reduce((s, a) => s + (parseInt(a.incorrect_count, 10) || 0), 0);
@@ -1281,10 +1322,13 @@ class TestController {
           const combinedScore = sessionAttempts.reduce((s, a) => s + (parseFloat(a.total_score) || 0), 0);
           const combinedTime = sessionAttempts.reduce((s, a) => s + (parseInt(a.time_spent_minutes, 10) || 0), 0);
           const combinedAccuracy = combinedAttempted > 0 ? (combinedCorrect / combinedAttempted) * 100 : 0;
-          const sessionCompletedAt = sessionAttempts[sessionAttempts.length - 1]?.completed_at ?? dayKey;
+          const lastCompleted = sessionAttempts[sessionAttempts.length - 1]?.completed_at ?? '';
+
           sessions.push({
             attempt_ids: sessionAttempts.map(a => a.id),
-            completed_at: sessionCompletedAt,
+            mock_order_index: parseInt(sessionAttempts[0].mock_order_index, 10),
+            exam_name: sessionAttempts[0].exam_name,
+            completed_at: lastCompleted,
             combined_total_score: combinedScore,
             combined_attempted: combinedAttempted,
             combined_correct: combinedCorrect,
@@ -1294,7 +1338,7 @@ class TestController {
             combined_time_minutes: combinedTime,
             papers: sessionAttempts.map(a => ({
               attempt_id: a.id,
-              mock_order_index: parseInt(a.mock_order_index, 10),
+              paper_number: parseInt(a.paper_number, 10) || 1,
               total_score: a.total_score,
               accuracy_percentage: parseFloat(a.accuracy_percentage) || 0,
               attempted_count: a.attempted_count,
@@ -1306,7 +1350,7 @@ class TestController {
             }))
           });
         }
-        data.sessions = sessions;
+        data.sessions = sessions.sort((a, b) => a.mock_order_index - b.mock_order_index);
       }
 
       res.json({ success: true, data });

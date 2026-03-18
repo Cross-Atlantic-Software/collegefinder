@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
 import FullscreenTestInterface from "../test/FullscreenTestInterface";
+import MultiPaperTestInterface from "../test/MultiPaperTestInterface";
 import type { ExamFormat } from "@/api/tests";
 
 interface Question {
@@ -26,10 +27,12 @@ interface Exam {
 interface TestInterfaceProps {
   exam: Exam;
   format?: ExamFormat;
+  numberOfPapers?: number;
+  formats?: Record<string, ExamFormat>;
   onExit: () => void;
 }
 
-export default function TestInterface({ exam, format, onExit }: TestInterfaceProps) {
+export default function TestInterface({ exam, format, numberOfPapers, formats, onExit }: TestInterfaceProps) {
   // All hooks must run unconditionally (before any early return)
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>("");
@@ -55,7 +58,19 @@ export default function TestInterface({ exam, format, onExit }: TestInterfacePro
     }
   }, [questionStartTime, format]);
 
-  // Use fullscreen interface if format is provided (after all hooks)
+  // Multi-paper exams: show paper selection screen
+  if (format && (numberOfPapers ?? 1) > 1 && formats) {
+    return (
+      <MultiPaperTestInterface
+        exam={exam}
+        numberOfPapers={numberOfPapers!}
+        formats={formats}
+        onExit={onExit}
+      />
+    );
+  }
+
+  // Single-paper: use fullscreen interface if format is provided (after all hooks)
   if (format) {
     return (
       <FullscreenTestInterface

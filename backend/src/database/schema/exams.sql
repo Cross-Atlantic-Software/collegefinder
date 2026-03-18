@@ -20,6 +20,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'exams_taxonomies') THEN
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS format JSONB DEFAULT '{}'::jsonb;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS generation_prompt TEXT;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS number_of_papers INTEGER NOT NULL DEFAULT 1;
   END IF;
 END $$;
 

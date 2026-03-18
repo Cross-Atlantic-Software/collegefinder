@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS exam_mock_questions (
   question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   exam_id INTEGER NOT NULL REFERENCES exams_taxonomies(id) ON DELETE CASCADE,
   order_index INTEGER NOT NULL,
+  paper_number INTEGER NOT NULL DEFAULT 1,
   UNIQUE(exam_mock_id, question_id)
 );
 
@@ -20,3 +21,4 @@ COMMENT ON COLUMN exam_mock_questions.exam_mock_id IS 'Reference to exam_mocks';
 COMMENT ON COLUMN exam_mock_questions.question_id IS 'Reference to questions (question bank)';
 COMMENT ON COLUMN exam_mock_questions.exam_id IS 'Denormalized for analytics';
 COMMENT ON COLUMN exam_mock_questions.order_index IS '1-based question order in this mock';
+COMMENT ON COLUMN exam_mock_questions.paper_number IS 'Denormalized paper number from exam_mocks for queries';

@@ -11,6 +11,7 @@ export interface Exam {
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
+  number_of_papers?: number;
   created_at: string;
   updated_at: string;
 }
@@ -136,6 +137,7 @@ export async function createExam(data: {
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
+  number_of_papers?: number;
   examDates?: Partial<ExamDates>;
   eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
   examPattern?: Partial<ExamPattern>;
@@ -167,6 +169,7 @@ export async function updateExam(
     exam_logo?: string | null;
     exam_type?: 'National' | 'State' | 'Institute' | null;
     conducting_authority?: string | null;
+    number_of_papers?: number;
     examDates?: Partial<ExamDates>;
     eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
     examPattern?: Partial<ExamPattern>;

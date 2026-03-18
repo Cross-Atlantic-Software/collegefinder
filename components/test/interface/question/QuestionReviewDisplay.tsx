@@ -10,6 +10,7 @@ export interface QuestionAttemptForReview {
   subject: string;
   selected_option?: string;
   is_correct: boolean;
+  question_type?: string;
 }
 
 interface QuestionReviewDisplayProps {
@@ -18,6 +19,11 @@ interface QuestionReviewDisplayProps {
   totalQuestions: number;
   onPrev: () => void;
   onNext: () => void;
+}
+
+function parseKeys(val: string | undefined | null): Set<string> {
+  if (!val || val.trim() === '') return new Set();
+  return new Set(val.split(',').map((k) => k.trim()).filter(Boolean));
 }
 
 function getStatus(attempt: QuestionAttemptForReview): 'correct' | 'wrong' | 'skipped' {
@@ -36,6 +42,10 @@ export default function QuestionReviewDisplay({
   const status = getStatus(attempt);
   const options = attempt.options ?? [];
   const hasOptions = options.length > 0;
+  const isMultiple = attempt.question_type === 'mcq_multiple';
+
+  const correctKeys = parseKeys(attempt.correct_option);
+  const userKeys = parseKeys(attempt.selected_option);
 
   return (
     <div className="flex-1 p-6 overflow-y-auto">
@@ -46,6 +56,11 @@ export default function QuestionReviewDisplay({
             {attempt.subject}
           </span>
           <span className="text-xs text-slate-400">+{attempt.marks} marks</span>
+          {isMultiple && (
+            <span className="text-xs text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full">
+              Multiple Correct
+            </span>
+          )}
           {status === 'correct' && (
             <span className="text-xs text-green-400 bg-green-400/10 px-2.5 py-1 rounded-full">✓ Correct</span>
           )}
@@ -62,34 +77,58 @@ export default function QuestionReviewDisplay({
           <p className="text-white text-base leading-relaxed whitespace-pre-wrap">{attempt.question_text}</p>
         </div>
 
-        {/* Options (read-only, with your answer + correct highlight) */}
+        {/* Options */}
         {hasOptions && (
           <div className="space-y-2.5">
             {options.map((option) => {
-              const isUserAnswer = attempt.selected_option === option.key;
-              const isCorrectOption = option.key === attempt.correct_option;
-              const borderStyle =
-                isCorrectOption
-                  ? 'border-green-500 bg-green-900/30'
-                  : isUserAnswer && !attempt.is_correct
-                    ? 'border-red-500 bg-red-900/20'
-                    : 'border-slate-700 bg-slate-800/60';
+              const isCorrectOption = correctKeys.has(option.key);
+              const isUserPick = userKeys.has(option.key);
+              const isWrongPick = isUserPick && !isCorrectOption;
+              const isMissed = isCorrectOption && !isUserPick && status !== 'skipped';
+
+              let borderStyle: string;
+              if (isCorrectOption) {
+                borderStyle = 'border-green-500 bg-green-900/30';
+              } else if (isWrongPick) {
+                borderStyle = 'border-red-500 bg-red-900/20';
+              } else {
+                borderStyle = 'border-slate-700 bg-slate-800/60';
+              }
+
+              let circleBg: string;
+              if (isCorrectOption) {
+                circleBg = 'border-green-500 bg-green-500 text-white';
+              } else if (isWrongPick) {
+                circleBg = 'border-red-500 bg-red-500 text-white';
+              } else {
+                circleBg = 'border-slate-500 text-slate-400';
+              }
+
               return (
                 <div
                   key={option.key}
                   className={`flex items-center gap-4 p-4 rounded-xl border-2 ${borderStyle}`}
                 >
                   <div
-                    className={`w-8 h-8 shrink-0 rounded-full border-2 flex items-center justify-center font-bold text-sm ${
-                      isCorrectOption ? 'border-green-500 bg-green-500 text-white' : 'border-slate-500 text-slate-400'
-                    }`}
+                    className={`w-8 h-8 shrink-0 rounded-full border-2 flex items-center justify-center font-bold text-sm ${circleBg}`}
                   >
                     {option.key}
                   </div>
                   <span className="text-white text-sm leading-relaxed flex-1">{option.text}</span>
-                  {isUserAnswer && <span className="text-xs text-pink-300 font-medium">Your answer</span>}
-                  {isCorrectOption && !isUserAnswer && <span className="text-xs text-green-400 font-medium">Correct</span>}
-                  {isCorrectOption && isUserAnswer && <span className="text-xs text-green-400 font-medium">Correct ✓</span>}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isUserPick && isCorrectOption && (
+                      <span className="text-xs text-green-400 font-medium">Your answer ✓</span>
+                    )}
+                    {isWrongPick && (
+                      <span className="text-xs text-red-400 font-medium">Your answer ✗</span>
+                    )}
+                    {isMissed && (
+                      <span className="text-xs text-yellow-400 font-medium">Missed</span>
+                    )}
+                    {isCorrectOption && !isUserPick && status === 'skipped' && (
+                      <span className="text-xs text-green-400 font-medium">Correct</span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -120,7 +159,7 @@ export default function QuestionReviewDisplay({
           </div>
         )}
 
-        {/* Navigation - same as test screen */}
+        {/* Navigation */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
           <div className="flex gap-2">
             {questionNumber > 1 && (

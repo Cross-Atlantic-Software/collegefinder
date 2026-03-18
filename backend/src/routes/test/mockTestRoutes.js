@@ -16,6 +16,12 @@ const validateMockTestId = [
     .withMessage('Mock test ID must be a positive integer'),
 ];
 
+const validateMockNumber = [
+  param('mockNumber')
+    .isInt({ min: 1 })
+    .withMessage('Mock number must be a positive integer'),
+];
+
 /**
  * @route   GET /api/mock-tests/exams/:examId/next
  * @desc    Get the next mock test for the authenticated user (based on progression)
@@ -38,6 +44,19 @@ router.post(
   authenticate,
   validateExamId,
   MockTestController.startMockTest
+);
+
+/**
+ * @route   GET /api/mock-tests/exams/:examId/mock/:mockNumber/paper-status
+ * @desc    Get paper status for a specific mock number (locked/unlocked/completed per paper)
+ * @access  Private
+ */
+router.get(
+  '/exams/:examId/mock/:mockNumber/paper-status',
+  authenticate,
+  validateExamId,
+  validateMockNumber,
+  MockTestController.getPaperStatus
 );
 
 /**

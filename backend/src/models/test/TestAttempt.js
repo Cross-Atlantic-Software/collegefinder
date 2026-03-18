@@ -18,7 +18,8 @@ class TestAttempt {
         ta.*,
         mt.order_index AS mock_order_index,
         COALESCE(t.title, CONCAT('Mock ', mt.order_index)) as test_title,
-        e.name as exam_name
+        e.name as exam_name,
+        e.number_of_papers as exam_total_papers
       FROM user_exam_attempts ta
       LEFT JOIN tests t ON ta.test_id = t.id
       LEFT JOIN exam_mocks mt ON ta.exam_mock_id = mt.id
