@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { FaExclamationTriangle, FaInfoCircle } from "react-icons/fa";
-import { getStrengthFormData, makeStrengthPayment } from "@/api";
+import { getStrengthFormData } from "@/api";
 import type { StrengthFormData } from "@/api/strength";
 import { Button } from "@/components/shared";
+import { STRENGTH_PAYMENT_PENDING_KEY } from "./StrengthPaymentReturnHandler";
 
 interface StrengthFormProps {
   onPaymentSuccess: () => void;
@@ -14,7 +15,6 @@ interface StrengthFormProps {
 export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: StrengthFormProps) {
   const [formData, setFormData] = useState<StrengthFormData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,21 +33,18 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
     fetchData();
   }, []);
 
-  const handlePay = async () => {
-    setPaying(true);
+  const handlePay = () => {
     setError(null);
+    if (typeof window === "undefined") return;
     try {
-      const res = await makeStrengthPayment();
-      if (res.success) {
-        onPaymentSuccess();
-      } else {
-        setError(res.message || "Payment failed");
-      }
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setPaying(false);
+      sessionStorage.setItem(STRENGTH_PAYMENT_PENDING_KEY, String(Date.now()));
+    } catch {
+      // sessionStorage unavailable (e.g. private mode) — still send user to pay; return flow may need manual confirm
     }
+    const payUrl =
+      process.env.NEXT_PUBLIC_RAZORPAY_STRENGTH_PAY_URL?.trim() ||
+      "https://rzp.io/rzp/uFg2K74V";
+    window.location.assign(payUrl);
   };
 
   if (loading) {
@@ -110,23 +107,19 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
         <p className="text-red-400 text-sm text-center mt-4">{error}</p>
       )}
 
-      <div className="flex justify-center mt-5">
+      <div className="flex flex-col items-center gap-2 mt-5">
         <Button
           variant="themeButton"
           size="sm"
           onClick={handlePay}
-          disabled={paying || missingFields}
+          disabled={missingFields}
           className="!text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-pink disabled:hover:text-white"
         >
-          {paying ? (
-            <span className="flex items-center gap-2">
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Processing...
-            </span>
-          ) : (
-            "Pay Now"
-          )}
+          Pay Now
         </Button>
+        <p className="text-[11px] text-slate-500 text-center max-w-sm px-2">
+          You&apos;ll complete payment on Razorpay. After a successful payment you&apos;ll return here to Know Your Strengths and we&apos;ll email you a confirmation.
+        </p>
       </div>
     </div>
   );

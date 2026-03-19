@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
+import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
 import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 
 type SectionId =
@@ -26,6 +27,11 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex bg-blueGradient text-slate-50">
+      <Suspense fallback={null}>
+        <StrengthPaymentReturnHandler
+          onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
+        />
+      </Suspense>
       {/* LEFT SIDEBAR */}
       <Sidebar
         sidebarOpen={sidebarOpen}
