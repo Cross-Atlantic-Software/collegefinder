@@ -34,6 +34,22 @@ button {
   cursor: pointer;
 }
 
+@layer base {
+  button:focus-visible {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    transition: all 200ms ease-out;
+  }
+}
+
 @layer utilities {
   .bg-lightGradient {
     background-image: linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%);
@@ -56,6 +72,95 @@ button {
     background-image: linear-gradient(to right, #140E27 0%, #240F3C 50%, #341050 100%);
   }
 
+   /* Semantic color utilities */
+   .card-base {
+     @apply rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all duration-300;
+   }
+
+  .layer-base {
+    @apply bg-white dark:bg-slate-950;
+  }
+
+  .layer-subtle {
+    @apply bg-slate-50 dark:bg-slate-900;
+  }
+
+  .layer-elevated {
+    @apply bg-slate-100 dark:bg-slate-800;
+  }
+
+  .layer-overlay {
+    @apply bg-slate-950/70;
+  }
+
+   .card-hover {
+     @apply hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600;
+   }
+
+   .text-primary {
+     @apply text-slate-900 dark:text-slate-100;
+   }
+
+   .text-secondary {
+     @apply text-slate-600 dark:text-slate-400;
+   }
+
+   .text-tertiary {
+     @apply text-slate-500 dark:text-slate-500;
+   }
+
+  .type-display {
+    @apply text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-4xl;
+  }
+
+  .type-heading {
+    @apply text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+
+  .type-subheading {
+    @apply text-base font-semibold text-slate-800 dark:text-slate-200;
+  }
+
+  .type-body {
+    @apply text-sm font-normal leading-relaxed text-slate-600 dark:text-slate-400;
+  }
+
+  .type-caption {
+    @apply text-xs font-normal text-slate-500 dark:text-slate-500;
+  }
+
+  .type-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .metric-value {
+    font-variant-numeric: tabular-nums;
+    @apply text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    @apply font-semibold text-slate-500 dark:text-slate-400;
+  }
+
+   /* Smooth transitions */
+   .transition-200 {
+     @apply transition-all duration-200 ease-out;
+   }
+
+   .transition-250 {
+     @apply transition-all duration-250 ease-out;
+   }
+
+   .transition-300 {
+     @apply transition-all duration-300 ease-out;
+   }
   .landing-section {
     padding-top: var(--landing-section-space);
     padding-bottom: var(--landing-section-space);
@@ -80,15 +185,15 @@ button {
   }
 
   .landing-card-lift {
-    transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.36s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.24s ease;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.2s ease;
     will-change: transform, box-shadow;
   }
 
   .landing-cta {
-    transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
                 background-color 0.24s ease,
                 color 0.24s ease,
                 border-color 0.24s ease;
@@ -96,14 +201,14 @@ button {
   }
 
   .landing-icon-slide {
-    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .landing-scribble-hover {
     background-image: linear-gradient(transparent 62%, rgba(240, 197, 68, 0.48) 62%);
     background-repeat: no-repeat;
     background-size: 0% 100%;
-    transition: background-size 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-size 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   @media (hover: hover) {
@@ -225,12 +330,41 @@ button {
   }
 }
 
+@keyframes doodle-draw {
+  from {
+    stroke-dashoffset: 220;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes doodle-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
 .animate-in {
   animation: slide-in-from-right 0.3s ease-out, fade-in 0.3s ease-out;
 }
 
 .animate-tick-pop {
   animation: tick-pop 0.34s cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.doodle-path {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: doodle-draw 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.doodle-float {
+  animation: doodle-float 2.6s ease-in-out infinite;
 }
 
 .scroll-reveal {

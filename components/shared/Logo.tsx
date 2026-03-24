@@ -18,8 +18,8 @@ type Props = {
 };
 
 export default function Logo({
-  lightSrc = "/svgs/logo.svg",
-  darkSrc = "/svgs/logo-dark.svg",
+  lightSrc = "/svgs/logo-uni.svg",
+  darkSrc = "/svgs/logo-uni.svg",
   alt = "College Finder",
   href,
   width = 200,
