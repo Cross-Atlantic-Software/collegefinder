@@ -11,7 +11,9 @@ export interface Exam {
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
+  format?: unknown;
   number_of_papers?: number;
+  website?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +36,7 @@ export interface ExamEligibilityCriteria {
   age_limit_min: number | null;
   age_limit_max: number | null;
   attempt_limit: number | null;
+  domicile?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +92,7 @@ export async function getExamById(id: number): Promise<ApiResponse<{
   examPattern: ExamPattern | null;
   examCutoff: ExamCutoff | null;
   careerGoalIds: number[];
+  programIds: number[];
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}`, {
     method: 'GET',
@@ -137,12 +141,15 @@ export async function createExam(data: {
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
+  format?: unknown;
   number_of_papers?: number;
+  website?: string | null;
   examDates?: Partial<ExamDates>;
   eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
   examPattern?: Partial<ExamPattern>;
   examCutoff?: Partial<ExamCutoff>;
   careerGoalIds?: number[];
+  programIds?: number[];
 }): Promise<ApiResponse<{
   exam: Exam;
   examDates: ExamDates | null;
@@ -169,11 +176,15 @@ export async function updateExam(
     exam_logo?: string | null;
     exam_type?: 'National' | 'State' | 'Institute' | null;
     conducting_authority?: string | null;
+    format?: unknown;
     number_of_papers?: number;
+    website?: string | null;
     examDates?: Partial<ExamDates>;
     eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
     examPattern?: Partial<ExamPattern>;
     examCutoff?: Partial<ExamCutoff>;
+    careerGoalIds?: number[];
+    programIds?: number[];
   }
 ): Promise<ApiResponse<{
   exam: Exam;

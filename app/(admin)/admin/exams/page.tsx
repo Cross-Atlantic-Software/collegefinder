@@ -26,8 +26,9 @@ import {
 } from '@/api/admin/exams';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
+import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage, FiGlobe, FiCheckSquare, FiLayout } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -40,6 +41,7 @@ export default function ExamsPage() {
   const [allExams, setAllExams] = useState<Exam[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [careerGoals, setCareerGoals] = useState<CareerGoalAdmin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +54,11 @@ export default function ExamsPage() {
     examPattern: ExamPattern | null;
     examCutoff: ExamCutoff | null;
     careerGoalIds: number[];
+    programIds: number[];
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'basic' | 'dates' | 'eligibility' | 'pattern' | 'cutoff' | 'careerGoals'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals'>('basic');
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -63,7 +66,9 @@ export default function ExamsPage() {
     exam_logo: '',
     exam_type: '' as 'National' | 'State' | 'Institute' | '',
     conducting_authority: '',
+    format: '',
     number_of_papers: '1',
+    website: '',
     examDates: {
       application_start_date: '',
       application_close_date: '',
@@ -75,6 +80,7 @@ export default function ExamsPage() {
       age_limit_min: '',
       age_limit_max: '',
       attempt_limit: '',
+      domicile: '',
     },
     examPattern: {
       mode: '' as 'Offline' | 'Online' | 'Hybrid' | '',
@@ -89,6 +95,7 @@ export default function ExamsPage() {
       target_rank_range: '',
     },
     careerGoalIds: [] as number[],
+    programIds: [] as number[],
   });
   const [, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -198,16 +205,18 @@ export default function ExamsPage() {
       if (!silent) setIsLoading(true);
       // Fetch exams (required for this module). Dropdowns (streams, subjects, career goals) are optional
       // and may 403 if user doesn't have those modules — use allSettled so one 403 doesn't break the page.
-      const [examsRes, streamsRes, subjectsRes, careerGoalsRes] = await Promise.allSettled([
+      const [examsRes, streamsRes, subjectsRes, programsRes, careerGoalsRes] = await Promise.allSettled([
         getAllExamsAdmin(),
         getAllStreams(),
         getAllSubjects(),
+        getAllPrograms(),
         getAllCareerGoalsAdmin(),
       ]);
 
       const examsData = examsRes.status === 'fulfilled' ? examsRes.value : null;
       const streamsData = streamsRes.status === 'fulfilled' ? streamsRes.value : null;
       const subjectsData = subjectsRes.status === 'fulfilled' ? subjectsRes.value : null;
+      const programsData = programsRes.status === 'fulfilled' ? programsRes.value : null;
       const careerGoalsData = careerGoalsRes.status === 'fulfilled' ? careerGoalsRes.value : null;
 
       if (examsData?.success && examsData?.data) {
@@ -221,6 +230,9 @@ export default function ExamsPage() {
       }
       if (subjectsData?.success && subjectsData?.data) {
         setSubjects(subjectsData.data.subjects.filter((s: Subject) => s.status));
+      }
+      if (programsData?.success && programsData?.data?.programs) {
+        setPrograms(programsData.data.programs.filter((p: Program) => p.status));
       }
       if (careerGoalsData?.success && careerGoalsData?.data) {
         setCareerGoals(careerGoalsData.data.careerGoals.filter((cg: CareerGoalAdmin) => cg.status !== false));
@@ -284,7 +296,17 @@ export default function ExamsPage() {
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
         conducting_authority: formData.conducting_authority || null,
+        format: (() => {
+          const v = formData.format?.trim();
+          if (!v) return undefined;
+          try {
+            return JSON.parse(v) as unknown;
+          } catch {
+            return undefined;
+          }
+        })(),
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
+        website: formData.website || null,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
           application_close_date: formData.examDates.application_close_date || null,
@@ -296,6 +318,7 @@ export default function ExamsPage() {
           age_limit_min: formData.eligibilityCriteria.age_limit_min ? parseInt(formData.eligibilityCriteria.age_limit_min) : null,
           age_limit_max: formData.eligibilityCriteria.age_limit_max ? parseInt(formData.eligibilityCriteria.age_limit_max) : null,
           attempt_limit: formData.eligibilityCriteria.attempt_limit ? parseInt(formData.eligibilityCriteria.attempt_limit) : null,
+          domicile: formData.eligibilityCriteria.domicile || null,
         },
         examPattern: {
           mode: formData.examPattern.mode || null,
@@ -315,6 +338,7 @@ export default function ExamsPage() {
           target_rank_range: formData.examCutoff.target_rank_range || null,
         },
         careerGoalIds: formData.careerGoalIds || [],
+        programIds: formData.programIds || [],
       };
 
       if (editingExam) {
@@ -399,7 +423,9 @@ export default function ExamsPage() {
           exam_logo: e?.exam_logo ?? '',
           exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
           conducting_authority: e?.conducting_authority ?? '',
+          format: e?.format != null ? (typeof e.format === 'object' ? JSON.stringify(e.format, null, 2) : String(e.format)) : '',
           number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
+          website: e?.website ?? '',
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
@@ -411,6 +437,7 @@ export default function ExamsPage() {
             age_limit_min: data.eligibilityCriteria?.age_limit_min != null ? String(data.eligibilityCriteria.age_limit_min) : '',
             age_limit_max: data.eligibilityCriteria?.age_limit_max != null ? String(data.eligibilityCriteria.age_limit_max) : '',
             attempt_limit: data.eligibilityCriteria?.attempt_limit != null ? String(data.eligibilityCriteria.attempt_limit) : '',
+            domicile: data.eligibilityCriteria?.domicile ?? '',
           },
           examPattern: {
             mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid') ?? '',
@@ -425,6 +452,7 @@ export default function ExamsPage() {
             target_rank_range: data.examCutoff?.target_rank_range ?? '',
           },
           careerGoalIds: toNumArray(data.careerGoalIds),
+          programIds: toNumArray(data.programIds),
         };
         setEditingExam(e ?? exam);
         setFormData(nextForm);
@@ -483,7 +511,9 @@ export default function ExamsPage() {
       exam_logo: '',
       exam_type: '',
       conducting_authority: '',
+      format: '',
       number_of_papers: '1',
+      website: '',
       examDates: {
         application_start_date: '',
         application_close_date: '',
@@ -495,6 +525,7 @@ export default function ExamsPage() {
         age_limit_min: '',
         age_limit_max: '',
         attempt_limit: '',
+        domicile: '',
       },
       examPattern: {
         mode: '',
@@ -509,6 +540,7 @@ export default function ExamsPage() {
         target_rank_range: '',
       },
       careerGoalIds: [],
+      programIds: [],
     });
     setLogoFile(null);
     setLogoPreview(null);
@@ -619,13 +651,14 @@ export default function ExamsPage() {
     }
   };
 
-  type ExamFormTabId = 'basic' | 'dates' | 'eligibility' | 'pattern' | 'cutoff' | 'careerGoals';
+  type ExamFormTabId = 'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals';
   const tabs: { id: ExamFormTabId; label: string; icon: typeof FiFileText }[] = [
     { id: 'basic', label: 'Basic Info', icon: FiFileText },
-    { id: 'dates', label: 'Dates', icon: FiCalendar },
-    { id: 'eligibility', label: 'Eligibility', icon: FiUser },
-    { id: 'pattern', label: 'Pattern', icon: FiFileText },
-    { id: 'cutoff', label: 'Cutoff', icon: FiBarChart },
+    { id: 'examDetails', label: 'Exam Details', icon: FiCalendar },
+    { id: 'criteria', label: 'Criteria', icon: FiCheckSquare },
+    { id: 'pattern', label: 'Pattern', icon: FiLayout },
+    { id: 'cutoff', label: 'Rank & Cutoff', icon: FiBarChart },
+    { id: 'contactDetails', label: 'Contact Details', icon: FiGlobe },
     { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
 
@@ -1147,11 +1180,25 @@ export default function ExamsPage() {
                       />
                       <p className="text-xs text-gray-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Format (JSON)
+                      </label>
+                      <textarea
+                        value={formData.format}
+                        onChange={(e) => setFormData({ ...formData, format: e.target.value })}
+                        placeholder='e.g. {"Physics": {"marks": 100}, "Chemistry": {"marks": 100}}'
+                        rows={4}
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Optional. JSON object describing exam format/structure. Same as in bulk template.</p>
+                    </div>
                   </>
                 )}
 
-                {/* Dates Tab */}
-                {activeTab === 'dates' && (
+                {/* Exam Details Tab */}
+                {activeTab === 'examDetails' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1185,7 +1232,7 @@ export default function ExamsPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Exam Date
+                        Exam Date(s)
                       </label>
                       <input
                         type="date"
@@ -1197,11 +1244,47 @@ export default function ExamsPage() {
                         className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Mode (Online / Offline)
+                      </label>
+                      <Dropdown
+                        value={formData.examPattern.mode || null}
+                        onChange={(v) => setFormData({
+                          ...formData,
+                          examPattern: { ...formData.examPattern, mode: v }
+                        })}
+                        options={[
+                          { value: 'Offline', label: 'Offline' },
+                          { value: 'Online', label: 'Online' },
+                          { value: 'Hybrid', label: 'Hybrid' },
+                        ]}
+                        placeholder="Select mode"
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Domicile
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.eligibilityCriteria.domicile}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          eligibilityCriteria: { ...formData.eligibilityCriteria, domicile: e.target.value }
+                        })}
+                        placeholder="e.g., All India, Maharashtra, Delhi"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      />
+                    </div>
                   </>
                 )}
 
-                {/* Eligibility Tab */}
-                {activeTab === 'eligibility' && (
+                {/* Criteria Tab */}
+                {activeTab === 'criteria' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1288,32 +1371,25 @@ export default function ExamsPage() {
                         className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Programs
+                      </label>
+                      <MultiSelect
+                        options={programs.map((p) => ({ value: p.id.toString(), label: p.name }))}
+                        value={formData.programIds.map((id) => id.toString())}
+                        onChange={(selected) => setFormData({ ...formData, programIds: selected.map((s) => parseInt(s, 10)) })}
+                        placeholder="Select programs (e.g. B.Tech, MBBS)"
+                        className="w-full"
+                      />
+                    </div>
                   </>
                 )}
 
                 {/* Pattern Tab */}
                 {activeTab === 'pattern' && (
                   <>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Mode
-                      </label>
-                      <Dropdown
-                        value={formData.examPattern.mode || null}
-                        onChange={(v) => setFormData({
-                          ...formData,
-                          examPattern: { ...formData.examPattern, mode: v }
-                        })}
-                        options={[
-                          { value: 'Offline', label: 'Offline' },
-                          { value: 'Online', label: 'Online' },
-                          { value: 'Hybrid', label: 'Hybrid' },
-                        ]}
-                        placeholder="Select mode"
-                        className="w-full"
-                      />
-                    </div>
-
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Number of Questions
@@ -1429,6 +1505,24 @@ export default function ExamsPage() {
                         placeholder="Enter target rank range for top colleges (JSON or text)"
                         rows={3}
                         className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono text-xs"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Contact Details Tab */}
+                {activeTab === 'contactDetails' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Website
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.website}
+                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                        placeholder="e.g., https://jeemain.nta.nic.in"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                       />
                     </div>
                   </>
@@ -1551,46 +1645,55 @@ export default function ExamsPage() {
               )}
               {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Dates</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Exam Details</label>
                   <div className="text-sm text-gray-900 space-y-1">
                     {viewingExamData.examDates.application_start_date && <p>Application start: {viewingExamData.examDates.application_start_date}</p>}
                     {viewingExamData.examDates.application_close_date && <p>Application close: {viewingExamData.examDates.application_close_date}</p>}
                     {viewingExamData.examDates.exam_date && <p>Exam date: {viewingExamData.examDates.exam_date}</p>}
+                    {viewingExamData.examPattern?.mode && <p>Mode: {viewingExamData.examPattern.mode}</p>}
+                    {viewingExamData.eligibilityCriteria?.domicile && <p>Domicile: {viewingExamData.eligibilityCriteria.domicile}</p>}
                   </div>
                 </div>
               )}
               {viewingExamData.eligibilityCriteria && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Eligibility</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Criteria</label>
                   <div className="text-sm text-gray-900 space-y-1">
-                    {viewingExamData.eligibilityCriteria.stream_ids?.length > 0 && <p>Stream IDs: {viewingExamData.eligibilityCriteria.stream_ids.join(', ')}</p>}
-                    {viewingExamData.eligibilityCriteria.subject_ids?.length > 0 && <p>Subject IDs: {viewingExamData.eligibilityCriteria.subject_ids.join(', ')}</p>}
+                    {viewingExamData.eligibilityCriteria.stream_ids?.length > 0 && <p>Required Streams: {viewingExamData.eligibilityCriteria.stream_ids.map((id) => streams.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
+                    {viewingExamData.eligibilityCriteria.subject_ids?.length > 0 && <p>Subject Requirements: {viewingExamData.eligibilityCriteria.subject_ids.map((id) => subjects.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
                     {(viewingExamData.eligibilityCriteria.age_limit_min != null || viewingExamData.eligibilityCriteria.age_limit_max != null) && (
-                      <p>Age: {viewingExamData.eligibilityCriteria.age_limit_min ?? '–'} – {viewingExamData.eligibilityCriteria.age_limit_max ?? '–'}</p>
+                      <p>Age Limits: {viewingExamData.eligibilityCriteria.age_limit_min ?? '–'} – {viewingExamData.eligibilityCriteria.age_limit_max ?? '–'}</p>
                     )}
-                    {viewingExamData.eligibilityCriteria.attempt_limit != null && <p>Attempt limit: {viewingExamData.eligibilityCriteria.attempt_limit}</p>}
+                    {viewingExamData.eligibilityCriteria.attempt_limit != null && <p>Attempt Limits: {viewingExamData.eligibilityCriteria.attempt_limit}</p>}
                   </div>
                 </div>
               )}
-              {viewingExamData.examPattern && (viewingExamData.examPattern.mode || viewingExamData.examPattern.number_of_questions || viewingExamData.examPattern.duration_minutes) && (
+              {viewingExamData.examPattern && (viewingExamData.examPattern.number_of_questions || viewingExamData.examPattern.duration_minutes || viewingExamData.examPattern.marking_scheme) && (
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Pattern</label>
                   <div className="text-sm text-gray-900 space-y-1">
-                    {viewingExamData.examPattern.mode && <p>Mode: {viewingExamData.examPattern.mode}</p>}
-                    {viewingExamData.examPattern.number_of_questions != null && <p>Questions: {viewingExamData.examPattern.number_of_questions}</p>}
+                    {viewingExamData.examPattern.number_of_questions != null && <p>Number of Questions: {viewingExamData.examPattern.number_of_questions}</p>}
+                    {viewingExamData.examPattern.marking_scheme && <p className="whitespace-pre-wrap">Marking Scheme: {viewingExamData.examPattern.marking_scheme}</p>}
                     {viewingExamData.examPattern.duration_minutes != null && <p>Duration: {viewingExamData.examPattern.duration_minutes} min</p>}
-                    {viewingExamData.examPattern.marking_scheme && <p className="whitespace-pre-wrap">Marking: {viewingExamData.examPattern.marking_scheme}</p>}
                   </div>
                 </div>
               )}
               {viewingExamData.examCutoff && (viewingExamData.examCutoff.previous_year_cutoff || viewingExamData.examCutoff.ranks_percentiles || viewingExamData.examCutoff.category_wise_cutoff) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Cutoff</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Rank & Cutoff</label>
                   <div className="text-sm text-gray-900 space-y-1">
                     {viewingExamData.examCutoff.previous_year_cutoff && <p className="whitespace-pre-wrap">Previous year: {viewingExamData.examCutoff.previous_year_cutoff}</p>}
                     {viewingExamData.examCutoff.ranks_percentiles && <p className="whitespace-pre-wrap">Ranks: {viewingExamData.examCutoff.ranks_percentiles}</p>}
                     {viewingExamData.examCutoff.category_wise_cutoff && <p className="whitespace-pre-wrap">Category: {viewingExamData.examCutoff.category_wise_cutoff}</p>}
                     {viewingExamData.examCutoff.target_rank_range && <p className="whitespace-pre-wrap">Target rank: {viewingExamData.examCutoff.target_rank_range}</p>}
+                  </div>
+                </div>
+              )}
+              {viewingExamData.exam.website && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Contact Details</label>
+                  <div className="text-sm text-gray-900 space-y-1">
+                    <p>Website: <a href={viewingExamData.exam.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.website}</a></p>
                   </div>
                 </div>
               )}
@@ -1600,6 +1703,20 @@ export default function ExamsPage() {
                   <p className="text-sm text-gray-900">
                     {viewingExamData.careerGoalIds.map((id) => careerGoals.find((cg) => cg.id === id)?.label ?? id).join(', ') || viewingExamData.careerGoalIds.join(', ')}
                   </p>
+                </div>
+              )}
+              {viewingExamData.programIds?.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Programs</label>
+                  <p className="text-sm text-gray-900">
+                    {viewingExamData.programIds.map((id) => programs.find((p) => p.id === id)?.name ?? id).join(', ')}
+                  </p>
+                </div>
+              )}
+              {viewingExamData.exam.format != null && typeof viewingExamData.exam.format === 'object' && Object.keys(viewingExamData.exam.format as object).length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Format</label>
+                  <pre className="text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-auto max-h-40">{JSON.stringify(viewingExamData.exam.format, null, 2)}</pre>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">

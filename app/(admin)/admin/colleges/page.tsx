@@ -21,6 +21,7 @@ import {
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
+import { getAllBranches, type Branch } from '@/api/admin/branches';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile, FiImage } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
@@ -39,26 +40,42 @@ export default function CollegesPage() {
   const [editingCollege, setEditingCollege] = useState<College | null>(null);
   const [viewingData, setViewingData] = useState<CollegeWithDetails | null>(null);
   const [loadingView, setLoadingView] = useState(false);
+  const emptyProgram = {
+    program_id: 0,
+    branch_course: '',
+    program_description: '',
+    duration_unit: 'years',
+    duration_years: null as number | null,
+    intake_capacity: null as number | null,
+    key_dates_summary: '',
+    fee_per_semester: null as number | null,
+    total_fee: null as number | null,
+    counselling_process: '',
+    documents_required: '',
+    placement: '',
+    scholarship: '',
+    recommended_exam_ids: [] as number[],
+    contact_email: '',
+    contact_number: '',
+    brochure_url: '',
+    seatMatrix: [] as { branch: string; category: string; seat_count: number | null; year: number | null }[],
+    previousCutoffs: [] as { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[],
+    expectedCutoffs: [] as { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[],
+  };
   const [formData, setFormData] = useState({
     college_name: '',
     college_location: '',
-    college_type: '' as 'Central' | 'State' | 'Private' | 'Deemed' | '',
+    google_map_link: '',
+    college_type: [] as string[],
+    major_program_ids: [] as number[],
+    website: '',
     college_logo: '',
+    logo_filename: '',
     college_description: '',
-    collegeKeyDates: [] as { event_name: string; event_date: string }[],
-    collegeDocumentsRequired: [] as { document_name: string }[],
-    collegeCounsellingProcess: [] as { step_number: number | null; description: string }[],
-    recommendedExamIds: [] as number[],
-    collegePrograms: [] as {
-      program_id: number;
-      intake_capacity: number | null;
-      duration_years: number | null;
-      seatMatrix: { branch: string; category: string; seat_count: number | null; year: number | null }[];
-      previousCutoffs: { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[];
-      expectedCutoffs: { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[];
-    }[],
+    collegePrograms: [{ ...emptyProgram }] as (typeof emptyProgram)[],
   });
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [recommendedExamOptions, setRecommendedExamOptions] = useState<{ value: string; label: string }[]>([]);
   const [, setLogoFile] = useState<File | null>(null);
@@ -103,8 +120,9 @@ export default function CollegesPage() {
     fetchData();
     (async () => {
       try {
-        const [progRes, examRes] = await Promise.all([getAllPrograms(), getAllExamsAdmin()]);
+        const [progRes, branchesRes, examRes] = await Promise.all([getAllPrograms(), getAllBranches(), getAllExamsAdmin()]);
         if (progRes.success && progRes.data?.programs) setPrograms(progRes.data.programs);
+        if (branchesRes.success && branchesRes.data?.branches) setBranches(branchesRes.data.branches.filter((b: Branch) => b.status));
         if (examRes.success && examRes.data?.exams) {
           setExams(examRes.data.exams);
           setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.name || String(e.id) })));
@@ -184,24 +202,34 @@ export default function CollegesPage() {
     setIsSaving(true);
     setError(null);
     try {
-      const recommendedExamNames = formData.recommendedExamIds
-        .map((id) => exams.find((e) => e.id === id)?.name)
-        .filter((n): n is string => Boolean(n));
       const payload = {
         college_name: formData.college_name.trim(),
         college_location: formData.college_location.trim() || null,
-        college_type: formData.college_type || null,
+        google_map_link: formData.google_map_link.trim() || null,
+        college_type: formData.college_type.length > 0 ? formData.college_type.join(',') : null,
+        major_program_ids: formData.major_program_ids,
+        website: formData.website.trim() || null,
         college_logo: formData.college_logo || null,
+        logo_filename: formData.logo_filename.trim() || null,
         college_description: formData.college_description.trim() || null,
-        collegeKeyDates: formData.collegeKeyDates.filter((k) => k.event_name?.trim() || k.event_date),
-        collegeDocumentsRequired: formData.collegeDocumentsRequired.filter((d) => d.document_name?.trim()).map((d) => ({ document_name: d.document_name!.trim() })),
-        collegeCounsellingProcess: formData.collegeCounsellingProcess.filter((c) => c.description?.trim()).map((c) => ({ step_number: c.step_number ?? undefined, description: c.description?.trim() || undefined })),
-        recommendedExamNames: recommendedExamNames.length ? recommendedExamNames : undefined,
-        recommendedExamIds: recommendedExamNames.length ? undefined : formData.recommendedExamIds,
         collegePrograms: formData.collegePrograms.filter((p) => p.program_id).map((p) => ({
           program_id: p.program_id,
-          intake_capacity: p.intake_capacity,
+          branch_course: p.branch_course?.trim() || null,
+          program_description: p.program_description?.trim() || null,
+          duration_unit: p.duration_unit || 'years',
           duration_years: p.duration_years ?? null,
+          intake_capacity: p.intake_capacity,
+          key_dates_summary: p.key_dates_summary?.trim() || null,
+          fee_per_semester: p.fee_per_semester ?? null,
+          total_fee: p.total_fee ?? null,
+          counselling_process: p.counselling_process?.trim() || null,
+          documents_required: p.documents_required?.trim() || null,
+          placement: p.placement?.trim() || null,
+          scholarship: p.scholarship?.trim() || null,
+          recommended_exam_ids: p.recommended_exam_ids.length > 0 ? p.recommended_exam_ids.join(',') : null,
+          contact_email: p.contact_email?.trim() || null,
+          contact_number: p.contact_number?.trim() || null,
+          brochure_url: p.brochure_url?.trim() || null,
           seatMatrix: (p.seatMatrix || []).filter((s) => s.branch?.trim() || s.category?.trim() || s.seat_count != null || s.year != null).map((s) => ({ branch: s.branch || undefined, category: s.category || undefined, seat_count: s.seat_count ?? undefined, year: s.year ?? undefined })),
           previousCutoffs: (p.previousCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch || undefined, category: c.category || undefined, cutoff_rank: c.cutoff_rank ?? undefined, year: c.year ?? undefined })),
           expectedCutoffs: (p.expectedCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch || undefined, category: c.category || undefined, expected_rank: c.expected_rank ?? undefined, year: c.year ?? undefined })),
@@ -269,24 +297,42 @@ export default function CollegesPage() {
       const response = await getCollegeById(college.id);
       if (response.success && response.data) {
         const d = response.data;
+        const typeStr = d.college.college_type ?? '';
+        const typeArr = typeStr ? typeStr.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+        const majorIdsStr = d.collegeDetails?.major_program_ids ?? '';
+        const majorIds = majorIdsStr ? majorIdsStr.split(',').map((s: string) => parseInt(s.trim(), 10)).filter((n: number) => !isNaN(n)) : [];
         setFormData({
           college_name: d.college.college_name ?? '',
           college_location: d.college.college_location ?? '',
-          college_type: (d.college.college_type as 'Central' | 'State' | 'Private' | 'Deemed') ?? '',
+          google_map_link: d.college.google_map_link ?? '',
+          college_type: typeArr,
+          major_program_ids: majorIds,
+          website: d.college.website ?? '',
           college_logo: d.college.college_logo ?? '',
+          logo_filename: d.college.logo_filename ?? '',
           college_description: d.collegeDetails?.college_description ?? '',
-          collegeKeyDates: (d.collegeKeyDates || []).map((k) => ({ event_name: k.event_name ?? '', event_date: k.event_date?.toString().slice(0, 10) ?? '' })),
-          collegeDocumentsRequired: (d.collegeDocumentsRequired || []).map((doc) => ({ document_name: doc.document_name ?? '' })),
-          collegeCounsellingProcess: (d.collegeCounsellingProcess || []).map((c) => ({ step_number: c.step_number ?? null, description: c.description ?? '' })),
-          recommendedExamIds: d.recommendedExamIds ?? [],
-          collegePrograms: (d.collegePrograms || []).map((p) => ({
+          collegePrograms: (d.collegePrograms || []).length > 0 ? (d.collegePrograms || []).map((p) => ({
             program_id: p.program_id,
+            branch_course: p.branch_course ?? '',
+            program_description: p.program_description ?? '',
+            duration_unit: p.duration_unit ?? 'years',
+            duration_years: p.duration_years ?? null,
             intake_capacity: p.intake_capacity ?? null,
-            duration_years: (p as { duration_years?: number | null }).duration_years ?? null,
+            key_dates_summary: p.key_dates_summary ?? '',
+            fee_per_semester: p.fee_per_semester != null ? Number(p.fee_per_semester) : null,
+            total_fee: p.total_fee != null ? Number(p.total_fee) : null,
+            counselling_process: p.counselling_process ?? '',
+            documents_required: p.documents_required ?? '',
+            placement: p.placement ?? '',
+            scholarship: p.scholarship ?? '',
+            recommended_exam_ids: p.recommended_exam_ids ? p.recommended_exam_ids.split(',').map((s: string) => parseInt(s.trim(), 10)).filter((n: number) => !isNaN(n)) : [],
+            contact_email: p.contact_email ?? '',
+            contact_number: p.contact_number ?? '',
+            brochure_url: p.brochure_url ?? '',
             seatMatrix: (p.seatMatrix || []).map((s) => ({ branch: (s as { branch?: string }).branch ?? '', category: s.category ?? '', seat_count: s.seat_count ?? null, year: s.year ?? null })),
             previousCutoffs: (p.previousCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', cutoff_rank: c.cutoff_rank ?? null, year: c.year ?? null })),
             expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
-          })),
+          })) : [{ ...emptyProgram }],
         });
         setLogoPreview(d.college.college_logo ?? null);
         setEditingCollege(d.college);
@@ -331,21 +377,14 @@ export default function CollegesPage() {
     setFormData({
       college_name: '',
       college_location: '',
-      college_type: '',
+      google_map_link: '',
+      college_type: [],
+      major_program_ids: [],
+      website: '',
       college_logo: '',
+      logo_filename: '',
       college_description: '',
-      collegeKeyDates: [],
-      collegeDocumentsRequired: [],
-      collegeCounsellingProcess: [],
-      recommendedExamIds: [],
-      collegePrograms: [] as {
-        program_id: number;
-        intake_capacity: number | null;
-        duration_years: number | null;
-        seatMatrix: { branch: string; category: string; seat_count: number | null; year: number | null }[];
-        previousCutoffs: { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[];
-        expectedCutoffs: { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[];
-      }[],
+      collegePrograms: [{ ...emptyProgram }],
     });
     setLogoPreview(null);
     setError(null);
@@ -628,7 +667,7 @@ export default function CollegesPage() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">{editingCollege ? 'Edit College' : 'Create College'}</h2>
               <button type="button" onClick={handleModalClose} className="text-white hover:text-gray-200">
@@ -636,41 +675,48 @@ export default function CollegesPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4 space-y-4">
+              {/* ── College Details ── */}
+              <div className="border-b border-gray-200 pb-1 mb-2">
+                <h3 className="text-sm font-bold text-gray-800">College Details</h3>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">College Name *</label>
-                <input
-                  type="text"
-                  value={formData.college_name}
-                  onChange={(e) => setFormData({ ...formData, college_name: e.target.value })}
-                  required
-                  placeholder="e.g. IIT Delhi"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                />
+                <input type="text" value={formData.college_name} onChange={(e) => setFormData({ ...formData, college_name: e.target.value })} required placeholder="e.g. IIT Delhi" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                <input
-                  type="text"
-                  value={formData.college_location}
-                  onChange={(e) => setFormData({ ...formData, college_location: e.target.value })}
-                  placeholder="e.g. New Delhi"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                />
+                <input type="text" value={formData.college_location} onChange={(e) => setFormData({ ...formData, college_location: e.target.value })} placeholder="e.g. New Delhi" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                <Dropdown
-                  value={formData.college_type || null}
-                  onChange={(v) => setFormData({ ...formData, college_type: v })}
+                <label className="block text-xs font-medium text-gray-700 mb-1">Google Map Link</label>
+                <input type="url" value={formData.google_map_link} onChange={(e) => setFormData({ ...formData, google_map_link: e.target.value })} placeholder="https://maps.google.com/..." className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">College Type (multiple)</label>
+                <MultiSelect
+                  value={formData.college_type}
+                  onChange={(vals) => setFormData({ ...formData, college_type: vals })}
                   options={[
                     { value: 'Central', label: 'Central' },
                     { value: 'State', label: 'State' },
                     { value: 'Private', label: 'Private' },
                     { value: 'Deemed', label: 'Deemed' },
                   ]}
-                  placeholder="Select type"
-                  className="w-full"
+                  placeholder="Select type(s)"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Major Programs Offered</label>
+                <MultiSelect
+                  value={formData.major_program_ids.map(String)}
+                  onChange={(vals) => setFormData({ ...formData, major_program_ids: vals.map(Number).filter((n) => !isNaN(n)) })}
+                  options={programs.map((p) => ({ value: String(p.id), label: p.name }))}
+                  placeholder="Select programs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Website</label>
+                <input type="url" value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} placeholder="https://www.college.ac.in" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
@@ -687,281 +733,196 @@ export default function CollegesPage() {
                 {uploading && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Logo file name</label>
+                <input
+                  type="text"
+                  value={formData.logo_filename}
+                  onChange={(e) => setFormData({ ...formData, logo_filename: e.target.value })}
+                  placeholder="e.g. iit_delhi.png"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Used to match files when using &quot;Upload missing logos&quot; (ZIP file names must match this).</p>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={formData.college_description}
-                  onChange={(e) => setFormData({ ...formData, college_description: e.target.value })}
-                  placeholder="Brief description..."
-                  rows={3}
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
-                />
+                <textarea value={formData.college_description} onChange={(e) => setFormData({ ...formData, college_description: e.target.value })} placeholder="Brief description..." rows={3} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Key Dates</label>
-                {formData.collegeKeyDates.map((k, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Event name"
-                      value={k.event_name}
-                      onChange={(e) => {
-                        const next = [...formData.collegeKeyDates];
-                        next[i] = { ...next[i], event_name: e.target.value };
-                        setFormData({ ...formData, collegeKeyDates: next });
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      type="date"
-                      value={k.event_date}
-                      onChange={(e) => {
-                        const next = [...formData.collegeKeyDates];
-                        next[i] = { ...next[i], event_date: e.target.value };
-                        setFormData({ ...formData, collegeKeyDates: next });
-                      }}
-                      className="w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                    />
-                    <button type="button" onClick={() => setFormData({ ...formData, collegeKeyDates: formData.collegeKeyDates.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800">Remove</button>
+
+              {/* ── Program Details ── */}
+              <div className="border-b border-gray-200 pb-1 mb-2 mt-6">
+                <h3 className="text-sm font-bold text-gray-800">Program Details</h3>
+              </div>
+              {formData.collegePrograms.map((p, i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50/50 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-700">Program {i + 1}</span>
+                    {formData.collegePrograms.length > 1 && (
+                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800 text-xs">Remove</button>
+                    )}
                   </div>
-                ))}
-                <button type="button" onClick={() => setFormData({ ...formData, collegeKeyDates: [...formData.collegeKeyDates, { event_name: '', event_date: '' }] })} className="text-sm text-pink hover:underline">+ Add key date</button>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Documents Required</label>
-                {formData.collegeDocumentsRequired.map((d, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Document name"
-                      value={d.document_name}
-                      onChange={(e) => {
-                        const next = [...formData.collegeDocumentsRequired];
-                        next[i] = { document_name: e.target.value };
-                        setFormData({ ...formData, collegeDocumentsRequired: next });
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                    />
-                    <button type="button" onClick={() => setFormData({ ...formData, collegeDocumentsRequired: formData.collegeDocumentsRequired.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800">Remove</button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setFormData({ ...formData, collegeDocumentsRequired: [...formData.collegeDocumentsRequired, { document_name: '' }] })} className="text-sm text-pink hover:underline">+ Add document</button>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Counselling Process</label>
-                {formData.collegeCounsellingProcess.map((c, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Description (e.g. JOSAA counselling)"
-                      value={c.description}
-                      onChange={(e) => {
-                        const next = [...formData.collegeCounsellingProcess];
-                        next[i] = { ...next[i], description: e.target.value };
-                        setFormData({ ...formData, collegeCounsellingProcess: next });
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                    />
-                    <button type="button" onClick={() => setFormData({ ...formData, collegeCounsellingProcess: formData.collegeCounsellingProcess.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800">Remove</button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setFormData({ ...formData, collegeCounsellingProcess: [...formData.collegeCounsellingProcess, { step_number: null, description: '' }] })} className="text-sm text-pink hover:underline">+ Add step</button>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Recommended Exams</label>
-                <MultiSelect
-                  value={formData.recommendedExamIds.map(String)}
-                  onChange={(vals) => setFormData({ ...formData, recommendedExamIds: vals.map(Number).filter((n) => !isNaN(n)) })}
-                  options={recommendedExamOptions}
-                  placeholder="Select exams"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Programs (by name), Intake, Duration, Seat Matrix & Cutoffs</label>
-                {formData.collegePrograms.map((p, i) => (
-                  <div key={i} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50/50 space-y-2">
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <Dropdown<number>
-                        value={p.program_id}
-                        onChange={(v) => {
-                          const next = [...formData.collegePrograms];
-                          next[i] = { ...next[i], program_id: v };
-                          setFormData({ ...formData, collegePrograms: next });
-                        }}
-                        options={[
-                          { value: 0, label: 'Select program' },
-                          ...programs.map((prog) => ({ value: prog.id, label: prog.name })),
-                        ]}
-                        placeholder="Select program"
-                        className="flex-1 min-w-[120px]"
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Program Category *</label>
+                      <Dropdown<number> value={p.program_id} onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], program_id: v }; setFormData({ ...formData, collegePrograms: next }); }} options={[{ value: 0, label: 'Select program category' }, ...programs.map((prog) => ({ value: prog.id, label: prog.name }))]} placeholder="Select program category" className="w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Branch / Course</label>
+                      <Dropdown<string>
+                        value={p.branch_course || null}
+                        onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], branch_course: v ?? '' }; setFormData({ ...formData, collegePrograms: next }); }}
+                        options={[{ value: '', label: 'Select branch/course' }, ...branches.map((b) => ({ value: b.name, label: b.name }))]}
+                        placeholder="Select branch/course"
+                        className="w-full"
                       />
-                      <input type="number" placeholder="Intake" value={p.intake_capacity ?? ''} onChange={(e) => {
-                        const next = [...formData.collegePrograms];
-                        next[i] = { ...next[i], intake_capacity: e.target.value ? parseInt(e.target.value, 10) : null };
-                        setFormData({ ...formData, collegePrograms: next });
-                      }} className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
-                      <input type="number" placeholder="Duration (yrs)" value={p.duration_years ?? ''} onChange={(e) => {
-                        const next = [...formData.collegePrograms];
-                        next[i] = { ...next[i], duration_years: e.target.value ? parseInt(e.target.value, 10) : null };
-                        setFormData({ ...formData, collegePrograms: next });
-                      }} className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
-                    </div>
-                    <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Seat matrix (branch-category:count, e.g. CSE-general:50):</span>
-                      {(p.seatMatrix || []).map((s, si) => (
-                        <div key={si} className="flex gap-2 items-center flex-wrap">
-                          <input type="text" placeholder="Branch" value={s.branch} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const sm = [...(next[i].seatMatrix || [])];
-                            sm[si] = { ...sm[si], branch: e.target.value };
-                            next[i] = { ...next[i], seatMatrix: sm };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="text" placeholder="Category" value={s.category} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const sm = [...(next[i].seatMatrix || [])];
-                            sm[si] = { ...sm[si], category: e.target.value };
-                            next[i] = { ...next[i], seatMatrix: sm };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-24 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Seats" value={s.seat_count ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const sm = [...(next[i].seatMatrix || [])];
-                            sm[si] = { ...sm[si], seat_count: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], seatMatrix: sm };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Year" value={s.year ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const sm = [...(next[i].seatMatrix || [])];
-                            sm[si] = { ...sm[si], year: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], seatMatrix: sm };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-16 px-2 py-1 text-sm border rounded" />
-                          <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: (pr.seatMatrix || []).filter((_, k) => k !== si) } : pr) })} className="text-red-500 text-xs">Del</button>
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: [...(pr.seatMatrix || []), { branch: '', category: '', seat_count: null, year: null }] } : pr) })} className="text-pink text-xs">+ Seat row</button>
-                    </div>
-                    <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Previous year cutoff (exam | branch-category:rank | year):</span>
-                      {(p.previousCutoffs || []).map((c, ci) => (
-                        <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <Dropdown<number>
-                            value={c.exam_id}
-                            onChange={(v) => {
-                              const next = [...formData.collegePrograms];
-                              const pc = [...(next[i].previousCutoffs || [])];
-                              pc[ci] = { ...pc[ci], exam_id: v };
-                              next[i] = { ...next[i], previousCutoffs: pc };
-                              setFormData({ ...formData, collegePrograms: next });
-                            }}
-                            options={[
-                              { value: 0, label: 'Exam' },
-                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
-                            ]}
-                            placeholder="Exam"
-                            size="sm"
-                            className="min-w-[120px]"
-                          />
-                          <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], branch: e.target.value };
-                            next[i] = { ...next[i], previousCutoffs: pc };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], category: e.target.value };
-                            next[i] = { ...next[i], previousCutoffs: pc };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Rank" value={c.cutoff_rank ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], cutoff_rank: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], previousCutoffs: pc };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Year" value={c.year ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], year: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], previousCutoffs: pc };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-16 px-2 py-1 text-sm border rounded" />
-                          <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: (pr.previousCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: [...(pr.previousCutoffs || []), { exam_id: 0, branch: '', category: '', cutoff_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Previous cutoff</button>
-                    </div>
-                    <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Expected cutoff (exam | branch-category:rank | year):</span>
-                      {(p.expectedCutoffs || []).map((c, ci) => (
-                        <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <Dropdown<number>
-                            value={c.exam_id}
-                            onChange={(v) => {
-                              const next = [...formData.collegePrograms];
-                              const ec = [...(next[i].expectedCutoffs || [])];
-                              ec[ci] = { ...ec[ci], exam_id: v };
-                              next[i] = { ...next[i], expectedCutoffs: ec };
-                              setFormData({ ...formData, collegePrograms: next });
-                            }}
-                            options={[
-                              { value: 0, label: 'Exam' },
-                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
-                            ]}
-                            placeholder="Exam"
-                            size="sm"
-                            className="min-w-[120px]"
-                          />
-                          <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], branch: e.target.value };
-                            next[i] = { ...next[i], expectedCutoffs: ec };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], category: e.target.value };
-                            next[i] = { ...next[i], expectedCutoffs: ec };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Rank" value={c.expected_rank ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], expected_rank: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], expectedCutoffs: ec };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-20 px-2 py-1 text-sm border rounded" />
-                          <input type="number" placeholder="Year" value={c.year ?? ''} onChange={(e) => {
-                            const next = [...formData.collegePrograms];
-                            const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], year: e.target.value ? parseInt(e.target.value, 10) : null };
-                            next[i] = { ...next[i], expectedCutoffs: ec };
-                            setFormData({ ...formData, collegePrograms: next });
-                          }} className="w-16 px-2 py-1 text-sm border rounded" />
-                          <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: (pr.expectedCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: [...(pr.expectedCutoffs || []), { exam_id: 0, branch: '', category: '', expected_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Expected cutoff</button>
                     </div>
                   </div>
-                ))}
-                <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: [...formData.collegePrograms, { program_id: 0, intake_capacity: null, duration_years: null, seatMatrix: [], previousCutoffs: [], expectedCutoffs: [] }] })} className="text-sm text-pink hover:underline">+ Add program</button>
-              </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-0.5">Program Description</label>
+                    <textarea value={p.program_description} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], program_description: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="Brief program description..." rows={2} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg resize-none" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Duration Unit</label>
+                      <Dropdown value={p.duration_unit} onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], duration_unit: v }; setFormData({ ...formData, collegePrograms: next }); }} options={[{ value: 'years', label: 'Years' }, { value: 'months', label: 'Months' }, { value: 'semesters', label: 'Semesters' }]} placeholder="Unit" className="w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Duration</label>
+                      <input type="number" placeholder="e.g. 4" value={p.duration_years ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], duration_years: e.target.value ? parseInt(e.target.value, 10) : null }; setFormData({ ...formData, collegePrograms: next }); }} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Intake Capacity</label>
+                      <input type="number" placeholder="e.g. 120" value={p.intake_capacity ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], intake_capacity: e.target.value ? parseInt(e.target.value, 10) : null }; setFormData({ ...formData, collegePrograms: next }); }} className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                    </div>
+                  </div>
+
+                  {/* Previous Cutoff */}
+                  <div className="pl-2 text-xs text-gray-600 space-y-1">
+                    <span className="font-medium">Previous Years Cutoff:</span>
+                    {(p.previousCutoffs || []).map((c, ci) => (
+                      <div key={ci} className="flex gap-2 items-center flex-wrap">
+                        <Dropdown<number> value={c.exam_id} onChange={(v) => { const next = [...formData.collegePrograms]; const pc = [...(next[i].previousCutoffs || [])]; pc[ci] = { ...pc[ci], exam_id: v }; next[i] = { ...next[i], previousCutoffs: pc }; setFormData({ ...formData, collegePrograms: next }); }} options={[{ value: 0, label: 'Exam' }, ...exams.map((ex) => ({ value: ex.id, label: ex.name }))]} placeholder="Exam" size="sm" className="min-w-[120px]" />
+                        <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const pc = [...(next[i].previousCutoffs || [])]; pc[ci] = { ...pc[ci], branch: e.target.value }; next[i] = { ...next[i], previousCutoffs: pc }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="text" placeholder="Category" value={c.category} onChange={(e) => { const next = [...formData.collegePrograms]; const pc = [...(next[i].previousCutoffs || [])]; pc[ci] = { ...pc[ci], category: e.target.value }; next[i] = { ...next[i], previousCutoffs: pc }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Rank" value={c.cutoff_rank ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const pc = [...(next[i].previousCutoffs || [])]; pc[ci] = { ...pc[ci], cutoff_rank: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], previousCutoffs: pc }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Year" value={c.year ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const pc = [...(next[i].previousCutoffs || [])]; pc[ci] = { ...pc[ci], year: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], previousCutoffs: pc }; setFormData({ ...formData, collegePrograms: next }); }} className="w-16 px-2 py-1 text-sm border rounded" />
+                        <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: (pr.previousCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: [...(pr.previousCutoffs || []), { exam_id: 0, branch: '', category: '', cutoff_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Previous cutoff</button>
+                  </div>
+
+                  {/* Expected Cutoff */}
+                  <div className="pl-2 text-xs text-gray-600 space-y-1">
+                    <span className="font-medium">Expected Cutoff Range:</span>
+                    {(p.expectedCutoffs || []).map((c, ci) => (
+                      <div key={ci} className="flex gap-2 items-center flex-wrap">
+                        <Dropdown<number> value={c.exam_id} onChange={(v) => { const next = [...formData.collegePrograms]; const ec = [...(next[i].expectedCutoffs || [])]; ec[ci] = { ...ec[ci], exam_id: v }; next[i] = { ...next[i], expectedCutoffs: ec }; setFormData({ ...formData, collegePrograms: next }); }} options={[{ value: 0, label: 'Exam' }, ...exams.map((ex) => ({ value: ex.id, label: ex.name }))]} placeholder="Exam" size="sm" className="min-w-[120px]" />
+                        <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const ec = [...(next[i].expectedCutoffs || [])]; ec[ci] = { ...ec[ci], branch: e.target.value }; next[i] = { ...next[i], expectedCutoffs: ec }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="text" placeholder="Category" value={c.category} onChange={(e) => { const next = [...formData.collegePrograms]; const ec = [...(next[i].expectedCutoffs || [])]; ec[ci] = { ...ec[ci], category: e.target.value }; next[i] = { ...next[i], expectedCutoffs: ec }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Rank" value={c.expected_rank ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const ec = [...(next[i].expectedCutoffs || [])]; ec[ci] = { ...ec[ci], expected_rank: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], expectedCutoffs: ec }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Year" value={c.year ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const ec = [...(next[i].expectedCutoffs || [])]; ec[ci] = { ...ec[ci], year: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], expectedCutoffs: ec }; setFormData({ ...formData, collegePrograms: next }); }} className="w-16 px-2 py-1 text-sm border rounded" />
+                        <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: (pr.expectedCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: [...(pr.expectedCutoffs || []), { exam_id: 0, branch: '', category: '', expected_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Expected cutoff</button>
+                  </div>
+
+                  {/* Key Dates */}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <span className="text-xs font-bold text-gray-700">Key Dates</span>
+                    <div className="mt-1">
+                      <label className="block text-xs text-gray-600 mb-0.5">Summary</label>
+                      <input type="text" value={p.key_dates_summary} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], key_dates_summary: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. Admissions start Jan 2025, Last date Feb 2025" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                    </div>
+                  </div>
+
+                  {/* Fee Details */}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <span className="text-xs font-bold text-gray-700">Fee Details</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Fee per Semester (₹)</label>
+                        <input type="number" value={p.fee_per_semester ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], fee_per_semester: e.target.value ? parseFloat(e.target.value) : null }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. 150000" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Total Fee (₹)</label>
+                        <input type="number" value={p.total_fee ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], total_fee: e.target.value ? parseFloat(e.target.value) : null }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. 600000" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Other Information */}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <span className="text-xs font-bold text-gray-700">Other Information</span>
+                    <div className="space-y-2 mt-1">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Counselling Process</label>
+                        <input type="text" value={p.counselling_process} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], counselling_process: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. JOSAA counselling" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Documents Required</label>
+                        <input type="text" value={p.documents_required} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], documents_required: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. Aadhar, Marksheet, Photo" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Placement</label>
+                        <input type="text" value={p.placement} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], placement: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. Average 12 LPA" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Scholarship</label>
+                        <input type="text" value={p.scholarship} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], scholarship: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. Merit-based scholarship available" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Recommended Exams</label>
+                        <MultiSelect
+                          value={p.recommended_exam_ids.map(String)}
+                          onChange={(vals) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], recommended_exam_ids: vals.map(Number).filter((n) => !isNaN(n)) }; setFormData({ ...formData, collegePrograms: next }); }}
+                          options={recommendedExamOptions}
+                          placeholder="Select exams"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <span className="text-xs font-bold text-gray-700">Contact Information</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Email ID</label>
+                        <input type="email" value={p.contact_email} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], contact_email: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="admissions@college.ac.in" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-0.5">Contact Number</label>
+                        <input type="text" value={p.contact_number} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], contact_number: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="e.g. 011-12345678" className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-xs text-gray-600 mb-0.5">Brochure URL</label>
+                      <input type="url" value={p.brochure_url} onChange={(e) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], brochure_url: e.target.value }; setFormData({ ...formData, collegePrograms: next }); }} placeholder="https://..." className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                    </div>
+                  </div>
+
+                  {/* Seat Matrix */}
+                  <div className="pl-2 text-xs text-gray-600 space-y-1 border-t border-gray-200 pt-2 mt-2">
+                    <span className="font-medium">Seat Matrix:</span>
+                    {(p.seatMatrix || []).map((s, si) => (
+                      <div key={si} className="flex gap-2 items-center flex-wrap">
+                        <input type="text" placeholder="Branch" value={s.branch} onChange={(e) => { const next = [...formData.collegePrograms]; const sm = [...(next[i].seatMatrix || [])]; sm[si] = { ...sm[si], branch: e.target.value }; next[i] = { ...next[i], seatMatrix: sm }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="text" placeholder="Category" value={s.category} onChange={(e) => { const next = [...formData.collegePrograms]; const sm = [...(next[i].seatMatrix || [])]; sm[si] = { ...sm[si], category: e.target.value }; next[i] = { ...next[i], seatMatrix: sm }; setFormData({ ...formData, collegePrograms: next }); }} className="w-24 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Seats" value={s.seat_count ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const sm = [...(next[i].seatMatrix || [])]; sm[si] = { ...sm[si], seat_count: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], seatMatrix: sm }; setFormData({ ...formData, collegePrograms: next }); }} className="w-20 px-2 py-1 text-sm border rounded" />
+                        <input type="number" placeholder="Year" value={s.year ?? ''} onChange={(e) => { const next = [...formData.collegePrograms]; const sm = [...(next[i].seatMatrix || [])]; sm[si] = { ...sm[si], year: e.target.value ? parseInt(e.target.value, 10) : null }; next[i] = { ...next[i], seatMatrix: sm }; setFormData({ ...formData, collegePrograms: next }); }} className="w-16 px-2 py-1 text-sm border rounded" />
+                        <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: (pr.seatMatrix || []).filter((_, k) => k !== si) } : pr) })} className="text-red-500 text-xs">Del</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: [...(pr.seatMatrix || []), { branch: '', category: '', seat_count: null, year: null }] } : pr) })} className="text-pink text-xs">+ Seat row</button>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: [...formData.collegePrograms, { ...emptyProgram }] })} className="text-sm text-pink hover:underline">+ Add program</button>
+
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
-                  {isSaving ? 'Saving...' : editingCollege ? 'Update' : 'Create'}
-                </button>
+                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">{isSaving ? 'Saving...' : editingCollege ? 'Update' : 'Create'}</button>
               </div>
             </form>
           </div>
@@ -983,6 +944,9 @@ export default function CollegesPage() {
                   <h2 className="text-lg font-bold text-gray-900">{viewingData.college_name}</h2>
                   <p className="text-sm text-gray-600"><strong>Location:</strong> {viewingData.college_location || '-'}</p>
                   <p className="text-sm text-gray-600"><strong>Type:</strong> {viewingData.college_type || '-'}</p>
+                  {viewingData.google_map_link && <p className="text-sm text-gray-600"><strong>Map:</strong> <a href={viewingData.google_map_link} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">View on Google Maps</a></p>}
+                  {viewingData.website && <p className="text-sm text-gray-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">{viewingData.website}</a></p>}
+                  {viewingData.logo_filename && <p className="text-sm text-gray-600"><strong>Logo file name:</strong> <code className="px-1 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-xs">{viewingData.logo_filename}</code></p>}
                 </div>
               </div>
               <button type="button" onClick={() => setViewingData(null)} className="text-gray-500 hover:text-gray-700 flex-shrink-0">
@@ -997,49 +961,14 @@ export default function CollegesPage() {
               </div>
             )}
 
-            {((viewingData.collegeKeyDates ?? []).length > 0) && (
+            {viewingData.collegeDetails?.major_program_ids && (
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Key Dates</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  {(viewingData.collegeKeyDates ?? []).map((k, i) => (
-                    <li key={i}>{k.event_name || 'Event'}{k.event_date ? ` — ${String(k.event_date).slice(0, 10)}` : ''}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {((viewingData.collegeDocumentsRequired ?? []).length > 0) && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Documents Required</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  {(viewingData.collegeDocumentsRequired ?? []).map((d, i) => (
-                    <li key={i}>{d.document_name || '-'}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {((viewingData.collegeCounsellingProcess ?? []).length > 0) && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Counselling Process</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  {(viewingData.collegeCounsellingProcess ?? [])
-                    .slice()
-                    .sort((a, b) => (a.step_number ?? 999) - (b.step_number ?? 999))
-                    .map((c, i) => (
-                      <li key={i}>{c.description || '-'}</li>
-                    ))}
-                </ul>
-              </div>
-            )}
-
-            {((viewingData.recommendedExamIds ?? []).length > 0) && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Recommended Exams</h3>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Major Programs Offered</h3>
                 <p className="text-sm text-gray-700">
-                  {(viewingData.recommendedExamIds ?? [])
-                    .map((eid) => exams.find((e) => e.id === eid)?.name ?? `ID ${eid}`)
-                    .join(', ') || '-'}
+                  {viewingData.collegeDetails.major_program_ids.split(',').map((id) => {
+                    const pid = parseInt(id.trim(), 10);
+                    return programs.find((pr) => pr.id === pid)?.name ?? `ID ${pid}`;
+                  }).join(', ')}
                 </p>
               </div>
             )}
@@ -1049,29 +978,38 @@ export default function CollegesPage() {
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Programs</h3>
                 <div className="space-y-3">
                   {(viewingData.collegePrograms ?? []).map((p, i) => (
-                    <div key={i} className="border border-gray-200 rounded-lg p-3 bg-gray-50/50">
+                    <div key={i} className="border border-gray-200 rounded-lg p-3 bg-gray-50/50 space-y-1">
                       <p className="text-sm font-medium text-gray-800">
                         {programs.find((pr) => pr.id === p.program_id)?.name ?? `Program #${p.program_id}`}
-                        {(p as { duration_years?: number | null }).duration_years != null && (
-                          <span className="text-gray-600 font-normal"> — {p.duration_years} yr(s)</span>
-                        )}
-                        {p.intake_capacity != null && (
-                          <span className="text-gray-600 font-normal"> — Intake: {p.intake_capacity}</span>
-                        )}
+                        {p.branch_course && <span className="text-gray-600 font-normal"> — {p.branch_course}</span>}
                       </p>
+                      {p.program_description && <p className="text-xs text-gray-600">{p.program_description}</p>}
+                      <p className="text-xs text-gray-600">
+                        {p.duration_years != null && <span>Duration: {p.duration_years} {p.duration_unit || 'years'} · </span>}
+                        {p.intake_capacity != null && <span>Intake: {p.intake_capacity}</span>}
+                      </p>
+                      {p.key_dates_summary && <p className="text-xs text-gray-600"><strong>Key Dates:</strong> {p.key_dates_summary}</p>}
+                      {(p.fee_per_semester != null || p.total_fee != null) && <p className="text-xs text-gray-600"><strong>Fee:</strong> {p.fee_per_semester != null && `₹${Number(p.fee_per_semester).toLocaleString()}/sem`}{p.fee_per_semester != null && p.total_fee != null && ' · '}{p.total_fee != null && `Total ₹${Number(p.total_fee).toLocaleString()}`}</p>}
+                      {p.counselling_process && <p className="text-xs text-gray-600"><strong>Counselling:</strong> {p.counselling_process}</p>}
+                      {p.documents_required && <p className="text-xs text-gray-600"><strong>Documents:</strong> {p.documents_required}</p>}
+                      {p.placement && <p className="text-xs text-gray-600"><strong>Placement:</strong> {p.placement}</p>}
+                      {p.scholarship && <p className="text-xs text-gray-600"><strong>Scholarship:</strong> {p.scholarship}</p>}
+                      {p.recommended_exam_ids && <p className="text-xs text-gray-600"><strong>Recommended Exams:</strong> {p.recommended_exam_ids.split(',').map((id) => { const eid = parseInt(id.trim(), 10); return exams.find((e) => e.id === eid)?.name ?? `ID ${eid}`; }).join(', ')}</p>}
+                      {(p.contact_email || p.contact_number) && <p className="text-xs text-gray-600"><strong>Contact:</strong> {[p.contact_email, p.contact_number].filter(Boolean).join(' · ')}</p>}
+                      {p.brochure_url && <p className="text-xs text-gray-600"><strong>Brochure:</strong> <a href={p.brochure_url} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">Download</a></p>}
                       {(p.seatMatrix?.length ?? 0) > 0 && (
-                        <p className="text-xs text-gray-600 mt-1">
-                          Seat matrix: {(p.seatMatrix ?? []).map((s) => `${s.branch ? `${s.branch}-` : ''}${s.category ?? '-'}: ${s.seat_count ?? '-'}${s.year ? ` (${s.year})` : ''}`).join('; ')}
+                        <p className="text-xs text-gray-600">
+                          <strong>Seat matrix:</strong> {(p.seatMatrix ?? []).map((s) => `${s.branch ? `${s.branch}-` : ''}${s.category ?? '-'}: ${s.seat_count ?? '-'}${s.year ? ` (${s.year})` : ''}`).join('; ')}
                         </p>
                       )}
                       {(p.previousCutoffs?.length ?? 0) > 0 && (
-                        <p className="text-xs text-gray-600 mt-1">
-                          Previous cutoff: {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                        <p className="text-xs text-gray-600">
+                          <strong>Previous cutoff:</strong> {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                       {(p.expectedCutoffs?.length ?? 0) > 0 && (
-                        <p className="text-xs text-gray-600 mt-1">
-                          Expected cutoff: {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                        <p className="text-xs text-gray-600">
+                          <strong>Expected cutoff:</strong> {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                     </div>
@@ -1081,12 +1019,8 @@ export default function CollegesPage() {
             )}
 
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
-              <button type="button" onClick={() => setViewingData(null)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-                Close
-              </button>
-              <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData); }} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90">
-                Edit
-              </button>
+              <button type="button" onClick={() => setViewingData(null)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+              <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData); }} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90">Edit</button>
             </div>
           </div>
         </div>

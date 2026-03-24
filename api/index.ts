@@ -35,3 +35,9 @@ export type { CareerPublic } from './careers';
 // Export tests API
 export * from './tests';
 
+// Export strength API
+export * from './strength';
+
+// Export experts API (public)
+export * from './experts';
+

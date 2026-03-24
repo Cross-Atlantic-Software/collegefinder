@@ -10,11 +10,11 @@ class CollegeDetails {
   }
 
   static async create(data) {
-    const { college_id, college_description } = data;
+    const { college_id, college_description, major_program_ids } = data;
     const result = await db.query(
-      `INSERT INTO college_details (college_id, college_description)
-       VALUES ($1, $2) ON CONFLICT (college_id) DO UPDATE SET college_description = $2, updated_at = CURRENT_TIMESTAMP RETURNING *`,
-      [college_id, college_description || null]
+      `INSERT INTO college_details (college_id, college_description, major_program_ids)
+       VALUES ($1, $2, $3) ON CONFLICT (college_id) DO UPDATE SET college_description = $2, major_program_ids = $3, updated_at = CURRENT_TIMESTAMP RETURNING *`,
+      [college_id, college_description || null, major_program_ids || null]
     );
     return result.rows[0];
   }

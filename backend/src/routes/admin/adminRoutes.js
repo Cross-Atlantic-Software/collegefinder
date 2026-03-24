@@ -18,6 +18,7 @@ const ProgramController = require('../../controllers/admin/programController');
 const ExamCityController = require('../../controllers/admin/examCityController');
 const CategoryController = require('../../controllers/admin/categoryController');
 const CollegesController = require('../../controllers/admin/collegesController');
+const BranchController = require('../../controllers/admin/branchController');
 const InstitutesController = require('../../controllers/admin/institutesController');
 const ScholarshipsController = require('../../controllers/admin/scholarshipsController');
 const LoansController = require('../../controllers/admin/loansController');
@@ -50,7 +51,9 @@ const {
   validateCreateCategory,
   validateUpdateCategory,
   validateCreateAutomationExam,
-  validateUpdateAutomationExam
+  validateUpdateAutomationExam,
+  validateCreateBranch,
+  validateUpdateBranch
 } = require('../../middleware/validators');
 
 // Configure multer for memory storage (for S3 upload)
@@ -713,6 +716,18 @@ router.put('/programs/:id', authenticateAdmin, requireModuleAccess('programs'), 
  * @access  Private (Admin)
  */
 router.delete('/programs/:id', authenticateAdmin, requireModuleAccess('programs'), requireCanDelete, ProgramController.deleteProgram);
+
+/**
+ * Branches / Courses Taxonomy Routes
+ */
+router.get('/branches', authenticateAdmin, requireModuleAccess('branches'), BranchController.getAll);
+router.get('/branches/bulk-upload-template', authenticateAdmin, requireModuleAccess('branches'), BranchController.downloadBulkTemplate);
+router.get('/branches/download-excel', authenticateAdmin, requireModuleAccess('branches'), requireCanDownloadExcel, BranchController.downloadAllExcel);
+router.post('/branches/bulk-upload', authenticateAdmin, requireModuleAccess('branches'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), BranchController.bulkUpload);
+router.get('/branches/:id', authenticateAdmin, requireModuleAccess('branches'), BranchController.getById);
+router.post('/branches', authenticateAdmin, requireModuleAccess('branches'), validateCreateBranch, BranchController.create);
+router.put('/branches/:id', authenticateAdmin, requireModuleAccess('branches'), requireCanEdit, validateUpdateBranch, BranchController.update);
+router.delete('/branches/:id', authenticateAdmin, requireModuleAccess('branches'), requireCanDelete, BranchController.delete);
 
 /**
  * Exam Cities Taxonomy Routes

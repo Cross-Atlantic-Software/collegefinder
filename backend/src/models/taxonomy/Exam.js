@@ -48,12 +48,12 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website } = data;
     const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
     const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9) RETURNING *',
-      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}', papers]
+      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10) RETURNING *',
+      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}', papers, website || null]
     );
     return result.rows[0];
   }
@@ -62,7 +62,7 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers } = data;
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website } = data;
     
     const updates = [];
     const values = [];
@@ -96,10 +96,19 @@ class Exam {
       updates.push(`logo_file_name = $${paramCount++}`);
       values.push(logo_file_name);
     }
+    if (format !== undefined) {
+      const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
+      updates.push(`format = $${paramCount++}::jsonb`);
+      values.push(formatJson || '{}');
+    }
     if (number_of_papers !== undefined) {
       const papers = Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1));
       updates.push(`number_of_papers = $${paramCount++}`);
       values.push(papers);
+    }
+    if (website !== undefined) {
+      updates.push(`website = $${paramCount++}`);
+      values.push(website || null);
     }
 
     if (updates.length === 0) {

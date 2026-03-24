@@ -37,7 +37,8 @@ INSERT INTO modules (name, code) VALUES
   ('Blogs', 'blogs'),
   ('Applications', 'applications'),
   ('Automation Exams', 'automation_exams'),
-  ('Users', 'users')
+  ('Users', 'users'),
+  ('Branches / Courses', 'branches')
 ON CONFLICT (code) DO NOTHING;
 
 -- 3. admin_user_modules junction

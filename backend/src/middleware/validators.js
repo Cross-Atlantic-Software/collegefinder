@@ -1874,6 +1874,39 @@ const validateUpdateAutomationExam = [
     .withMessage('All notification emails must be valid email addresses')
 ];
 
+const validateCreateBranch = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('description')
+    .optional()
+    .trim(),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
+const validateUpdateBranch = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('description')
+    .optional()
+    .trim(),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean')
+];
+
 module.exports = {
   validateSendOTP,
   validateVerifyOTP,
@@ -1938,6 +1971,8 @@ module.exports = {
   validateOtherPersonalDetails,
   validateUserAddress,
   validateCreateAutomationExam,
-  validateUpdateAutomationExam
+  validateUpdateAutomationExam,
+  validateCreateBranch,
+  validateUpdateBranch
 };
 

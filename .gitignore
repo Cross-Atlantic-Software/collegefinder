@@ -30,6 +30,7 @@ yarn.lock
 .DS_Store
 *.pem
 aws.txt
+/aws/
 
 # SSH keys and private keys
 *.pub

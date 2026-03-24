@@ -73,6 +73,7 @@ const init = async () => {
       'purposes.sql',         // Purposes table and lecture_purposes junction table
       'levels.sql',           // Levels taxonomy table
       'programs.sql',         // Programs taxonomy table
+      'branches.sql',         // Branches / Courses taxonomy table
       'exam_city.sql',        // Exam city taxonomy table
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)
@@ -95,7 +96,10 @@ const init = async () => {
       // Automation tables (for python-backend PostgreSQL integration)
       'automation_exams.sql',       // Automation exam configurations
       'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
-      'automation_applications.sql' // Automation application queue (depends on automation_exams, users, admin_users, automation_sessions)
+      'automation_applications.sql', // Automation application queue (depends on automation_exams, users, admin_users, automation_sessions)
+      'strength_payments.sql',       // Strength payment status (depends on users)
+      'strength_results.sql',        // Strength analysis results (depends on users, admin_users)
+      'admission_experts.sql'        // Admission help experts (depends on admin_users)
     ];
 
     // Execute each schema file in order
@@ -149,7 +153,13 @@ const runMigrations = async () => {
     'create_exam_mock_prompts_table.sql',
     'add_total_mocks_generated_to_exams.sql',
     'add_topic_subtopic_exams_and_purpose_description.sql',
-    'add_multi_paper_support.sql'
+    'add_multi_paper_support.sql',
+    'add_strengths_and_experts.sql',
+    'widen_expert_photo_and_strength_report.sql',
+    'add_expert_phone_email_description.sql',
+    'add_website_to_exams.sql',
+    'restructure_colleges_programs.sql',
+    'add_branch_id_to_college_programs.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

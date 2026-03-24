@@ -266,8 +266,8 @@ export default function ProgramsPage() {
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Programs Manager</h1>
-            <p className="text-sm text-gray-600">Manage educational programs.</p>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Program Categories Manager</h1>
+            <p className="text-sm text-gray-600">Manage program categories.</p>
           </div>
 
           {/* Controls */}

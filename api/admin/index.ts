@@ -192,3 +192,20 @@ export type {
   CreateAutomationExamData,
   UpdateAutomationExamData,
 } from './automation-exams';
+
+// Export counsellor APIs
+export {
+  searchStudent,
+  submitCounsellorResults,
+  getCounsellorResults,
+  updateCounsellorResults,
+} from './counsellor';
+export type { StudentSearchResult } from './counsellor';
+
+// Export experts admin CRUD APIs
+export {
+  getAllExpertsAdmin,
+  createExpert,
+  updateExpert,
+  deleteExpert,
+} from './experts';

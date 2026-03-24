@@ -34,19 +34,19 @@ export default function AdminUsersPage() {
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Form state
+  // Form state (type includes counsellor to match API)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin' | 'counsellor',
     module_ids: [] as number[],
   });
 
-  // Edit form state
+  // Edit form state (type includes counsellor to match AdminUser from API)
   const [editFormData, setEditFormData] = useState({
     email: '',
     password: '',
-    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin' | 'counsellor',
     is_active: true,
     module_ids: [] as number[],
   });
@@ -168,6 +168,7 @@ export default function AdminUsersPage() {
   const typeLabel = (t: string) => {
     if (t === 'super_admin') return 'Super Admin';
     if (t === 'admin') return 'Admin';
+    if (t === 'counsellor') return 'Counsellor';
     return 'Data Entry';
   };
 
@@ -197,7 +198,7 @@ export default function AdminUsersPage() {
       const updateData: {
         email?: string;
         password?: string;
-        type?: 'data_entry' | 'admin' | 'super_admin';
+        type?: 'data_entry' | 'admin' | 'super_admin' | 'counsellor';
         is_active?: boolean;
         module_ids?: number[];
       } = {};
@@ -420,6 +421,7 @@ export default function AdminUsersPage() {
                                   options={[
                                     { value: 'data_entry', label: 'Data Entry' },
                                     { value: 'admin', label: 'Admin' },
+                                    { value: 'counsellor', label: 'Counsellor' },
                                   ]}
                                   size="sm"
                                 />
@@ -430,7 +432,9 @@ export default function AdminUsersPage() {
                                       ? 'bg-purple-100 text-purple-800'
                                       : admin.type === 'admin'
                                         ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-800'
+                                        : admin.type === 'counsellor'
+                                          ? 'bg-teal-100 text-teal-800'
+                                          : 'bg-gray-100 text-gray-800'
                                   }`}
                                 >
                                   {isSuperAdminType ? (
@@ -658,12 +662,13 @@ export default function AdminUsersPage() {
                     options={[
                       { value: 'data_entry', label: 'Data Entry' },
                       { value: 'admin', label: 'Admin' },
+                      { value: 'counsellor', label: 'Counsellor' },
                       { value: 'super_admin', label: 'Super Admin' },
                     ]}
                     className="w-full"
                   />
                 </div>
-                {(formData.type === 'data_entry' || formData.type === 'admin') && (
+                {(formData.type === 'data_entry' || formData.type === 'admin' || formData.type === 'counsellor') && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
                     <MultiSelect
@@ -792,6 +797,7 @@ export default function AdminUsersPage() {
                         options={[
                           { value: 'data_entry', label: 'Data Entry' },
                           { value: 'admin', label: 'Admin' },
+                          { value: 'counsellor', label: 'Counsellor' },
                         ]}
                         disabled={isUpdating}
                         className="w-full"

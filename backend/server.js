@@ -38,6 +38,10 @@ app.use('/api/categories', require('./src/routes/public/categoriesRoutes'));
 app.use('/api/programs', require('./src/routes/public/programsRoutes'));
 app.use('/api/exam-cities', require('./src/routes/public/examCitiesRoutes'));
 app.use('/api/user', require('./src/routes/user/userAutomationRoutes'));
+app.use('/api/strength', require('./src/routes/user/strengthRoutes'));
+app.use('/api/admin/counsellor', require('./src/routes/admin/counsellorRoutes'));
+app.use('/api/admin/experts', require('./src/routes/admin/expertRoutes'));
+app.use('/api/experts', require('./src/routes/public/expertsRoutes'));
 app.use('/api/tests', require('./src/routes/test/testRoutes'));
 app.use('/api/mock-tests', require('./src/routes/test/mockTestRoutes'));
 

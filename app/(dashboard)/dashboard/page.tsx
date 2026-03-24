@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
+import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
+import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
+import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 
 type SectionId =
   | "dashboard"
@@ -12,7 +15,9 @@ type SectionId =
   | "college-shortlist"
   | "applications"
   | "exam-prep"
-  | "test-module";
+  | "test-module"
+  | "know-your-strengths"
+  | "admission-help";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,6 +29,11 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+      <Suspense fallback={null}>
+        <StrengthPaymentReturnHandler
+          onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
+        />
+      </Suspense>
       {/* LEFT SIDEBAR */}
       <Sidebar
         sidebarOpen={sidebarOpen}
@@ -75,6 +85,14 @@ export default function DashboardPage() {
 
               {activeSection === "test-module" && (
                 <TestModule />
+              )}
+
+              {activeSection === "know-your-strengths" && (
+                <KnowYourStrengths onSectionChange={(section) => setActiveSection(section as SectionId)} />
+              )}
+
+              {activeSection === "admission-help" && (
+                <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
               )}
             </main>
           </div>

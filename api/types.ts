@@ -74,7 +74,7 @@ export interface GetAllUsersResponse {
 /**
  * Admin types
  */
-export type AdminUserType = 'data_entry' | 'admin' | 'super_admin';
+export type AdminUserType = 'data_entry' | 'admin' | 'super_admin' | 'counsellor';
 
 export interface AdminUser {
   id: number;
