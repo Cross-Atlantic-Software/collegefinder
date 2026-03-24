@@ -26,8 +26,8 @@ const urgentItems = [
 
 export default function UrgentImportantSwiper() {
   return (
-    <section className="rounded-md bg-lightGradient p-4 text-xs text-slate-900 shadow-lg overflow-hidden">
-      <p className="text-lg font-semibold uppercase tracking-wide text-pink">
+    <section className="rounded-lg bg-gradient-to-r from-highlight-100 to-action-100 p-4 text-xs text-slate-900 shadow-sm border border-action-100 overflow-hidden">
+      <p className="type-label text-brand-ink">
         Urgent & Important
       </p>
 
@@ -45,7 +45,7 @@ export default function UrgentImportantSwiper() {
           {urgentItems.map((item) => (
             <SwiperSlide key={item.id} className="!w-full">
               <div className="pb-2">
-                <p className="text-sm font-semibold">{item.title}</p>
+                <p className="type-subheading">{item.title}</p>
                 <p className="mt-2 text-xs leading-relaxed text-slate-800">
                   {item.desc}
                 </p>

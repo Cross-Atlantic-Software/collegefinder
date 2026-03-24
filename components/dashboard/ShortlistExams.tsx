@@ -54,13 +54,13 @@ export default function ShortlistExams() {
     return (
         <>
             {/* TABS */}
-            <div className="flex w-full rounded-md bg-white/10 text-sm font-medium text-slate-300 overflow-hidden mb-5">
+            <div className="flex w-full border-b border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-600 dark:text-slate-400 overflow-x-auto mb-6 gap-4">
                 <button
                     onClick={() => setActiveTab("recommended")}
-                    className={`flex-1 py-3 text-center transition ${
+                    className={`px-4 py-3 text-center transition-all duration-250 border-b-2 whitespace-nowrap ${
                         activeTab === "recommended"
-                            ? "bg-pink-600 text-white"
-                            : "hover:bg-white/5"
+                            ? "text-action-700 dark:text-action-500 border-b-action-600 dark:border-b-action-500"
+                            : "border-b-transparent hover:text-slate-900 dark:hover:text-slate-300"
                     }`}
                 >
                     Recommended Exams
@@ -68,10 +68,10 @@ export default function ShortlistExams() {
 
                 <button
                     onClick={() => setActiveTab("shortlisted")}
-                    className={`flex-1 py-3 text-center transition ${
+                    className={`px-4 py-3 text-center transition-all duration-250 border-b-2 whitespace-nowrap ${
                         activeTab === "shortlisted"
-                            ? "bg-pink-600 text-white"
-                            : "hover:bg-white/5"
+                            ? "text-action-700 dark:text-action-500 border-b-action-600 dark:border-b-action-500"
+                            : "border-b-transparent hover:text-slate-900 dark:hover:text-slate-300"
                     }`}
                 >
                     Shortlisted Exams
@@ -79,10 +79,10 @@ export default function ShortlistExams() {
 
                 <button
                     onClick={() => setActiveTab("all")}
-                    className={`flex-1 py-3 text-center transition ${
+                    className={`px-4 py-3 text-center transition-all duration-250 border-b-2 whitespace-nowrap ${
                         activeTab === "all"
-                            ? "bg-pink-600 text-white"
-                            : "hover:bg-white/5"
+                            ? "text-action-700 dark:text-action-500 border-b-action-600 dark:border-b-action-500"
+                            : "border-b-transparent hover:text-slate-900 dark:hover:text-slate-300"
                     }`}
                 >
                     All Available Exams
@@ -90,16 +90,16 @@ export default function ShortlistExams() {
             </div>
 
             {/* CONTENT */}
-            <div className="grid gap-3 grid-cols-1 xl:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 animate-fade-in">
                 {activeTab === "recommended" && (
                     <>
                         {loadingRecommended && (
-                            <div className="col-span-full py-8 text-center text-slate-400 text-sm">
+                            <div className="col-span-full py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                                 Loading recommended exams…
                             </div>
                         )}
                         {!loadingRecommended && recommendedExams.length === 0 && (
-                            <div className="col-span-full py-8 text-center text-slate-400 text-sm">
+                            <div className="col-span-full py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                                 {recommendedMessage || "No recommended exams. Complete your profile (stream & interests) to get personalized recommendations."}
                             </div>
                         )}

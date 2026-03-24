@@ -93,10 +93,14 @@ export default function Header() {
             return;
         }
 
-        const startTime = performance.now();
+        let animationStartTime: number | null = null;
 
         const animate = (currentTime: number) => {
-            const elapsed = currentTime - startTime;
+            if (animationStartTime === null) {
+                animationStartTime = currentTime;
+            }
+
+            const elapsed = currentTime - animationStartTime;
             const progress = Math.min(elapsed / ANCHOR_SCROLL_DURATION_MS, 1);
             const easedProgress = easeInOutCubic(progress);
             window.scrollTo(0, startY + deltaY * easedProgress);

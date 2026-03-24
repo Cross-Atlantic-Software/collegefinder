@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { ApplicationsPage, ExamPreparation, MiddleContent, RightSidebar, Sidebar, TopBar, TestModule } from "@/components/dashboard";
+import { ApplicationsPage, ExamPreparation, MiddleContent, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
@@ -21,12 +21,14 @@ type SectionId =
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
 
   const toggleSidebar = () => setSidebarOpen((v) => !v);
+  const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
 
   return (
-    <div className="h-screen flex bg-blueGradient text-slate-50">
+    <div className="h-screen flex bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <Suspense fallback={null}>
         <StrengthPaymentReturnHandler
           onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
@@ -36,19 +38,25 @@ export default function DashboardPage() {
       <Sidebar
         sidebarOpen={sidebarOpen}
         onToggle={toggleSidebar}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapse}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
       />
 
       {/* MAIN AREA */}
       <div className="flex h-screen flex-1 flex-col">
-        <TopBar onToggleSidebar={toggleSidebar} />
+        <TopBar
+          onToggleSidebar={toggleSidebar}
+          onToggleCollapse={toggleSidebarCollapse}
+          isSidebarCollapsed={sidebarCollapsed}
+        />
 
         <div className="flex flex-1 overflow-hidden">
           <div
             className="
-              flex flex-1 flex-col gap-6
-              px-4 py-4 md:px-6 md:py-6
+              flex flex-1 flex-col gap-4
+              px-4 py-4 md:px-6 md:py-4
               lg:flex-row lg:items-start
               overflow-y-auto
             "
@@ -87,11 +95,6 @@ export default function DashboardPage() {
                 <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
               )}
             </main>
-
-            {/* RIGHT SIDEBAR */}
-            <aside className="w-full space-y-4 lg:w-80 lg:flex-none">
-              <RightSidebar />
-            </aside>
           </div>
         </div>
       </div>

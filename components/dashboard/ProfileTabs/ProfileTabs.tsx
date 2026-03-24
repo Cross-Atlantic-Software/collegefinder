@@ -25,7 +25,7 @@ export default function ProfileTabs() {
   return (
     <div className="">
       {/* Tabs bar */}
-      <div className="mb-5 flex w-full overflow-hidden rounded-md bg-white/10 text-sm font-medium text-slate-300">
+      <div className="mb-6 flex w-full overflow-x-auto border-b border-slate-200 dark:border-slate-800">
         {tabs.map((t) => {
           const isActive = activeTab === t.key;
           return (
@@ -33,8 +33,11 @@ export default function ProfileTabs() {
               key={t.key}
               type="button"
               onClick={() => setActiveTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-2 py-3 text-center transition ${
-                isActive ? "bg-pink text-white" : "hover:bg-white/5"
+              className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-250 border-b-2 relative whitespace-nowrap
+                ${
+                  isActive 
+                    ? "text-action-700 dark:text-action-500 border-b-action-600 dark:border-b-action-500" 
+                    : "text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
               {t.icon}
@@ -45,10 +48,12 @@ export default function ProfileTabs() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "basic" && <BasicInfoForm />}
-      {activeTab === "academics" && <AcademicsProfile />}
-      {activeTab === "career" && <CareerGoalsTab />}
-      {activeTab === "other" && <OtherInfoTab />}
+      <div className="animate-fade-in">
+        {activeTab === "basic" && <BasicInfoForm />}
+        {activeTab === "academics" && <AcademicsProfile />}
+        {activeTab === "career" && <CareerGoalsTab />}
+        {activeTab === "other" && <OtherInfoTab />}
+      </div>
     </div>
   );
 }

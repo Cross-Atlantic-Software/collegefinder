@@ -117,7 +117,7 @@ export default function ExamPreparation() {
           onClick={() => setMode("self")}
           className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
             mode === "self"
-              ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow"
+              ? "bg-gradient-to-r from-slate-900 to-pink-600 text-white shadow"
               : "bg-white/10 text-slate-200 hover:bg-white/15"
           }`}
         >
@@ -129,7 +129,7 @@ export default function ExamPreparation() {
           onClick={() => setMode("coaching")}
           className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
             mode === "coaching"
-              ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow"
+              ? "bg-gradient-to-r from-slate-900 to-pink-600 text-white shadow"
               : "bg-white/10 text-slate-200 hover:bg-white/15"
           }`}
         >

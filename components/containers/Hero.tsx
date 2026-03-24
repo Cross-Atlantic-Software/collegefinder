@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
@@ -37,13 +36,18 @@ export default function Hero() {
             ref={sectionRef}
             className="relative isolate min-h-[100svh] overflow-hidden scroll-mt-20 md:scroll-mt-24"
         >
-            <Image
-                src="/landing-page/hero-1.png"
-                alt="Admission journey background"
-                fill
-                priority
-                className="object-cover object-center"
-            />
+            <video
+                className="absolute inset-0 h-full w-full object-cover object-center"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                poster="/landing-page/hero-1.png"
+                aria-hidden="true"
+            >
+                <source src="/landing-page/Unitracko%20AI%20.mp4" type="video/mp4" />
+            </video>
             <div className="absolute inset-0 bg-black/50" />
 
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
