@@ -115,6 +115,7 @@ const baseNavItems: {
     label: "Know Your Strengths",
     sub: "Discover yourself",
     icon: FaBrain,
+    activeIcon: FaBrain,
     getValue: () => "",
   },
   {
@@ -122,6 +123,7 @@ const baseNavItems: {
     label: "Admission Help",
     sub: "Expert guidance",
     icon: FaHandsHelping,
+    activeIcon: FaHandsHelping,
     getValue: () => "",
   },
 ];
