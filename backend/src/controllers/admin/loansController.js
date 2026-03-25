@@ -6,6 +6,8 @@ const LoanEligibleCourseType = require('../../models/loan/LoanEligibleCourseType
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 const { splitList, parseBool } = require('../../utils/bulkUploadUtils');
+const { BANKS, scrapeBank, scrapeAllBanks } = require("../../services/scraper/gyandhanScraper");
+
 
 class LoansController {
   static async getAllAdmin(req, res) {
@@ -620,6 +622,77 @@ class LoansController {
       });
     }
   }
+
+  /** List Gyandhan lender slugs for per-bank scrape (no external HTTP). */
+  static async getScrapedLoanBanks(req, res) {
+    try {
+      const data = BANKS.map(({ name, slug }) => ({ name, slug }));
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Failed to list banks' });
+    }
+  }
+
+  /** Scrape one lender page (fast enough for default HTTP timeouts). */
+  static async getScrapedLoanBySlug(req, res) {
+    try {
+      const raw = req.params.slug;
+      const slug = typeof raw === 'string' ? decodeURIComponent(raw).trim() : '';
+      const allowed = BANKS.some((b) => b.slug === slug);
+      if (!slug || !allowed) {
+        return res.status(404).json({ success: false, message: 'Unknown lender slug' });
+      }
+      const data = await scrapeBank(slug);
+      if (!data) {
+        return res.status(502).json({
+          success: false,
+          message: 'Scrape failed for this lender (network or page parse error)',
+        });
+      }
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Scrape failed' });
+    }
+  }
+
+  /** Scrape all lenders in one request (slow; may hit proxy timeouts). Prefer per-bank routes. */
+  static async getScrapedLoans(req, res) {
+    try {
+      const data = await scrapeAllBanks();
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Scrape failed' });
+    }
+  }
+
+  /** Download scraped Gyandhan lenders as Excel (.xlsx). */
+  static async downloadScrapedLoansExcel(req, res) {
+    try {
+      const data = await scrapeAllBanks();
+      const rows = Array.isArray(data) ? data : [];
+      const allKeys = new Set(['bank']);
+      rows.forEach((item) => {
+        Object.keys(item || {}).forEach((k) => allKeys.add(k));
+      });
+      const headers = Array.from(allKeys);
+      const sheetRows = [
+        headers,
+        ...rows.map((item) => headers.map((h) => (item?.[h] != null ? String(item[h]) : ''))),
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Scraped Loans');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=loan-scraped-data.xlsx');
+      res.send(buf);
+    } catch (err) {
+      console.error('Error exporting scraped loans:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to export scraped loans' });
+    }
+  }
+
 }
 
 module.exports = LoansController;
