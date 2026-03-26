@@ -48,7 +48,7 @@ const featureCards: FeatureCard[] = [
         highlightWord: "One\u2011Click",
         description:
             "Auto-fill almost all college forms accurately with your data and save hours. No repeated entries, less errors, total clarity.",
-        image: "/landing-page/features-4.png",
+        image: "/landing-page/auto-fill.gif",
         imageAlt: "One click form filling",
         bgClass: "bg-amber-100",
     },
