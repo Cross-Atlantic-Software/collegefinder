@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../shared";
 import { verifyOTP, resendOTP } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,6 +16,7 @@ export function OtpVerificationForm({
   emailHint,
   onVerified,
 }: OtpVerificationFormProps) {
+  const [isVisible, setIsVisible] = useState(false);
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
@@ -24,6 +24,11 @@ export function OtpVerificationForm({
   const [success, setSuccess] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setIsVisible(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   // Correct ref type
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -182,32 +187,31 @@ export function OtpVerificationForm({
   };
 
   return (
-    <section className="max-w-xl text-center mx-auto">
-      <h1 className="mb-3 text-4xl font-bold leading-tight sm:text-5xl">
-        Enter your{" "}
-        <span className="block text-pink">verification code</span>
-      </h1>
-
-      <p className="mb-6 text-sm text-slate-200/80 sm:text-base">
+    <section
+      className={`mx-auto w-full max-w-[460px] transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+      }`}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8"
+      >
+        <p className="text-sm leading-relaxed text-slate-600">
         We&apos;ve sent a 6-digit code to{" "}
-        <span className="font-semibold text-white">
+        <span className="font-semibold text-slate-900">
           {emailHint ?? "your email"}
         </span>
         . Enter it below to continue.
-      </p>
+        </p>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-md"
-      >
         {error && (
-          <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-400">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
             {resending ? "OTP resent successfully!" : "Verification successful! Redirecting..."}
           </div>
         )}
@@ -227,33 +231,46 @@ export function OtpVerificationForm({
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={index === 0 ? handlePaste : undefined}
-              className="
-                block w-full rounded-md border border-white/15 bg-white/10 px-3 py-5 text-2xl text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500 text-center
-              "
+              className="block w-full rounded-xl border border-slate-300 bg-white px-3 py-4 text-center text-xl font-semibold text-slate-900 outline-none transition duration-300 placeholder:text-slate-400 focus:border-slate-900"
             />
           ))}
         </div>
 
-        <Button
-            type="submit"
-            disabled={!isComplete || submitting}
-            variant="DarkGradient"
-            size="lg"
-            className="w-full mt-2"
+        <button
+          type="submit"
+          disabled={!isComplete || submitting}
+          className={`landing-cta mt-2 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
+            submitting ? "animate-pulse" : ""
+          }`}
         >
-          {submitting ? "Verifying…" : "Verify and continue"}
-        </Button>
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
+                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <span>Verifying...</span>
+            </span>
+          ) : (
+            "Verify and continue"
+          )}
+        </button>
 
-        <div className="flex flex-col gap-2 text-xs text-slate-300/80 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
-            className="text-left underline underline-offset-2 hover:text-pink-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-left underline underline-offset-2 transition hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleResend}
             disabled={resending || !emailHint}
           >
             {resending ? "Resending..." : "Didn't get the code? Resend"}
           </button>
-          <p>Using a different email? Go back and update it.</p>
+          <p className="text-slate-500">Using a different email? Go back and update it.</p>
         </div>
       </form>
     </section>

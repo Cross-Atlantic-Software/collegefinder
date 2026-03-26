@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
+import Image from "next/image";
 import {
   FiActivity,
   FiBookOpen,
@@ -203,12 +204,26 @@ export default function Sidebar({
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-4">
         <div className={`flex min-w-0 items-center ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}>
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-ink text-sm font-bold text-white shadow-sm">
-            U
-          </span>
+          {isCollapsed && (
+            <Image
+              src="/svgs/logo-fav-unitracko.svg"
+              alt="Unitracko icon"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-xl"
+              priority
+            />
+          )}
           {!isCollapsed && (
             <div className="min-w-0">
-              <p className="truncate text-[22px] font-extrabold leading-none tracking-[-0.02em] text-slate-900 dark:text-slate-100">Unitracko</p>
+              <Image
+                src="/svgs/logo-unitracko.svg"
+                alt="Unitracko logo"
+                width={140}
+                height={32}
+                className="h-auto w-[160px] -pb-8 dark:invert"
+                priority
+              />
             </div>
           )}
         </div>

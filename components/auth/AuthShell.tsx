@@ -8,12 +8,14 @@ type AuthShellProps = {
   children: ReactNode;
   variant?: "default" | "landing" | "minimal";
   contentClassName?: string;
+  showMinimalHeader?: boolean;
 };
 
 export function AuthShell({
   children,
   variant = "default",
   contentClassName = "",
+  showMinimalHeader = true,
 }: AuthShellProps) {
   if (variant === "landing") {
     return (
@@ -43,9 +45,11 @@ export function AuthShell({
   if (variant === "minimal") {
     return (
       <main className="flex min-h-screen flex-col bg-white text-slate-900">
-        <header className="appContainer flex w-full items-center justify-center border-b border-slate-200 py-5 lg:justify-start">
-          <Logo mode="light" />
-        </header>
+        {showMinimalHeader && (
+          <header className="appContainer flex w-full items-center justify-center border-b border-slate-200 py-5 lg:justify-start">
+            <Logo mode="light" />
+          </header>
+        )}
 
         <div className={`appContainer flex w-full flex-1 py-10 sm:py-12 ${contentClassName}`}>
           {children}

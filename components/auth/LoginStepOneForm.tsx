@@ -1,23 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendOTP, initiateGoogleAuth, initiateFacebookAuth } from "@/api";
-import { RoughNotation } from "react-rough-notation";
 
 export function LoginStepOneForm() {
   const [email, setEmail] = useState("");
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showNotation, setShowNotation] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowNotation(true), 350);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,8 +24,14 @@ export function LoginStepOneForm() {
       const response = await sendOTP(email);
       
       if (response.success) {
-        // Navigate to OTP verification page with email as query param
-        router.push(`/otpverification?email=${encodeURIComponent(email)}`);
+        const otpRoute = `/otpverification?email=${encodeURIComponent(email)}`;
+        router.prefetch(otpRoute);
+        setIsLeaving(true);
+
+        // Eased exit before navigating to OTP page.
+        setTimeout(() => {
+          router.push(otpRoute);
+        }, 260);
       } else {
         setError(response.message || "Failed to send OTP. Please try again.");
       }
@@ -52,10 +52,14 @@ export function LoginStepOneForm() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[460px]">
+    <section
+      className={`mx-auto w-full max-w-[460px] transform-gpu transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isLeaving ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+      }`}
+    >
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 text-start shadow-sm sm:p-7"
+        className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8"
       >
         <div className="space-y-1.5 text-sm">
           <label
@@ -95,7 +99,7 @@ export function LoginStepOneForm() {
         </label>
 
         {error && (
-          <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -103,9 +107,26 @@ export function LoginStepOneForm() {
         <button
           type="submit"
           disabled={!email || !agree || isLoading}
-          className="landing-cta mt-1 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className={`landing-cta mt-1 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
+            isLoading ? "animate-pulse" : ""
+          }`}
         >
-          {isLoading ? "Sending OTP..." : "Continue to verification"}
+          {isLoading ? (
+            <span className="inline-flex items-center gap-2">
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
+                <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <span>Sending OTP...</span>
+            </span>
+          ) : (
+            "Continue to verification"
+          )}
         </button>
 
         <div className="relative my-2">
@@ -163,20 +184,6 @@ export function LoginStepOneForm() {
         <p className="pt-1 text-center text-xs text-slate-500">
           New here? Your account will be created automatically after
           verification.
-        </p>
-
-        <p className="text-center text-xs font-medium text-slate-700">
-          <RoughNotation
-            type="highlight"
-            show={showNotation}
-            color="rgba(240, 197, 68, 0.38)"
-            strokeWidth={1}
-            padding={2}
-            animationDelay={700}
-            animationDuration={1200}
-          >
-            <span>No password fatigue. Just OTP and continue.</span>
-          </RoughNotation>
         </p>
       </form>
     </section>
