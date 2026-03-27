@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { FiCheck, FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from "react-icons/fi";
 
 const steps = [
     { title: "Discover", description: "Find exams and colleges that fit your profile." },
@@ -21,10 +21,41 @@ const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/UniTracko Video.mp4";
 
 export default function HowItWorksSection() {
     const sectionRef = useRef<HTMLElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
     const [isInView, setIsInView] = useState(false);
     const [revealedStepCount, setRevealedStepCount] = useState(0);
     const [openStep, setOpenStep] = useState(0);
     const [totalProgress, setTotalProgress] = useState(0);
+    const [isMuted, setIsMuted] = useState(true);
+    const [isPaused, setIsPaused] = useState(false);
+
+    const toggleMute = () => {
+        const video = videoRef.current;
+        if (!video) {
+            return;
+        }
+
+        video.muted = !video.muted;
+        setIsMuted(video.muted);
+    };
+
+    const togglePlayback = () => {
+        const video = videoRef.current;
+        if (!video) {
+            return;
+        }
+
+        if (video.paused) {
+            video.play().catch(() => {
+                // Ignore interrupted play calls from rapid hover interactions.
+            });
+            setIsPaused(false);
+            return;
+        }
+
+        video.pause();
+        setIsPaused(true);
+    };
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -283,8 +314,9 @@ export default function HowItWorksSection() {
                         <div className="absolute -left-5 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200" />
                         <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
 
-                        <div className="landing-card-lift relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black shadow-[0_24px_60px_-28px_rgba(2,6,23,0.5)] ring-1 ring-black/5">
+                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black shadow-[0_24px_60px_-28px_rgba(2,6,23,0.5)] ring-1 ring-black/5">
                             <video
+                                ref={videoRef}
                                 className="h-full w-full object-cover"
                                 autoPlay
                                 loop
@@ -292,12 +324,36 @@ export default function HowItWorksSection() {
                                 playsInline
                                 preload="auto"
                                 poster="/landing-page/how_it_works.png"
+                                onPlay={() => setIsPaused(false)}
+                                onPause={() => setIsPaused(true)}
+                                onVolumeChange={() => {
+                                    if (videoRef.current) {
+                                        setIsMuted(videoRef.current.muted);
+                                    }
+                                }}
                             >
                                 <source src={HOW_IT_WORKS_VIDEO_SRC} type="video/mp4" />
                             </video>
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/5" />
-                            <div className="pointer-events-none absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/90 backdrop-blur-sm">
-                                Quick Platform Walkthrough
+
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+                                <div className="pointer-events-auto ml-auto flex w-fit items-center gap-2 rounded-full border border-white/25 bg-black/60 p-1.5 backdrop-blur-sm">
+                                    <button
+                                        type="button"
+                                        onClick={toggleMute}
+                                        aria-label={isMuted ? "Unmute video" : "Mute video"}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+                                    >
+                                        {isMuted ? <FiVolumeX className="text-base" /> : <FiVolume2 className="text-base" />}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={togglePlayback}
+                                        aria-label={isPaused ? "Play video" : "Pause video"}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+                                    >
+                                        {isPaused ? <FiPlay className="text-base" /> : <FiPause className="text-base" />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
