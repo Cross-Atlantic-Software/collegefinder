@@ -14,6 +14,7 @@ import {
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
 import { ConfirmationModal } from '@/components/shared';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function ModulesPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function ModulesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { isSuperAdmin } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -39,8 +40,6 @@ export default function ModulesPage() {
       router.replace('/admin/login');
       return;
     }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) setCurrentAdmin(JSON.parse(adminUserStr));
     fetchModules();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -150,8 +149,6 @@ export default function ModulesPage() {
       setIsDeleting(false);
     }
   };
-
-  const isSuperAdmin = currentAdmin?.type === 'super_admin';
 
   if (!isSuperAdmin) {
     return (

@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS streams (
   name VARCHAR(255) NOT NULL,
   status BOOLEAN DEFAULT TRUE, -- true = active, false = inactive
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL
 );
 
 -- Ensure columns exist on older databases (only if table already exists)
@@ -16,6 +17,7 @@ BEGIN
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS status BOOLEAN DEFAULT TRUE;
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    ALTER TABLE streams ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL;
   END IF;
 END $$;
 
@@ -42,4 +44,14 @@ COMMENT ON TABLE streams IS 'Taxonomy table for stream options that can be selec
 COMMENT ON COLUMN streams.name IS 'Display name for the stream (e.g., PCM, PCB, Commerce, Arts)';
 COMMENT ON COLUMN streams.status IS 'Active status of the stream (true = active, false = inactive)';
 
+-- Seed default streams (safe to run multiple times)
+INSERT INTO streams (name, status) VALUES
+  ('Science (PCM)', true),
+  ('Science (PCB)', true),
+  ('Commerce', true),
+  ('Arts/Humanities', true),
+  ('Computer Science', true),
+  ('Agriculture', true),
+  ('Vocational', true)
+ON CONFLICT (name) DO NOTHING;
 

@@ -8,8 +8,8 @@ export interface AutomationExam {
   slug: string;
   url: string;
   is_active: boolean;
-  field_mappings: Record<string, any>;
-  agent_config: Record<string, any>;
+  field_mappings: Record<string, unknown>;
+  agent_config: Record<string, unknown>;
   notify_on_complete: boolean;
   notify_on_failure: boolean;
   notification_emails: string[];
@@ -22,8 +22,8 @@ export interface CreateAutomationExamData {
   slug: string;
   url: string;
   is_active?: boolean;
-  field_mappings?: Record<string, any>;
-  agent_config?: Record<string, any>;
+  field_mappings?: Record<string, unknown>;
+  agent_config?: Record<string, unknown>;
   notify_on_complete?: boolean;
   notify_on_failure?: boolean;
   notification_emails?: string[];
@@ -34,8 +34,8 @@ export interface UpdateAutomationExamData {
   slug?: string;
   url?: string;
   is_active?: boolean;
-  field_mappings?: Record<string, any>;
-  agent_config?: Record<string, any>;
+  field_mappings?: Record<string, unknown>;
+  agent_config?: Record<string, unknown>;
   notify_on_complete?: boolean;
   notify_on_failure?: boolean;
   notification_emails?: string[];

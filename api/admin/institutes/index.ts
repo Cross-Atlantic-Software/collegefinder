@@ -137,11 +137,38 @@ export async function deleteInstitute(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllInstitutes(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/all`, { method: 'DELETE' });
+}
+
 export interface InstitutesBulkUploadResult {
   created: number;
   createdInstitutes: { id: number; name: string }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
+}
+
+export interface UploadMissingLogosResult {
+  updated: { id: number; institute_name: string; logo_filename?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+}
+
+export async function uploadMissingLogosInstitutes(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.INSTITUTES}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
 }
 
 export async function downloadInstitutesBulkTemplate(): Promise<void> {

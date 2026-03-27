@@ -41,15 +41,16 @@ class LoanProvider {
       contact_email,
       contact_phone,
       description,
-      logo
+      logo,
+      logo_filename
     } = data;
     const result = await db.query(
       `INSERT INTO loan_providers (
         provider_name, provider_type, interest_rate_min, interest_rate_max,
         processing_fee, max_loan_amount, moratorium_period_months, repayment_duration_years,
         collateral_required, coapplicant_required, tax_benefit_available,
-        official_website_link, contact_email, contact_phone, description, logo
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+        official_website_link, contact_email, contact_phone, description, logo, logo_filename
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
       [
         provider_name || null,
         provider_type || null,
@@ -66,10 +67,22 @@ class LoanProvider {
         contact_email || null,
         contact_phone || null,
         description || null,
-        logo || null
+        logo || null,
+        logo_filename || null
       ]
     );
     return result.rows[0];
+  }
+
+  static async findMissingLogosByFilename(filename) {
+    if (!filename || !String(filename).trim()) return [];
+    const result = await db.query(
+      `SELECT * FROM loan_providers
+       WHERE LOWER(TRIM(logo_filename)) = LOWER(TRIM($1))
+       AND (logo IS NULL OR logo = '')`,
+      [String(filename).trim()]
+    );
+    return result.rows;
   }
 
   static async update(id, data) {
@@ -77,7 +90,7 @@ class LoanProvider {
       'provider_name', 'provider_type', 'interest_rate_min', 'interest_rate_max',
       'processing_fee', 'max_loan_amount', 'moratorium_period_months', 'repayment_duration_years',
       'collateral_required', 'coapplicant_required', 'tax_benefit_available',
-      'official_website_link', 'contact_email', 'contact_phone', 'description', 'logo'
+      'official_website_link', 'contact_email', 'contact_phone', 'description', 'logo', 'logo_filename'
     ];
     const updates = [];
     const values = [];

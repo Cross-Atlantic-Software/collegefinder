@@ -1,10 +1,11 @@
 const XLSX = require('xlsx');
-const AdmZip = require('adm-zip');
 const LoanProvider = require('../../models/loan/LoanProvider');
 const LoanDisbursementProcess = require('../../models/loan/LoanDisbursementProcess');
 const LoanEligibleCountry = require('../../models/loan/LoanEligibleCountry');
 const LoanEligibleCourseType = require('../../models/loan/LoanEligibleCourseType');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+const { splitList, parseBool } = require('../../utils/bulkUploadUtils');
 
 class LoansController {
   static async getAllAdmin(req, res) {
@@ -278,6 +279,23 @@ class LoansController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await LoanProvider.findAll();
+      for (const p of all) {
+        if (p.logo) await deleteFromS3(p.logo);
+        await LoanProvider.delete(p.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} loan providers deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all loan providers:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all loan providers' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [
@@ -321,9 +339,30 @@ class LoansController {
           'support@credila.com',
           '9876543210',
           'Education loan provider for students.',
-          '1|Submit application;2|Document verification;3|Disbursement',
+          '1|Submit application, 2|Document verification, 3|Disbursement',
           'India',
-          'UG;PG;Diploma'
+          'UG, PG, Diploma'
+        ],
+        [
+          'SBI Student Loan',
+          'Bank',
+          'sbi.png',
+          '8.5',
+          '11',
+          '0.5%',
+          '40 Lakh',
+          '12',
+          '15',
+          'FALSE',
+          'TRUE',
+          'TRUE',
+          'https://sbi.co.in',
+          'student@sbi.co.in',
+          '1800123456',
+          'Government bank education loans.',
+          '1|Apply at branch, 2|Document check, 3|Sanction',
+          'India',
+          'UG, PG'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Loan Providers');
@@ -395,6 +434,44 @@ class LoansController {
     }
   }
 
+  static async uploadMissingLogos(req, res) {
+    try {
+      const logosZipFile = req.files?.logos_zip?.[0] || req.file;
+      if (!logosZipFile || !logosZipFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No ZIP file uploaded. Use field name "logos_zip".'
+        });
+      }
+      const logoMap = parseLogosFromZip(logosZipFile.buffer);
+      if (logoMap.size === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
+        });
+      }
+      const result = await processMissingLogosFromZip(logoMap, {
+        findRecordsByFilename: (f) => LoanProvider.findMissingLogosByFilename(f),
+        uploadToS3,
+        s3Folder: 'loan-provider-logos',
+        logoColumn: 'logo',
+        updateRecord: (id, data) => LoanProvider.update(id, data),
+        toResultItem: (r) => ({ id: r.id, provider_name: r.provider_name, logo_filename: r.logo_filename })
+      });
+      res.json({
+        success: true,
+        data: result,
+        message: `Added ${result.updated.length} logo(s). ${result.skipped.length} file(s) had no matching loan providers.`
+      });
+    } catch (error) {
+      console.error('Error uploading missing logos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload missing logos'
+      });
+    }
+  }
+
   static async bulkUpload(req, res) {
     try {
       const excelFile = req.files?.excel?.[0] || req.file;
@@ -405,37 +482,7 @@ class LoansController {
         });
       }
 
-      const logoMap = new Map();
-      const logosZipFile = req.files?.logos_zip?.[0];
-      if (logosZipFile && logosZipFile.buffer) {
-        try {
-          const zip = new AdmZip(logosZipFile.buffer);
-          const entries = zip.getEntries();
-          const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
-            if (entry.isDirectory) continue;
-            const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
-            if (!name || !imageExt.test(name)) continue;
-            const buffer = entry.getData();
-            if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
-          }
-        } catch (zipErr) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid or corrupted ZIP file for logos.'
-          });
-        }
-      } else {
-        const logosRaw = req.files?.logos;
-        const logoFiles = Array.isArray(logosRaw) ? logosRaw : (logosRaw ? [logosRaw] : []);
-        logoFiles.forEach((f) => {
-          if (f && (f.buffer || f.path)) {
-            const name = (f.originalname || f.name || '').trim();
-            if (name) logoMap.set(name.toLowerCase(), f);
-          }
-        });
-      }
+      const logoMap = buildLogoMapFromRequest(req.files || {}, 'logos_zip', 'logos');
 
       let workbook;
       try {
@@ -455,7 +502,7 @@ class LoansController {
       const errors = [];
       const namesInFile = new Set();
 
-      const getVal = (row, ...keys) => {
+            const getVal = (row, ...keys) => {
         for (const k of keys) {
           const v = row[k] ?? row[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
           if (v !== undefined && v !== null && v !== '') return String(v).trim();
@@ -491,18 +538,17 @@ class LoansController {
             } catch (uploadErr) {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
-          } else {
-            errors.push({ row: rowNum, message: `logo file not found: "${logoFilename}"` });
           }
+          // If logo file not found: still create provider with logo_filename; user can upload missing logos later
         }
 
         const interestRateMin = getVal(row, 'interest_rate_min');
         const interestRateMax = getVal(row, 'interest_rate_max');
         const moratorium = getVal(row, 'moratorium_period_months');
         const repayment = getVal(row, 'repayment_duration_years');
-        const collateral = /^(1|true|yes)$/i.test(getVal(row, 'collateral_required') || '');
-        const coapplicant = /^(1|true|yes)$/i.test(getVal(row, 'coapplicant_required') || '');
-        const taxBenefit = /^(1|true|yes)$/i.test(getVal(row, 'tax_benefit_available') || '');
+        const collateral = parseBool(getVal(row, 'collateral_required'), false);
+        const coapplicant = parseBool(getVal(row, 'coapplicant_required'), false);
+        const taxBenefit = parseBool(getVal(row, 'tax_benefit_available'), false);
         const disbursementRaw = getVal(row, 'disbursement_process') || '';
         const countriesRaw = getVal(row, 'eligible_countries') || '';
         const courseTypesRaw = getVal(row, 'eligible_course_types') || '';
@@ -524,10 +570,11 @@ class LoansController {
             contact_email: getVal(row, 'contact_email') || null,
             contact_phone: getVal(row, 'contact_phone') || null,
             description: getVal(row, 'description') || null,
-            logo: logoUrl
+            logo: logoUrl,
+            logo_filename: logoFilename || null
           });
           if (disbursementRaw) {
-            const steps = disbursementRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const steps = splitList(disbursementRaw);
             for (const step of steps) {
               const [num, desc] = step.split('|').map((s) => s.trim());
               const step_number = num ? parseInt(num, 10) : null;
@@ -541,11 +588,11 @@ class LoansController {
             }
           }
           if (countriesRaw) {
-            const countries = countriesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const countries = splitList(countriesRaw);
             for (const c of countries) await LoanEligibleCountry.create({ loan_provider_id: provider.id, country_name: c });
           }
           if (courseTypesRaw) {
-            const types = courseTypesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const types = splitList(courseTypesRaw);
             for (const t of types) await LoanEligibleCourseType.create({ loan_provider_id: provider.id, course_type: t });
           }
           created.push({ id: provider.id, name: provider.provider_name });

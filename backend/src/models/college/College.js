@@ -36,17 +36,28 @@ class College {
   }
 
   static async create(data) {
-    const { college_name, college_location, college_type, college_logo } = data;
+    const { college_name, college_location, college_type, college_logo, logo_filename } = data;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [college_name, college_location || null, college_type || null, college_logo || null]
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_filename)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [college_name, college_location || null, college_type || null, college_logo || null, logo_filename || null]
     );
     return result.rows[0];
   }
 
+  static async findMissingLogosByFilename(filename) {
+    if (!filename || !String(filename).trim()) return [];
+    const result = await db.query(
+      `SELECT * FROM colleges
+       WHERE LOWER(TRIM(logo_filename)) = LOWER(TRIM($1))
+       AND (college_logo IS NULL OR college_logo = '')`,
+      [String(filename).trim()]
+    );
+    return result.rows;
+  }
+
   static async update(id, data) {
-    const { college_name, college_location, college_type, college_logo } = data;
+    const { college_name, college_location, college_type, college_logo, logo_filename } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -65,6 +76,10 @@ class College {
     if (college_logo !== undefined) {
       updates.push(`college_logo = $${paramCount++}`);
       values.push(college_logo);
+    }
+    if (logo_filename !== undefined) {
+      updates.push(`logo_filename = $${paramCount++}`);
+      values.push(logo_filename);
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

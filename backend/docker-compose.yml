@@ -6,7 +6,7 @@
 #
 # Usage:
 #   Development (default):
-#     docker-compose up
+#     docker-compose up --build   # use --build so backend is built locally, not pulled
 #
 #   With pgAdmin (optional database viewer):
 #     docker-compose --profile pgadmin up
@@ -17,6 +17,24 @@
 # =============================================================================
 
 services:
+  # -----------------------------------------------------------------------------
+  # Redis Service (used by BullMQ for background job queuing)
+  # -----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ${REDIS_CONTAINER:-collegefinder_redis}
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - collegefinder_network
+
   # -----------------------------------------------------------------------------
   # PostgreSQL Database Service
   # -----------------------------------------------------------------------------
@@ -97,7 +115,8 @@ services:
       - "${PORT:-5001}:5001"
     
     # Load all environment variables from .env file
-    # Includes: DB credentials, JWT_SECRET, EMAIL config, etc.
+    # Includes: DB credentials, JWT_SECRET, GOOGLE_API_KEY (required for mock generation), etc.
+    # Copy backend/.env.example to .env and set GOOGLE_API_KEY for mock test generation.
     env_file:
       - .env
     
@@ -105,11 +124,13 @@ services:
     environment:
       - DB_HOST=postgres              # Use service name for Docker networking
       - NODE_ENV=${NODE_ENV:-development}  # development or production
+      - REDIS_HOST=redis              # Use service name for Docker networking
     
-    # Wait for database to be healthy before starting backend
-    # Prevents backend from starting before database is ready
+    # Wait for database and Redis to be healthy before starting backend
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     
     # Health check endpoint for monitoring

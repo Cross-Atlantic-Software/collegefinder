@@ -29,7 +29,7 @@ async function getRecommendedColleges(req, res) {
     if (normalizedCareerGoalIds.length === 0) {
       return res.json({
         success: true,
-        data: { colleges: [], message: 'Add career goals to get recommended colleges.' }
+        data: { colleges: [], message: 'Add interests to get recommended colleges.' }
       });
     }
 

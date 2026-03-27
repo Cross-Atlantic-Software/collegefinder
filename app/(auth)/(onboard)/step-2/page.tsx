@@ -21,7 +21,7 @@ export default function StepTwo() {
   useEffect(() => {
     // Only redirect if we're not in the middle of saving or navigating to step-3
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
-      setIsRedirecting(true);
+      queueMicrotask(() => setIsRedirecting(true));
       // Prefetch dashboard for faster loading
       router.prefetch('/dashboard');
       // Small delay for smooth transition

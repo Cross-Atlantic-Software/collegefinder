@@ -48,6 +48,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Playbook prompt cache – JSON only (remove this line to commit cache and share across runs)
+python-backend/app/playbooks/cache/*.json
+
 # vercel
 .vercel
 
@@ -70,6 +73,8 @@ stagehand-backend/.env
 # Backend
 backend/node_modules/
 backend/.env
+backend/npm-install.log
+deploy.log
 
 # IDE
 .idea/

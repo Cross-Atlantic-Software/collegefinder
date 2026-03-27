@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const text = await res.text();
@@ -45,12 +45,12 @@ export default function AdminLoginPage() {
 
         // Set cookie for server-side access (must be set before navigation)
         const maxAge = 60 * 60 * 24 * 7; // 7 days
-        document.cookie = `admin_token=${response.data.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `admin_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${maxAge}; SameSite=Lax`;
 
         // Use full page navigation so the next request includes the new cookies.
         // router.push() triggers client-side navigation and the server may receive the old (empty) cookie state, causing immediate redirect to login.
-        const isSuperAdmin = response.data.admin?.type === 'super_admin';
+        const isSuperAdmin = (admin as { type?: string })?.type === 'super_admin';
         window.location.href = isSuperAdmin ? '/admin/site-users' : '/admin';
       } else {
         setError(data.message || 'Invalid email or password');

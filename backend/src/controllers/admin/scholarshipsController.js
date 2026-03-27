@@ -6,6 +6,7 @@ const ScholarshipDocumentsRequired = require('../../models/scholarship/Scholarsh
 const ScholarshipExam = require('../../models/scholarship/ScholarshipExam');
 const Stream = require('../../models/taxonomy/Stream');
 const Exam = require('../../models/taxonomy/Exam');
+const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
 
 async function resolveStreamNameToId(nameStr) {
   if (!nameStr || typeof nameStr !== 'string') return null;
@@ -17,7 +18,7 @@ async function resolveStreamNameToId(nameStr) {
 
 async function resolveExamNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
-  const names = namesStr.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const names = splitList(namesStr);
   const ids = [];
   for (const nm of names) {
     const ex = await Exam.findByName(nm);
@@ -288,6 +289,22 @@ class ScholarshipsController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await Scholarship.findAll();
+      for (const s of all) {
+        await Scholarship.delete(s.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} scholarships deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all scholarships:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all scholarships' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [
@@ -326,10 +343,29 @@ class ScholarshipsController {
           '2025-03-31',
           'Online',
           'https://scholarships.gov.in',
-          'SC;ST;OBC;General',
-          'All India;Delhi;Maharashtra',
-          'Aadhar;Marksheet;Income Certificate',
-          'JEE Main,NEET,CUET'
+          'SC, ST, OBC, General',
+          'All India, Delhi, Maharashtra',
+          'Aadhar, Marksheet, Income Certificate',
+          'JEE Main, NEET, CUET'
+        ],
+        [
+          'State Merit Scholarship',
+          'State Education Board',
+          'Merit',
+          'State level scholarship for top rankers.',
+          'Commerce',
+          'Up to 8 Lakh',
+          '75%',
+          '10000 per annum',
+          'Merit based on 12th marks.',
+          '2025-02-01',
+          '2025-04-30',
+          'Online',
+          'https://state.gov.in',
+          'General, OBC',
+          'Maharashtra, Gujarat',
+          'Marksheet, Domicile',
+          'MHT CET, GUJCET'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Scholarships');
@@ -478,8 +514,8 @@ class ScholarshipsController {
           }
         }
 
-        const application_start_date = getVal(row, 'application_start_date') || null;
-        const application_end_date = getVal(row, 'application_end_date') || null;
+        const application_start_date = parseDate(getVal(row, 'application_start_date'));
+        const application_end_date = parseDate(getVal(row, 'application_end_date'));
         const eligibleCategoriesRaw = getVal(row, 'eligible_categories') || '';
         const applicableStatesRaw = getVal(row, 'applicable_states') || '';
         const documentsRequiredRaw = getVal(row, 'documents_required') || '';
@@ -503,15 +539,15 @@ class ScholarshipsController {
             official_website: getVal(row, 'official_website') || null
           });
           if (eligibleCategoriesRaw) {
-            const cats = eligibleCategoriesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const cats = splitList(eligibleCategoriesRaw);
             for (const c of cats) await ScholarshipEligibleCategory.create({ scholarship_id: scholarship.id, category: c });
           }
           if (applicableStatesRaw) {
-            const states = applicableStatesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const states = splitList(applicableStatesRaw);
             for (const s of states) await ScholarshipApplicableState.create({ scholarship_id: scholarship.id, state_name: s });
           }
           if (documentsRequiredRaw) {
-            const docs = documentsRequiredRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const docs = splitList(documentsRequiredRaw);
             for (const d of docs) await ScholarshipDocumentsRequired.create({ scholarship_id: scholarship.id, document_name: d });
           }
           let examIds = [];

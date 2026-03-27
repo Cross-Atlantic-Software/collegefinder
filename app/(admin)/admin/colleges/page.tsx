@@ -14,13 +14,17 @@ import {
   downloadCollegesBulkTemplate,
   downloadAllDataExcel,
   bulkUploadColleges,
+  uploadMissingLogosColleges,
+  deleteAllColleges,
   type College,
   type CollegeWithDetails,
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile, FiImage } from 'react-icons/fi';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 export default function CollegesPage() {
@@ -43,15 +47,15 @@ export default function CollegesPage() {
     college_description: '',
     collegeKeyDates: [] as { event_name: string; event_date: string }[],
     collegeDocumentsRequired: [] as { document_name: string }[],
-    collegeCounsellingProcess: [] as { step_number: number; description: string }[],
+    collegeCounsellingProcess: [] as { step_number: number | null; description: string }[],
     recommendedExamIds: [] as number[],
     collegePrograms: [] as {
       program_id: number;
       intake_capacity: number | null;
       duration_years: number | null;
-      seatMatrix: { category: string; seat_count: number | null; year: number | null }[];
-      previousCutoffs: { exam_id: number; category: string; cutoff_rank: number | null; year: number | null }[];
-      expectedCutoffs: { exam_id: number; category: string; expected_rank: number | null; year: number | null }[];
+      seatMatrix: { branch: string; category: string; seat_count: number | null; year: number | null }[];
+      previousCutoffs: { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[];
+      expectedCutoffs: { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[];
     }[],
   });
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -71,8 +75,16 @@ export default function CollegesPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ created: number; createdColleges: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
+  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
+  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
+  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [missingLogosResult, setMissingLogosResult] = useState<{ updated: { id: number; college_name: string }[]; skipped: string[]; summary: { logosAdded: number; filesSkipped: number; uploadErrors: number } } | null>(null);
 
   // Run once on mount: auth check and load list + dropdowns. Empty deps prevent re-running and continuous API calls.
   useEffect(() => {
@@ -95,7 +107,7 @@ export default function CollegesPage() {
         if (progRes.success && progRes.data?.programs) setPrograms(progRes.data.programs);
         if (examRes.success && examRes.data?.exams) {
           setExams(examRes.data.exams);
-          setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.exam_name || String(e.id) })));
+          setRecommendedExamOptions(examRes.data.exams.map((e) => ({ value: String(e.id), label: e.name || String(e.id) })));
         }
       } catch (_) {}
     })();
@@ -173,7 +185,7 @@ export default function CollegesPage() {
     setError(null);
     try {
       const recommendedExamNames = formData.recommendedExamIds
-        .map((id) => exams.find((e) => e.id === id)?.exam_name)
+        .map((id) => exams.find((e) => e.id === id)?.name)
         .filter((n): n is string => Boolean(n));
       const payload = {
         college_name: formData.college_name.trim(),
@@ -183,16 +195,16 @@ export default function CollegesPage() {
         college_description: formData.college_description.trim() || null,
         collegeKeyDates: formData.collegeKeyDates.filter((k) => k.event_name?.trim() || k.event_date),
         collegeDocumentsRequired: formData.collegeDocumentsRequired.filter((d) => d.document_name?.trim()).map((d) => ({ document_name: d.document_name!.trim() })),
-        collegeCounsellingProcess: formData.collegeCounsellingProcess.filter((c) => c.step_number != null || c.description?.trim()).map((c) => ({ step_number: c.step_number, description: c.description?.trim() || undefined })),
+        collegeCounsellingProcess: formData.collegeCounsellingProcess.filter((c) => c.description?.trim()).map((c) => ({ step_number: c.step_number ?? undefined, description: c.description?.trim() || undefined })),
         recommendedExamNames: recommendedExamNames.length ? recommendedExamNames : undefined,
         recommendedExamIds: recommendedExamNames.length ? undefined : formData.recommendedExamIds,
         collegePrograms: formData.collegePrograms.filter((p) => p.program_id).map((p) => ({
           program_id: p.program_id,
           intake_capacity: p.intake_capacity,
           duration_years: p.duration_years ?? null,
-          seatMatrix: (p.seatMatrix || []).filter((s) => s.category?.trim() || s.seat_count != null || s.year != null).map((s) => ({ category: s.category || undefined, seat_count: s.seat_count ?? undefined, year: s.year ?? undefined })),
-          previousCutoffs: (p.previousCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, category: c.category || undefined, cutoff_rank: c.cutoff_rank ?? undefined, year: c.year ?? undefined })),
-          expectedCutoffs: (p.expectedCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, category: c.category || undefined, expected_rank: c.expected_rank ?? undefined, year: c.year ?? undefined })),
+          seatMatrix: (p.seatMatrix || []).filter((s) => s.branch?.trim() || s.category?.trim() || s.seat_count != null || s.year != null).map((s) => ({ branch: s.branch || undefined, category: s.category || undefined, seat_count: s.seat_count ?? undefined, year: s.year ?? undefined })),
+          previousCutoffs: (p.previousCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch || undefined, category: c.category || undefined, cutoff_rank: c.cutoff_rank ?? undefined, year: c.year ?? undefined })),
+          expectedCutoffs: (p.expectedCutoffs || []).filter((c) => c.exam_id).map((c) => ({ exam_id: c.exam_id, branch: (c as { branch?: string }).branch || undefined, category: c.category || undefined, expected_rank: c.expected_rank ?? undefined, year: c.year ?? undefined })),
         })),
       };
       if (editingCollege) {
@@ -265,15 +277,15 @@ export default function CollegesPage() {
           college_description: d.collegeDetails?.college_description ?? '',
           collegeKeyDates: (d.collegeKeyDates || []).map((k) => ({ event_name: k.event_name ?? '', event_date: k.event_date?.toString().slice(0, 10) ?? '' })),
           collegeDocumentsRequired: (d.collegeDocumentsRequired || []).map((doc) => ({ document_name: doc.document_name ?? '' })),
-          collegeCounsellingProcess: (d.collegeCounsellingProcess || []).map((c) => ({ step_number: c.step_number ?? 0, description: c.description ?? '' })),
+          collegeCounsellingProcess: (d.collegeCounsellingProcess || []).map((c) => ({ step_number: c.step_number ?? null, description: c.description ?? '' })),
           recommendedExamIds: d.recommendedExamIds ?? [],
           collegePrograms: (d.collegePrograms || []).map((p) => ({
             program_id: p.program_id,
             intake_capacity: p.intake_capacity ?? null,
             duration_years: (p as { duration_years?: number | null }).duration_years ?? null,
-            seatMatrix: (p.seatMatrix || []).map((s) => ({ category: s.category ?? '', seat_count: s.seat_count ?? null, year: s.year ?? null })),
-            previousCutoffs: (p.previousCutoffs || []).map((c) => ({ exam_id: c.exam_id, category: c.category ?? '', cutoff_rank: c.cutoff_rank ?? null, year: c.year ?? null })),
-            expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id, category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
+            seatMatrix: (p.seatMatrix || []).map((s) => ({ branch: (s as { branch?: string }).branch ?? '', category: s.category ?? '', seat_count: s.seat_count ?? null, year: s.year ?? null })),
+            previousCutoffs: (p.previousCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', cutoff_rank: c.cutoff_rank ?? null, year: c.year ?? null })),
+            expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
           })),
         });
         setLogoPreview(d.college.college_logo ?? null);
@@ -330,9 +342,9 @@ export default function CollegesPage() {
         program_id: number;
         intake_capacity: number | null;
         duration_years: number | null;
-        seatMatrix: { category: string; seat_count: number | null; year: number | null }[];
-        previousCutoffs: { exam_id: number; category: string; cutoff_rank: number | null; year: number | null }[];
-        expectedCutoffs: { exam_id: number; category: string; expected_rank: number | null; year: number | null }[];
+        seatMatrix: { branch: string; category: string; seat_count: number | null; year: number | null }[];
+        previousCutoffs: { exam_id: number; branch?: string; category: string; cutoff_rank: number | null; year: number | null }[];
+        expectedCutoffs: { exam_id: number; branch?: string; category: string; expected_rank: number | null; year: number | null }[];
       }[],
     });
     setLogoPreview(null);
@@ -343,6 +355,32 @@ export default function CollegesPage() {
   const handleModalClose = () => {
     setShowModal(false);
     setEditingCollege(null);
+  };
+
+  const handleMissingLogosSubmit = async () => {
+    if (!missingLogosZipFile) {
+      showError('Please select a ZIP file');
+      return;
+    }
+    setMissingLogosUploading(true);
+    setMissingLogosError(null);
+    setMissingLogosResult(null);
+    try {
+      const res = await uploadMissingLogosColleges(missingLogosZipFile);
+      if (res.success && res.data) {
+        setMissingLogosResult(res.data);
+        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
+        fetchData(true);
+      } else {
+        setMissingLogosError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setMissingLogosError(msg);
+      showError(msg);
+    } finally {
+      setMissingLogosUploading(false);
+    }
   };
 
   const handleBulkTemplateDownload = async () => {
@@ -389,6 +427,26 @@ export default function CollegesPage() {
       showError(msg);
     } finally {
       setBulkUploading(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllColleges();
+      if (response.success) {
+        showSuccess(response.message || 'All colleges deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all colleges');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all colleges');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -457,7 +515,22 @@ export default function CollegesPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {allColleges.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMissingLogosModal(true);
+                    setMissingLogosZipFile(null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  Upload missing logos
+                </button>
+              )}
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -466,6 +539,17 @@ export default function CollegesPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allColleges.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -523,17 +607,12 @@ export default function CollegesPage() {
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => handleView(college)} disabled={loadingView} className="p-2 text-gray-600 hover:text-gray-900" title="View">
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleEdit(college)} className="p-2 text-blue-600 hover:text-blue-800" title="Edit">
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleDeleteClick(college.id)} className="p-2 text-red-600 hover:text-red-800" title="Delete">
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(college)}
+                              onEdit={() => handleEdit(college)}
+                              onDelete={() => handleDeleteClick(college.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -580,17 +659,18 @@ export default function CollegesPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={formData.college_type}
-                  onChange={(e) => setFormData({ ...formData, college_type: e.target.value as 'Central' | 'State' | 'Private' | 'Deemed' | '' })}
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                >
-                  <option value="">Select type</option>
-                  <option value="Central">Central</option>
-                  <option value="State">State</option>
-                  <option value="Private">Private</option>
-                  <option value="Deemed">Deemed</option>
-                </select>
+                <Dropdown
+                  value={formData.college_type || null}
+                  onChange={(v) => setFormData({ ...formData, college_type: v })}
+                  options={[
+                    { value: 'Central', label: 'Central' },
+                    { value: 'State', label: 'State' },
+                    { value: 'Private', label: 'Private' },
+                    { value: 'Deemed', label: 'Deemed' },
+                  ]}
+                  placeholder="Select type"
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
@@ -671,19 +751,8 @@ export default function CollegesPage() {
                 {formData.collegeCounsellingProcess.map((c, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <input
-                      type="number"
-                      placeholder="Step"
-                      value={c.step_number || ''}
-                      onChange={(e) => {
-                        const next = [...formData.collegeCounsellingProcess];
-                        next[i] = { ...next[i], step_number: parseInt(e.target.value, 10) || 0 };
-                        setFormData({ ...formData, collegeCounsellingProcess: next });
-                      }}
-                      className="w-16 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                    />
-                    <input
                       type="text"
-                      placeholder="Description"
+                      placeholder="Description (e.g. JOSAA counselling)"
                       value={c.description}
                       onChange={(e) => {
                         const next = [...formData.collegeCounsellingProcess];
@@ -695,7 +764,7 @@ export default function CollegesPage() {
                     <button type="button" onClick={() => setFormData({ ...formData, collegeCounsellingProcess: formData.collegeCounsellingProcess.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800">Remove</button>
                   </div>
                 ))}
-                <button type="button" onClick={() => setFormData({ ...formData, collegeCounsellingProcess: [...formData.collegeCounsellingProcess, { step_number: formData.collegeCounsellingProcess.length + 1, description: '' }] })} className="text-sm text-pink hover:underline">+ Add step</button>
+                <button type="button" onClick={() => setFormData({ ...formData, collegeCounsellingProcess: [...formData.collegeCounsellingProcess, { step_number: null, description: '' }] })} className="text-sm text-pink hover:underline">+ Add step</button>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Recommended Exams</label>
@@ -711,20 +780,20 @@ export default function CollegesPage() {
                 {formData.collegePrograms.map((p, i) => (
                   <div key={i} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50/50 space-y-2">
                     <div className="flex gap-2 items-center flex-wrap">
-                      <select
+                      <Dropdown<number>
                         value={p.program_id}
-                        onChange={(e) => {
+                        onChange={(v) => {
                           const next = [...formData.collegePrograms];
-                          next[i] = { ...next[i], program_id: parseInt(e.target.value, 10) };
+                          next[i] = { ...next[i], program_id: v };
                           setFormData({ ...formData, collegePrograms: next });
                         }}
-                        className="flex-1 min-w-[120px] px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                      >
-                        <option value={0}>Select program</option>
-                        {programs.map((prog) => (
-                          <option key={prog.id} value={prog.id}>{prog.name}</option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: 0, label: 'Select program' },
+                          ...programs.map((prog) => ({ value: prog.id, label: prog.name })),
+                        ]}
+                        placeholder="Select program"
+                        className="flex-1 min-w-[120px]"
+                      />
                       <input type="number" placeholder="Intake" value={p.intake_capacity ?? ''} onChange={(e) => {
                         const next = [...formData.collegePrograms];
                         next[i] = { ...next[i], intake_capacity: e.target.value ? parseInt(e.target.value, 10) : null };
@@ -738,9 +807,16 @@ export default function CollegesPage() {
                       <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.filter((_, j) => j !== i) })} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
                     </div>
                     <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Seat matrix (category | count | year):</span>
+                      <span className="font-medium">Seat matrix (branch-category:count, e.g. CSE-general:50):</span>
                       {(p.seatMatrix || []).map((s, si) => (
                         <div key={si} className="flex gap-2 items-center flex-wrap">
+                          <input type="text" placeholder="Branch" value={s.branch} onChange={(e) => {
+                            const next = [...formData.collegePrograms];
+                            const sm = [...(next[i].seatMatrix || [])];
+                            sm[si] = { ...sm[si], branch: e.target.value };
+                            next[i] = { ...next[i], seatMatrix: sm };
+                            setFormData({ ...formData, collegePrograms: next });
+                          }} className="w-20 px-2 py-1 text-sm border rounded" />
                           <input type="text" placeholder="Category" value={s.category} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const sm = [...(next[i].seatMatrix || [])];
@@ -765,22 +841,36 @@ export default function CollegesPage() {
                           <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: (pr.seatMatrix || []).filter((_, k) => k !== si) } : pr) })} className="text-red-500 text-xs">Del</button>
                         </div>
                       ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: [...(pr.seatMatrix || []), { category: '', seat_count: null, year: null }] } : pr) })} className="text-pink text-xs">+ Seat row</button>
+                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, seatMatrix: [...(pr.seatMatrix || []), { branch: '', category: '', seat_count: null, year: null }] } : pr) })} className="text-pink text-xs">+ Seat row</button>
                     </div>
                     <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Previous year cutoff (exam | category | rank | year):</span>
+                      <span className="font-medium">Previous year cutoff (exam | branch-category:rank | year):</span>
                       {(p.previousCutoffs || []).map((c, ci) => (
                         <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <select value={c.exam_id} onChange={(e) => {
+                          <Dropdown<number>
+                            value={c.exam_id}
+                            onChange={(v) => {
+                              const next = [...formData.collegePrograms];
+                              const pc = [...(next[i].previousCutoffs || [])];
+                              pc[ci] = { ...pc[ci], exam_id: v };
+                              next[i] = { ...next[i], previousCutoffs: pc };
+                              setFormData({ ...formData, collegePrograms: next });
+                            }}
+                            options={[
+                              { value: 0, label: 'Exam' },
+                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
+                            ]}
+                            placeholder="Exam"
+                            size="sm"
+                            className="min-w-[120px]"
+                          />
+                          <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const pc = [...(next[i].previousCutoffs || [])];
-                            pc[ci] = { ...pc[ci], exam_id: parseInt(e.target.value, 10) };
+                            pc[ci] = { ...pc[ci], branch: e.target.value };
                             next[i] = { ...next[i], previousCutoffs: pc };
                             setFormData({ ...formData, collegePrograms: next });
-                          }} className="min-w-[120px] px-2 py-1 text-sm border rounded">
-                            <option value={0}>Exam</option>
-                            {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.exam_name}</option>)}
-                          </select>
+                          }} className="w-20 px-2 py-1 text-sm border rounded" />
                           <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const pc = [...(next[i].previousCutoffs || [])];
@@ -805,22 +895,36 @@ export default function CollegesPage() {
                           <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: (pr.previousCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
                         </div>
                       ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: [...(pr.previousCutoffs || []), { exam_id: 0, category: '', cutoff_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Previous cutoff</button>
+                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, previousCutoffs: [...(pr.previousCutoffs || []), { exam_id: 0, branch: '', category: '', cutoff_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Previous cutoff</button>
                     </div>
                     <div className="pl-2 text-xs text-gray-600 space-y-1">
-                      <span className="font-medium">Expected cutoff (exam | category | rank | year):</span>
+                      <span className="font-medium">Expected cutoff (exam | branch-category:rank | year):</span>
                       {(p.expectedCutoffs || []).map((c, ci) => (
                         <div key={ci} className="flex gap-2 items-center flex-wrap">
-                          <select value={c.exam_id} onChange={(e) => {
+                          <Dropdown<number>
+                            value={c.exam_id}
+                            onChange={(v) => {
+                              const next = [...formData.collegePrograms];
+                              const ec = [...(next[i].expectedCutoffs || [])];
+                              ec[ci] = { ...ec[ci], exam_id: v };
+                              next[i] = { ...next[i], expectedCutoffs: ec };
+                              setFormData({ ...formData, collegePrograms: next });
+                            }}
+                            options={[
+                              { value: 0, label: 'Exam' },
+                              ...exams.map((ex) => ({ value: ex.id, label: ex.name })),
+                            ]}
+                            placeholder="Exam"
+                            size="sm"
+                            className="min-w-[120px]"
+                          />
+                          <input type="text" placeholder="Branch" value={(c as { branch?: string }).branch ?? ''} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const ec = [...(next[i].expectedCutoffs || [])];
-                            ec[ci] = { ...ec[ci], exam_id: parseInt(e.target.value, 10) };
+                            ec[ci] = { ...ec[ci], branch: e.target.value };
                             next[i] = { ...next[i], expectedCutoffs: ec };
                             setFormData({ ...formData, collegePrograms: next });
-                          }} className="min-w-[120px] px-2 py-1 text-sm border rounded">
-                            <option value={0}>Exam</option>
-                            {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.exam_name}</option>)}
-                          </select>
+                          }} className="w-20 px-2 py-1 text-sm border rounded" />
                           <input type="text" placeholder="Category" value={c.category} onChange={(e) => {
                             const next = [...formData.collegePrograms];
                             const ec = [...(next[i].expectedCutoffs || [])];
@@ -845,7 +949,7 @@ export default function CollegesPage() {
                           <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: (pr.expectedCutoffs || []).filter((_, k) => k !== ci) } : pr) })} className="text-red-500 text-xs">Del</button>
                         </div>
                       ))}
-                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: [...(pr.expectedCutoffs || []), { exam_id: 0, category: '', expected_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Expected cutoff</button>
+                      <button type="button" onClick={() => setFormData({ ...formData, collegePrograms: formData.collegePrograms.map((pr, j) => j === i ? { ...pr, expectedCutoffs: [...(pr.expectedCutoffs || []), { exam_id: 0, branch: '', category: '', expected_rank: null, year: null }] } : pr) })} className="text-pink text-xs">+ Expected cutoff</button>
                     </div>
                   </div>
                 ))}
@@ -918,14 +1022,14 @@ export default function CollegesPage() {
             {((viewingData.collegeCounsellingProcess ?? []).length > 0) && (
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Counselling Process</h3>
-                <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1">
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                   {(viewingData.collegeCounsellingProcess ?? [])
                     .slice()
-                    .sort((a, b) => (a.step_number ?? 0) - (b.step_number ?? 0))
+                    .sort((a, b) => (a.step_number ?? 999) - (b.step_number ?? 999))
                     .map((c, i) => (
-                      <li key={i}>{c.description || `Step ${c.step_number ?? i + 1}`}</li>
+                      <li key={i}>{c.description || '-'}</li>
                     ))}
-                </ol>
+                </ul>
               </div>
             )}
 
@@ -934,7 +1038,7 @@ export default function CollegesPage() {
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Recommended Exams</h3>
                 <p className="text-sm text-gray-700">
                   {(viewingData.recommendedExamIds ?? [])
-                    .map((eid) => exams.find((e) => e.id === eid)?.exam_name ?? `ID ${eid}`)
+                    .map((eid) => exams.find((e) => e.id === eid)?.name ?? `ID ${eid}`)
                     .join(', ') || '-'}
                 </p>
               </div>
@@ -957,17 +1061,17 @@ export default function CollegesPage() {
                       </p>
                       {(p.seatMatrix?.length ?? 0) > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Seat matrix: {(p.seatMatrix ?? []).map((s) => `${s.category ?? '-'}: ${s.seat_count ?? '-'} (${s.year ?? '-'})`).join('; ')}
+                          Seat matrix: {(p.seatMatrix ?? []).map((s) => `${s.branch ? `${s.branch}-` : ''}${s.category ?? '-'}: ${s.seat_count ?? '-'}${s.year ? ` (${s.year})` : ''}`).join('; ')}
                         </p>
                       )}
                       {(p.previousCutoffs?.length ?? 0) > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Previous cutoff: {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.exam_name ?? c.exam_id} ${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                          Previous cutoff: {(p.previousCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.cutoff_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                       {(p.expectedCutoffs?.length ?? 0) > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Expected cutoff: {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.exam_name ?? c.exam_id} ${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
+                          Expected cutoff: {(p.expectedCutoffs ?? []).map((c) => `${exams.find((e) => e.id === c.exam_id)?.name ?? c.exam_id} ${(c as { branch?: string }).branch ? `${(c as { branch?: string }).branch}-` : ''}${c.category ?? ''} rank ${c.expected_rank ?? '-'} (${c.year ?? '-'})`).join('; ')}
                         </p>
                       )}
                     </div>
@@ -990,64 +1094,292 @@ export default function CollegesPage() {
 
       {/* Bulk Upload Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Bulk Upload Colleges</h2>
-              <button type="button" onClick={() => { setShowBulkModal(false); }} className="text-gray-500 hover:text-gray-700">
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Upload an Excel file (use template). Optionally attach a ZIP of logos; filenames must match the <code className="bg-gray-100 px-1 rounded">logo_filename</code> column.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file *</label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Logos (ZIP file)</label>
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file?.name.toLowerCase().endsWith('.zip')) {
-                      setBulkLogosZipFile(file);
-                      setBulkLogoFiles([]);
-                    }
-                    e.target.value = '';
-                  }}
-                  className="w-full text-sm"
-                />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Bulk upload colleges</h2>
+                  <p className="text-xs text-white/80">Excel + optional logos</p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                onClick={() => setShowBulkModal(false)}
+                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                aria-label="Close"
               >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
+                <FiX className="h-5 w-5" />
               </button>
             </div>
-            {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
-            {bulkResult && (
-              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
-                Created: {bulkResult.created}. {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+            <div className="p-5 overflow-auto space-y-5">
+              {canDownloadExcel && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="h-10 w-10 rounded-lg bg-darkGradient flex items-center justify-center text-white shrink-0">
+                    <FiDownload className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900">Get the template</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Download the Excel file with all columns</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkTemplateDownload}
+                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Download
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">
+                  Excel file <span className="text-red-500">*</span>
+                </p>
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkExcelFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiFile className={`h-10 w-10 ${bulkExcelFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkExcelFile ? bulkExcelFile.name : 'Choose Excel file (.xlsx, .xls)'}
+                    </span>
+                    {bulkExcelFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkExcelFile(null); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
               </div>
-            )}
-            <div className="flex justify-end gap-2 mt-4">
-              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">
+                  Logos ZIP <span className="text-xs font-normal text-gray-500">(optional)</span>
+                </p>
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkLogosZipFile ? bulkLogosZipFile.name : 'Choose ZIP file'}
+                    </span>
+                    {bulkLogosZipFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkLogosZipFile(null); setBulkLogoFiles([]); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file?.name.toLowerCase().endsWith('.zip')) {
+                        setBulkLogosZipFile(file);
+                        setBulkLogoFiles([]);
+                      }
+                      e.target.value = '';
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {bulkError && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                  <FiX className="h-4 w-4 shrink-0 mt-0.5" />
+                  {bulkError}
+                </div>
+              )}
+              {bulkResult && (
+                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm space-y-1">
+                  <p className="font-medium text-gray-900">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && (
+                    <p className="text-amber-700">Errors: {bulkResult.errors} row(s)</p>
+                  )}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-gray-600 list-disc list-inside max-h-32 overflow-y-auto">
+                      {bulkResult.errorDetails.map((e, i) => (
+                        <li key={i}>Row {e.row}: {e.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 pt-1">
+                File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
+              </p>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50/50">
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 Close
               </button>
-              <button type="button" onClick={handleBulkSubmit} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
-                {bulkUploading ? 'Uploading...' : 'Upload'}
+              <button
+                type="button"
+                onClick={handleBulkSubmit}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {bulkUploading ? (
+                  <>
+                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Missing Logos Modal */}
+      {showMissingLogosModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                aria-label="Close"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-auto space-y-5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_filename</code> stored for colleges that have no logo yet.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={(e) => {
+                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
+                      setMissingLogosResult(null);
+                      setMissingLogosError(null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {missingLogosZipFile ? (
+                    <div className="flex flex-col items-center gap-2 p-4">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600">
+                        <FiUpload className="h-5 w-5" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
+                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
+                      <FiUpload className="h-8 w-8 opacity-60" />
+                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                      <span className="text-xs">.zip only</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+              {missingLogosError && (
+                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
+                  {missingLogosError}
+                </div>
+              )}
+              {missingLogosResult && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="font-semibold text-slate-900">
+                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
+                  </p>
+                  {missingLogosResult.summary.filesSkipped > 0 && (
+                    <p className="text-sm text-amber-700">Files skipped (no matching college): {missingLogosResult.summary.filesSkipped}</p>
+                  )}
+                  {missingLogosResult.summary.uploadErrors > 0 && (
+                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
+                  )}
+                  {missingLogosResult.updated.length > 0 && (
+                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
+                      {missingLogosResult.updated.map((u, i) => (
+                        <li key={i}>{u.college_name}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {missingLogosResult.skipped.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
+                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
+                        {missingLogosResult.skipped.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMissingLogosSubmit}
+                disabled={!missingLogosZipFile || missingLogosUploading}
+                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {missingLogosUploading ? (
+                  <>
+                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1064,6 +1396,17 @@ export default function CollegesPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Colleges"
+        message={`Are you sure you want to delete all ${allColleges.length} colleges? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

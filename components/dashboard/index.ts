@@ -9,6 +9,8 @@ export { default as ShortlistColleges } from "./ShortlistColleges";
 export { default as ApplicationsPage } from "./Applications";
 export { default as ExamBox } from "./ExamBox";
 export { default as ExamPreparation } from "./ExamPreparation";
+export { default as TestModule } from "./TestModule";
+export { default as TestInterface } from "./TestInterface";
 export { default as CoachingCentersTab } from "./CoachingCentersTab";
 export { default as CareerGoalsTab } from "./ProfileTabs/CareerGoals";
 export { default as AcademicsProfile } from "./ProfileTabs/AcademicsProfile";

@@ -7,6 +7,7 @@ export interface Exam {
   name: string;
   code: string;
   description: string | null;
+  generation_prompt?: string | null;
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
@@ -193,6 +194,13 @@ export async function deleteExam(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Delete all exams (Super Admin only)
+ */
+export async function deleteAllExams(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/all`, { method: 'DELETE' });
+}
+
 export interface BulkUploadResult {
   created: number;
   createdExams: { id: number; name: string; code: string }[];
@@ -240,6 +248,34 @@ export async function downloadAllDataExcel(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
+export interface UploadMissingLogosResult {
+  updated: { id: number; name: string; code: string; logo_file_name?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+}
+
+/**
+ * Upload missing logos from a ZIP file.
+ * Matches files by logo_file_name; updates exams where exam_logo is null.
+ */
+export async function uploadMissingLogos(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
+}
+
 /**
  * Bulk create exams from Excel; optional logos as multiple files or one ZIP of images.
  * Match Excel logo_filename column to image file names (or names inside the ZIP).
@@ -266,8 +302,37 @@ export async function bulkUploadExams(
     body: formData,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
+  if (!res.ok) {
+    const err = new Error(data.message || 'Bulk upload failed') as Error & { data?: BulkUploadResult };
+    if (data.data) err.data = data.data;
+    throw err;
+  }
   return data;
+}
+
+/**
+ * Get exam generation prompt (for mock question generation)
+ */
+export async function getExamPrompt(id: number): Promise<ApiResponse<{
+  prompt: string;
+  hasCustomPrompt: boolean;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}/prompt`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Update exam generation prompt
+ */
+export async function updateExamPrompt(
+  id: number,
+  prompt: string
+): Promise<ApiResponse<{ exam: Exam; prompt: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}/${id}/prompt`, {
+    method: 'PUT',
+    body: JSON.stringify({ prompt }),
+  });
 }
 
 

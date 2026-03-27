@@ -26,7 +26,7 @@ export async function getAllAdmins(): Promise<ApiResponse<GetAllAdminsResponse>>
 export async function createAdmin(
   email: string,
   password: string,
-  type: 'data_entry' | 'admin' = 'data_entry',
+  type: 'data_entry' | 'admin' | 'super_admin' = 'data_entry',
   module_ids?: number[]
 ): Promise<ApiResponse<{ admin: AdminUser }>> {
   return apiRequest<{ admin: AdminUser }>(API_ENDPOINTS.ADMIN.ADMINS, {

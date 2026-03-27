@@ -6,6 +6,7 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllAdmins, createAdmin, updateAdmin, deleteAdmin, AdminUser } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiSave, FiShield, FiUser, FiSearch } from 'react-icons/fi';
+import { Dropdown } from '@/components/shared';
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function AdminUsersPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    type: 'user' as 'user' | 'super_admin',
+    type: 'data_entry' as 'data_entry' | 'admin' | 'super_admin',
   });
 
   useEffect(() => {
@@ -88,15 +89,15 @@ export default function AdminUsersPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Type is always 'user' for new admins created through UI
+      // Type is always 'data_entry' for new admins created through UI
       const response = await createAdmin(
         formData.email,
         formData.password,
-        'user'
+        'data_entry'
       );
       if (response.success) {
         setShowCreateModal(false);
-        setFormData({ email: '', password: '', type: 'user' });
+        setFormData({ email: '', password: '', type: 'data_entry' });
         fetchAdmins();
       } else {
         setError(response.message || 'Failed to create admin user');
@@ -270,15 +271,12 @@ export default function AdminUsersPage() {
                             </td>
                             <td className="px-4 py-2">
                               {isEditing && !isSuperAdminType ? (
-                                <select
+                                <Dropdown
                                   value={admin.type}
-                                  onChange={(e) =>
-                                    handleUpdate(admin.id, 'type', e.target.value)
-                                  }
-                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                                >
-                                  <option value="user">User</option>
-                                </select>
+                                  onChange={(v) => handleUpdate(admin.id, 'type', v)}
+                                  options={[{ value: 'data_entry', label: 'Data Entry' }]}
+                                  size="sm"
+                                />
                               ) : (
                                 <span
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -298,16 +296,16 @@ export default function AdminUsersPage() {
                             </td>
                             <td className="px-4 py-2">
                               {isEditing && !isSuperAdminType ? (
-                                <select
-                                  value={admin.is_active ? 'true' : 'false'}
-                                  onChange={(e) =>
-                                    handleUpdate(admin.id, 'is_active', e.target.value === 'true')
-                                  }
-                                  className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                                >
-                                  <option value="true">Active</option>
-                                  <option value="false">Inactive</option>
-                                </select>
+                                <Dropdown<boolean>
+                                  value={admin.is_active}
+                                  onChange={(v) => handleUpdate(admin.id, 'is_active', v)}
+                                  options={[
+                                    { value: true, label: 'Active' },
+                                    { value: false, label: 'Inactive' },
+                                  ]}
+                                  size="sm"
+                                  variant="status"
+                                />
                               ) : (
                                 <span
                                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -410,7 +408,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry' });
                 }}
                 className="text-white hover:text-gray-200 transition-colors"
               >
@@ -456,7 +454,7 @@ export default function AdminUsersPage() {
                 type="button"
                 onClick={() => {
                   setShowCreateModal(false);
-                  setFormData({ email: '', password: '', type: 'user' });
+                  setFormData({ email: '', password: '', type: 'data_entry' });
                 }}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
               >

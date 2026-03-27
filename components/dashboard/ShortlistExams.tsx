@@ -100,7 +100,7 @@ export default function ShortlistExams() {
                         )}
                         {!loadingRecommended && recommendedExams.length === 0 && (
                             <div className="col-span-full py-8 text-center text-slate-400 text-sm">
-                                {recommendedMessage || "No recommended exams. Complete your profile (stream & career goals) to get personalized recommendations."}
+                                {recommendedMessage || "No recommended exams. Complete your profile (stream & interests) to get personalized recommendations."}
                             </div>
                         )}
                         {!loadingRecommended &&

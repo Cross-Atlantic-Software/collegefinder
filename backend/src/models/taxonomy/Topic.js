@@ -15,81 +15,31 @@ class Topic {
    * Find topic by ID
    */
   static async findById(id) {
-    const result = await db.query('SELECT * FROM topics WHERE id = $1', [id]);
+    const result = await db.query(
+      'SELECT * FROM topics WHERE id = $1',
+      [id]
+    );
     return result.rows[0] || null;
   }
 
   /**
-   * Find topics by subject ID
-   */
-  static async findBySubjectId(subjectId) {
-    const result = await db.query(
-      'SELECT * FROM topics WHERE sub_id = $1 ORDER BY sort_order ASC, name ASC',
-      [subjectId]
-    );
-    return result.rows;
-  }
-
-  /**
-   * Find topics by subject ID with home_display filter
-   */
-  static async findBySubjectIdWithHomeDisplay(subjectId, homeDisplayOnly = false, limit = null) {
-    let query = 'SELECT * FROM topics WHERE sub_id = $1 AND status = true';
-    const params = [subjectId];
-    
-    if (homeDisplayOnly) {
-      query += ' AND home_display = true';
-    }
-    
-    query += ' ORDER BY sort_order ASC, name ASC';
-    
-    if (limit) {
-      query += ` LIMIT $${params.length + 1}`;
-      params.push(limit);
-    }
-    
-    const result = await db.query(query, params);
-    return result.rows;
-  }
-
-  /**
-   * Find topic by name (for dynamic routing)
+   * Find topic by name (first match)
    */
   static async findByName(name) {
     const result = await db.query(
-      'SELECT * FROM topics WHERE LOWER(name) = LOWER($1) AND status = true',
+      'SELECT * FROM topics WHERE LOWER(name) = LOWER($1) LIMIT 1',
       [name]
     );
     return result.rows[0] || null;
   }
 
   /**
-   * Find active topics
-   */
-  static async findActive() {
-    const result = await db.query(
-      'SELECT * FROM topics WHERE status = TRUE ORDER BY sort_order ASC, name ASC'
-    );
-    return result.rows;
-  }
-
-  /**
-   * Find topics for home display
-   */
-  static async findHomeDisplay() {
-    const result = await db.query(
-      'SELECT * FROM topics WHERE status = TRUE AND home_display = TRUE ORDER BY sort_order ASC, name ASC'
-    );
-    return result.rows;
-  }
-
-  /**
    * Find topic by name and subject ID
    */
-  static async findByNameAndSubjectId(name, subjectId) {
+  static async findByNameAndSubjectId(name, subId) {
     const result = await db.query(
-      'SELECT * FROM topics WHERE name = $1 AND sub_id = $2',
-      [name, subjectId]
+      'SELECT * FROM topics WHERE LOWER(name) = LOWER($1) AND sub_id = $2',
+      [name, subId]
     );
     return result.rows[0] || null;
   }
@@ -98,21 +48,19 @@ class Topic {
    * Create a new topic
    */
   static async create(data) {
-    const {
-      sub_id,
-      name,
-      thumbnail,
-      home_display = false,
-      status = true,
-      description,
-      sort_order = 0
-    } = data;
-
+    const { sub_id, name, thumbnail, home_display, status, description, sort_order } = data;
     const result = await db.query(
       `INSERT INTO topics (sub_id, name, thumbnail, home_display, status, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [sub_id, name, thumbnail || null, home_display, status, description || null, sort_order]
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [
+        sub_id,
+        name,
+        thumbnail || null,
+        home_display === true || home_display === 'true',
+        status !== false && status !== 'false',
+        description || null,
+        sort_order != null ? parseInt(sort_order, 10) : 0
+      ]
     );
     return result.rows[0];
   }
@@ -121,70 +69,109 @@ class Topic {
    * Update a topic
    */
   static async update(id, data) {
-    const {
-      sub_id,
-      name,
-      thumbnail,
-      home_display,
-      status,
-      description,
-      sort_order
-    } = data;
-
     const updates = [];
     const values = [];
     let paramCount = 1;
 
-    if (sub_id !== undefined) {
-      updates.push(`sub_id = $${paramCount++}`);
-      values.push(sub_id);
-    }
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(name);
-    }
-    if (thumbnail !== undefined) {
-      updates.push(`thumbnail = $${paramCount++}`);
-      values.push(thumbnail);
-    }
-    if (home_display !== undefined) {
-      updates.push(`home_display = $${paramCount++}`);
-      values.push(home_display);
-    }
-    if (status !== undefined) {
-      updates.push(`status = $${paramCount++}`);
-      values.push(status);
-    }
-    if (description !== undefined) {
-      updates.push(`description = $${paramCount++}`);
-      values.push(description);
-    }
-    if (sort_order !== undefined) {
-      updates.push(`sort_order = $${paramCount++}`);
-      values.push(sort_order);
+    const fields = ['sub_id', 'name', 'thumbnail', 'home_display', 'status', 'description', 'sort_order'];
+    for (const field of fields) {
+      if (data[field] !== undefined) {
+        if (field === 'home_display' || field === 'status') {
+          updates.push(`${field} = $${paramCount++}`);
+          values.push(data[field] === true || data[field] === 'true');
+        } else if (field === 'sort_order') {
+          updates.push(`${field} = $${paramCount++}`);
+          values.push(parseInt(data[field], 10));
+        } else {
+          updates.push(`${field} = $${paramCount++}`);
+          values.push(data[field]);
+        }
+      }
     }
 
-    if (updates.length === 0) {
-      return await this.findById(id);
-    }
+    if (updates.length === 0) return await this.findById(id);
 
+    updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
-    const result = await db.query(
-      `UPDATE topics SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $${paramCount} RETURNING *`,
-      values
-    );
+    const query = `UPDATE topics SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const result = await db.query(query, values);
     return result.rows[0] || null;
+  }
+
+  /**
+   * Find topics by subject ID, optionally filter by home_display and limit
+   */
+  static async findBySubjectIdWithHomeDisplay(subjectId, homeDisplayOnly = false, limitNum = null) {
+    let query = 'SELECT * FROM topics WHERE sub_id = $1 AND status = true';
+    const values = [subjectId];
+    if (homeDisplayOnly) {
+      query += ' AND home_display = true';
+    }
+    query += ' ORDER BY sort_order ASC, name ASC';
+    if (limitNum != null && !isNaN(limitNum) && limitNum > 0) {
+      query += ` LIMIT $${values.length + 1}`;
+      values.push(limitNum);
+    }
+    const result = await db.query(query, values);
+    return result.rows;
+  }
+
+  /**
+   * Get exam IDs for a topic (max 10)
+   */
+  static async getExamIds(topicId) {
+    const result = await db.query(
+      'SELECT exam_id FROM topic_exams WHERE topic_id = $1 ORDER BY exam_id',
+      [topicId]
+    );
+    return result.rows.map((r) => r.exam_id);
+  }
+
+  /**
+   * Get exam IDs for multiple topics (returns Map of topicId -> exam_id array)
+   */
+  static async getExamIdsByTopicIds(topicIds) {
+    if (!topicIds || topicIds.length === 0) return {};
+    const result = await db.query(
+      'SELECT topic_id, exam_id FROM topic_exams WHERE topic_id = ANY($1) ORDER BY topic_id, exam_id',
+      [topicIds]
+    );
+    const map = {};
+    topicIds.forEach((id) => { map[id] = []; });
+    result.rows.forEach((r) => {
+      if (!map[r.topic_id]) map[r.topic_id] = [];
+      map[r.topic_id].push(r.exam_id);
+    });
+    return map;
+  }
+
+  /**
+   * Set exam IDs for a topic (replaces existing; max 10)
+   */
+  static async setExamIds(topicId, examIds) {
+    await db.query('DELETE FROM topic_exams WHERE topic_id = $1', [topicId]);
+    const ids = Array.isArray(examIds) ? examIds.slice(0, 10).filter((id) => id != null && !isNaN(Number(id))) : [];
+    if (ids.length > 0) {
+      const values = ids.map((examId) => [topicId, parseInt(examId, 10)]);
+      const placeholders = values.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+      const flat = values.flat();
+      await db.query(
+        `INSERT INTO topic_exams (topic_id, exam_id) VALUES ${placeholders}`,
+        flat
+      );
+    }
   }
 
   /**
    * Delete a topic
    */
   static async delete(id) {
-    const result = await db.query('DELETE FROM topics WHERE id = $1 RETURNING *', [id]);
+    const result = await db.query(
+      'DELETE FROM topics WHERE id = $1 RETURNING *',
+      [id]
+    );
     return result.rows[0] || null;
   }
 }
 
 module.exports = Topic;
-

@@ -18,13 +18,18 @@ COPY package*.json ./
 # Development: install all (including nodemon for hot-reload)
 # Production: install only production dependencies (smaller image)
 RUN if [ "$NODE_ENV" = "development" ]; then \
-      npm ci; \
+      npm install; \
     else \
-      npm ci --only=production; \
+      npm install --omit=dev; \
     fi
 
 # Copy application code
 COPY . .
+
+# Copy entrypoint for dev (ensures node_modules populated when volume-mounted)
+# Strip CRLF so script runs on Alpine (Windows line endings cause "no such file or directory")
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Expose port
 EXPOSE 5001
@@ -32,4 +37,5 @@ EXPOSE 5001
 # Set default command (can be overridden in docker-compose)
 # Development uses: npm run dev (nodemon)
 # Production uses: node server.js
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

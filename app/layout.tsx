@@ -1,16 +1,10 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
-import { Manrope } from "next/font/google";
 import "./globals.css";
 
 const Providers = dynamic(() => import("./Providers"), {
   ssr: true,
-});
-
-const manropeSans = Manrope({
-  variable: "--font-manrope-sans",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -23,8 +17,15 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <link rel="icon" href="/favicon.ico" sizes="any" />
-      <body className={`${manropeSans.variable} antialiased`}>
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+          precedence="default"
+        />
+      </head>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

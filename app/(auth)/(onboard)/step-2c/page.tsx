@@ -1,82 +1,55 @@
 'use client'
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button, Select } from "@/components/shared";
+import { getAllCities } from "@/lib/data/indianStatesDistricts";
 import { upsertUserAddress, getUserAddress } from "@/api";
-import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function StepTwoC() {
-  const [selectedState, setSelectedState] = useState<string>("");
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
-  const [stateOptions, setStateOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [districtOptions, setDistrictOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedCity, setSelectedCity] = useState<string>("");
+  const [cityOptions, setCityOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
+  const [isNavigatingToDashboard, setIsNavigatingToDashboard] = useState(false);
   const router = useRouter();
   const { user, refreshUser, isLoading } = useAuth();
 
-  // Initialize state options on mount
-  useEffect(() => {
-    const states = getAllStates();
-    setStateOptions(states.map(state => ({
-      value: state,
-      label: state
-    })));
-  }, []);
+  const cities = useMemo(() => getAllCities(), []);
 
-  // Load existing address data if available
   useEffect(() => {
-    const loadAddressData = async () => {
+    queueMicrotask(() => {
+        setCityOptions(
+      cities.map((c) => ({
+          value: c,
+          label: c,
+        }))
+    );
+    });
+  }, [cities]);
+
+  useEffect(() => {
+    const loadCity = async () => {
       try {
         const response = await getUserAddress();
-        if (response.success && response.data) {
-          if (response.data.state) {
-            setSelectedState(response.data.state);
-            // Load districts for the state
-            const districts = getDistrictsForState(response.data.state);
-            setDistrictOptions(districts.map(district => ({
-              value: district,
-              label: district
-            })));
-            if (response.data.district) {
-              setSelectedDistrict(response.data.district);
-            }
-          }
+        if (response.success && response.data?.city_town_village) {
+          setSelectedCity(response.data.city_town_village);
         }
       } catch (err) {
-        console.error("Error loading address data:", err);
+        console.error("Error loading city:", err);
       }
     };
 
     if (!isLoading && user) {
-      loadAddressData();
+      loadCity();
     }
   }, [isLoading, user]);
 
-  // Update district options when state changes
   useEffect(() => {
-    if (selectedState) {
-      const districts = getDistrictsForState(selectedState);
-      setDistrictOptions(districts.map(district => ({
-        value: district,
-        label: district
-      })));
-      // Reset district when state changes
-      setSelectedDistrict("");
-    } else {
-      setDistrictOptions([]);
-      setSelectedDistrict("");
-    }
-  }, [selectedState]);
-
-  // Redirect to dashboard if user has completed onboarding
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
+    if (!isLoading && user?.onboarding_completed && !isNavigatingToDashboard && !saving) {
       setIsRedirecting(true);
       router.prefetch('/dashboard');
       const timer = setTimeout(() => {
@@ -84,65 +57,57 @@ export default function StepTwoC() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router, isNavigatingToStep3, saving]);
+  }, [user, isLoading, router, isNavigatingToDashboard, saving]);
 
-  // Show smooth loader while checking auth or redirecting
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
+  if (isLoading || (isRedirecting && !saving && !isNavigatingToDashboard)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
 
-  // Don't render if user has completed onboarding and we're not saving/navigating
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
+  if (user?.onboarding_completed && !saving && !isNavigatingToDashboard) {
     return <OnboardingLoader message="Taking you to dashboard..." />;
   }
 
-  // Show saving state if we're navigating to step-3
-  if (saving || isNavigatingToStep3) {
-    return <OnboardingLoader message="Saving your location..." />;
+  if (saving || isNavigatingToDashboard) {
+    return <OnboardingLoader message="Saving your city..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedState) {
-      setError("Please select your state");
-      return;
-    }
 
-    if (!selectedDistrict) {
-      setError("Please select your district");
+    if (!selectedCity) {
+      setError("Please select your city");
       return;
     }
 
     if (!user) {
-      setError("You must be logged in to save your location");
+      setError("You must be logged in to save your city");
       return;
     }
 
     setSaving(true);
     setError(null);
-    setIsNavigatingToStep3(true);
+    setIsNavigatingToDashboard(true);
 
     try {
       const response = await upsertUserAddress({
-        state: selectedState,
-        district: selectedDistrict,
-        country: "India", // Default to India
+        city_town_village: selectedCity,
+        country: "India",
       });
-      
+
       if (response.success) {
-        router.prefetch("/step-3");
-        router.replace("/step-3");
+        await refreshUser();
+        router.prefetch("/dashboard");
+        router.replace("/dashboard");
       } else {
-        setError(response.message || "Failed to save location. Please try again.");
+        setError(response.message || "Failed to save city. Please try again.");
         setSaving(false);
-        setIsNavigatingToStep3(false);
+        setIsNavigatingToDashboard(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
-      console.error("Error updating address:", err);
+      console.error("Error updating city:", err);
       setSaving(false);
-      setIsNavigatingToStep3(false);
+      setIsNavigatingToDashboard(false);
     }
   };
 
@@ -156,14 +121,12 @@ export default function StepTwoC() {
     >
       <WelcomeLayout progress={90}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
-          {/* Robot */}
           <div className="flex-shrink-0">
             <Robot variant="five" />
           </div>
 
-          {/* Select + Button */}
           <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble>Where are you located? Select your state and district.</Bubble>
+            <Bubble className="w-full max-w-none">Which city are you in?</Bubble>
 
             {error && (
               <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
@@ -171,32 +134,22 @@ export default function StepTwoC() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <Select
-                options={stateOptions}
-                value={selectedState}
-                onChange={(value) => setSelectedState(value || "")}
-                placeholder="Select your state"
+                options={cityOptions}
+                value={selectedCity}
+                onChange={(value) => setSelectedCity(value || "")}
+                placeholder="Search and select your city"
                 isSearchable={true}
                 isClearable={false}
-              />
-
-              <Select
-                options={districtOptions}
-                value={selectedDistrict}
-                onChange={(value) => setSelectedDistrict(value || "")}
-                placeholder={selectedState ? "Select your district" : "Select state first"}
-                isSearchable={true}
-                isClearable={false}
-                disabled={!selectedState}
               />
 
               <Button
                 type="submit"
                 variant="DarkGradient"
                 size="lg"
-                className="w-full rounded-full"
-                disabled={saving || !selectedState || !selectedDistrict}
+                className="w-full rounded-full min-h-[48px]"
+                disabled={saving || !selectedCity}
               >
                 {saving ? "Saving..." : "Continue"}
               </Button>
@@ -207,4 +160,3 @@ export default function StepTwoC() {
     </div>
   );
 }
-

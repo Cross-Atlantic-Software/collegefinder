@@ -28,6 +28,9 @@ export {
   uploadCareerGoalLogo,
   updateCareerGoal,
   deleteCareerGoal,
+  downloadAllDataExcel as downloadAllCareerGoalsExcel,
+  deleteAllCareerGoals,
+  uploadMissingLogosCareerGoals,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
 
@@ -42,6 +45,14 @@ export {
 } from './exams';
 export type { Exam, ExamDates, ExamEligibilityCriteria, ExamPattern, ExamCutoff, ExamWithDetails } from './exams';
 
+// Export mock prompts (exam_mock_prompts table by exam ID)
+export {
+  getMockPromptsList,
+  getMockPrompt,
+  updateMockPrompt,
+} from './mock-prompts';
+export type { MockPromptItem } from './mock-prompts';
+
 // Export subjects taxonomy management APIs
 export {
   getAllSubjects,
@@ -49,6 +60,9 @@ export {
   createSubject,
   updateSubject,
   deleteSubject,
+  downloadSubjectsBulkTemplate,
+  downloadAllSubjectsExcel,
+  bulkUploadSubjects,
 } from './subjects';
 export type { Subject } from './subjects';
 
@@ -69,6 +83,10 @@ export {
   createCareer,
   updateCareer,
   deleteCareer,
+  downloadAllCareersExcel,
+  downloadCareersBulkTemplate,
+  bulkUploadCareers,
+  deleteAllCareers,
 } from './careers';
 export type { Career } from './careers';
 
@@ -134,6 +152,9 @@ export {
   createProgram,
   updateProgram,
   deleteProgram,
+  downloadProgramsBulkTemplate,
+  downloadAllProgramsExcel,
+  bulkUploadPrograms,
 } from './programs';
 export type { Program } from './programs';
 

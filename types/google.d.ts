@@ -6,7 +6,7 @@ interface GoogleAccounts {
       callback: (response: { credential: string }) => void;
     }) => void;
     prompt: () => void;
-    renderButton: (element: HTMLElement, config: any) => void;
+    renderButton: (element: HTMLElement, config: Record<string, unknown>) => void;
   };
 }
 

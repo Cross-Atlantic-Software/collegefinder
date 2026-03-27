@@ -123,6 +123,52 @@ class Subtopic {
   }
 
   /**
+   * Get exam IDs for a subtopic (max 10)
+   */
+  static async getExamIds(subtopicId) {
+    const result = await db.query(
+      'SELECT exam_id FROM subtopic_exams WHERE subtopic_id = $1 ORDER BY exam_id',
+      [subtopicId]
+    );
+    return result.rows.map((r) => r.exam_id);
+  }
+
+  /**
+   * Get exam IDs for multiple subtopics (returns Map of subtopicId -> exam_id array)
+   */
+  static async getExamIdsBySubtopicIds(subtopicIds) {
+    if (!subtopicIds || subtopicIds.length === 0) return {};
+    const result = await db.query(
+      'SELECT subtopic_id, exam_id FROM subtopic_exams WHERE subtopic_id = ANY($1) ORDER BY subtopic_id, exam_id',
+      [subtopicIds]
+    );
+    const map = {};
+    subtopicIds.forEach((id) => { map[id] = []; });
+    result.rows.forEach((r) => {
+      if (!map[r.subtopic_id]) map[r.subtopic_id] = [];
+      map[r.subtopic_id].push(r.exam_id);
+    });
+    return map;
+  }
+
+  /**
+   * Set exam IDs for a subtopic (replaces existing; max 10)
+   */
+  static async setExamIds(subtopicId, examIds) {
+    await db.query('DELETE FROM subtopic_exams WHERE subtopic_id = $1', [subtopicId]);
+    const ids = Array.isArray(examIds) ? examIds.slice(0, 10).filter((id) => id != null && !isNaN(Number(id))) : [];
+    if (ids.length > 0) {
+      const values = ids.map((examId) => [subtopicId, parseInt(examId, 10)]);
+      const placeholders = values.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+      const flat = values.flat();
+      await db.query(
+        `INSERT INTO subtopic_exams (subtopic_id, exam_id) VALUES ${placeholders}`,
+        flat
+      );
+    }
+  }
+
+  /**
    * Delete a subtopic
    */
   static async delete(id) {

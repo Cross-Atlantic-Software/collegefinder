@@ -39,11 +39,11 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       if (response.success && response.data) {
         setCareerGoals(response.data.careerGoals);
       } else {
-        setError(response.message || 'Failed to fetch career goals');
+        setError(response.message || 'Failed to fetch interests');
       }
     } catch (err) {
-      setError('An error occurred while fetching career goals');
-      console.error('Error fetching career goals:', err);
+      setError('An error occurred while fetching interests');
+      console.error('Error fetching interests:', err);
     } finally {
       setIsLoading(false);
     }
@@ -99,12 +99,12 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, formData);
         if (response.success) {
-          showSuccess('Career goal updated successfully');
+          showSuccess('Interest updated successfully');
           setShowForm(false);
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to update career goal';
+          const errorMsg = response.message || 'Failed to update interest';
           setError(errorMsg);
           showError(errorMsg);
         }
@@ -116,16 +116,16 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           resetForm();
           fetchCareerGoals();
         } else {
-          const errorMsg = response.message || 'Failed to create career goal';
+          const errorMsg = response.message || 'Failed to create interest';
           setError(errorMsg);
           showError(errorMsg);
         }
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while saving career goal';
+      const errorMsg = 'An error occurred while saving interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error saving career goal:', err);
+      console.error('Error saving interest:', err);
     }
   };
 
@@ -141,22 +141,22 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       setIsDeleting(true);
       const response = await deleteCareerGoal(deletingId);
       if (response.success) {
-        showSuccess('Career goal deleted successfully');
+        showSuccess('Interest deleted successfully');
         setShowDeleteConfirm(false);
         setDeletingId(null);
         fetchCareerGoals();
       } else {
-        const errorMsg = response.message || 'Failed to delete career goal';
+        const errorMsg = response.message || 'Failed to delete interest';
         setError(errorMsg);
         showError(errorMsg);
         setShowDeleteConfirm(false);
         setDeletingId(null);
       }
     } catch (err) {
-      const errorMsg = 'An error occurred while deleting career goal';
+      const errorMsg = 'An error occurred while deleting interest';
       setError(errorMsg);
       showError(errorMsg);
-      console.error('Error deleting career goal:', err);
+      console.error('Error deleting interest:', err);
       setShowDeleteConfirm(false);
       setDeletingId(null);
     } finally {
@@ -166,8 +166,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
 
   const handleEdit = (careerGoal: CareerGoalAdmin) => {
     setEditingCareerGoal(careerGoal);
-    setFormData({ label: careerGoal.label, logo: careerGoal.logo });
-    setLogoPreview(careerGoal.logo);
+    setFormData({ label: careerGoal.label, logo: careerGoal.logo ?? '' });
+    setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
     setShowForm(true);
   };
@@ -199,7 +199,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Career Goals Taxonomies</h2>
+          <h2 className="text-lg font-bold">Interests Taxonomies</h2>
           <button
             onClick={handleClose}
             className="text-white hover:text-gray-200 transition-colors"
@@ -368,8 +368,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           setDeletingId(null);
         }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Career Goal Taxonomy"
-        message="Are you sure you want to delete this career goal taxonomy? This will remove it from all users who have selected it. This action cannot be undone."
+        title="Delete Interest Taxonomy"
+        message="Are you sure you want to delete this interest taxonomy? This will remove it from all users who have selected it. This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonStyle="danger"

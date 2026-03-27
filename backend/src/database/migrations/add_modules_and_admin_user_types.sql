@@ -16,7 +16,7 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 2. Seed default modules (ignore if already present)
 INSERT INTO modules (name, code) VALUES
-  ('Career Goals', 'career_goals'),
+  ('Interests', 'career_goals'),
   ('Subjects', 'subjects'),
   ('Streams', 'streams'),
   ('Careers', 'careers'),

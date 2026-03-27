@@ -32,3 +32,6 @@ export type { StreamPublic } from './streams';
 export { getAllCareersPublic } from './careers';
 export type { CareerPublic } from './careers';
 
+// Export tests API
+export * from './tests';
+

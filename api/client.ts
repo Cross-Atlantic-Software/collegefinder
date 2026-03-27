@@ -8,15 +8,22 @@ const API_BASE_URL =
     ? '/api'
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
 
+/** Config for apiRequest - timeout in ms (default 10s, use 60s for question generation) */
+export interface ApiRequestConfig {
+  timeout?: number;
+}
+
 /**
  * Generic API fetch function with error handling
  */
 export async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  config?: ApiRequestConfig
 ): Promise<import('./types').ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+  const timeoutMs = config?.timeout ?? 10000;
+
   // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)
   const isFormData = options.body instanceof FormData;
   
@@ -47,7 +54,7 @@ export async function apiRequest<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout so app doesn't hang if backend is down
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
      // Convert options.headers to plain object if it's a Headers object
      const headersObj: HeadersInit = { ...defaultHeaders };

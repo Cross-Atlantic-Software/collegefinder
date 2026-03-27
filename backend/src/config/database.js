@@ -36,6 +36,19 @@ pool.on('error', (err) => {
 const init = async () => {
   try {
     const dbDir = path.join(__dirname, '../database/schema');
+    const migrationsDir = path.join(__dirname, '../database/migrations');
+
+    // Run schema fixes first (for existing DBs with older schema)
+    const fixCollegesPath = path.join(migrationsDir, 'fix_colleges_college_name.sql');
+    if (fs.existsSync(fixCollegesPath)) {
+      try {
+        const sql = fs.readFileSync(fixCollegesPath, 'utf8');
+        await pool.query(sql);
+        console.log('✅ Applied schema fix: fix_colleges_college_name.sql');
+      } catch (e) {
+        if (e.code !== '42P07') console.log('ℹ️  Schema fix skipped:', e.message);
+      }
+    }
 
     // Define schema files in execution order
     const schemaFiles = [
@@ -49,6 +62,8 @@ const init = async () => {
       'blogs.sql',            // Blogs table
       'career_goals.sql',     // Career goals taxonomies table (renamed from career_goals)
       'exams.sql',            // Exams taxonomies table
+      'tests.sql',            // Tests table (depends on exams)
+      'questions.sql',        // Questions table (depends on exams)
       'subjects.sql',         // Subjects taxonomies table
       'streams.sql',          // Streams taxonomies table
       'careers.sql',          // Careers taxonomies table
@@ -73,6 +88,10 @@ const init = async () => {
       'category_and_reservation.sql', // Category and reservation table (depends on users, categories)
       'user_other_info.sql',   // User other info table (depends on users, programs, exam_city)
       'user_document_vault.sql', // User document vault table (depends on users)
+      'mock_tests.sql',       // exam_mocks (depends on exams)
+      'test_attempts.sql',    // user_exam_attempts (depends on users, tests, exams, exam_mocks)
+      'mock_questions.sql',   // exam_mock_questions (depends on exam_mocks, questions, exams)
+      'question_attempts.sql', // user_attempt_answers (depends on users, questions, user_exam_attempts, exams, exam_mocks)
       // Automation tables (for python-backend PostgreSQL integration)
       'automation_exams.sql',       // Automation exam configurations
       'automation_sessions.sql',    // Automation workflow sessions (depends on automation_exams, users)
@@ -117,7 +136,18 @@ const runMigrations = async () => {
     'add_scholarships_tables.sql',
     'add_loans_tables.sql',
     'add_modules_and_admin_user_types.sql',
-    'add_college_program_duration.sql'
+    'add_college_program_duration.sql',
+    'add_career_programs.sql',
+    'add_logo_file_name_to_exams.sql',
+    'add_logo_filename_to_entities.sql',
+    'add_updated_by_to_streams.sql',
+    'add_updated_by_and_nullable_logo_to_career_goals.sql',
+    'add_exam_domicile_programs.sql',
+    'add_branch_to_college_seat_matrix.sql',
+    'add_branch_to_college_cutoffs.sql',
+    'rename_career_goals_to_interests_module.sql',
+    'create_exam_mock_prompts_table.sql',
+    'add_topic_subtopic_exams_and_purpose_description.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

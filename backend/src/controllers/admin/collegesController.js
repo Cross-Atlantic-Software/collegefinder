@@ -1,5 +1,4 @@
 const XLSX = require('xlsx');
-const AdmZip = require('adm-zip');
 const College = require('../../models/college/College');
 const CollegeDetails = require('../../models/college/CollegeDetails');
 const CollegeProgram = require('../../models/college/CollegeProgram');
@@ -13,6 +12,8 @@ const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedE
 const Program = require('../../models/taxonomy/Program');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
 
 async function resolveRecommendedExamIds(body) {
   if (body.recommendedExamNames && Array.isArray(body.recommendedExamNames) && body.recommendedExamNames.length > 0) {
@@ -58,6 +59,7 @@ async function resolveCollegePrograms(collegeId, collegePrograms) {
             await CollegePreviousCutoff.create({
               college_program_id: cp.id,
               exam_id: examId,
+              branch: c.branch || null,
               category: c.category || null,
               cutoff_rank: c.cutoff_rank != null ? parseInt(c.cutoff_rank, 10) : null,
               year: c.year != null ? parseInt(c.year, 10) : null
@@ -76,6 +78,7 @@ async function resolveCollegePrograms(collegeId, collegePrograms) {
             await CollegeExpectedCutoff.create({
               college_program_id: cp.id,
               exam_id: examId,
+              branch: c.branch || null,
               category: c.category || null,
               expected_rank: c.expected_rank != null ? parseInt(c.expected_rank, 10) : null,
               year: c.year != null ? parseInt(c.year, 10) : null
@@ -87,6 +90,7 @@ async function resolveCollegePrograms(collegeId, collegePrograms) {
         for (const s of prog.seatMatrix) {
           await CollegeSeatMatrix.create({
             college_program_id: cp.id,
+            branch: s.branch || null,
             category: s.category || null,
             seat_count: s.seat_count != null ? parseInt(s.seat_count, 10) : null,
             year: s.year != null ? parseInt(s.year, 10) : null
@@ -382,6 +386,23 @@ class CollegesController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await College.findAll();
+      for (const c of all) {
+        if (c.college_logo) await deleteFromS3(c.college_logo);
+        await College.delete(c.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} colleges deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all colleges:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all colleges' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [
@@ -410,16 +431,16 @@ class CollegesController {
           'Central',
           'iit_delhi.png',
           'Premier engineering institute.',
-          'Admission Start|2025-01-01;Last Date|2025-02-28',
-          'Aadhar;Marksheet;Photo',
-          '1|Register online;2|Choice filling;3|Seat allotment',
-          'JEE Advanced;JEE Main',
-          'BTech;MTech',
-          '120,60',
-          '4,2',
-          'GEN|50|2024,OBC|30|2024;GEN|20|2024,OBC|10|2024',
-          'JEE Main|GEN|1000|2024,JEE Main|OBC|1500|2024;NEET|GEN|500|2024',
-          'JEE Main|GEN|900|2025;NEET|GEN|450|2025'
+          'Admission Start|2025-01-01, Last Date|2025-02-28',
+          'Aadhar, Marksheet, Photo',
+          'JOSAA counselling',
+          'JEE Advanced, JEE Main',
+          'B.Tech, M.Tech',
+          '120, 60',
+          '4, 2',
+          'CSE-general:50, CSE-OBC:30',
+          'JEE Main|CSE-GEN:1000,CSE-OBC:1500|2024; JEE Main|CSE-GEN:900|2025',
+          'JEE Main|CSE-GEN:2000|2024; JEE Main|CSE-GEN:1800|2025'
         ],
         [
           'State College of Engineering',
@@ -427,16 +448,16 @@ class CollegesController {
           'State',
           'state_eng.png',
           'State level engineering college.',
-          '',
+          'Application Start|2025-02-01',
           'Marksheet',
-          '1|Apply',
+          'JOSAA counselling',
           'JEE Main',
-          'BTech',
+          'B.Tech',
           '100',
           '4',
-          'GEN|80|2024,OBC|20|2024',
-          'JEE Main|GEN|2000|2024',
-          'JEE Main|GEN|1800|2025'
+          'CSE-general:80, CSE-OBC:20',
+          'JEE Main|CSE-GEN:2000|2024',
+          'JEE Main|CSE-GEN:1800|2025'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Colleges');
@@ -473,7 +494,7 @@ class CollegesController {
           : '';
         const docsStr = (docs && docs.length) ? docs.map((d) => d.document_name || '').filter(Boolean).join(';') : '';
         const counsellingStr = (counselling && counselling.length)
-          ? counselling.sort((a, b) => (a.step_number || 0) - (b.step_number || 0)).map((x) => `${x.step_number || ''}|${x.description || ''}`).join(';')
+          ? counselling.map((x) => x.description || '').filter(Boolean).join(', ')
           : '';
         const recExamNames = [];
         for (const eid of recExamIds || []) {
@@ -497,21 +518,47 @@ class CollegesController {
             CollegeExpectedCutoff.findByCollegeProgramId(p.id),
             CollegeSeatMatrix.findByCollegeProgramId(p.id)
           ]);
-          seatMatrixBlocks.push(seatMatrix.map((s) => `${s.category || ''}|${s.seat_count ?? ''}|${s.year ?? ''}`).join(','));
+          seatMatrixBlocks.push(seatMatrix.map((s) => {
+            if (s.branch && s.category) return `${s.branch}-${s.category}:${s.seat_count ?? ''}`;
+            if (s.category) return `${s.category}:${s.seat_count ?? ''}`;
+            return `${s.branch || ''}-${s.category || ''}:${s.seat_count ?? ''}`;
+          }).filter(Boolean).join(','));
           const prevStrs = [];
+          const prevByExamYear = new Map();
           for (const pc of prevCutoffs || []) {
-            const ex = await Exam.findById(pc.exam_id);
-            const en = ex && ex.name ? ex.name : String(pc.exam_id);
-            prevStrs.push(`${en}|${pc.category || ''}|${pc.cutoff_rank ?? ''}|${pc.year ?? ''}`);
+            const key = `${pc.exam_id}|${pc.year ?? ''}`;
+            if (!prevByExamYear.has(key)) prevByExamYear.set(key, []);
+            prevByExamYear.get(key).push(pc);
           }
-          previousCutoffBlocks.push(prevStrs.join(','));
+          for (const [key, pcs] of prevByExamYear) {
+            const [examId, year] = key.split('|');
+            const ex = await Exam.findById(examId);
+            const en = ex && ex.name ? ex.name : examId;
+            const pairStrs = pcs.map((p) => {
+              if (p.branch && p.category) return `${p.branch}-${p.category}:${p.cutoff_rank ?? ''}`;
+              return `${p.category || ''}:${p.cutoff_rank ?? ''}`;
+            }).filter(Boolean);
+            prevStrs.push(`${en}|${pairStrs.join(',')}|${year ?? ''}`);
+          }
+          previousCutoffBlocks.push(prevStrs.join('; '));
           const expStrs = [];
+          const expByExamYear = new Map();
           for (const ec of expCutoffs || []) {
-            const ex = await Exam.findById(ec.exam_id);
-            const en = ex && ex.name ? ex.name : String(ec.exam_id);
-            expStrs.push(`${en}|${ec.category || ''}|${ec.expected_rank ?? ''}|${ec.year ?? ''}`);
+            const key = `${ec.exam_id}|${ec.year ?? ''}`;
+            if (!expByExamYear.has(key)) expByExamYear.set(key, []);
+            expByExamYear.get(key).push(ec);
           }
-          expectedCutoffBlocks.push(expStrs.join(','));
+          for (const [key, ecs] of expByExamYear) {
+            const [examId, year] = key.split('|');
+            const ex = await Exam.findById(examId);
+            const en = ex && ex.name ? ex.name : examId;
+            const pairStrs = ecs.map((e) => {
+              if (e.branch && e.category) return `${e.branch}-${e.category}:${e.expected_rank ?? ''}`;
+              return `${e.category || ''}:${e.expected_rank ?? ''}`;
+            }).filter(Boolean);
+            expStrs.push(`${en}|${pairStrs.join(',')}|${year ?? ''}`);
+          }
+          expectedCutoffBlocks.push(expStrs.join('; '));
         }
         const logoFilename = (c.college_logo && typeof c.college_logo === 'string' && c.college_logo.split('/').pop()) ? c.college_logo.split('/').pop() : '';
         const collegeDetails = await CollegeDetails.findByCollegeId(c.id);
@@ -547,6 +594,44 @@ class CollegesController {
     }
   }
 
+  static async uploadMissingLogos(req, res) {
+    try {
+      const logosZipFile = req.files?.logos_zip?.[0] || req.file;
+      if (!logosZipFile || !logosZipFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No ZIP file uploaded. Use field name "logos_zip".'
+        });
+      }
+      const logoMap = parseLogosFromZip(logosZipFile.buffer);
+      if (logoMap.size === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
+        });
+      }
+      const result = await processMissingLogosFromZip(logoMap, {
+        findRecordsByFilename: (f) => College.findMissingLogosByFilename(f),
+        uploadToS3,
+        s3Folder: 'college-logos',
+        logoColumn: 'college_logo',
+        updateRecord: (id, data) => College.update(id, data),
+        toResultItem: (r) => ({ id: r.id, college_name: r.college_name, logo_filename: r.logo_filename })
+      });
+      res.json({
+        success: true,
+        data: result,
+        message: `Added ${result.updated.length} logo(s). ${result.skipped.length} file(s) had no matching colleges.`
+      });
+    } catch (error) {
+      console.error('Error uploading missing logos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload missing logos'
+      });
+    }
+  }
+
   static async bulkUpload(req, res) {
     const validTypes = ['Central', 'State', 'Private', 'Deemed'];
     try {
@@ -558,37 +643,7 @@ class CollegesController {
         });
       }
 
-      const logoMap = new Map();
-      const logosZipFile = req.files?.logos_zip?.[0];
-      if (logosZipFile && logosZipFile.buffer) {
-        try {
-          const zip = new AdmZip(logosZipFile.buffer);
-          const entries = zip.getEntries();
-          const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
-            if (entry.isDirectory) continue;
-            const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
-            if (!name || !imageExt.test(name)) continue;
-            const buffer = entry.getData();
-            if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
-          }
-        } catch (zipErr) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid or corrupted ZIP file for logos.'
-          });
-        }
-      } else {
-        const logosRaw = req.files?.logos;
-        const logoFiles = Array.isArray(logosRaw) ? logosRaw : (logosRaw ? [logosRaw] : []);
-        logoFiles.forEach((f) => {
-          if (f && (f.buffer || f.path)) {
-            const name = (f.originalname || f.name || '').trim();
-            if (name) logoMap.set(name.toLowerCase(), f);
-          }
-        });
-      }
+      const logoMap = buildLogoMapFromRequest(req.files || {}, 'logos_zip', 'logos');
 
       let workbook;
       try {
@@ -628,7 +683,7 @@ class CollegesController {
 
         const location = (row.college_location ?? row.college_Location ?? '').toString().trim() || null;
         const typeRaw = (row.college_type ?? row.college_Type ?? '').toString().trim();
-        const collegeType = validTypes.includes(typeRaw) ? typeRaw : null;
+        const collegeType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
 
@@ -654,9 +709,8 @@ class CollegesController {
             } catch (uploadErr) {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
-          } else {
-            errors.push({ row: rowNum, message: `logo file not found: "${logoFilename}"` });
           }
+          // If logo file not found: still create college with logo_filename stored; user can upload missing logos later
         }
 
         try {
@@ -664,15 +718,17 @@ class CollegesController {
             college_name: name,
             college_location: location,
             college_type: collegeType,
-            college_logo: collegeLogoUrl
+            college_logo: collegeLogoUrl,
+            logo_filename: logoFilename || null
           });
           if (description) {
             await CollegeDetails.create({ college_id: college.id, college_description: description });
           }
           if (keyDatesRaw) {
-            const parts = keyDatesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const parts = splitList(keyDatesRaw);
             for (const part of parts) {
-              const [event_name, event_date] = part.split('|').map((s) => s.trim());
+              const [event_name, event_dateRaw] = part.split('|').map((s) => s.trim());
+              const event_date = event_dateRaw ? parseDate(event_dateRaw) : null;
               if (event_name || event_date) {
                 await CollegeKeyDates.create({
                   college_id: college.id,
@@ -683,28 +739,29 @@ class CollegesController {
             }
           }
           if (documentsRaw) {
-            const docs = documentsRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const docs = splitList(documentsRaw);
             for (const doc of docs) {
               await CollegeDocumentsRequired.create({ college_id: college.id, document_name: doc });
             }
           }
           if (counsellingRaw) {
-            const steps = counsellingRaw.split(';').map((s) => s.trim()).filter(Boolean);
-            for (const step of steps) {
-              const [num, desc] = step.split('|').map((s) => s.trim());
-              const step_number = num ? parseInt(num, 10) : null;
-              if (step_number != null || desc) {
-                await CollegeCounsellingProcess.create({
-                  college_id: college.id,
-                  step_number: isNaN(step_number) ? null : step_number,
-                  description: desc || null
-                });
-              }
+            const parts = splitList(counsellingRaw);
+            const descriptions = parts.map((p) => {
+              const m = p.match(/^\d+\s*\|?\s*(.*)$/);
+              return m ? m[1].trim() : p.trim();
+            }).filter(Boolean);
+            const singleDesc = descriptions.length ? descriptions.join(', ') : counsellingRaw.trim();
+            if (singleDesc) {
+              await CollegeCounsellingProcess.create({
+                college_id: college.id,
+                step_number: null,
+                description: singleDesc
+              });
             }
           }
           let recExamIds = [];
           if (recommendedExamNamesRaw) {
-            const names = recommendedExamNamesRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+            const names = splitList(recommendedExamNamesRaw);
             for (const nm of names) {
               const ex = await Exam.findByName(nm);
               if (ex) recExamIds.push(ex.id);
@@ -715,7 +772,7 @@ class CollegesController {
           }
           if (recExamIds.length) await CollegeRecommendedExam.setExamsForCollege(college.id, recExamIds);
 
-          const programNames = programNamesRaw ? programNamesRaw.split(';').map((s) => s.trim()).filter(Boolean) : [];
+          const programNames = programNamesRaw ? splitList(programNamesRaw) : [];
           const programIds = programIdsRaw ? programIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n)) : [];
           const intakeCapacities = intakeCapacitiesRaw ? intakeCapacitiesRaw.split(',').map((s) => s.trim()) : [];
           const programDurations = programDurationsRaw ? programDurationsRaw.split(',').map((s) => s.trim()) : [];
@@ -744,49 +801,128 @@ class CollegesController {
             if (cp && cp.id) {
               const seatEntries = seatMatrixBlocks[idx] ? seatMatrixBlocks[idx].split(',').map((s) => s.trim()) : [];
               for (const ent of seatEntries) {
-                const [category, seat_count, year] = ent.split('|').map((x) => x.trim());
-                if (category || seat_count || year) {
+                if (!ent) continue;
+                let branch = null;
+                let category = null;
+                let seat_count = null;
+                let year = null;
+                if (ent.includes(':')) {
+                  const [left, countPart] = ent.split(':').map((x) => x.trim());
+                  seat_count = countPart ? parseInt(countPart, 10) : null;
+                  if (left && left.includes('-')) {
+                    const dashIdx = left.lastIndexOf('-');
+                    branch = left.slice(0, dashIdx).trim() || null;
+                    category = left.slice(dashIdx + 1).trim() || null;
+                  } else {
+                    category = left || null;
+                  }
+                } else if (ent.includes('|')) {
+                  const parts = ent.split('|').map((x) => x.trim());
+                  category = parts[0] || null;
+                  seat_count = parts[1] ? parseInt(parts[1], 10) : null;
+                  year = parts[2] ? parseInt(parts[2], 10) : null;
+                }
+                if (branch || category || seat_count || year) {
                   await CollegeSeatMatrix.create({
                     college_program_id: cp.id,
+                    branch: branch || null,
                     category: category || null,
-                    seat_count: seat_count ? parseInt(seat_count, 10) : null,
-                    year: year ? parseInt(year, 10) : null
+                    seat_count: isNaN(seat_count) ? null : seat_count,
+                    year: isNaN(year) ? null : year
                   });
                 }
               }
-              const prevEntries = previousCutoffBlocks[idx] ? previousCutoffBlocks[idx].split(',').map((s) => s.trim()) : [];
-              for (const ent of prevEntries) {
-                const parts = ent.split('|').map((x) => x.trim());
+              const prevRecords = previousCutoffBlocks[idx] ? previousCutoffBlocks[idx].split(';').map((s) => s.trim()) : [];
+              for (const rec of prevRecords) {
+                const parts = rec.split('|').map((x) => x.trim());
                 const examName = parts[0];
-                const category = parts[1] || null;
-                const cutoff_rank = parts[2] ? parseInt(parts[2], 10) : null;
-                const year = parts[3] ? parseInt(parts[3], 10) : null;
+                const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
+                const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
                 const ex = examName ? await Exam.findByName(examName) : null;
-                if (ex) {
+                if (!ex) continue;
+                if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
+                  const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
+                  for (const p of pairStrs) {
+                    const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
+                    const cutoff_rank = rankStr ? parseInt(rankStr, 10) : null;
+                    let branch = null;
+                    let category = null;
+                    if (left && left.includes('-')) {
+                      const dashIdx = left.lastIndexOf('-');
+                      branch = left.slice(0, dashIdx).trim() || null;
+                      category = left.slice(dashIdx + 1).trim() || null;
+                    } else {
+                      category = left || null;
+                    }
+                    if (branch || category || cutoff_rank) {
+                      await CollegePreviousCutoff.create({
+                        college_program_id: cp.id,
+                        exam_id: ex.id,
+                        branch,
+                        category,
+                        cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
+                        year: yearStr ? parseInt(yearStr, 10) : null
+                      });
+                    }
+                  }
+                } else {
+                  const category = parts[1] || null;
+                  const cutoff_rank = parts[2] ? parseInt(parts[2], 10) : null;
+                  const yr = parts[3] ? parseInt(parts[3], 10) : null;
                   await CollegePreviousCutoff.create({
                     college_program_id: cp.id,
                     exam_id: ex.id,
+                    branch: null,
                     category,
                     cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
-                    year: isNaN(year) ? null : year
+                    year: isNaN(yr) ? null : yr
                   });
                 }
               }
-              const expEntries = expectedCutoffBlocks[idx] ? expectedCutoffBlocks[idx].split(',').map((s) => s.trim()) : [];
-              for (const ent of expEntries) {
-                const parts = ent.split('|').map((x) => x.trim());
+              const expRecords = expectedCutoffBlocks[idx] ? expectedCutoffBlocks[idx].split(';').map((s) => s.trim()) : [];
+              for (const rec of expRecords) {
+                const parts = rec.split('|').map((x) => x.trim());
                 const examName = parts[0];
-                const category = parts[1] || null;
-                const expected_rank = parts[2] ? parseInt(parts[2], 10) : null;
-                const year = parts[3] ? parseInt(parts[3], 10) : null;
+                const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
+                const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
                 const ex = examName ? await Exam.findByName(examName) : null;
-                if (ex) {
+                if (!ex) continue;
+                if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
+                  const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
+                  for (const p of pairStrs) {
+                    const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
+                    const expected_rank = rankStr ? parseInt(rankStr, 10) : null;
+                    let branch = null;
+                    let category = null;
+                    if (left && left.includes('-')) {
+                      const dashIdx = left.lastIndexOf('-');
+                      branch = left.slice(0, dashIdx).trim() || null;
+                      category = left.slice(dashIdx + 1).trim() || null;
+                    } else {
+                      category = left || null;
+                    }
+                    if (branch || category || expected_rank) {
+                      await CollegeExpectedCutoff.create({
+                        college_program_id: cp.id,
+                        exam_id: ex.id,
+                        branch,
+                        category,
+                        expected_rank: isNaN(expected_rank) ? null : expected_rank,
+                        year: yearStr ? parseInt(yearStr, 10) : null
+                      });
+                    }
+                  }
+                } else {
+                  const category = parts[1] || null;
+                  const expected_rank = parts[2] ? parseInt(parts[2], 10) : null;
+                  const yr = parts[3] ? parseInt(parts[3], 10) : null;
                   await CollegeExpectedCutoff.create({
                     college_program_id: cp.id,
                     exam_id: ex.id,
+                    branch: null,
                     category,
                     expected_rank: isNaN(expected_rank) ? null : expected_rank,
-                    year: isNaN(year) ? null : year
+                    year: isNaN(yr) ? null : yr
                   });
                 }
               }

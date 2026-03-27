@@ -41,6 +41,22 @@ class CollegeRecommendedExam {
   static async deleteByCollegeId(collegeId) {
     await db.query('DELETE FROM college_recommended_exams WHERE college_id = $1', [collegeId]);
   }
+
+  /**
+   * Add colleges that accept/recommend this exam. Used during exam bulk upload.
+   */
+  static async addCollegesForExam(examId, collegeIds) {
+    if (!collegeIds || !Array.isArray(collegeIds) || collegeIds.length === 0) return [];
+    const created = [];
+    for (const collegeId of collegeIds) {
+      const row = await db.query(
+        `INSERT INTO college_recommended_exams (college_id, exam_id) VALUES ($1, $2) ON CONFLICT (college_id, exam_id) DO NOTHING RETURNING *`,
+        [collegeId, examId]
+      );
+      if (row.rows[0]) created.push(row.rows[0]);
+    }
+    return created;
+  }
 }
 
 module.exports = CollegeRecommendedExam;

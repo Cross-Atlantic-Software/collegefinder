@@ -28,9 +28,9 @@ export interface CollegeProgram {
   intake_capacity: number | null;
   duration_years?: number | null;
   created_at?: string;
-  previousCutoffs?: { exam_id?: number; exam_name?: string; category?: string; cutoff_rank?: number; year?: number }[];
-  expectedCutoffs?: { exam_id?: number; exam_name?: string; category?: string; expected_rank?: number; year?: number }[];
-  seatMatrix?: { category?: string; seat_count?: number; year?: number }[];
+  previousCutoffs?: { exam_id?: number; exam_name?: string; branch?: string; category?: string; cutoff_rank?: number; year?: number }[];
+  expectedCutoffs?: { exam_id?: number; exam_name?: string; branch?: string; category?: string; expected_rank?: number; year?: number }[];
+  seatMatrix?: { branch?: string; category?: string; seat_count?: number; year?: number }[];
 }
 
 export interface CollegeKeyDate {
@@ -142,6 +142,10 @@ export async function deleteCollege(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteAllColleges(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/all`, { method: 'DELETE' });
+}
+
 export interface BulkUploadResult {
   created: number;
   createdColleges: { id: number; name: string }[];
@@ -182,6 +186,29 @@ export async function downloadAllDataExcel(): Promise<void> {
   a.download = 'colleges-all-data.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+export interface UploadMissingLogosResult {
+  updated: { id: number; college_name: string; logo_filename?: string }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+}
+
+export async function uploadMissingLogosColleges(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
+  const formData = new FormData();
+  formData.append('logos_zip', logosZipFile);
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/upload-missing-logos`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
+  return data;
 }
 
 export async function bulkUploadColleges(

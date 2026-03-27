@@ -13,6 +13,7 @@ import {
   downloadScholarshipsBulkTemplate,
   downloadAllDataExcel,
   bulkUploadScholarships,
+  deleteAllScholarships,
   type Scholarship,
   type ScholarshipEligibleCategory,
   type ScholarshipApplicableState,
@@ -21,7 +22,9 @@ import {
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 type FormTab = 'basic' | 'categories' | 'states' | 'documents' | 'exams';
 
@@ -87,8 +90,10 @@ export default function ScholarshipsPage() {
     errorDetails: { row: number; message: string }[];
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel, isSuperAdmin } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -97,12 +102,6 @@ export default function ScholarshipsPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
-    }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
     }
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -349,6 +348,26 @@ export default function ScholarshipsPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllScholarships();
+      if (response.success) {
+        showSuccess(response.message || 'All scholarships deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all scholarships');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all scholarships');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Select an Excel file');
@@ -474,7 +493,7 @@ export default function ScholarshipsPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -483,6 +502,17 @@ export default function ScholarshipsPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {isSuperAdmin && allScholarships.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -534,17 +564,12 @@ export default function ScholarshipsPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => handleView(s)} disabled={loadingView} className="p-2 text-gray-600 hover:text-gray-900" title="View">
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleEdit(s)} className="p-2 text-blue-600 hover:text-blue-800" title="Edit">
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={() => handleDeleteClick(s.id)} className="p-2 text-red-600 hover:text-red-800" title="Delete">
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(s)}
+                              onEdit={() => handleEdit(s)}
+                              onDelete={() => handleDeleteClick(s.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -627,16 +652,13 @@ export default function ScholarshipsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Stream</label>
-                    <select
-                      value={formData.stream_id}
-                      onChange={(e) => setFormData({ ...formData, stream_id: e.target.value === '' ? '' : Number(e.target.value) })}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                    >
-                      <option value="">Select stream</option>
-                      {streams.map((st) => (
-                        <option key={st.id} value={st.id}>{st.name}</option>
-                      ))}
-                    </select>
+                    <Dropdown<number>
+                      value={typeof formData.stream_id === 'number' ? formData.stream_id : null}
+                      onChange={(v) => setFormData({ ...formData, stream_id: v })}
+                      options={streams.map((st) => ({ value: st.id, label: st.name }))}
+                      placeholder="Select stream"
+                      className="w-full"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -902,10 +924,12 @@ export default function ScholarshipsPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
             </div>
             {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
             {bulkResult && (
@@ -933,6 +957,17 @@ export default function ScholarshipsPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Scholarships"
+        message={`Are you sure you want to delete all ${allScholarships.length} scholarships? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

@@ -16,9 +16,8 @@ export default function AdminDashboardPage() {
       router.replace('/admin/login');
       return;
     }
-    // Redirect to users page for now
-    setIsRedirecting(true);
-    // Use setTimeout to ensure state update happens after mount
+    // Redirect to users page for now (defer setState to avoid set-state-in-effect)
+    queueMicrotask(() => setIsRedirecting(true));
     setTimeout(() => {
       router.replace('/admin/dashboard/users');
     }, 0);

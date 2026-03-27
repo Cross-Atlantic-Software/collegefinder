@@ -14,6 +14,8 @@ import {
   downloadInstitutesBulkTemplate,
   downloadAllDataExcel,
   bulkUploadInstitutes,
+  uploadMissingLogosInstitutes,
+  deleteAllInstitutes,
   type Institute,
   type InstituteDetails,
   type InstituteStatistics,
@@ -22,7 +24,9 @@ import {
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiFileText, FiBarChart, FiBook } from 'react-icons/fi';
 import { MdSchool } from 'react-icons/md';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 type FormTab = 'basic' | 'details' | 'exams' | 'statistics' | 'courses';
@@ -95,8 +99,16 @@ export default function InstitutesPage() {
     errorDetails: { row: number; message: string }[];
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
+  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
+  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
+  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [missingLogosResult, setMissingLogosResult] = useState<{ updated: { id: number; institute_name: string }[]; skipped: string[]; summary: { logosAdded: number; filesSkipped: number; uploadErrors: number } } | null>(null);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -397,6 +409,52 @@ export default function InstitutesPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllInstitutes();
+      if (response.success) {
+        showSuccess(response.message || 'All institutes deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all institutes');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all institutes');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const handleMissingLogosSubmit = async () => {
+    if (!missingLogosZipFile) {
+      showError('Please select a ZIP file');
+      return;
+    }
+    setMissingLogosUploading(true);
+    setMissingLogosError(null);
+    setMissingLogosResult(null);
+    try {
+      const res = await uploadMissingLogosInstitutes(missingLogosZipFile);
+      if (res.success && res.data) {
+        setMissingLogosResult(res.data);
+        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
+        fetchData(true);
+      } else {
+        setMissingLogosError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setMissingLogosError(msg);
+      showError(msg);
+    } finally {
+      setMissingLogosUploading(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Select an Excel file');
@@ -526,7 +584,22 @@ export default function InstitutesPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {allInstitutes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMissingLogosModal(true);
+                    setMissingLogosZipFile(null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  Upload missing logos
+                </button>
+              )}
+              {canDownloadExcel && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -535,6 +608,17 @@ export default function InstitutesPage() {
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              {currentAdmin?.type === 'super_admin' && allInstitutes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
                 </button>
               )}
             </div>
@@ -609,33 +693,12 @@ export default function InstitutesPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleView(inst)}
-                                disabled={loadingView}
-                                className="p-2 text-gray-600 hover:text-gray-900"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(inst)}
-                                className="p-2 text-blue-600 hover:text-blue-800"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteClick(inst.id)}
-                                className="p-2 text-red-600 hover:text-red-800"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(inst)}
+                              onEdit={() => handleEdit(inst)}
+                              onDelete={() => handleDeleteClick(inst.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -706,21 +769,17 @@ export default function InstitutesPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          type: e.target.value as 'offline' | 'online' | 'hybrid' | '',
-                        })
-                      }
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                    >
-                      <option value="">Select type</option>
-                      <option value="offline">Offline</option>
-                      <option value="online">Online</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <Dropdown
+                      value={formData.type || null}
+                      onChange={(v) => setFormData({ ...formData, type: v })}
+                      options={[
+                        { value: 'offline', label: 'Offline' },
+                        { value: 'online', label: 'Online' },
+                        { value: 'hybrid', label: 'Hybrid' },
+                      ]}
+                      placeholder="Select type"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
@@ -1155,14 +1214,16 @@ export default function InstitutesPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-              >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
+              {canDownloadExcel && (
+                <button
+                  type="button"
+                  onClick={handleBulkTemplateDownload}
+                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  Download Excel template
+                </button>
+              )}
             </div>
             {bulkError && (
               <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>
@@ -1194,6 +1255,65 @@ export default function InstitutesPage() {
         </div>
       )}
 
+      {/* Upload Missing Logos Modal */}
+      {showMissingLogosModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+              </div>
+              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20" aria-label="Close">
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-auto space-y-5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Upload a ZIP containing logo images. File names must match <code className="px-1.5 py-0.5 rounded bg-slate-200/80 font-mono text-xs">logo_filename</code> for institutes with no logo yet.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                  <input type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden" onChange={(e) => { setMissingLogosZipFile(e.target.files?.[0] ?? null); setMissingLogosResult(null); setMissingLogosError(null); e.target.value = ''; }} />
+                  {missingLogosZipFile ? (
+                    <div className="flex flex-col items-center gap-2 p-4">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600"><FiUpload className="h-5 w-5" /></div>
+                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
+                      <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }} className="text-xs text-slate-500 hover:text-red-600">Remove</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
+                      <FiUpload className="h-8 w-8 opacity-60" />
+                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                      <span className="text-xs">.zip only</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+              {missingLogosError && <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">{missingLogosError}</div>}
+              {missingLogosResult && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="font-semibold text-slate-900">✓ Logos added: {missingLogosResult.summary.logosAdded}</p>
+                  {missingLogosResult.summary.filesSkipped > 0 && <p className="text-sm text-amber-700">Files skipped: {missingLogosResult.summary.filesSkipped}</p>}
+                  {missingLogosResult.updated.length > 0 && <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto">{missingLogosResult.updated.map((u, i) => <li key={i}>{u.institute_name}</li>)}</ul>}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Close</button>
+              <button type="button" onClick={handleMissingLogosSubmit} disabled={!missingLogosZipFile || missingLogosUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
+                {missingLogosUploading ? <><span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />Uploading…</> : <><FiUpload className="h-4 w-4" />Upload</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmationModal
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -1207,6 +1327,17 @@ export default function InstitutesPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Institutes"
+        message={`Are you sure you want to delete all ${allInstitutes.length} institutes? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );

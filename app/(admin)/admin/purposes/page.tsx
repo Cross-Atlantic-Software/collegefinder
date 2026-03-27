@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllPurposes, createPurpose, updatePurpose, deletePurpose, Purpose } from '@/api/admin/purposes';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function PurposesPage() {
@@ -18,7 +19,7 @@ export default function PurposesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPurpose, setEditingPurpose] = useState<Purpose | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState({ name: '', description: '', status: true });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -154,7 +155,7 @@ export default function PurposesPage() {
 
   const handleEdit = (purpose: Purpose) => {
     setEditingPurpose(purpose);
-    setFormData({ name: purpose.name, status: purpose.status });
+    setFormData({ name: purpose.name, description: purpose.description ?? '', status: purpose.status });
     setShowModal(true);
   };
 
@@ -165,7 +166,7 @@ export default function PurposesPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true });
+    setFormData({ name: '', description: '', status: true });
     setError(null);
   };
 
@@ -251,6 +252,9 @@ export default function PurposesPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        DESCRIPTION
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -267,7 +271,7 @@ export default function PurposesPage() {
                   <tbody className="divide-y divide-gray-200">
                     {purposes.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
                           {purposes.length < allPurposes.length ? 'No purposes found matching your search' : 'No purposes found'}
                         </td>
                       </tr>
@@ -276,6 +280,9 @@ export default function PurposesPage() {
                         <tr key={purpose.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-gray-900">{purpose.name}</span>
+                          </td>
+                          <td className="px-4 py-2 max-w-xs">
+                            <span className="text-sm text-gray-600 line-clamp-2">{purpose.description || '—'}</span>
                           </td>
                           <td className="px-4 py-2">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -301,20 +308,10 @@ export default function PurposesPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEdit(purpose)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(purpose.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onEdit={() => handleEdit(purpose)}
+                              onDelete={() => handleDeleteClick(purpose.id)}
+                            />
                           </td>
                         </tr>
                       ))
@@ -359,6 +356,20 @@ export default function PurposesPage() {
                     required
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
                     placeholder="Enter purpose name"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Optional description"
+                    rows={3}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
                   />
                 </div>
 

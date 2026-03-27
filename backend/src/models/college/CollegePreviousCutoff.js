@@ -10,11 +10,11 @@ class CollegePreviousCutoff {
   }
 
   static async create(data) {
-    const { college_program_id, exam_id, category, cutoff_rank, year } = data;
+    const { college_program_id, exam_id, branch, category, cutoff_rank, year } = data;
     const result = await db.query(
-      `INSERT INTO college_previous_cutoff (college_program_id, exam_id, category, cutoff_rank, year)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [college_program_id, exam_id, category || null, cutoff_rank || null, year || null]
+      `INSERT INTO college_previous_cutoff (college_program_id, exam_id, branch, category, cutoff_rank, year)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [college_program_id, exam_id, branch || null, category || null, cutoff_rank || null, year || null]
     );
     return result.rows[0];
   }

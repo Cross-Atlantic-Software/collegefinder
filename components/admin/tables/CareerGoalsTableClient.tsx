@@ -27,7 +27,7 @@ export default function CareerGoalsTableClient({ initialUsers }: CareerGoalsTabl
 
   useEffect(() => {
     if (initialUsers.length === 0) {
-      setUsers([]);
+      queueMicrotask(() => setUsers([]));
       return;
     }
     
@@ -82,7 +82,7 @@ export default function CareerGoalsTableClient({ initialUsers }: CareerGoalsTabl
 
       <CareerGoalsTable users={users} isLoading={false} />
 
-      {/* Career Goals Taxonomy Modal */}
+      {/* Interests Taxonomy Modal */}
       <CareerGoalsTaxonomyModal
         isOpen={showTaxonomyModal}
         onClose={() => setShowTaxonomyModal(false)}

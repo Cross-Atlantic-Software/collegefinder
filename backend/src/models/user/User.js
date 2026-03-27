@@ -117,8 +117,17 @@ class User {
       }
       console.log('✅ checkOnboardingCompletion - Interests check passed:', careerGoalsResult.rows[0].interests);
 
-      // State and district are OPTIONAL - not required for onboarding completion
-      // Only name, stream, and interests are mandatory
+      // Check if user has city (city_town_village in user_address)
+      const addressResult = await db.query(
+        'SELECT city_town_village FROM user_address WHERE user_id = $1 AND city_town_village IS NOT NULL AND TRIM(city_town_village) != \'\'',
+        [userIdNum]
+      );
+      if (!addressResult.rows[0] || !addressResult.rows[0].city_town_village) {
+        console.log('❌ checkOnboardingCompletion - Missing city');
+        return false;
+      }
+      console.log('✅ checkOnboardingCompletion - City check passed:', addressResult.rows[0].city_town_village);
+
       console.log('✅ checkOnboardingCompletion - ALL CHECKS PASSED - User has completed onboarding');
       return true;
     } catch (error) {

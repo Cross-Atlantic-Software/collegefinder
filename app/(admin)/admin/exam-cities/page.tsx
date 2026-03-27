@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllExamCities, createExamCity, updateExamCity, deleteExamCity, ExamCity } from '@/api/admin/exam-cities';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
 export default function ExamCitiesPage() {
@@ -301,20 +302,10 @@ export default function ExamCitiesPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEdit(examCity)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(examCity.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onEdit={() => handleEdit(examCity)}
+                              onDelete={() => handleDeleteClick(examCity.id)}
+                            />
                           </td>
                         </tr>
                       ))

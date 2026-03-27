@@ -51,7 +51,7 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
         return aValue < bValue ? 1 : -1;
       }
     });
-    setSortedUsers(sorted);
+    queueMicrotask(() => setSortedUsers(sorted));
   }, [users, sortField, sortDirection]);
 
   const handleSort = (field: 'email' | 'created_at') => {

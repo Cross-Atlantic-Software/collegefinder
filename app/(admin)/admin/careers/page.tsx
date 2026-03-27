@@ -4,26 +4,50 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareers, createCareer, updateCareer, deleteCareer, Career } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import {
+  getAllCareers,
+  createCareer,
+  updateCareer,
+  deleteCareer,
+  downloadAllCareersExcel,
+  downloadCareersBulkTemplate,
+  bulkUploadCareers,
+  deleteAllCareers,
+  getAllPrograms,
+  Career,
+} from '@/api';
+import type { Program } from '@/api/admin/programs';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
 
 export default function CareersPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [careers, setCareers] = useState<Career[]>([]);
   const [allCareers, setAllCareers] = useState<Career[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCareer, setEditingCareer] = useState<Career | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState({ name: '', status: true, program_ids: [] as number[] });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewingCareer, setViewingCareer] = useState<Career | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; createdCareers: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -32,8 +56,19 @@ export default function CareersPage() {
       router.replace('/admin/login');
       return;
     }
-
+    const adminUserStr = localStorage.getItem('admin_user');
+    if (adminUserStr) {
+      try {
+        setCurrentAdmin(JSON.parse(adminUserStr));
+      } catch (_) {}
+    }
     fetchCareers();
+    (async () => {
+      try {
+        const progRes = await getAllPrograms();
+        if (progRes.success && progRes.data?.programs) setPrograms(progRes.data.programs);
+      } catch (_) {}
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -42,7 +77,7 @@ export default function CareersPage() {
       setCareers([]);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       if (!searchQuery.trim()) {
         setCareers(allCareers);
@@ -74,6 +109,14 @@ export default function CareersPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const programOptions = programs.map((p) => ({ value: String(p.id), label: p.name }));
+  const programNameMap: Record<number, string> = Object.fromEntries(programs.map((p) => [p.id, p.name]));
+
+  const getProgramNames = (career: Career) => {
+    const ids = career.program_ids || [];
+    return ids.map((id) => programNameMap[id]).filter(Boolean).join(', ') || '-';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +204,11 @@ export default function CareersPage() {
 
   const handleEdit = (career: Career) => {
     setEditingCareer(career);
-    setFormData({ name: career.name, status: career.status });
+    setFormData({
+      name: career.name,
+      status: career.status,
+      program_ids: career.program_ids || [],
+    });
     setShowModal(true);
   };
 
@@ -172,7 +219,7 @@ export default function CareersPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true });
+    setFormData({ name: '', status: true, program_ids: [] });
     setError(null);
   };
 
@@ -180,6 +227,84 @@ export default function CareersPage() {
     setShowModal(false);
     setEditingCareer(null);
     resetForm();
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadAllCareersExcel();
+      showSuccess('Excel downloaded');
+    } catch {
+      showError('Failed to download Excel');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllCareers();
+      if (response.success) {
+        showSuccess(response.message || 'All careers deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchCareers();
+      } else {
+        showError(response.message || 'Failed to delete all careers');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all careers');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadCareersBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadCareers(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult({
+          created: response.data.created,
+          createdCareers: response.data.createdCareers || [],
+          errors: response.data.errors || 0,
+          errorDetails: response.data.errorDetails || [],
+        });
+        showSuccess(response.message || `Created ${response.data.created} career(s)`);
+        fetchCareers();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch (err) {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
   };
 
   if (error && !isLoading) {
@@ -229,13 +354,45 @@ export default function CareersPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Career
-            </button>
+            <div className="flex items-center gap-2">
+              {currentAdmin?.type === 'super_admin' && (
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={downloadingExcel}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingExcel ? 'Downloading...' : 'Download Excel'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setShowBulkModal(true); setBulkResult(null); setBulkError(null); setBulkExcelFile(null); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                <FiUpload className="h-4 w-4" />
+                Upload Excel
+              </button>
+              {currentAdmin?.type === 'super_admin' && allCareers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Career
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -258,6 +415,9 @@ export default function CareersPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                        PROGRAMS
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
@@ -274,7 +434,7 @@ export default function CareersPage() {
                   <tbody className="divide-y divide-gray-200">
                     {careers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
                           {careers.length < allCareers.length ? 'No careers found matching your search' : 'No careers found'}
                         </td>
                       </tr>
@@ -283,6 +443,9 @@ export default function CareersPage() {
                         <tr key={career.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-gray-900">{career.name}</span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-600 max-w-[200px] truncate" title={getProgramNames(career)}>
+                            {getProgramNames(career)}
                           </td>
                           <td className="px-4 py-2">
                             {career.status ? (
@@ -310,29 +473,11 @@ export default function CareersPage() {
                             })}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleView(career)}
-                                className="p-2 text-green-600 hover:text-green-800 transition-colors"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(career)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(career.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(career)}
+                              onEdit={() => handleEdit(career)}
+                              onDelete={() => handleDeleteClick(career.id)}
+                            />
                           </td>
                         </tr>
                       ))
@@ -376,6 +521,19 @@ export default function CareersPage() {
                     required
                     placeholder="e.g., Engineering, Medicine, Law"
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Programs (from programs taxonomy)
+                  </label>
+                  <MultiSelect
+                    value={formData.program_ids.map(String)}
+                    onChange={(vals) => setFormData({ ...formData, program_ids: vals.map(Number).filter((n) => !isNaN(n)) })}
+                    options={programOptions}
+                    placeholder="Select programs to map to this career..."
+                    isSearchable
                   />
                 </div>
 
@@ -438,6 +596,99 @@ export default function CareersPage() {
         </div>
       )}
 
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Upload Careers (Excel)</h2>
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-white hover:text-gray-200">
+                <FiX className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              {/* Sample template section */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Sample template – Excel format</h3>
+                <p className="text-xs text-gray-600 mb-3">Your Excel file must have these columns. Use <strong>program_names</strong> (comma-separated, e.g. B.Tech, M.Tech) or <strong>program_ids</strong> to map careers to programs from the programs taxonomy.</p>
+                <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">name</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">status</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">program_names</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Engineering</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">TRUE</td>
+                        <td className="px-3 py-2 text-gray-800">B.Tech,M.Tech,B.E</td>
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Medicine</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">TRUE</td>
+                        <td className="px-3 py-2 text-gray-800">MBBS,MD,BDS</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Law</td>
+                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">FALSE</td>
+                        <td className="px-3 py-2 text-gray-800">LLB,LLM</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
+                </button>
+              </div>
+
+              {/* Upload section */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Upload your Excel file</h3>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-gray-300 rounded-lg p-2"
+                />
+              </div>
+              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
+              {bulkResult && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && (
+                    <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>
+                  )}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-gray-600 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.map((err, i) => (
+                        <li key={i}>Row {err.row}: {err.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+              </button>
+              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+                {bulkUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
@@ -452,6 +703,19 @@ export default function CareersPage() {
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Careers"
+        message={`Are you sure you want to delete all ${allCareers.length} careers? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
 
       {/* View Career Modal */}
@@ -478,6 +742,12 @@ export default function CareersPage() {
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Name</label>
                 <p className="text-lg font-bold text-gray-900">{viewingCareer.name}</p>
+              </div>
+
+              {/* Programs */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Programs</label>
+                <p className="text-sm text-gray-700">{getProgramNames(viewingCareer)}</p>
               </div>
 
               {/* Status */}
@@ -546,4 +816,3 @@ export default function CareersPage() {
     </div>
   );
 }
-

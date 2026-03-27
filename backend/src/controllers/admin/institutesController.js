@@ -1,5 +1,4 @@
 const XLSX = require('xlsx');
-const AdmZip = require('adm-zip');
 const Institute = require('../../models/institute/Institute');
 const InstituteDetails = require('../../models/institute/InstituteDetails');
 const InstituteExam = require('../../models/institute/InstituteExam');
@@ -8,10 +7,12 @@ const InstituteStatistics = require('../../models/institute/InstituteStatistics'
 const InstituteCourse = require('../../models/institute/InstituteCourse');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
 
 async function resolveExamNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
-  const names = namesStr.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const names = splitList(namesStr);
   const ids = [];
   for (const nm of names) {
     const ex = await Exam.findByName(nm);
@@ -295,6 +296,23 @@ class InstitutesController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      const all = await Institute.findAll();
+      for (const inst of all) {
+        if (inst.logo) await deleteFromS3(inst.logo);
+        await Institute.delete(inst.id);
+      }
+      res.json({
+        success: true,
+        message: `All ${all.length} institutes deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all institutes:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete all institutes' });
+    }
+  }
+
   static async downloadBulkTemplate(req, res) {
     try {
       const headers = [
@@ -320,24 +338,24 @@ class InstitutesController {
         [
           'Allen Kota',
           'Kota',
-          'offline',
+          'Offline',
           'allen.png',
           'https://allen.ac.in',
           '9876543210',
-          'Premier coaching for JEE/NEET.',
+          'Premier coaching for JEE and NEET.',
           'TRUE',
           'TRUE',
           '9.5',
           '85',
           '4.8',
-          'JEE Main,NEET',
+          'JEE Main, NEET',
           'JEE Advanced',
-          'JEE Main|Class 12|12|50000|30|2025-01-01;NEET|Class 12|24|80000|25|2025-04-01'
+          'JEE Main|Class 12|12|50000|30|2025-01-01, NEET|Class 12|24|80000|25|2025-04-01'
         ],
         [
           'Unacademy',
           'Online',
-          'online',
+          'Online',
           'unacademy.png',
           'https://unacademy.com',
           '',
@@ -347,7 +365,7 @@ class InstitutesController {
           '8',
           '78',
           '4.5',
-          'JEE Main,NEET,CUET',
+          'JEE Main, NEET, CUET',
           '',
           'Crash Course|Class 12|6|25000|100|2025-01-15'
         ]
@@ -428,6 +446,44 @@ class InstitutesController {
     }
   }
 
+  static async uploadMissingLogos(req, res) {
+    try {
+      const logosZipFile = req.files?.logos_zip?.[0] || req.file;
+      if (!logosZipFile || !logosZipFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No ZIP file uploaded. Use field name "logos_zip".'
+        });
+      }
+      const logoMap = parseLogosFromZip(logosZipFile.buffer);
+      if (logoMap.size === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or corrupted ZIP file. Use a ZIP containing only image files (e.g. .jpg, .png).'
+        });
+      }
+      const result = await processMissingLogosFromZip(logoMap, {
+        findRecordsByFilename: (f) => Institute.findMissingLogosByFilename(f),
+        uploadToS3,
+        s3Folder: 'institute-logos',
+        logoColumn: 'logo',
+        updateRecord: (id, data) => Institute.update(id, data),
+        toResultItem: (r) => ({ id: r.id, institute_name: r.institute_name, logo_filename: r.logo_filename })
+      });
+      res.json({
+        success: true,
+        data: result,
+        message: `Added ${result.updated.length} logo(s). ${result.skipped.length} file(s) had no matching institutes.`
+      });
+    } catch (error) {
+      console.error('Error uploading missing logos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload missing logos'
+      });
+    }
+  }
+
   static async bulkUpload(req, res) {
     const validTypes = ['offline', 'online', 'hybrid'];
     try {
@@ -439,37 +495,7 @@ class InstitutesController {
         });
       }
 
-      const logoMap = new Map();
-      const logosZipFile = req.files?.logos_zip?.[0];
-      if (logosZipFile && logosZipFile.buffer) {
-        try {
-          const zip = new AdmZip(logosZipFile.buffer);
-          const entries = zip.getEntries();
-          const imageExt = /\.(jpe?g|png|gif|webp|bmp)$/i;
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
-            if (entry.isDirectory) continue;
-            const name = (entry.entryName || entry.name || '').replace(/^.*[\\/]/, '').trim();
-            if (!name || !imageExt.test(name)) continue;
-            const buffer = entry.getData();
-            if (buffer && buffer.length) logoMap.set(name.toLowerCase(), { buffer, originalname: name });
-          }
-        } catch (zipErr) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid or corrupted ZIP file for logos.'
-          });
-        }
-      } else {
-        const logosRaw = req.files?.logos;
-        const logoFiles = Array.isArray(logosRaw) ? logosRaw : (logosRaw ? [logosRaw] : []);
-        logoFiles.forEach((f) => {
-          if (f && (f.buffer || f.path)) {
-            const name = (f.originalname || f.name || '').trim();
-            if (name) logoMap.set(name.toLowerCase(), f);
-          }
-        });
-      }
+      const logoMap = buildLogoMapFromRequest(req.files || {}, 'logos_zip', 'logos');
 
       let workbook;
       try {
@@ -508,14 +534,14 @@ class InstitutesController {
         }
 
         const location = (row.institute_location ?? row.institute_Location ?? '').toString().trim() || null;
-        const typeRaw = (row.type ?? '').toString().trim().toLowerCase();
-        const instituteType = validTypes.includes(typeRaw) ? typeRaw : null;
+        const typeRaw = (row.type ?? '').toString().trim();
+        const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const website = (row.website ?? '').toString().trim() || null;
         const contactNumber = (row.contact_number ?? row.contact_Number ?? '').toString().trim() || null;
         const description = (row.institute_description ?? row.institute_Description ?? '').toString().trim() || null;
-        const demoAvailable = /^(1|true|yes)$/i.test((row.demo_available ?? '').toString().trim());
-        const scholarshipAvailable = /^(1|true|yes)$/i.test((row.scholarship_available ?? '').toString().trim());
+        const demoAvailable = parseBool(row.demo_available, true);
+        const scholarshipAvailable = parseBool(row.scholarship_available, false);
         const rankingScoreRaw = (row.ranking_score ?? row.ranking_Score ?? '').toString().trim();
         const successRateRaw = (row.success_rate ?? row.success_Rate ?? '').toString().trim();
         const studentRatingRaw = (row.student_rating ?? row.student_Rating ?? '').toString().trim();
@@ -534,9 +560,8 @@ class InstitutesController {
             } catch (uploadErr) {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
-          } else {
-            errors.push({ row: rowNum, message: `logo file not found: "${logoFilename}"` });
           }
+          // If logo file not found: still create institute with logo_filename; user can upload missing logos later
         }
 
         try {
@@ -545,6 +570,7 @@ class InstitutesController {
             institute_location: location,
             type: instituteType,
             logo: logoUrl,
+            logo_filename: logoFilename || null,
             website,
             contact_number: contactNumber
           });
@@ -585,9 +611,10 @@ class InstitutesController {
           }
           if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
           if (coursesRaw) {
-            const courseRows = coursesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+            const courseRows = splitList(coursesRaw);
             for (const cr of courseRows) {
-              const [course_name, target_class, duration_months, fees, batch_size, start_date] = cr.split('|').map((s) => s.trim());
+              const [course_name, target_class, duration_months, fees, batch_size, start_dateRaw] = cr.split('|').map((s) => s.trim());
+              const start_date = start_dateRaw ? parseDate(start_dateRaw) : null;
               const dur = duration_months ? parseInt(duration_months, 10) : null;
               const feeVal = fees ? parseFloat(fees) : null;
               const batch = batch_size ? parseInt(batch_size, 10) : null;
@@ -598,7 +625,7 @@ class InstitutesController {
                 duration_months: isNaN(dur) ? null : dur,
                 fees: isNaN(feeVal) ? null : feeVal,
                 batch_size: isNaN(batch) ? null : batch,
-                start_date: start_date || null
+                start_date: start_date
               });
             }
           }

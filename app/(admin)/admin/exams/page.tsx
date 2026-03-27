@@ -9,11 +9,15 @@ import {
   createExam, 
   updateExam, 
   deleteExam, 
+  deleteAllExams,
   getExamById,
   uploadExamLogo,
   downloadBulkTemplate,
   downloadAllDataExcel,
   bulkUploadExams,
+  uploadMissingLogos,
+  getExamPrompt,
+  updateExamPrompt,
   type Exam,
   type ExamDates,
   type ExamEligibilityCriteria,
@@ -23,8 +27,10 @@ import {
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage } from 'react-icons/fi';
+import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
 export default function ExamsPage() {
@@ -97,8 +103,30 @@ export default function ExamsPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ created: number; createdExams: { id: number; name: string; code: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const { canDownloadExcel, isSuperAdmin } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
+  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
+  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
+  const [missingLogosResult, setMissingLogosResult] = useState<{
+    updated: { id: number; name: string; code: string; logo_file_name?: string }[];
+    skipped: string[];
+    errors: { file: string; message: string }[];
+    summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+  } | null>(null);
+  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'exams' | 'prompts'>('exams');
+  const [promptsByExamId, setPromptsByExamId] = useState<Record<number, { prompt: string; hasCustomPrompt: boolean }>>({});
+  const [savingPromptExamId, setSavingPromptExamId] = useState<number | null>(null);
+  const [promptsSectionLoading, setPromptsSectionLoading] = useState(false);
+  const [promptExam, setPromptExam] = useState<Exam | null>(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [promptValue, setPromptValue] = useState('');
+  const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptSaving, setPromptSaving] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -107,12 +135,6 @@ export default function ExamsPage() {
     if (!isAuthenticated || !adminToken) {
       router.replace('/admin/login');
       return;
-    }
-    const adminUserStr = localStorage.getItem('admin_user');
-    if (adminUserStr) {
-      try {
-        setCurrentAdmin(JSON.parse(adminUserStr));
-      } catch (_) {}
     }
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,7 +145,7 @@ export default function ExamsPage() {
       setExams([]);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       if (!searchQuery.trim()) {
         setExams(allExams);
@@ -141,6 +163,34 @@ export default function ExamsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allExams]);
+
+  useEffect(() => {
+    if (activeSection !== 'prompts' || allExams.length === 0) return;
+    let cancelled = false;
+    const load = async () => {
+      setPromptsSectionLoading(true);
+      const next: Record<number, { prompt: string; hasCustomPrompt: boolean }> = {};
+      for (const exam of allExams) {
+        if (cancelled) return;
+        try {
+          const res = await getExamPrompt(exam.id);
+          if (res.success && res.data) {
+            next[exam.id] = { prompt: res.data.prompt || '', hasCustomPrompt: !!res.data.hasCustomPrompt };
+          } else {
+            next[exam.id] = { prompt: '', hasCustomPrompt: false };
+          }
+        } catch {
+          next[exam.id] = { prompt: '', hasCustomPrompt: false };
+        }
+      }
+      if (!cancelled) {
+        setPromptsByExamId(next);
+      }
+      setPromptsSectionLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [activeSection, allExams]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -489,6 +539,26 @@ export default function ExamsPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllExams();
+      if (response.success) {
+        showSuccess(response.message || 'All exams deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchData(true);
+      } else {
+        showError(response.message || 'Failed to delete all exams');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch (err) {
+      showError('An error occurred while deleting all exams');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Please select an Excel file');
@@ -510,8 +580,38 @@ export default function ExamsPage() {
       const msg = err instanceof Error ? err.message : 'Bulk upload failed';
       setBulkError(msg);
       showError(msg);
+      const errData = err && typeof err === 'object' && 'data' in err ? (err as { data?: { errorDetails?: { row: number; message: string }[] } }).data : undefined;
+      if (errData?.errorDetails?.length) {
+        setBulkResult({ created: 0, createdExams: [], errors: errData.errorDetails.length, errorDetails: errData.errorDetails });
+      }
     } finally {
       setBulkUploading(false);
+    }
+  };
+
+  const handleMissingLogosSubmit = async () => {
+    if (!missingLogosZipFile) {
+      showError('Please select a ZIP file');
+      return;
+    }
+    setMissingLogosUploading(true);
+    setMissingLogosError(null);
+    setMissingLogosResult(null);
+    try {
+      const res = await uploadMissingLogos(missingLogosZipFile);
+      if (res.success && res.data) {
+        setMissingLogosResult(res.data);
+        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
+        fetchData(true);
+      } else {
+        setMissingLogosError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setMissingLogosError(msg);
+      showError(msg);
+    } finally {
+      setMissingLogosUploading(false);
     }
   };
 
@@ -522,8 +622,84 @@ export default function ExamsPage() {
     { id: 'eligibility', label: 'Eligibility', icon: FiUser },
     { id: 'pattern', label: 'Pattern', icon: FiFileText },
     { id: 'cutoff', label: 'Cutoff', icon: FiBarChart },
-    { id: 'careerGoals', label: 'Career Goals', icon: FiTarget },
+    { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
+
+  const handleOpenPrompt = async (exam: Exam) => {
+    setPromptExam(exam);
+    setShowPromptModal(true);
+    setPromptValue('');
+    setHasCustomPrompt(false);
+    setPromptLoading(true);
+    try {
+      const res = await getExamPrompt(exam.id);
+      if (res.success && res.data) {
+        setPromptValue(res.data.prompt || '');
+        setHasCustomPrompt(!!res.data.hasCustomPrompt);
+      }
+    } catch {
+      showError('Failed to load prompt');
+    } finally {
+      setPromptLoading(false);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptExam) return;
+    setPromptSaving(true);
+    try {
+      const res = await updateExamPrompt(promptExam.id, promptValue);
+      if (res.success) {
+        showSuccess('Prompt updated. It will be used for mock question generation for this exam.');
+        setHasCustomPrompt(!!(promptValue && promptValue.trim()));
+      } else {
+        showError(res.message || 'Failed to save prompt');
+      }
+    } catch {
+      showError('Failed to save prompt');
+    } finally {
+      setPromptSaving(false);
+    }
+  };
+
+  const handleClosePromptModal = () => {
+    setShowPromptModal(false);
+    setPromptExam(null);
+    setPromptValue('');
+  };
+
+  const setPromptForExam = (examId: number, prompt: string) => {
+    setPromptsByExamId((prev) => ({
+      ...prev,
+      [examId]: {
+        ...prev[examId],
+        prompt,
+        hasCustomPrompt: prev[examId]?.hasCustomPrompt ?? false,
+      },
+    }));
+  };
+
+  const handleSavePromptInSection = async (exam: Exam) => {
+    const current = promptsByExamId[exam.id];
+    if (current === undefined) return;
+    setSavingPromptExamId(exam.id);
+    try {
+      const res = await updateExamPrompt(exam.id, current.prompt);
+      if (res.success) {
+        showSuccess(`Prompt saved for ${exam.name}`);
+        setPromptsByExamId((prev) => ({
+          ...prev,
+          [exam.id]: { ...prev[exam.id], prompt: current.prompt, hasCustomPrompt: !!(current.prompt && current.prompt.trim()) },
+        }));
+      } else {
+        showError(res.message || 'Failed to save prompt');
+      }
+    } catch {
+      showError('Failed to save prompt');
+    } finally {
+      setSavingPromptExamId(null);
+    }
+  };
 
   if (error && !isLoading) {
     return (
@@ -552,7 +728,34 @@ export default function ExamsPage() {
             <p className="text-sm text-gray-600">Manage exam options with all related information.</p>
           </div>
 
-          {/* Controls */}
+          {/* Section tabs: Exams | Generation prompts */}
+          <div className="mb-4 flex gap-1 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setActiveSection('exams')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeSection === 'exams'
+                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Exams
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('prompts')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeSection === 'prompts'
+                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Generation prompts
+            </button>
+          </div>
+
+          {/* Controls (only for Exams section) */}
+          {activeSection === 'exams' && (
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
@@ -595,7 +798,22 @@ export default function ExamsPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {currentAdmin?.type === 'super_admin' && (
+              {allExams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMissingLogosModal(true);
+                    setMissingLogosZipFile(null);
+                    setMissingLogosResult(null);
+                    setMissingLogosError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <FiUpload className="h-4 w-4" />
+                  Upload missing logos
+                </button>
+              )}
+              {isSuperAdmin && allExams.length > 0 && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -606,17 +824,30 @@ export default function ExamsPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
+              {isSuperAdmin && allExams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
             </div>
           </div>
+          )}
 
-          {/* Error Message */}
-          {error && (
+          {/* Error Message (Exams section) */}
+          {activeSection === 'exams' && error && (
             <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
               {error}
             </div>
           )}
 
           {/* Exams Table */}
+          {activeSection === 'exams' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {isLoading ? (
               <div className="p-4 text-center text-sm text-gray-500">Loading exams...</div>
@@ -676,33 +907,12 @@ export default function ExamsPage() {
                             <span className="text-xs text-gray-600">{exam.conducting_authority || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleView(exam)}
-                                disabled={loadingView}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title="View"
-                              >
-                                <FiEye className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(exam)}
-                                className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Edit"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteClick(exam.id)}
-                                className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <AdminTableActions
+                              onView={() => handleView(exam)}
+                              onEdit={() => handleEdit(exam)}
+                              onDelete={() => handleDeleteClick(exam.id)}
+                              loadingView={loadingView}
+                            />
                           </td>
                         </tr>
                       ))
@@ -712,6 +922,63 @@ export default function ExamsPage() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Generation prompts section: all exams from DB with prompt edit */}
+          {activeSection === 'prompts' && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Set an exam-specific prompt for mock question generation. When set, it is used instead of the generic prompt. Placeholders: {'{{exam_name}}'}, {'{{subject}}'}, {'{{difficulty}}'}, {'{{topic}}'}, {'{{section_name}}'}, {'{{section_type}}'}, {'{{question_type}}'}
+              </p>
+              {promptsSectionLoading ? (
+                <div className="py-8 text-center text-gray-500">Loading prompts for all exams...</div>
+              ) : (
+                <div className="space-y-4">
+                  {allExams.map((exam) => {
+                    const data = promptsByExamId[exam.id];
+                    const promptText = data?.prompt ?? '';
+                    const isSaving = savingPromptExamId === exam.id;
+                    return (
+                      <div
+                        key={exam.id}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-gray-900">{exam.name}</span>
+                            <span className="ml-2 text-sm text-gray-500 font-mono">{exam.code}</span>
+                            {data?.hasCustomPrompt && (
+                              <span className="ml-2 text-xs text-green-600 font-medium">Custom prompt set</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSavePromptInSection(exam)}
+                            disabled={isSaving || data === undefined}
+                            className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSaving ? 'Saving...' : 'Save prompt'}
+                          </button>
+                        </div>
+                        <div className="p-4">
+                          <textarea
+                            value={data === undefined ? '' : promptText}
+                            onChange={(e) => setPromptForExam(exam.id, e.target.value)}
+                            placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
+                            rows={8}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {allExams.length === 0 && (
+                    <p className="text-sm text-gray-500 py-4">No exams in the database. Add exams in the Exams tab first.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
 
@@ -835,16 +1102,17 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Exam Type
                       </label>
-                      <select
-                        value={formData.exam_type}
-                        onChange={(e) => setFormData({ ...formData, exam_type: e.target.value as 'National' | 'State' | 'Institute' | '' })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                      >
-                        <option value="">Select type</option>
-                        <option value="National">National</option>
-                        <option value="State">State</option>
-                        <option value="Institute">Institute</option>
-                      </select>
+                      <Dropdown
+                        value={formData.exam_type || null}
+                        onChange={(v) => setFormData({ ...formData, exam_type: v })}
+                        options={[
+                          { value: 'National', label: 'National' },
+                          { value: 'State', label: 'State' },
+                          { value: 'Institute', label: 'Institute' },
+                        ]}
+                        placeholder="Select type"
+                        className="w-full"
+                      />
                     </div>
 
                     <div>
@@ -1010,19 +1278,20 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Mode
                       </label>
-                      <select
-                        value={formData.examPattern.mode}
-                        onChange={(e) => setFormData({
+                      <Dropdown
+                        value={formData.examPattern.mode || null}
+                        onChange={(v) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, mode: e.target.value as 'Offline' | 'Online' | 'Hybrid' | '' }
+                          examPattern: { ...formData.examPattern, mode: v }
                         })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
-                      >
-                        <option value="">Select mode</option>
-                        <option value="Offline">Offline</option>
-                        <option value="Online">Online</option>
-                        <option value="Hybrid">Hybrid</option>
-                      </select>
+                        options={[
+                          { value: 'Offline', label: 'Offline' },
+                          { value: 'Online', label: 'Online' },
+                          { value: 'Hybrid', label: 'Hybrid' },
+                        ]}
+                        placeholder="Select mode"
+                        className="w-full"
+                      />
                     </div>
 
                     <div>
@@ -1145,15 +1414,15 @@ export default function ExamsPage() {
                   </>
                 )}
 
-                {/* Career Goals Tab */}
+                {/* Interests Tab */}
                 {activeTab === 'careerGoals' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Related Career Goals
+                        Related Interests
                       </label>
                       <p className="text-xs text-gray-500 mb-2">
-                        Select career goals that are related to this exam
+                        Select interests that are related to this exam
                       </p>
                       <MultiSelect
                         options={careerGoals.map(cg => ({ value: cg.id.toString(), label: cg.label }))}
@@ -1162,7 +1431,7 @@ export default function ExamsPage() {
                           ...formData,
                           careerGoalIds: selected.map(s => parseInt(s))
                         })}
-                        placeholder="Select career goals"
+                        placeholder="Select interests"
                       />
                     </div>
                   </>
@@ -1301,7 +1570,7 @@ export default function ExamsPage() {
               )}
               {viewingExamData.careerGoalIds?.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Career Goals</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Interests</label>
                   <p className="text-sm text-gray-900">
                     {viewingExamData.careerGoalIds.map((id) => careerGoals.find((cg) => cg.id === id)?.label ?? id).join(', ') || viewingExamData.careerGoalIds.join(', ')}
                   </p>
@@ -1325,45 +1594,98 @@ export default function ExamsPage() {
       {/* Bulk Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Bulk upload exams (Excel)</h2>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Bulk upload exams</h2>
+                  <p className="text-xs text-white/80">Excel + optional logos</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                aria-label="Close"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-4 overflow-auto space-y-4">
-              <p className="text-sm text-gray-600">
-                Upload an Excel file. Required: <strong>name</strong>, <strong>code</strong>. Optional: description, exam_type (National/State/Institute), conducting_authority, logo_filename (match uploaded image names), dates (YYYY-MM-DD). For streams, subjects and career goals use <strong>names or labels</strong> (e.g. stream_ids: &quot;PCM, PCB&quot;, subject_ids: &quot;Physics, Chemistry&quot;, career_goal_ids: &quot;Engineering&quot;) or numeric IDs. For <strong>category_wise_cutoff</strong> use JSON in one cell with double-quoted keys (e.g. &quot;General&quot;: 95, &quot;OBC&quot;: 90). Also: eligibility, pattern, other cutoff fields. Download the template for all columns.
-              </p>
-              <button
-                type="button"
-                onClick={handleBulkTemplateDownload}
-                className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
-              >
-                <FiDownload className="h-4 w-4" />
-                Download Excel template
-              </button>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file (required)</label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-pink/10 file:text-pink"
-                />
-                {bulkExcelFile && <span className="text-xs text-gray-500 mt-1 block">{bulkExcelFile.name}</span>}
-              </div>
+            <div className="p-5 overflow-auto space-y-5">
+              {/* Step 1: Template */}
+              {canDownloadExcel && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="h-10 w-10 rounded-lg bg-darkGradient flex items-center justify-center text-white shrink-0">
+                    <FiDownload className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900">Get the template</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Download the Excel file with all columns</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkTemplateDownload}
+                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Download
+                  </button>
+                </div>
+              )}
+
+              {/* Excel file */}
               <div className="space-y-2">
-                <label className="block text-xs font-medium text-gray-700">Logos (ZIP file, optional)</label>
-                <p className="text-xs text-gray-500">
-                  Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
+                <p className="text-sm font-medium text-gray-900">
+                  Excel file <span className="text-red-500">*</span>
                 </p>
-                <div className="flex items-center gap-2 flex-wrap">
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkExcelFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiFile className={`h-10 w-10 ${bulkExcelFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkExcelFile ? bulkExcelFile.name : 'Choose Excel file (.xlsx, .xls)'}
+                    </span>
+                    {bulkExcelFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkExcelFile(null); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Logos ZIP */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">
+                  Logos ZIP <span className="text-xs font-normal text-gray-500">(optional)</span>
+                </p>
+                <label className="block w-full">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
+                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-pink' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      {bulkLogosZipFile ? bulkLogosZipFile.name : 'Choose ZIP file'}
+                    </span>
+                    {bulkLogosZipFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkLogosZipFile(null); setBulkLogoFiles([]); }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept=".zip,application/zip,application/x-zip-compressed"
@@ -1373,28 +1695,22 @@ export default function ExamsPage() {
                       if (file) setBulkLogoFiles([]);
                       e.target.value = '';
                     }}
-                    className="text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-green-600 file:text-white file:text-sm"
+                    className="sr-only"
                   />
-                  {bulkLogosZipFile && (
-                    <span className="text-xs text-gray-700 flex items-center gap-1">
-                      {bulkLogosZipFile.name}
-                      <button type="button" onClick={() => setBulkLogosZipFile(null)} className="text-red-600 hover:text-red-800 p-0.5" aria-label="Remove ZIP">
-                        <FiX className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  )}
-                </div>
+                </label>
               </div>
+
               {bulkError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                  <FiX className="h-4 w-4 shrink-0 mt-0.5" />
                   {bulkError}
                 </div>
               )}
               {bulkResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm space-y-1">
                   <p className="font-medium text-gray-900">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && (
-                    <p className="text-amber-700 mt-1">Errors: {bulkResult.errors}</p>
+                    <p className="text-amber-700">Errors: {bulkResult.errors}</p>
                   )}
                   {bulkResult.errorDetails?.length > 0 && (
                     <ul className="mt-2 text-xs text-gray-600 list-disc list-inside max-h-32 overflow-y-auto">
@@ -1405,12 +1721,15 @@ export default function ExamsPage() {
                   )}
                 </div>
               )}
+              <p className="text-xs text-gray-500 pt-1">
+                Note: Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
+              </p>
             </div>
-            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50/50">
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Close
               </button>
@@ -1418,9 +1737,139 @@ export default function ExamsPage() {
                 type="button"
                 onClick={handleBulkSubmit}
                 disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {bulkUploading ? 'Uploading…' : 'Upload'}
+                {bulkUploading ? (
+                  <>
+                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Missing Logos Modal */}
+      {showMissingLogosModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
+            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20">
+                  <FiUpload className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                aria-label="Close"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-auto space-y-5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_file_name</code> stored for exams that have no logo yet.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={(e) => {
+                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
+                      setMissingLogosResult(null);
+                      setMissingLogosError(null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {missingLogosZipFile ? (
+                    <div className="flex flex-col items-center gap-2 p-4">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600">
+                        <FiUpload className="h-5 w-5" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
+                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
+                      <FiUpload className="h-8 w-8 opacity-60" />
+                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                      <span className="text-xs">.zip only</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+              {missingLogosError && (
+                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
+                  {missingLogosError}
+                </div>
+              )}
+              {missingLogosResult && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="font-semibold text-slate-900">
+                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
+                  </p>
+                  {missingLogosResult.summary.filesSkipped > 0 && (
+                    <p className="text-sm text-amber-700">Files skipped (no matching exam): {missingLogosResult.summary.filesSkipped}</p>
+                  )}
+                  {missingLogosResult.summary.uploadErrors > 0 && (
+                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
+                  )}
+                  {missingLogosResult.updated.length > 0 && (
+                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
+                      {missingLogosResult.updated.map((u, i) => (
+                        <li key={i}>{u.name} ({u.code})</li>
+                      ))}
+                    </ul>
+                  )}
+                  {missingLogosResult.skipped.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
+                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
+                        {missingLogosResult.skipped.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMissingLogosModal(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMissingLogosSubmit}
+                disabled={!missingLogosZipFile || missingLogosUploading}
+                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-xl hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-pink/20"
+              >
+                {missingLogosUploading ? 'Uploading…' : 'Upload'}
               </button>
             </div>
           </div>
@@ -1441,6 +1890,18 @@ export default function ExamsPage() {
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Exams"
+        message={`Are you sure you want to delete all ${allExams.length} exams? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );
