@@ -77,7 +77,7 @@ export default function InfoSection() {
 
                     <div className="mx-auto w-full max-w-[560px]">
                         <Image
-                            src="/landing-page/features1.png"
+                            src="/landing-page/problem.png"
                             alt="Admission planning dashboard visual"
                             width={1200}
                             height={900}

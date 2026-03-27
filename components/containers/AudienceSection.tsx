@@ -35,17 +35,48 @@ const audienceContent: Record<
             "Progress tracking with structured updates",
             "Confidence in every decision point",
         ],
-        image: "/landing-page/how_it_works.png",
+        image: "/landing-page/parent.png",
         imageAlt: "Parents confidence view",
     },
 };
 
 export default function AudienceSection() {
     const [activeAudience, setActiveAudience] = useState<AudienceKey>("students");
+    const [displayAudience, setDisplayAudience] = useState<AudienceKey>("students");
+    const [isSwitching, setIsSwitching] = useState(false);
     const [headingVisible, setHeadingVisible] = useState(false);
     const sectionRef = useRef<HTMLElement>(null);
+    const switchTimeoutRef = useRef<number | null>(null);
     const contentPanelId = useId();
-    const active = audienceContent[activeAudience];
+    const active = audienceContent[displayAudience];
+
+    const handleAudienceChange = (nextAudience: AudienceKey) => {
+        if (nextAudience === activeAudience) {
+            return;
+        }
+
+        setActiveAudience(nextAudience);
+
+        const prefersReducedMotion =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        if (prefersReducedMotion) {
+            setDisplayAudience(nextAudience);
+            setIsSwitching(false);
+            return;
+        }
+
+        setIsSwitching(true);
+        if (switchTimeoutRef.current) {
+            window.clearTimeout(switchTimeoutRef.current);
+        }
+
+        switchTimeoutRef.current = window.setTimeout(() => {
+            setDisplayAudience(nextAudience);
+            setIsSwitching(false);
+        }, 210);
+    };
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -59,6 +90,14 @@ export default function AudienceSection() {
         );
         if (sectionRef.current) observer.observe(sectionRef.current);
         return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (switchTimeoutRef.current) {
+                window.clearTimeout(switchTimeoutRef.current);
+            }
+        };
     }, []);
 
     return (
@@ -111,10 +150,10 @@ export default function AudienceSection() {
                         >
                             <button
                                 type="button"
-                                onClick={() => setActiveAudience("students")}
+                                onClick={() => handleAudienceChange("students")}
                                 aria-pressed={activeAudience === "students"}
                                 aria-controls={contentPanelId}
-                                className={`landing-cta min-w-0 rounded-xl px-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-full sm:px-8 sm:py-2 ${
+                                className={`landing-cta min-w-0 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-full sm:px-8 sm:py-2 ${
                                     activeAudience === "students"
                                         ? "bg-black text-white"
                                         : "text-black/55 hover:text-black"
@@ -124,10 +163,10 @@ export default function AudienceSection() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setActiveAudience("parents")}
+                                onClick={() => handleAudienceChange("parents")}
                                 aria-pressed={activeAudience === "parents"}
                                 aria-controls={contentPanelId}
-                                className={`landing-cta min-w-0 rounded-xl px-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-full sm:px-8 sm:py-2 ${
+                                className={`landing-cta min-w-0 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-full sm:px-8 sm:py-2 ${
                                     activeAudience === "parents"
                                         ? "bg-black text-white"
                                         : "text-black/55 hover:text-black"
@@ -144,12 +183,18 @@ export default function AudienceSection() {
 
                     <div
                         id={contentPanelId}
-                        className="landing-card-lift mt-10 rounded-2xl border border-black/10 bg-amber-300 px-4 py-5 sm:px-6 sm:py-6 md:px-12 md:py-8"
+                        className={`landing-card-lift mt-10 rounded-2xl border border-black/10 bg-amber-300 px-4 py-5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-6 sm:py-6 md:px-12 md:py-8 ${
+                            isSwitching ? "translate-y-1 opacity-50" : "translate-y-0 opacity-100"
+                        }`}
                     >
                         <div className="landing-grid-gap grid items-center lg:grid-cols-[0.48fr_0.52fr]">
                             <ul className="space-y-4">
-                                {active.points.map((point) => (
-                                    <li key={point} className="flex items-start gap-3 border-b border-black/10 pb-3">
+                                {active.points.map((point, index) => (
+                                    <li
+                                        key={`${displayAudience}-${point}`}
+                                        className="flex items-start gap-3 border-b border-black/10 pb-3 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                                        style={{ transitionDelay: isSwitching ? "0ms" : `${index * 40}ms` }}
+                                    >
                                         <FiCheckCircle className="mt-0.5 shrink-0 text-lg text-black" />
                                         <span className="landing-scribble-hover text-sm font-medium text-black/85 md:text-base">
                                             {point}
@@ -165,7 +210,7 @@ export default function AudienceSection() {
                                         alt={active.imageAlt}
                                         width={1282}
                                         height={854}
-                                        className="absolute bottom-0 right-0 h-full w-full object-contain sm:-bottom-5 sm:scale-[1.1]"
+                                        className="absolute bottom-0 right-0 h-full w-full object-contain transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:-bottom-5 sm:scale-[1.1]"
                                     />
                                 </div>
                             </div>

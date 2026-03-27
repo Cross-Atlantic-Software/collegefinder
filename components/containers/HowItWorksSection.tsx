@@ -17,9 +17,7 @@ const steps = [
 ];
 
 const OPEN_DURATION_MS = 4200;
-const HOW_IT_WORKS_VIDEO_EMBED_URL =
-    "https://www.youtube.com/embed/M7lc1UVf-VE?rel=0&modestbranding=1";
-const HOW_IT_WORKS_VIDEO_WATCH_URL = "https://www.youtube.com/watch?v=M7lc1UVf-VE";
+const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/UniTracko Video.mp4";
 
 export default function HowItWorksSection() {
     const sectionRef = useRef<HTMLElement | null>(null);
@@ -286,27 +284,21 @@ export default function HowItWorksSection() {
                         <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
 
                         <div className="landing-card-lift relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black shadow-[0_24px_60px_-28px_rgba(2,6,23,0.5)] ring-1 ring-black/5">
-                            <iframe
-                                src={HOW_IT_WORKS_VIDEO_EMBED_URL}
-                                title="How it works video preview"
-                                className="h-full w-full"
-                                loading="lazy"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                referrerPolicy="strict-origin-when-cross-origin"
-                                allowFullScreen
-                            />
+                            <video
+                                className="h-full w-full object-cover"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                preload="auto"
+                                poster="/landing-page/how_it_works.png"
+                            >
+                                <source src={HOW_IT_WORKS_VIDEO_SRC} type="video/mp4" />
+                            </video>
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/5" />
                             <div className="pointer-events-none absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/90 backdrop-blur-sm">
                                 Quick Platform Walkthrough
                             </div>
-                            <a
-                                href={HOW_IT_WORKS_VIDEO_WATCH_URL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="landing-cta absolute right-4 top-4 rounded-full border border-white/25 bg-black/60 px-4 py-2 text-xs font-semibold tracking-wide text-white backdrop-blur-md hover:bg-black/75"
-                            >
-                                Open on YouTube
-                            </a>
                         </div>
                     </div>
                 </div>
