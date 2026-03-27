@@ -6,6 +6,7 @@ import {
     FaInstagram,
     FaXTwitter,
 } from "react-icons/fa6";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Footer() {
@@ -14,7 +15,13 @@ export default function Footer() {
             <div className="appContainer">
                 <div className="grid gap-10 lg:grid-cols-[1fr_0.65fr_1fr]">
                     <div>
-                        <p className="text-4xl font-extrabold tracking-tight text-black">UNITRACKO</p>
+                        <Image
+                            src="/svgs/logo-unitracko.svg"
+                            alt="Unitracko logo"
+                            width={220}
+                            height={48}
+                            className="h-auto w-[180px]"
+                        />
                         <p className="mt-3 max-w-xs text-sm leading-relaxed text-black/75">
                             Track admissions, payments and updates in real time. No missed steps.
                             No last-minute scrambling.

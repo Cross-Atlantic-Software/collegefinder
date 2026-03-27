@@ -6,6 +6,7 @@ import {
     FiX,
 } from "react-icons/fi";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
@@ -61,7 +62,7 @@ export default function Header() {
     const headerSurfaceClass = isSolidHeader
         ? "border-b border-black/10 bg-white/95 shadow-sm backdrop-blur-md"
         : "border-b border-transparent bg-transparent";
-    const brandTextClass = isSolidHeader ? "text-black" : "text-white";
+    const brandLogoClass = isSolidHeader ? "" : "invert";
     const navTextClass = isSolidHeader
         ? "text-black/70 hover:text-black"
         : "text-white/80 hover:text-white";
@@ -169,10 +170,17 @@ export default function Header() {
                     <div className="hidden h-[72px] items-center justify-between gap-8 lg:flex">
                         <Link
                             href="/"
-                            className={`text-3xl font-extrabold tracking-tight transition-colors duration-300 ${brandTextClass}`}
+                            className="inline-flex items-center"
                             aria-label="Unitracko"
                         >
-                            unitracko
+                            <Image
+                                src="/svgs/logo-unitracko.svg"
+                                alt="Unitracko logo"
+                                width={170}
+                                height={38}
+                                priority
+                                className={`h-auto w-[150px] transition duration-300 md:w-[170px] ${brandLogoClass}`}
+                            />
                         </Link>
 
                         <nav className="flex items-center gap-7 text-sm font-medium">
@@ -233,10 +241,17 @@ export default function Header() {
                     <div className="flex h-[64px] items-center justify-between lg:hidden">
                         <Link
                             href="/"
-                            className={`text-2xl font-extrabold tracking-tight transition-colors duration-300 ${brandTextClass}`}
+                            className="inline-flex items-center"
                             aria-label="Unitracko"
                         >
-                            unitracko
+                            <Image
+                                src="/svgs/logo-unitracko.svg"
+                                alt="Unitracko logo"
+                                width={150}
+                                height={34}
+                                priority
+                                className={`h-auto w-[140px] transition duration-300 ${brandLogoClass}`}
+                            />
                         </Link>
 
                         <div className="flex items-center gap-2">

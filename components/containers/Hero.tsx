@@ -69,12 +69,6 @@ export default function Hero() {
                         </span>
                     </h1>
 
-                    <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/90 sm:mt-6 sm:text-base md:text-xl">
-                        The exam you missed. The deadline you forgot. The college you never knew
-                        existed. It happens to thousands of students every year. It doesn&apos;t have
-                        to happen to you.
-                    </p>
-
                     <div className="mt-7 grid w-full gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-5 md:gap-8">
                         {painPoints.map(({ label, Icon }) => (
                             <div
