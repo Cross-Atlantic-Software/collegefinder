@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BiChevronLeft, BiChevronRight } from "react-icons/bi";
 import { Button } from "../shared";
 import UpcomingDeadlinesCard from "./UpcomingDeadlinesCard";
@@ -241,12 +241,59 @@ export default function MiddleContent() {
     setActiveRecommendationIndex((prev) => (prev + 1) % recommendations.length);
   };
 
-  const featuredVideo = quickStudyPicks[0];
-  const featuredVideoId = getYoutubeId(featuredVideo.videoUrl);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [prevVideoIndex, setPrevVideoIndex] = useState<number | null>(null);
+  const [preloadVideoIndex, setPreloadVideoIndex] = useState<number | null>(null);
+  const [videoProgressMs, setVideoProgressMs] = useState(0);
+
+  const activeVideoRef = useRef(activeVideoIndex);
+  useEffect(() => {
+    activeVideoRef.current = activeVideoIndex;
+  }, [activeVideoIndex]);
+
+  useEffect(() => {
+    const tickMs = 100;
+    const timer = setInterval(() => {
+      setVideoProgressMs((prev) => {
+        const next = prev + tickMs;
+        if (next === 1000) {
+          setPrevVideoIndex(null);
+        }
+        if (next === 9000) {
+          setPreloadVideoIndex((activeVideoRef.current + 1) % quickStudyPicks.length);
+        }
+        if (next >= 10000) {
+          setPrevVideoIndex(activeVideoRef.current);
+          setActiveVideoIndex((activeVideoRef.current + 1) % quickStudyPicks.length);
+          setPreloadVideoIndex(null);
+          return 0;
+        }
+        return next;
+      });
+    }, tickMs);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleVideoSelect = (idx: number) => {
+    if (idx === activeVideoIndex) return;
+    setPrevVideoIndex(activeVideoIndex);
+    setActiveVideoIndex(idx);
+    setPreloadVideoIndex(null);
+    setVideoProgressMs(0);
+  };
 
   return (
     <div>
-      <section className="grid gap-3 xl:grid-cols-[2.2fr,0.85fr]">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes slideUpVideo {
+          0% { transform: translateY(40px) scale(0.95); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .animate-video-slide {
+          animation: slideUpVideo 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}} />
+      <section className="grid gap-3 xl:grid-cols-[2.15fr,1fr]">
         <article>
           <UpcomingDeadlinesCard
             phases={upcomingDeadlinePhases}
@@ -281,13 +328,13 @@ export default function MiddleContent() {
               </div>
             </div>
 
-            <div className="mt-3 overflow-hidden rounded-lg">
+            <div className="mt-2 overflow-hidden rounded-lg">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${activeRecommendationIndex * 100}%)` }}
               >
                 {recommendations.map((item) => (
-                  <div key={item.title} className="w-full shrink-0 bg-slate-50 dark:bg-slate-900 px-3 py-3">
+                  <div key={item.title} className="w-full shrink-0 bg-slate-50 dark:bg-slate-900 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
                         {item.title}
@@ -298,11 +345,11 @@ export default function MiddleContent() {
                     </div>
                     <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">{item.category}</p>
                     <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{item.reason}</p>
-                    <div className="mt-3">
+                    <div className="mt-1.5">
                       <Button
-                        variant="themeButtonOutline"
+                        variant="themeButton"
                         size="sm"
-                        className="rounded-full px-3 py-1 text-[11px]"
+                        className="!rounded-full px-3 py-1 text-[11px]"
                       >
                         Take Action
                       </Button>
@@ -355,68 +402,102 @@ export default function MiddleContent() {
               </div>
             </div>
 
-            <article className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40">
-              <div className="overflow-hidden rounded-lg bg-black">
-                {featuredVideoId ? (
-                  <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${featuredVideoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${featuredVideoId}&start=5&end=15`}
-                    title={`${featuredVideo.title} preview`}
-                    className="aspect-video w-full"
-                    loading="lazy"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                  />
-                ) : (
-                  <img src={featuredVideo.thumbnail} alt={featuredVideo.title} className="aspect-video w-full object-cover" loading="lazy" />
-                )}
+            <article className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40 relative">
+              <div className="relative overflow-hidden rounded-lg bg-black aspect-[21/9] w-full">
+                {quickStudyPicks.map((video, idx) => {
+                  const isPreload = idx === preloadVideoIndex;
+                  const isActive = idx === activeVideoIndex;
+                  const isPrev = idx === prevVideoIndex;
+                  if (!isActive && !isPreload && !isPrev) return null;
+                  
+                  const vId = getYoutubeId(video.videoUrl);
+                  
+                  let containerClass = "absolute inset-0 w-full h-full ";
+                  if (isActive) containerClass += "z-20 animate-video-slide";
+                  else if (isPrev) containerClass += "z-10 opacity-100";
+                  else if (isPreload) containerClass += "z-0 opacity-0 pointer-events-none";
+
+                  return (
+                    <div key={vId || video.title} className={containerClass}>
+                      {vId ? (
+                        <iframe
+                          src={`https://www.youtube-nocookie.com/embed/${vId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${vId}&start=5&end=15`}
+                          title={`${video.title} preview`}
+                          className="absolute top-1/2 left-0 w-full aspect-video -translate-y-1/2 pointer-events-none"
+                          loading="lazy"
+                          allow="autoplay; encrypted-media; picture-in-picture"
+                        />
+                      ) : (
+                        <img src={video.thumbnail} alt={video.title} className="absolute top-1/2 left-0 w-full aspect-video -translate-y-1/2 object-cover pointer-events-none" loading="lazy" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div className="mt-2.5 flex items-center justify-between gap-2">
-                <p className="line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100">{featuredVideo.title}</p>
-                <Button
-                  href={featuredVideo.videoUrl}
-                  variant="themeButtonOutline"
-                  size="sm"
-                  className="rounded-full px-3 py-1 text-[11px]"
-                >
-                  Watch now
-                </Button>
+              <div className="mt-2.5 relative min-h-[36px]">
+                {quickStudyPicks.map((video, idx) => {
+                  const isActive = idx === activeVideoIndex;
+                  const isPrev = idx === prevVideoIndex;
+                  if (!isActive && !isPrev) return null;
+                  
+                  return (
+                    <div 
+                      key={"details-" + video.title} 
+                      className={`absolute inset-0 flex items-center justify-between gap-2 w-full bg-slate-50 dark:bg-slate-800 ${isActive ? "z-20 animate-video-slide" : "z-10 opacity-100"}`}
+                    >
+                      <p className="line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100">{video.title}</p>
+                      <Button
+                        href={video.videoUrl}
+                        variant="themeButtonOutline"
+                        size="sm"
+                        className="!rounded-full px-3 py-1 text-[11px] shrink-0"
+                      >
+                        Watch now
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </article>
 
-            <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
+            <div className="relative mt-3 min-h-[250px] flex-1 overflow-hidden shrink-0">
               <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-8 bg-gradient-to-b from-white via-white/75 to-transparent dark:from-slate-900 dark:via-slate-900/70" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-10 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/70" />
               <div className="min-h-0 h-full overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
-              {quickStudyPicks.map((item) => (
-                <article key={item.title} className="py-2 first:pt-0 last:pb-0">
-                  <a href={item.videoUrl} target="_blank" rel="noreferrer" className="flex items-start gap-3 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded-md bg-action-50 dark:bg-slate-700">
-                      <img
-                        src={item.thumbnail}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                      <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        {item.duration}
-                      </span>
-                    </div>
-                    <div className="min-w-0 pt-0.5">
-                      <h3 className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-100 line-clamp-2">{item.title}</h3>
-                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{item.tag} · YouTube</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {item.tags.map((tag) => (
-                          <span
-                            key={`${item.title}-${tag}`}
-                            className="rounded-full border border-slate-300/90 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:border-slate-600 dark:text-slate-300"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+              {quickStudyPicks.map((item, idx) => {
+                if (idx === activeVideoIndex) return null;
+                return (
+                  <article key={item.title} className="py-2 first:pt-0 last:pb-0">
+                    <button onClick={() => handleVideoSelect(idx)} className="w-full text-left flex items-start gap-3 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded-md bg-action-50 dark:bg-slate-700">
+                        <img
+                          src={item.thumbnail}
+                          alt={item.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          {item.duration}
+                        </span>
                       </div>
-                    </div>
-                  </a>
-                </article>
-              ))}
+                      <div className="min-w-0 pt-0.5">
+                        <h3 className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-100 line-clamp-2">{item.title}</h3>
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{item.tag} · YouTube</p>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {item.tags.map((tag) => (
+                            <span
+                              key={`${item.title}-${tag}`}
+                              className="rounded-full border border-slate-300/90 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:border-slate-600 dark:text-slate-300"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  </article>
+                );
+              })}
               </div>
             </div>
           </article>

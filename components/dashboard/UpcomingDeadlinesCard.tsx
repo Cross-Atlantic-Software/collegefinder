@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<PhaseStatus, string> = {
 };
 
 const phaseStatusClass: Record<PhaseStatus, string> = {
-  done: "bg-[#D3E5F9] text-black/60 dark:bg-[#D3E5F9]/20 dark:text-white/60",
+  done: "bg-[#D3E5F9] text-black dark:bg-[#1e2a3b] dark:text-slate-200 border border-blue-200/50 dark:border-blue-800",
   active: "bg-[#FAD53C] text-black shadow-[0_2px_10px_rgba(250,213,60,0.4)] relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[custom-shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/50 before:to-transparent",
   upcoming: "bg-white/40 border-[2px] border-dashed border-[#FAD53C]/90 text-black/60 dark:bg-slate-900/40 dark:border-[#FAD53C]/80 dark:text-white/60",
   overdue: "bg-[#0a0802] text-[#FAD53C]",
@@ -416,30 +416,30 @@ export default function UpcomingDeadlinesCard({
                                     <div 
                                       className={`pointer-events-none invisible absolute left-1/2 -translate-x-1/2 z-[9999] w-max min-w-[220px] opacity-0 transition-all duration-200 group-hover/item:visible group-hover/item:pointer-events-auto group-hover/item:opacity-100 ${
                                         tooltipBelow 
-                                          ? "top-[calc(100%+8px)] group-hover/item:translate-y-1" 
-                                          : "bottom-[calc(100%+8px)] group-hover/item:-translate-y-1"
+                                          ? "top-full pt-2 group-hover/item:translate-y-1" 
+                                          : "bottom-full pb-2 group-hover/item:-translate-y-1"
                                       }`}
                                     >
-                                      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                                      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 relative">
+                                        <div 
+                                          className={`absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 rounded-sm bg-white dark:bg-slate-900 ${
+                                            tooltipBelow 
+                                              ? "-top-1.5 border-t border-l border-slate-200/80 shadow-[-2px_-2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none" 
+                                              : "-bottom-1.5 border-b border-r border-slate-200/80 shadow-[2px_2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none"
+                                          }`} 
+                                        />
                                         <h4 className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{d.label}</h4>
                                         <div className="mt-2 flex items-center justify-between gap-4 text-[11px] text-slate-500 dark:text-slate-400">
                                           <span>{formatDate(d.startDate)} – {formatDate(d.endDate)}</span>
                                           <span className="font-semibold text-slate-700 dark:text-slate-300">{d.spanDays} days</span>
                                         </div>
-                                          <button
-                                            type="button"
-                                            className="mt-3 inline-flex rounded-full border border-black bg-transparent px-3 py-1.5 text-[11px] font-semibold text-black transition-colors hover:bg-black hover:text-white dark:border-slate-300 dark:text-slate-100 dark:hover:bg-slate-100 dark:hover:text-slate-900"
-                                          >
-                                            View details
-                                          </button>
+                                        <button
+                                          type="button"
+                                          className="mt-3 w-full justify-center inline-flex rounded-full border border-brand-ink bg-transparent px-3 py-1.5 text-[11px] font-semibold text-brand-ink transition-colors hover:bg-brand-ink hover:text-white dark:border-action-500 dark:text-action-500 dark:hover:bg-action-500 dark:hover:text-white"
+                                        >
+                                          View details
+                                        </button>
                                       </div>
-                                      <div 
-                                        className={`absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 rounded-sm bg-white dark:bg-slate-900 ${
-                                          tooltipBelow 
-                                            ? "-top-1.5 border-t border-l border-slate-200/80 shadow-[-2px_-2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none" 
-                                            : "-bottom-1.5 border-b border-r border-slate-200/80 shadow-[2px_2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none"
-                                        }`} 
-                                      />
                                     </div>
                                     <button
                                       type="button"
@@ -450,7 +450,7 @@ export default function UpcomingDeadlinesCard({
                                       }}
                                       className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${phaseStatusClass[phase.status]}`}
                                     >
-                                      <span className="truncate w-full px-1 text-center">
+                                      <span className="truncate w-full px-2 text-left">
                                         {d.label}
                                       </span>
                                     </button>
@@ -463,11 +463,18 @@ export default function UpcomingDeadlinesCard({
                                 <div 
                                   className={`pointer-events-none invisible absolute left-1/2 -translate-x-1/2 z-[9999] w-max min-w-[220px] opacity-0 transition-all duration-200 group-hover/item:visible group-hover/item:pointer-events-auto group-hover/item:opacity-100 ${
                                     tooltipBelow 
-                                      ? "top-[calc(100%+8px)] group-hover/item:translate-y-1" 
-                                      : "bottom-[calc(100%+8px)] group-hover/item:-translate-y-1"
+                                      ? "top-full pt-2 group-hover/item:translate-y-1" 
+                                      : "bottom-full pb-2 group-hover/item:-translate-y-1"
                                   }`}
                                 >
-                                  <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                                  <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 relative">
+                                    <div 
+                                      className={`absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 rounded-sm bg-white dark:bg-slate-900 ${
+                                        tooltipBelow 
+                                          ? "-top-1.5 border-t border-l border-slate-200/80 shadow-[-2px_-2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none" 
+                                          : "-bottom-1.5 border-b border-r border-slate-200/80 shadow-[2px_2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none"
+                                      }`} 
+                                    />
                                     <h4 className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{phase.label}</h4>
                                     <div className="mt-2 flex items-center justify-between gap-4 text-[11px] text-slate-500 dark:text-slate-400">
                                       <span>{formatDate(phase.startDate)} – {formatDate(phase.endDate)}</span>
@@ -484,18 +491,11 @@ export default function UpcomingDeadlinesCard({
                                     </div>
                                     <button
                                       type="button"
-                                      className="mt-3 inline-flex rounded-full border border-black bg-transparent px-3 py-1.5 text-[11px] font-semibold text-black transition-colors hover:bg-black hover:text-white dark:border-slate-300 dark:text-slate-100 dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                                      className="mt-3 w-full justify-center inline-flex rounded-full border border-brand-ink bg-transparent px-3 py-1.5 text-[11px] font-semibold text-brand-ink transition-colors hover:bg-brand-ink hover:text-white dark:border-action-500 dark:text-action-500 dark:hover:bg-action-500 dark:hover:text-white"
                                     >
                                       View details
                                     </button>
                                   </div>
-                                  <div 
-                                    className={`absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 rounded-sm bg-white dark:bg-slate-900 ${
-                                      tooltipBelow 
-                                        ? "-top-1.5 border-t border-l border-slate-200/80 shadow-[-2px_-2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none" 
-                                        : "-bottom-1.5 border-b border-r border-slate-200/80 shadow-[2px_2px_2px_-1px_rgba(0,0,0,0.1)] dark:border-slate-700/80 dark:shadow-none"
-                                    }`} 
-                                  />
                                 </div>
                                 <button
                                   type="button"
@@ -506,7 +506,7 @@ export default function UpcomingDeadlinesCard({
                                   }}
                                   className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${phaseStatusClass[phase.status]}`}
                                 >
-                                  <span className="truncate w-full px-1 text-center">
+                                  <span className="truncate w-full px-2 text-left">
                                     {phase.label}
                                   </span>
                                 </button>

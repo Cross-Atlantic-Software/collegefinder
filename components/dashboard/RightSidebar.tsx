@@ -61,7 +61,7 @@ export default function RightSidebar() {
           ))}
         </div>
 
-  <Button variant="primary" size="md" className="w-full mt-5 justify-center gap-2" href="/exams/eligible">See Full List <FaArrowRightLong className="h-3 w-3" /></Button>
+  <Button variant="themeButtonOutline" size="md" className="w-full mt-5 justify-center gap-2 rounded-full" href="/exams/eligible">See Full List <FaArrowRightLong className="h-3 w-3" /></Button>
       </section>
     </>
   );
