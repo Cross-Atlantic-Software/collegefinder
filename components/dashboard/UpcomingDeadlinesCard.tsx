@@ -48,6 +48,8 @@ const milestoneStatusClass: Record<MilestoneStatus, string> = {
 };
 
 const DAY_MS = 1000 * 60 * 60 * 24;
+const TIMELINE_PAST_PADDING_MONTHS = 2;
+const TIMELINE_FUTURE_PADDING_MONTHS = 6;
 
 const parseDate = (value: string) => new Date(`${value}T00:00:00`);
 
@@ -60,6 +62,9 @@ const formatDate = (date: Date) =>
   date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 
 const clampPct = (value: number) => Math.min(100, Math.max(0, value));
+
+const deadlineTooltipClass =
+  "rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 relative";
 
 type UpcomingDeadlinesCardProps = {
   phases: StudyPhase[];
@@ -122,14 +127,20 @@ export default function UpcomingDeadlinesCard({
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
 
-    // Full historical array coverage safely generated
-    const timelineStart = new Date(rawStartPoint.getFullYear(), rawStartPoint.getMonth() - 1, 1);
+    // Extend view with extra month padding so the planner reads more like a long-range timeline.
+    const timelineStart = new Date(
+      rawStartPoint.getFullYear(),
+      rawStartPoint.getMonth() - TIMELINE_PAST_PADDING_MONTHS,
+      1,
+    );
     
     // End bounds encompass all data points generously safely expanding beyond max range realistically ensuring padding buffers properly
-    const timelineEndMax = new Date(Math.max(
-      rawEndPoint.getTime(),
-      new Date(todayDate).setMonth(todayDate.getMonth() + 2)
-    ));
+    const timelineEndMax = new Date(
+      Math.max(
+        rawEndPoint.getTime(),
+        new Date(todayDate).setMonth(todayDate.getMonth() + TIMELINE_FUTURE_PADDING_MONTHS),
+      ),
+    );
     const timelineEnd = new Date(timelineEndMax.getFullYear(), timelineEndMax.getMonth() + 1, 0);
 
     const totalTimelineDays = Math.max(1, durationDays(timelineStart, timelineEnd));
@@ -298,6 +309,13 @@ export default function UpcomingDeadlinesCard({
     return clampPct((offset / phaseModels.totalTimelineDays) * 100);
   }, [phaseModels.timelineStart, phaseModels.totalTimelineDays]);
 
+  const timelineMinWidthPx = useMemo(() => {
+    // Keep more horizontal pixels per day so deadline card lengths are easier to compare.
+    const perDayScale = phaseModels.totalTimelineDays * 5;
+    const perMonthScale = phaseModels.monthTicks.length * 96;
+    return Math.max(760, perDayScale, perMonthScale);
+  }, [phaseModels.monthTicks.length, phaseModels.totalTimelineDays]);
+
   const toggleFilter = (status: PhaseStatus) => {
     setActiveFilters((prev) => {
       const next = new Set(prev);
@@ -378,7 +396,7 @@ export default function UpcomingDeadlinesCard({
                 ref={scrollContainerRef}
                 className="overflow-x-auto pb-2 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black [&::-webkit-scrollbar-thumb]:border-[3px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:border-slate-900"
               >
-                <div style={{ minWidth: `${Math.max(760, phaseModels.monthTicks.length * 130)}px` }}>
+                <div style={{ minWidth: `${timelineMinWidthPx}px` }}>
                   <div className="relative mb-2 h-8">
                     {phaseModels.monthTicks.map((tick, idx) => (
                       <span
@@ -398,20 +416,46 @@ export default function UpcomingDeadlinesCard({
 
                     <div className="relative space-y-2">
                       {filteredPhases.map((phase, index) => {
-                        const displayWidth = Math.max(phase.widthPct, 0.8);
+                        const displayWidth = Math.max(phase.widthPct, 1.2);
                         const tooltipBelow = index <= 1;
 
                         return (
                           <div key={phase.id} className="group relative h-9 overflow-visible rounded-lg border border-black/15 bg-white/85 transition-colors duration-300 ease-out dark:border-slate-700/60 dark:bg-slate-900/45">
                             {phase.computedDeadlines && phase.computedDeadlines.length > 0 ? (
                               phase.computedDeadlines?.map((d, dIdx) => {
-                                const dDisplayWidth = Math.max(d.widthPct, 0.8);
+                                const dDisplayWidth = Math.max(d.widthPct, 1.1);
+                                const overlapsAnother = phase.computedDeadlines!.some(
+                                  (other, otherIdx) =>
+                                    otherIdx !== dIdx &&
+                                    d.leftPct < other.leftPct + other.widthPct &&
+                                    other.leftPct < d.leftPct + d.widthPct,
+                                );
+                                const overlappingBeforeCount = phase.computedDeadlines!.filter(
+                                  (other, otherIdx) =>
+                                    otherIdx < dIdx &&
+                                    d.leftPct < other.leftPct + other.widthPct &&
+                                    other.leftPct < d.leftPct + d.widthPct,
+                                ).length;
+                                const overlapLane = overlapsAnother
+                                  ? overlappingBeforeCount % 3
+                                  : 1;
+                                const overlapClass = overlapsAnother
+                                  ? "shadow-[0_2px_8px_rgba(15,23,42,0.16)] ring-1 ring-black/10 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] dark:ring-white/10"
+                                  : "";
+                                const overlapOffsetPx = overlapsAnother
+                                  ? (overlapLane - 1) * 5
+                                  : 0;
 
                                 return (
                                   <div 
                                     key={dIdx} 
                                     className="group/item absolute top-1/2 h-6 -translate-y-1/2"
-                                    style={{ left: `${d.leftPct}%`, width: `${animateIn ? dDisplayWidth : 0}%` }}
+                                    style={{
+                                      left: `${d.leftPct}%`,
+                                      width: `${animateIn ? dDisplayWidth : 0}%`,
+                                      marginTop: `${overlapOffsetPx}px`,
+                                      zIndex: overlapsAnother ? 220 + overlapLane * 10 + dIdx : 210,
+                                    }}
                                   >
                                     <div 
                                       className={`pointer-events-none invisible absolute left-1/2 -translate-x-1/2 z-[9999] w-max min-w-[220px] opacity-0 transition-all duration-200 group-hover/item:visible group-hover/item:pointer-events-auto group-hover/item:opacity-100 ${
@@ -420,7 +464,7 @@ export default function UpcomingDeadlinesCard({
                                           : "bottom-full pb-2 group-hover/item:-translate-y-1"
                                       }`}
                                     >
-                                      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 relative">
+                                      <div className={deadlineTooltipClass}>
                                         <div 
                                           className={`absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 rounded-sm bg-white dark:bg-slate-900 ${
                                             tooltipBelow 
@@ -448,10 +492,10 @@ export default function UpcomingDeadlinesCard({
                                         setSelectedPhaseId(phase.id);
                                         setSelectedMilestoneId(null);
                                       }}
-                                      className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${phaseStatusClass[phase.status]}`}
+                                      className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${overlapClass} ${phaseStatusClass[phase.status]}`}
                                     >
                                       <span className="truncate w-full px-2 text-left">
-                                        {d.label}
+                                        {d.label} ({formatDate(d.startDate)} - {formatDate(d.endDate)})
                                       </span>
                                     </button>
                                   </div>
