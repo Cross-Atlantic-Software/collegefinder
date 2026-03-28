@@ -35,9 +35,9 @@ export default function ProfileTabs() {
     };
 
     return (
-        <section className="">
-            {/* Tabs header */}
-            <div className="flex gap-0 overflow-x-auto bg-pink/5 border-b border-pink/10">
+        <div>
+            {/* Tab Bar — pill style, no surrounding card */}
+            <div className="mb-6 flex gap-1.5 overflow-x-auto scrollbar-hide">
                 {TABS.map((tab) => {
                     const isActive = tab.id === activeTab;
                     return (
@@ -46,10 +46,10 @@ export default function ProfileTabs() {
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
                             className={[
-                                "flex min-w-max items-center px-5 py-3 text-sm font-medium transition-colors :text-sm gap-2 duration-500  dark:text-slate-300",
+                                "flex min-w-max items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-200",
                                 isActive
-                                    ? "bg-pink text-white"
-                                    : "text-slate-900 hover:bg-pink/5",
+                                    ? "bg-black text-[#FAD53C] shadow-sm"
+                                    : "bg-[#eaf4ff] text-black/60 hover:bg-[#dceeff] hover:text-black",
                             ].join(" ")}
                         >
                             <span className="text-base">{tab.icon}</span>
@@ -59,8 +59,10 @@ export default function ProfileTabs() {
                 })}
             </div>
 
-            {/* Body */}
-            {renderContent()}
-        </section>
+            {/* Content — no wrapping card */}
+            <div>
+                {renderContent()}
+            </div>
+        </div>
     );
 }

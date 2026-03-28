@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { ApplicationsPage, ExamPreparation, MiddleContent, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
@@ -27,8 +28,16 @@ export default function DashboardPage() {
   const toggleSidebar = () => setSidebarOpen((v) => !v);
   const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
 
+  const dashboardProfile = {
+    fullName: "Dinesh Sharma",
+    airRank: "#2,340",
+    stream: "Engineering",
+    targetIntake: "2026",
+    profileStrength: 85,
+  };
+
   return (
-    <div className="h-screen flex bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+    <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <Suspense fallback={null}>
         <StrengthPaymentReturnHandler
           onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
@@ -45,57 +54,73 @@ export default function DashboardPage() {
       />
 
       {/* MAIN AREA */}
-      <div className="flex h-screen flex-1 flex-col">
+      <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
         <TopBar
           onToggleSidebar={toggleSidebar}
           onToggleCollapse={toggleSidebarCollapse}
           isSidebarCollapsed={sidebarCollapsed}
         />
 
-        <div className="flex flex-1 overflow-hidden">
-          <div
-            className="
-              flex flex-1 flex-col gap-4
-              px-4 py-4 md:px-6 md:py-4
-              lg:flex-row lg:items-start
-              overflow-y-auto
-            "
-          >
-            {/* MIDDLE BAR */}
-            <main className="flex-1 min-w-0">
-              {activeSection === "dashboard" && <MiddleContent />}
+        <div className="flex flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
+          {activeSection === "dashboard" ? (
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <DashboardHeader
+                fullName={dashboardProfile.fullName}
+                airRank={dashboardProfile.airRank}
+                stream={dashboardProfile.stream}
+                targetIntake={dashboardProfile.targetIntake}
+                profileStrength={dashboardProfile.profileStrength}
+              />
 
-              {activeSection === "profile" && (
-                <div className="w-full">
-                  <ProfileTabs />
-                </div>
-              )}
+              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
+                <main className="min-w-0">
+                  <MiddleContent />
+                </main>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="
+                flex flex-1 flex-col gap-4
+                px-4 py-4 md:px-6 md:py-4
+                lg:flex-row lg:items-start
+                overflow-y-auto
+              "
+            >
+              {/* MIDDLE BAR */}
+              <main className="flex-1 min-w-0">
+                {activeSection === "profile" && (
+                  <div className="w-full">
+                    <ProfileTabs />
+                  </div>
+                )}
 
-              {activeSection === "exam-shortlist" && <ShortlistExams />}
+                {activeSection === "exam-shortlist" && <ShortlistExams />}
 
-              {activeSection === "college-shortlist" && <ShortlistColleges />}
+                {activeSection === "college-shortlist" && <ShortlistColleges />}
 
-              {activeSection === "applications" && (
-                <ApplicationsPage />
-              )}
+                {activeSection === "applications" && (
+                  <ApplicationsPage />
+                )}
 
-              {activeSection === "exam-prep" && (
-                <ExamPreparation />
-              )}
+                {activeSection === "exam-prep" && (
+                  <ExamPreparation />
+                )}
 
-              {activeSection === "test-module" && (
-                <TestModule />
-              )}
+                {activeSection === "test-module" && (
+                  <TestModule />
+                )}
 
-              {activeSection === "know-your-strengths" && (
-                <KnowYourStrengths onSectionChange={(section) => setActiveSection(section as SectionId)} />
-              )}
+                {activeSection === "know-your-strengths" && (
+                  <KnowYourStrengths onSectionChange={(section) => setActiveSection(section as SectionId)} />
+                )}
 
-              {activeSection === "admission-help" && (
-                <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
-              )}
-            </main>
-          </div>
+                {activeSection === "admission-help" && (
+                  <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
+                )}
+              </main>
+            </div>
+          )}
         </div>
       </div>
     </div>

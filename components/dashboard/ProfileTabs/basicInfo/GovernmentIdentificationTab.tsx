@@ -65,11 +65,9 @@ export default function GovernmentIdentificationTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
-          Government Identification
-        </h2>
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5">
+        <h2 className="text-lg font-bold text-black">Government Identification</h2>
 
         {error && (
           <Notification
@@ -91,7 +89,7 @@ export default function GovernmentIdentificationTab({
 
         {/* Aadhar Number */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Aadhar Number
           </label>
           <input
@@ -112,21 +110,21 @@ export default function GovernmentIdentificationTab({
 
         {/* APAAR ID */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-            APAAR ID <span className="text-pink">*</span>
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+            APAAR ID <span className="ml-1 text-xs bg-[#FAD53C] text-black rounded-full px-1.5 font-bold">*</span>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowApaarInfo(!showApaarInfo)}
-                className="text-pink hover:text-pink/80 transition"
+                className="text-black/40 hover:text-black transition"
                 onMouseEnter={() => setShowApaarInfo(true)}
                 onMouseLeave={() => setShowApaarInfo(false)}
               >
                 <CiCircleInfo className="h-4 w-4" />
               </button>
               {showApaarInfo && (
-                <div className="absolute left-0 top-6 z-10 w-64 rounded-md bg-slate-800 border border-slate-700 p-3 text-xs text-slate-200 shadow-lg">
-                  <p className="font-semibold text-pink mb-1">APAAR ID</p>
+                <div className="absolute left-0 top-6 z-10 w-64 rounded-xl bg-white border border-[#dceeff] p-3 text-xs text-black/70 shadow-lg">
+                  <p className="font-semibold text-black mb-1">APAAR ID</p>
                   <p>
                     APAAR ID (Automated Permanent Academic Account Registry) is a unique 12-digit student identifier used in India&apos;s education system.
                   </p>
@@ -158,7 +156,7 @@ export default function GovernmentIdentificationTab({
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Government Identification"}

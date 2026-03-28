@@ -54,9 +54,9 @@ export default function OtherPersonalInformationTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5 space-y-5">
+        <h2 className="text-lg font-bold text-black">
           Other Personal Information
         </h2>
 
@@ -80,7 +80,7 @@ export default function OtherPersonalInformationTab({
 
         {/* Religion */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Religion
           </label>
           <Select
@@ -107,7 +107,7 @@ export default function OtherPersonalInformationTab({
 
         {/* Mother Tongue */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Mother Tongue
           </label>
           <input
@@ -124,7 +124,7 @@ export default function OtherPersonalInformationTab({
 
         {/* Annual Family Income */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Annual Family Income
           </label>
           <input
@@ -143,7 +143,7 @@ export default function OtherPersonalInformationTab({
 
         {/* Occupation of Father */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Occupation of Father
           </label>
           <input
@@ -160,7 +160,7 @@ export default function OtherPersonalInformationTab({
 
         {/* Occupation of Mother */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Occupation of Mother
           </label>
           <input
@@ -182,7 +182,7 @@ export default function OtherPersonalInformationTab({
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Other Personal Information"}

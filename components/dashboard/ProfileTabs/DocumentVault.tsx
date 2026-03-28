@@ -197,16 +197,16 @@ export default function DocumentVault() {
 
     return (
       <div key={field.key} className="space-y-2">
-        <label className="block text-sm font-medium text-slate-200">
+        <label className="block text-sm font-medium text-black/70">
           {field.label}
-          {field.required && <span className="text-pink ml-1">*</span>}
+          {field.required && <span className="ml-1 text-xs bg-[#FAD53C] text-black rounded-full px-1.5 font-bold">*</span>}
         </label>
         
         {valueString ? (
-          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+          <div className="flex items-center gap-3 p-3 bg-[#eaf4ff] rounded-xl border border-[#dceeff]">
             <div className="flex items-center gap-2 flex-1">
-              <FiFile className="h-5 w-5 text-slate-400" />
-              <span className="text-sm text-slate-300">
+              <FiFile className="h-5 w-5 text-black/40" />
+              <span className="text-sm text-black/60">
                 {isImage(valueString) ? 'Image' : 'PDF'} Document
               </span>
             </div>
@@ -246,10 +246,10 @@ export default function DocumentVault() {
         ) : (
           <label
             htmlFor={fileInputId}
-            className="flex items-center justify-center gap-2 p-4 bg-white/5 rounded-lg border-2 border-dashed border-white/20 hover:border-pink/50 transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 p-4 bg-[#eaf4ff] rounded-xl border-2 border-dashed border-[#dceeff] hover:border-[#FAD53C] hover:bg-[#FAD53C]/10 transition-colors cursor-pointer"
           >
-            <FiUpload className="h-5 w-5 text-slate-400" />
-            <span className="text-sm text-slate-300">
+            <FiUpload className="h-5 w-5 text-black/40" />
+            <span className="text-sm text-black/50">
               {isUploading ? 'Uploading...' : 'Browse & Upload'}
             </span>
             <input
@@ -276,20 +276,18 @@ export default function DocumentVault() {
 
   if (loading) {
     return (
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <div className="text-center text-slate-400">Loading documents...</div>
-      </div>
+      <div className="py-8 text-center text-sm text-black/40">Loading documents...</div>
     );
   }
 
   return (
     <>
-      <div className="space-y-6">
-        {Object.entries(groupedFields).map(([section, fields]) => (
-          <div key={section} className="space-y-5 rounded-md bg-white/5 p-6">
-            <div>
-              <h2 className="text-base font-semibold text-pink sm:text-lg">{section}</h2>
-              <p className="text-sm text-slate-300 mt-1">
+      <div className="space-y-8">
+        {Object.entries(groupedFields).map(([section, fields], idx) => (
+          <div key={section} className={idx > 0 ? "border-t border-black/8 pt-6" : ""}>
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-black">{section}</h3>
+              <p className="text-xs text-black/50 mt-0.5">
                 {section === 'Mandatory Uploads' && 'These documents are required for all users.'}
                 {section === 'Identity & Academic Proof' && 'Upload your academic and identity documents.'}
                 {section === 'Category and Reservation Documents (if applicable)' && 'Upload category and reservation documents if applicable to you.'}
@@ -297,7 +295,7 @@ export default function DocumentVault() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {fields.map(renderDocumentField)}
             </div>
           </div>
@@ -307,17 +305,17 @@ export default function DocumentVault() {
       {/* Document Viewer Modal */}
       {viewingDocument && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">{viewingDocument.label}</h2>
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-black/10">
+            <div className="bg-black text-[#FAD53C] px-5 py-3 flex items-center justify-between">
+              <h2 className="text-base font-bold">{viewingDocument.label}</h2>
               <button
                 onClick={() => setViewingDocument(null)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-[#FAD53C] hover:opacity-70 transition-opacity"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-800">
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#f5f9ff]">
               {isImage(viewingDocument.url) ? (
                 <img
                   src={viewingDocument.url}

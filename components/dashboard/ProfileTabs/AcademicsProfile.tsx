@@ -25,7 +25,7 @@ const boardOptions: SelectOption[] = [
     { value: "Other", label: "Other" }
 ];
 
-const inputBase = "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
+const inputBase = "w-full rounded-xl border border-black/15 bg-[#f8fbff] px-4 py-3 text-sm text-black placeholder:text-black/40 transition focus:outline-none focus:border-[#FAD53C] focus:bg-white";
 
 export default function AcademicsProfile() {
     const { showSuccess, showError } = useToast();
@@ -359,39 +359,37 @@ export default function AcademicsProfile() {
 
     if (loading || loadingStreams) {
         return (
-            <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
-                <div className="flex items-center justify-center py-12">
-                    <div className="text-slate-300">Loading academic data...</div>
-                </div>
+            <div className="py-16 flex items-center justify-center">
+                <div className="text-sm text-black/40">Loading academic data...</div>
             </div>
         );
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
-            <h2 className="text-base font-semibold text-pink sm:text-lg">Academic Profile</h2>
+        <form onSubmit={handleSubmit} className="space-y-8 text-sm text-black">
+            <h2 className="text-lg font-bold text-black">Academic Profile</h2>
 
-            <div className="space-y-6 rounded-md bg-white/5 p-6">
+            <div className="space-y-8">
                 {error && (
-                    <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
+                    <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="rounded-md bg-emerald-500/20 border border-emerald-500/50 px-4 py-3 text-sm text-emerald-200">
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
                         Academics updated successfully!
                     </div>
                 )}
 
                 {/* Matric (10th) Section */}
-                <section className="rounded-md bg-white/5 p-5 border border-white/10">
-                    <h3 className="mb-4 text-lg font-semibold text-slate-50">10th Standard (Matric) Details</h3>
+                <section className="border-t border-black/8 pt-6">
+                    <h3 className="mb-4 text-lg font-semibold text-black">10th Standard (Matric) Details</h3>
                     
                     <div className="grid gap-4 sm:grid-cols-2">
                         {/* Matric Board */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Board</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">Board</label>
                             <Select
                                 options={boardOptions}
                                 value={matricData.matric_board}
@@ -405,7 +403,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric School Name */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">School Name</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">School Name</label>
                             <input
                                 type="text"
                                 value={matricData.matric_school_name}
@@ -420,7 +418,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric Passing Year */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Passing Year</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">Passing Year</label>
                             <input
                                 type="number"
                                 min="1950"
@@ -437,7 +435,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric Roll Number */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Roll Number</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">Roll Number</label>
                             <input
                                 type="text"
                                 value={matricData.matric_roll_number}
@@ -452,7 +450,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric State */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">State</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">State</label>
                             <Select
                                 options={getAllStates().map((state) => ({
                                     value: state,
@@ -475,7 +473,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric City */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">City</label>
                             <Select
                                 options={
                                     matricData.matric_state
@@ -497,7 +495,7 @@ export default function AcademicsProfile() {
 
                         {/* Matric Marks Type */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Marks Type</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">Marks Type</label>
                             <Select
                                 options={[
                                     { value: "Percentage", label: "Percentage" },
@@ -525,7 +523,7 @@ export default function AcademicsProfile() {
                             <>
                                 {/* Matric Total Marks */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Total Marks</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -542,7 +540,7 @@ export default function AcademicsProfile() {
 
                                 {/* Matric Obtained Marks */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Obtained Marks</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -559,10 +557,10 @@ export default function AcademicsProfile() {
 
                                 {/* Percentage Display */}
                                 {matricData.matric_percentage && (
-                                    <div className="rounded-md bg-white/5 px-4 py-3 border border-white/10">
-                                        <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
-                                        <p className="text-4xl font-semibold text-emerald-400">{matricData.matric_percentage}%</p>
-                                        <div className="mt-2 h-2 rounded-full bg-white/10">
+                                    <div className="col-span-full rounded-xl bg-[#eaf4ff] px-5 py-4 border border-[#dceeff]">
+                                        <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-black/40">Percentage</label>
+                                        <p className="text-4xl font-bold text-black">{matricData.matric_percentage}<span className="text-2xl">%</span></p>
+                                        <div className="mt-3 h-2 rounded-full bg-white/60 overflow-hidden">
                                             <div 
                                                 className={`h-2 rounded-full ${getBarColor(parseFloat(matricData.matric_percentage))}`} 
                                                 style={{ width: `${Math.min(100, parseFloat(matricData.matric_percentage))}%` }} 
@@ -576,7 +574,7 @@ export default function AcademicsProfile() {
                         {/* Show CGPA only for CGPA type */}
                         {matricMarksType === "CGPA" && (
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">CGPA</label>
+                                <label className="mb-1 block text-sm font-medium text-black/70">CGPA</label>
                                 <input
                                     type="number"
                                     min="0"
@@ -594,7 +592,7 @@ export default function AcademicsProfile() {
                     {/* Matric Result Status */}
                     <div className="mt-4">
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-slate-300">Result Status</label>
+                            <label className="mb-1 block text-sm font-medium text-black/70">Result Status</label>
                             <Select
                                 options={[
                                     { value: "passed", label: "Passed" },
@@ -611,20 +609,20 @@ export default function AcademicsProfile() {
 
                     {/* Matric Subject Breakdown */}
                     <div className="mt-6">
-                        <h4 className="mb-3 text-base font-semibold text-slate-50">Subject Breakdown</h4>
+                        <h4 className="mb-3 text-sm font-semibold text-black/70 uppercase tracking-wider">Subject Breakdown</h4>
                         
                         {/* Display existing subjects */}
                         {matricSubjects.length > 0 && (
                             <div className="mb-4 space-y-3">
                                 {matricSubjects.map((subj, index) => (
-                                    <div key={index} className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
+                                    <div key={index} className="rounded-xl bg-[#eaf4ff] border border-[#dceeff] px-4 py-3">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex-1">
-                                                <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
-                                                <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
-                                                <div className="mt-2 h-2 rounded-full bg-white/10">
+                                                <p className="mb-1 block text-sm font-medium text-black/70">{subj.name}</p>
+                                                <p className="mt-1 text-2xl font-bold text-black">{subj.percent}%</p>
+                                                <div className="mt-2 h-1.5 rounded-full bg-white/60 overflow-hidden">
                                                     <div 
-                                                        className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
+                                                        className={`h-1.5 rounded-full ${getBarColor(subj.percent)}`} 
                                                         style={{ width: `${subj.percent}%` }} 
                                                     />
                                                 </div>
@@ -665,7 +663,7 @@ export default function AcademicsProfile() {
                             <button 
                                 type="button" 
                                 onClick={() => setShowMatricSubjectInput(true)}
-                                className="flex items-center gap-2 text-xs font-medium text-pink hover:underline"
+                                className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black hover:underline"
                             >
                                 {matricSubjects && matricSubjects.length > 0 ? (
                                     <>
@@ -693,15 +691,15 @@ export default function AcademicsProfile() {
                 </section>
 
                 {/* Post-Matric (12th) Section */}
-                <section className="rounded-md bg-white/5 p-5 border border-white/10">
+                <section className="border-t border-black/8 pt-6">
                     <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-slate-50">12th Standard (Post-Matric) Details</h3>
-                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                        <h3 className="text-base font-bold text-black">12th Standard (Post-Matric) Details</h3>
+                        <label className="flex items-center gap-2 text-sm text-black/60">
                             <input
                                 type="checkbox"
                                 checked={isPursuing12th}
                                 onChange={(e) => setIsPursuing12th(e.target.checked)}
-                                className="rounded border-white/10 bg-white/5 text-pink focus:ring-pink"
+                                className="rounded border-black/20 bg-[#eaf4ff] text-black accent-[#FAD53C] focus:ring-[#FAD53C]"
                             />
                             <span>Currently pursuing 12th</span>
                         </label>
@@ -712,7 +710,7 @@ export default function AcademicsProfile() {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {/* Post-Matric Board */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Board</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Board</label>
                                     <Select
                                         options={boardOptions}
                                         value={postmatricData.postmatric_board}
@@ -726,7 +724,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric School Name */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">School Name</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">School Name</label>
                                     <input
                                         type="text"
                                         value={postmatricData.postmatric_school_name}
@@ -741,7 +739,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric Passing Year */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Passing Year</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Passing Year</label>
                                     <input
                                         type="number"
                                         min="1950"
@@ -758,7 +756,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric Roll Number */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Roll Number</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Roll Number</label>
                                     <input
                                         type="text"
                                         value={postmatricData.postmatric_roll_number}
@@ -773,7 +771,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric State */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">State</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">State</label>
                                     <Select
                                         options={getAllStates().map((state) => ({
                                             value: state,
@@ -796,7 +794,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric City */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">City</label>
                                     <Select
                                         options={
                                             postmatricData.postmatric_state
@@ -818,7 +816,7 @@ export default function AcademicsProfile() {
 
                                 {/* Post-Matric Marks Type */}
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Marks Type</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Marks Type</label>
                                     <Select
                                         options={[
                                             { value: "Percentage", label: "Percentage" },
@@ -846,7 +844,7 @@ export default function AcademicsProfile() {
                                     <>
                                         {/* Post-Matric Total Marks */}
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-slate-300">Total Marks</label>
+                                            <label className="mb-1 block text-sm font-medium text-black/70">Total Marks</label>
                                             <input
                                                 type="number"
                                                 min="0"
@@ -863,7 +861,7 @@ export default function AcademicsProfile() {
 
                                         {/* Post-Matric Obtained Marks */}
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-slate-300">Obtained Marks</label>
+                                            <label className="mb-1 block text-sm font-medium text-black/70">Obtained Marks</label>
                                             <input
                                                 type="number"
                                                 min="0"
@@ -880,10 +878,10 @@ export default function AcademicsProfile() {
 
                                         {/* Percentage Display */}
                                         {postmatricData.postmatric_percentage && (
-                                            <div className="rounded-md bg-white/5 px-4 py-3 border border-white/10">
-                                                <label className="mb-1 block text-sm font-medium text-slate-300">Percentage</label>
-                                                <p className="text-4xl font-semibold text-emerald-400">{postmatricData.postmatric_percentage}%</p>
-                                                <div className="mt-2 h-2 rounded-full bg-white/10">
+                                            <div className="col-span-full rounded-xl bg-[#eaf4ff] px-5 py-4 border border-[#dceeff]">
+                                                <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-black/40">Percentage</label>
+                                                <p className="text-4xl font-bold text-black">{postmatricData.postmatric_percentage}<span className="text-2xl">%</span></p>
+                                                <div className="mt-3 h-2 rounded-full bg-white/60 overflow-hidden">
                                                     <div 
                                                         className={`h-2 rounded-full ${getBarColor(parseFloat(postmatricData.postmatric_percentage))}`} 
                                                         style={{ width: `${Math.min(100, parseFloat(postmatricData.postmatric_percentage))}%` }} 
@@ -897,7 +895,7 @@ export default function AcademicsProfile() {
                                 {/* Show CGPA only for CGPA type */}
                                 {postmatricMarksType === "CGPA" && (
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-300">CGPA</label>
+                                        <label className="mb-1 block text-sm font-medium text-black/70">CGPA</label>
                                         <input
                                             type="number"
                                             min="0"
@@ -915,7 +913,7 @@ export default function AcademicsProfile() {
                             {/* Post-Matric Result Status */}
                             <div className="mt-4">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-300">Result Status</label>
+                                    <label className="mb-1 block text-sm font-medium text-black/70">Result Status</label>
                                     <Select
                                         options={[
                                             { value: "passed", label: "Passed" },
@@ -934,9 +932,9 @@ export default function AcademicsProfile() {
 
                     {/* Stream (always visible) */}
                     <div className="mt-4 relative z-10">
-                        <label className="mb-1 block text-sm font-medium text-slate-300">Stream</label>
+                        <label className="mb-1 block text-sm font-medium text-black/70">Stream</label>
                         {loadingStreams ? (
-                            <div className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-400">
+                            <div className="w-full rounded-md border border-[#dceeff] bg-[#eaf4ff] px-3 py-3 text-sm text-black/40">
                                 Loading streams...
                             </div>
                         ) : streamOptions.length === 0 ? (
@@ -964,20 +962,20 @@ export default function AcademicsProfile() {
                     {/* Subject Breakdown (only if not pursuing 12th) */}
                     {!isPursuing12th && (
                         <div className="mt-6">
-                            <h4 className="mb-3 text-base font-semibold text-slate-50">Subject Breakdown</h4>
+                            <h4 className="mb-3 text-sm font-semibold text-black/70 uppercase tracking-wider">Subject Breakdown</h4>
                             
                             {/* Display existing subjects */}
                             {subjects.length > 0 && (
                                 <div className="mb-4 space-y-3">
                                     {subjects.map((subj, index) => (
-                                        <div key={index} className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
+                                        <div key={index} className="rounded-xl bg-[#eaf4ff] border border-[#dceeff] px-4 py-3">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1">
-                                                    <p className="mb-1 block text-sm font-medium text-slate-300">{subj.name}</p>
-                                                    <p className="mt-1 text-2xl font-semibold text-emerald-400">{subj.percent}%</p>
-                                                    <div className="mt-2 h-2 rounded-full bg-white/10">
+                                                    <p className="mb-1 block text-sm font-medium text-black/70">{subj.name}</p>
+                                                    <p className="mt-1 text-2xl font-bold text-black">{subj.percent}%</p>
+                                                    <div className="mt-2 h-1.5 rounded-full bg-white/60 overflow-hidden">
                                                         <div 
-                                                            className={`h-2 rounded-full ${getBarColor(subj.percent)}`} 
+                                                            className={`h-1.5 rounded-full ${getBarColor(subj.percent)}`} 
                                                             style={{ width: `${subj.percent}%` }} 
                                                         />
                                                     </div>
@@ -1018,7 +1016,7 @@ export default function AcademicsProfile() {
                                 <button 
                                     type="button" 
                                     onClick={() => setShowSubjectInput(true)}
-                                    className="flex items-center gap-2 text-xs font-medium text-pink hover:underline"
+                                    className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black hover:underline"
                                 >
                                     {subjects && subjects.length > 0 ? (
                                         <>
@@ -1048,11 +1046,11 @@ export default function AcademicsProfile() {
             </div>
 
             {/* Previous Exam Attempts Section */}
-            <div className="space-y-5 rounded-md bg-white/5 p-6">
+            <div className="space-y-5 border-t border-black/8 pt-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-base font-semibold text-pink sm:text-lg">Previous Exam Attempts</h2>
-                        <p className="text-sm text-slate-300">Add your previous exam attempts (if any).</p>
+                        <h2 className="text-base font-bold text-black">Previous Exam Attempts</h2>
+                        <p className="text-sm text-black/50">Add your previous exam attempts (if any).</p>
                     </div>
                     <Button
                         type="button"
@@ -1067,10 +1065,10 @@ export default function AcademicsProfile() {
                 {previousAttempts.length > 0 && (
                     <div className="mt-4 space-y-4">
                         {previousAttempts.map((attempt, index) => (
-                            <div key={index} className="rounded-md border border-white/10 bg-white/5 p-4 space-y-3">
+                            <div key={index} className="rounded-2xl border border-[#dceeff] bg-[#eaf4ff] p-4 space-y-3">
                                 <div className="grid gap-3 sm:grid-cols-3">
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-300">Exam Name</label>
+                                        <label className="mb-1 block text-sm font-medium text-black/70">Exam Name</label>
                                         <Select
                                             options={examOptions}
                                             value={attempt.exam_id > 0 ? attempt.exam_id.toString() : null}
@@ -1081,7 +1079,7 @@ export default function AcademicsProfile() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-300">Year</label>
+                                        <label className="mb-1 block text-sm font-medium text-black/70">Year</label>
                                         <input
                                             type="number"
                                             value={attempt.year || ''}
@@ -1093,7 +1091,7 @@ export default function AcademicsProfile() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-slate-300">Rank (Optional)</label>
+                                        <label className="mb-1 block text-sm font-medium text-black/70">Rank (Optional)</label>
                                         <input
                                             type="number"
                                             value={attempt.rank || ''}
@@ -1120,21 +1118,21 @@ export default function AcademicsProfile() {
             </div>
 
             {/* Document Vault Section */}
-            <div className="space-y-5 rounded-md bg-white/5 p-6 mt-6">
+            <div className="space-y-5 border-t border-black/8 pt-6">
                 <div>
-                    <h2 className="text-base font-semibold text-pink sm:text-lg">Document Vault</h2>
-                    <p className="text-sm text-slate-300">Upload and manage your documents securely.</p>
+                    <h2 className="text-base font-bold text-black">Document Vault</h2>
+                    <p className="text-sm text-black/50">Upload and manage your documents securely.</p>
                 </div>
                 <DocumentVault />
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="pt-4 flex flex-col gap-4 sm:flex-row">
                 <Button
                     type="submit"
                     variant="DarkGradient"
                     size="md"
-                    className="w-full flex-1 rounded-full"
+                    className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
                     disabled={saving}
                 >
                     {saving ? "Updating..." : "Update Academics"}

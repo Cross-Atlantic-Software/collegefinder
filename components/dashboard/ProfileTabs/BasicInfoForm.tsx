@@ -269,10 +269,8 @@ export default function BasicInfoForm() {
 
   if (loading) {
     return (
-      <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-slate-300">Loading profile data...</div>
-        </div>
+      <div className="py-16 flex items-center justify-center">
+        <div className="text-sm text-black/40">Loading profile data...</div>
       </div>
     );
   }

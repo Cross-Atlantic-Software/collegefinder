@@ -13,7 +13,7 @@ interface CareerGoalOption {
     logo?: string | null;
 }
 
-const inputBase = "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
+const inputBase = "w-full rounded-xl border border-black/15 bg-[#f8fbff] px-4 py-3 text-sm text-black placeholder:text-black/40 transition focus:outline-none focus:border-[#FAD53C] focus:bg-white";
 
 export default function CareerGoalsTab() {
     const { showSuccess, showError } = useToast();
@@ -136,29 +136,29 @@ export default function CareerGoalsTab() {
 
     if (loading) {
         return (
-            <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
-                <div className="flex items-center justify-center py-12">
-                    <div className="text-slate-300">Loading data...</div>
-                </div>
+            <div className="py-16 flex items-center justify-center">
+                <div className="text-sm text-black/40">Loading data...</div>
             </div>
         );
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-8 text-sm text-black">
             {/* Interests Section */}
-            <div className="space-y-5 rounded-md bg-white/5 p-6">
-                <h2 className="text-base font-semibold text-pink sm:text-lg">Interests</h2>
-                <p className="text-sm text-slate-300">Tell us what excites you! This helps us find the perfect matches.</p>
+            <div className="space-y-5">
+                <div>
+                    <h2 className="text-lg font-bold text-black">Interests</h2>
+                    <p className="text-sm text-black/50 mt-0.5">Tell us what excites you! This helps us find the perfect matches.</p>
+                </div>
 
                 {error && (
-                    <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
+                    <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
                         {error}
                     </div>
                 )}
 
                 {Object.keys(validationErrors).length > 0 && (
-                    <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
+                    <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
                         <ul className="list-disc list-inside space-y-1">
                             {Object.values(validationErrors).map((err, idx) => (
                                 <li key={idx}>{err}</li>
@@ -168,7 +168,7 @@ export default function CareerGoalsTab() {
                 )}
 
                 {success && (
-                    <div className="rounded-md bg-emerald-500/20 border border-emerald-500/50 px-4 py-3 text-sm text-emerald-200">
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
                         Interests updated successfully!
                     </div>
                 )}
@@ -187,8 +187,8 @@ export default function CareerGoalsTab() {
                                         "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
                                         "border group",
                                         active
-                                            ? "bg-pink text-white border-pink"
-                                            : "bg-white/5 border-white/10 hover:bg-white/10",
+                                            ? "bg-[#FAD53C] text-black border-[#FAD53C]"
+                                            : "bg-white border-black/10 hover:bg-[#eaf4ff]",
                                     ].join(" ")}
                                 >
                                     {opt.logo ? (
@@ -203,12 +203,12 @@ export default function CareerGoalsTab() {
                                         />
                                     ) : (
                                         <div className="mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 flex items-center justify-center">
-                                            <span className="text-lg font-bold text-slate-400">{opt.label.charAt(0)}</span>
+                                            <span className="text-lg font-bold text-black/50">{opt.label.charAt(0)}</span>
                                         </div>
                                     )}
                                     <span
                                         className={`text-md font-semibold transition duration-500 ${
-                                            active ? "text-white" : "text-slate-200 group-hover:text-white"
+                                            active ? "text-black" : "text-black/80 group-hover:text-black"
                                         }`}
                                     >
                                         {opt.label}
@@ -221,9 +221,11 @@ export default function CareerGoalsTab() {
             </div>
 
             {/* Target Exams Section */}
-            <div className="space-y-5 rounded-md bg-white/5 p-6">
-                <h2 className="text-base font-semibold text-pink sm:text-lg">Target Exams</h2>
-                <p className="text-sm text-slate-300">Select the exams you are planning to appear for.</p>
+            <div className="space-y-5 border-t border-black/8 pt-6">
+                <div>
+                    <h2 className="text-base font-bold text-black">Target Exams</h2>
+                    <p className="text-sm text-black/50 mt-0.5">Select the exams you are planning to appear for.</p>
+                </div>
 
                 <div className="mt-4 space-y-3">
                     <Select
@@ -242,13 +244,13 @@ export default function CareerGoalsTab() {
                                 return exam ? (
                                     <div
                                         key={examId}
-                                        className="flex items-center gap-2 rounded-md bg-pink/20 border border-pink/50 px-3 py-2 text-sm"
+                                        className="flex items-center gap-2 rounded-xl bg-[#eaf4ff] border border-black/10 px-3 py-2 text-sm"
                                     >
-                                        <span className="text-slate-200">{exam.label}</span>
+                                        <span className="text-black/80">{exam.label}</span>
                                         <button
                                             type="button"
                                             onClick={() => removeTargetExam(examId)}
-                                            className="text-pink hover:text-pink-300 transition"
+                                            className="text-black/70 hover:text-black transition"
                                         >
                                             <FiX className="h-4 w-4" />
                                         </button>
@@ -261,12 +263,12 @@ export default function CareerGoalsTab() {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="pt-2 flex flex-col gap-4 sm:flex-row">
                 <Button
                     type="submit"
                     variant="DarkGradient"
                     size="md"
-                    className="w-full flex-1 rounded-full"
+                    className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
                     disabled={saving}
                 >
                     {saving ? "Updating..." : "Update Interests"}
