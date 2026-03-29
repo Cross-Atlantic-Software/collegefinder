@@ -29,6 +29,7 @@ app.use('/api/auth', require('./src/routes/auth/authRoutes'));
 app.use('/api/admin', require('./src/routes/admin/adminRoutes'));
 app.use('/api/admin/email-templates', require('./src/routes/admin/emailTemplateRoutes'));
 app.use('/api/admin/blogs', require('./src/routes/admin/blogRoutes'));
+app.use('/api/loans', require('./src/routes/public/loansRoutes'));
 app.use('/api/career-goals', require('./src/routes/public/careerGoalsRoutes'));
 app.use('/api/exams', require('./src/routes/public/examsRoutes'));
 app.use('/api/subjects', require('./src/routes/public/subjectsRoutes'));

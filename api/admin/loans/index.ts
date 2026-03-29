@@ -257,6 +257,23 @@ export async function getScrapedLoanBySlug(slug: string): Promise<any> {
   );
 }
 
+export async function getPaisabazaarEducationLoansScraped(): Promise<any> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped/paisabazaar`,
+    { method: 'GET' },
+    { timeout: 90000 }
+  );
+}
+
+/** BankBazaar: list + many detail pages — allow long timeout. */
+export async function getBankbazaarEducationLoansScraped(): Promise<any> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped/bankbazaar`,
+    { method: 'GET' },
+    { timeout: 300000 }
+  );
+}
+
 export async function downloadScrapedLoansExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
@@ -270,6 +287,40 @@ export async function downloadScrapedLoansExcel(): Promise<void> {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'loan-scraped-data.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadPaisabazaarScrapedExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/scraped/paisabazaar/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download Paisabazaar Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'paisabazaar-education-loans.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadBankbazaarScrapedExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/scraped/bankbazaar/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download BankBazaar Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bankbazaar-education-loans.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
 }
