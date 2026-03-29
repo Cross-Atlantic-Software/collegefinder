@@ -6,6 +6,10 @@ const LoanEligibleCourseType = require('../../models/loan/LoanEligibleCourseType
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 const { splitList, parseBool } = require('../../utils/bulkUploadUtils');
+const { BANKS, scrapeBank, scrapeAllBanks } = require("../../services/scraper/gyandhanScraper");
+const { scrapePaisabazaarEducationLoans } = require("../../services/scraper/paisabazaarEducationLoanScraper");
+const { scrapeBankbazaarEducationLoans } = require("../../services/scraper/bankbazaarEducationLoanScraper");
+
 
 class LoansController {
   static async getAllAdmin(req, res) {
@@ -620,6 +624,184 @@ class LoansController {
       });
     }
   }
+
+  /** List Gyandhan lender slugs for per-bank scrape (no external HTTP). */
+  static async getScrapedLoanBanks(req, res) {
+    try {
+      const data = BANKS.map(({ name, slug }) => ({ name, slug }));
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Failed to list banks' });
+    }
+  }
+
+  /** Scrape one lender page (fast enough for default HTTP timeouts). */
+  static async getScrapedLoanBySlug(req, res) {
+    try {
+      const raw = req.params.slug;
+      const slug = typeof raw === 'string' ? decodeURIComponent(raw).trim() : '';
+      const allowed = BANKS.some((b) => b.slug === slug);
+      if (!slug || !allowed) {
+        return res.status(404).json({ success: false, message: 'Unknown lender slug' });
+      }
+      const data = await scrapeBank(slug);
+      if (!data) {
+        return res.status(502).json({
+          success: false,
+          message: 'Scrape failed for this lender (network or page parse error)',
+        });
+      }
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Scrape failed' });
+    }
+  }
+
+  /** Scrape all lenders in one request (slow; may hit proxy timeouts). Prefer per-bank routes. */
+  static async getScrapedLoans(req, res) {
+    try {
+      const data = await scrapeAllBanks();
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message || 'Scrape failed' });
+    }
+  }
+
+  /** Scrape BankBazaar education loan list + bank pages (axios + cheerio, no DB). */
+  static async getBankbazaarEducationLoans(req, res) {
+    try {
+      const data = await scrapeBankbazaarEducationLoans();
+      res.json({ success: true, data });
+    } catch (err) {
+      console.error("Error scraping BankBazaar education loans:", err);
+      res.status(502).json({
+        success: false,
+        message: err.message || "BankBazaar scrape failed",
+      });
+    }
+  }
+
+  /** Scrape Paisabazaar education loan page (axios + cheerio, no DB). */
+  static async getPaisabazaarEducationLoans(req, res) {
+    try {
+      const data = await scrapePaisabazaarEducationLoans();
+      res.json({ success: true, data });
+    } catch (err) {
+      console.error("Error scraping Paisabazaar education loans:", err);
+      res.status(502).json({
+        success: false,
+        message: err.message || "Paisabazaar scrape failed",
+      });
+    }
+  }
+
+  /** Download scraped Gyandhan lenders as Excel (.xlsx). */
+  static async downloadScrapedLoansExcel(req, res) {
+    try {
+      const data = await scrapeAllBanks();
+      const rows = Array.isArray(data) ? data : [];
+      const allKeys = new Set(['bank']);
+      rows.forEach((item) => {
+        Object.keys(item || {}).forEach((k) => allKeys.add(k));
+      });
+      const headers = Array.from(allKeys);
+      const sheetRows = [
+        headers,
+        ...rows.map((item) => headers.map((h) => (item?.[h] != null ? String(item[h]) : ''))),
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Scraped Loans');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=loan-scraped-data.xlsx');
+      res.send(buf);
+    } catch (err) {
+      console.error('Error exporting scraped loans:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to export scraped loans' });
+    }
+  }
+
+  /** Paisabazaar education loan table as Excel (live scrape). */
+  static async downloadPaisabazaarScrapedExcel(req, res) {
+    try {
+      const data = await scrapePaisabazaarEducationLoans();
+      const rows = Array.isArray(data) ? data : [];
+      const headers = ['bank', 'description', 'interestRates', 'maxLoan', 'repayment'];
+      const sheetRows = [
+        headers,
+        ...rows.map((r) => [
+          r.bank != null ? String(r.bank) : '',
+          r.description != null ? String(r.description) : '',
+          Array.isArray(r.interestRates) ? r.interestRates.join('; ') : '',
+          r.maxLoan != null ? String(r.maxLoan) : '',
+          r.repayment != null ? String(r.repayment) : '',
+        ]),
+      ];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Paisabazaar');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=paisabazaar-education-loans.xlsx');
+      res.send(buf);
+    } catch (err) {
+      console.error('Error exporting Paisabazaar scraped Excel:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to export Paisabazaar Excel' });
+    }
+  }
+
+  /** BankBazaar list + scheme details as Excel (live scrape; slow). */
+  static async downloadBankbazaarScrapedExcel(req, res) {
+    try {
+      const data = await scrapeBankbazaarEducationLoans();
+      const rows = Array.isArray(data) ? data : [];
+      const headers = [
+        'bank',
+        'bankLink',
+        'interestRate',
+        'processingFees',
+        'interestMin',
+        'interestMax',
+        'intro',
+        'schemes',
+      ];
+      const sheetRows = [
+        headers,
+        ...rows.map((r) => {
+          const d = r.details || {};
+          const schemes = Array.isArray(d.schemes) ? d.schemes : [];
+          const schemesText = schemes
+            .map((s) => `${s.title || ''}\n${s.summary || ''}`.trim())
+            .filter(Boolean)
+            .join('\n---\n');
+          const ir = r.interestRange || {};
+          return [
+            r.bank != null ? String(r.bank) : '',
+            r.bankLink != null ? String(r.bankLink) : '',
+            r.interestRate != null ? String(r.interestRate) : '',
+            r.processingFees != null ? String(r.processingFees) : '',
+            ir.min != null ? String(ir.min) : '',
+            ir.max != null ? String(ir.max) : '',
+            d.intro != null ? String(d.intro) : d.description != null ? String(d.description) : '',
+            schemesText,
+          ];
+        }),
+      ];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'BankBazaar');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=bankbazaar-education-loans.xlsx');
+      res.send(buf);
+    } catch (err) {
+      console.error('Error exporting BankBazaar scraped Excel:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to export BankBazaar Excel' });
+    }
+  }
+
 }
 
 module.exports = LoansController;

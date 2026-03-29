@@ -229,3 +229,98 @@ export async function bulkUploadLoanProviders(
   if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
   return data;
 }
+
+/** All lenders in one call — slow; prefer getScrapedLoanBanks + getScrapedLoanBySlug. */
+export async function getScrapedLoans(): Promise<any> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped`,
+    { method: 'GET' },
+    { timeout: 120000 }
+  );
+}
+
+export interface ScrapedLoanBankMeta {
+  name: string;
+  slug: string;
+}
+
+export async function getScrapedLoanBanks(): Promise<any> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LOANS}/scraped/banks`, { method: 'GET' }, { timeout: 15000 });
+}
+
+export async function getScrapedLoanBySlug(slug: string): Promise<any> {
+  const enc = encodeURIComponent(slug);
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped/bank/${enc}`,
+    { method: 'GET' },
+    { timeout: 60000 }
+  );
+}
+
+export async function getPaisabazaarEducationLoansScraped(): Promise<any> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped/paisabazaar`,
+    { method: 'GET' },
+    { timeout: 90000 }
+  );
+}
+
+/** BankBazaar: list + many detail pages — allow long timeout. */
+export async function getBankbazaarEducationLoansScraped(): Promise<any> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.LOANS}/scraped/bankbazaar`,
+    { method: 'GET' },
+    { timeout: 300000 }
+  );
+}
+
+export async function downloadScrapedLoansExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/scraped/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download scraped Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'loan-scraped-data.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadPaisabazaarScrapedExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/scraped/paisabazaar/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download Paisabazaar Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'paisabazaar-education-loans.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadBankbazaarScrapedExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/scraped/bankbazaar/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download BankBazaar Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bankbazaar-education-loans.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}

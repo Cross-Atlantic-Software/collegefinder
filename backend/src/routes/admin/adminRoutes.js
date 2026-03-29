@@ -871,6 +871,15 @@ router.post('/loans/bulk-upload', authenticateAdmin, requireModuleAccess('loans'
 ]), LoansController.bulkUpload);
 router.post('/loans', authenticateAdmin, requireModuleAccess('loans'), LoansController.create);
 router.delete('/loans/all', authenticateAdmin, requireModuleAccess('loans'), requireCanDelete, LoansController.deleteAll);
+// Scraped Gyandhan data — specific paths before /loans/scraped and before /loans/:id
+router.get('/loans/scraped/banks', authenticateAdmin, requireModuleAccess('loans'), LoansController.getScrapedLoanBanks);
+router.get('/loans/scraped/bank/:slug', authenticateAdmin, requireModuleAccess('loans'), LoansController.getScrapedLoanBySlug);
+router.get('/loans/scraped', authenticateAdmin, requireModuleAccess('loans'), LoansController.getScrapedLoans);
+router.get('/loans/scraped/download-excel', authenticateAdmin, requireModuleAccess('loans'), requireCanDownloadExcel, LoansController.downloadScrapedLoansExcel);
+router.get('/loans/scraped/paisabazaar/download-excel', authenticateAdmin, requireModuleAccess('loans'), requireCanDownloadExcel, LoansController.downloadPaisabazaarScrapedExcel);
+router.get('/loans/scraped/bankbazaar/download-excel', authenticateAdmin, requireModuleAccess('loans'), requireCanDownloadExcel, LoansController.downloadBankbazaarScrapedExcel);
+router.get('/loans/scraped/paisabazaar', authenticateAdmin, requireModuleAccess('loans'), LoansController.getPaisabazaarEducationLoans);
+router.get('/loans/scraped/bankbazaar', authenticateAdmin, requireModuleAccess('loans'), LoansController.getBankbazaarEducationLoans);
 router.get('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), LoansController.getById);
 router.put('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanEdit, LoansController.update);
 router.delete('/loans/:id', authenticateAdmin, requireModuleAccess('loans'), requireCanDelete, LoansController.delete);
