@@ -6,7 +6,7 @@ import { getOtherInfo, updateOtherInfo } from "@/api/auth/profile/otherInfo";
 import { getAllPrograms } from "@/api/public/programs";
 import { getAllExamCities } from "@/api/public/exam-cities";
 
-const inputBase = "w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 transition focus:outline-none focus:border-pink focus:bg-white/10";
+const inputBase = "w-full rounded-xl border border-black/15 bg-[#f8fbff] px-4 py-3 text-sm text-black placeholder:text-black/40 transition focus:outline-none focus:border-[#FAD53C] focus:bg-white";
 
 const mediumOptions = [
   { value: "English", label: "English" },
@@ -196,17 +196,17 @@ export default function OtherInfoTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-slate-300">Loading...</div>
+        <div className="text-black/60">Loading...</div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
-          Other Information
-        </h2>
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-lg font-bold text-black">Other Information</h2>
+        </div>
 
         {error && (
           <Notification
@@ -228,7 +228,7 @@ export default function OtherInfoTab() {
 
         {/* Medium of Examination */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Medium of Examination
           </label>
           <Select
@@ -244,7 +244,7 @@ export default function OtherInfoTab() {
 
         {/* Language Preference */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Language Preference
           </label>
           <input
@@ -262,7 +262,7 @@ export default function OtherInfoTab() {
         {/* Course & Program Preference */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
               Course & Program Preference
             </label>
             {validationErrors.programPreferences && (
@@ -272,7 +272,7 @@ export default function OtherInfoTab() {
 
           {[0, 1, 2].map((index) => (
             <div key={index} className="space-y-2">
-              <label className="text-xs text-slate-400">
+              <label className="text-xs text-black/55">
                 Course Preference {index + 1}
               </label>
               <Select
@@ -290,7 +290,7 @@ export default function OtherInfoTab() {
         {/* Exam City Preference */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
               Exam City Preference
             </label>
             {validationErrors.examCityPreferences && (
@@ -300,7 +300,7 @@ export default function OtherInfoTab() {
 
           {[0, 1, 2, 3].map((index) => (
             <div key={index} className="space-y-2">
-              <label className="text-xs text-slate-400">
+              <label className="text-xs text-black/55">
                 Exam City Preference {index + 1}
               </label>
               <Select
@@ -317,12 +317,12 @@ export default function OtherInfoTab() {
       </div>
 
       {/* Save Button */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="pt-2 flex flex-col gap-4 sm:flex-row">
         <Button
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Other Information"}

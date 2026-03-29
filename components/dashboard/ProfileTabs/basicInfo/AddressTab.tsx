@@ -60,9 +60,9 @@ export default function AddressTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5 space-y-5">
+        <h2 className="text-lg font-bold text-black">
           Address
         </h2>
 
@@ -86,7 +86,7 @@ export default function AddressTab({
 
         {/* Correspondence Address Line 1 */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Correspondence Address Line 1
           </label>
           <input
@@ -103,7 +103,7 @@ export default function AddressTab({
 
         {/* Correspondence Address Line 2 */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Correspondence Address Line 2
           </label>
           <input
@@ -120,7 +120,7 @@ export default function AddressTab({
 
         {/* City / Town / Village */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             City / Town / Village
           </label>
           <input
@@ -138,8 +138,8 @@ export default function AddressTab({
         {/* State & District */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-              State <IoLocationSharp className="h-4 w-4 text-pink" />
+            <label className="flex items-center gap-2 text-sm font-medium text-black/70">
+              State <IoLocationSharp className="h-4 w-4 text-black/40" />
             </label>
             <Select
               options={getAllStates().map((state) => ({
@@ -162,8 +162,8 @@ export default function AddressTab({
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-              District <IoLocationSharp className="h-4 w-4 text-pink" />
+            <label className="flex items-center gap-2 text-sm font-medium text-black/70">
+              District <IoLocationSharp className="h-4 w-4 text-black/40" />
             </label>
             <Select
               options={
@@ -188,7 +188,7 @@ export default function AddressTab({
         {/* Country & Pincode */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
               Country
             </label>
             <input
@@ -204,7 +204,7 @@ export default function AddressTab({
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
               Pincode
             </label>
             <input
@@ -226,12 +226,12 @@ export default function AddressTab({
 
         {/* Permanent Address Same as Correspondence */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={addressData.permanent_address_same_as_correspondence}
               onChange={(e) => setAddressData({ ...addressData, permanent_address_same_as_correspondence: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             Permanent address same as correspondence
           </label>
@@ -240,8 +240,8 @@ export default function AddressTab({
         {/* Permanent Address (if different) */}
         {!addressData.permanent_address_same_as_correspondence && (
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-              Permanent Address <span className="text-xs text-slate-400">(if different)</span>
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+              Permanent Address <span className="text-xs text-black/50">(if different)</span>
             </label>
             <textarea
               placeholder="Enter permanent address"
@@ -263,7 +263,7 @@ export default function AddressTab({
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Address"}

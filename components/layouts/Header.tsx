@@ -174,7 +174,7 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src="/svgs/logo-unitracko.svg"
+                                src="/UniTracko%20logo%202/logo-2.svg"
                                 alt="Unitracko logo"
                                 width={170}
                                 height={38}
@@ -245,7 +245,7 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src="/svgs/logo-unitracko.svg"
+                                src="/UniTracko%20logo%202/logo-2.svg"
                                 alt="Unitracko logo"
                                 width={150}
                                 height={34}

@@ -43,130 +43,87 @@ export default function UserDetails() {
   };
 
   return (
-    // ⬇️ extra bottom padding so there is gradient space below the stat cards
-    <section className="relative overflow-hidden rounded-t-md bg-darkGradient dark:bg-none dark:bg-slate-900/80 pt-10 pb-24 text-white">
+    <section className="bg-[#f5f9ff] pt-10 pb-8 border-b border-black/8">
       <div className="appContainer">
+        {/* Top row: Avatar + Greeting + Profile Strength */}
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          {/* LEFT: Avatar + greeting */}
-          <div className="flex-1">
-            <div className="flex items-center gap-4">
-              <div className="relative h-24 w-24 overflow-hidden rounded-lg border-pink-500 border-2 bg-white/10 flex items-center justify-center">
-                {user?.profile_photo ? (
-                  <Image
-                    src={user.profile_photo}
-                    alt="User avatar"
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <FaUserCircle className="h-16 w-16 text-slate-300" />
-                )}
-              </div>
+          {/* Avatar + Greeting */}
+          <div className="flex items-center gap-5">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-[#FAD53C] bg-white flex items-center justify-center">
+              {user?.profile_photo ? (
+                <Image
+                  src={user.profile_photo}
+                  alt="User avatar"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <FaUserCircle className="h-14 w-14 text-black/20" />
+              )}
+            </div>
 
-              <div className="space-y-1">
-                <p className="text-sm text-slate-50 dark:text-slate-300">
-                  Good Afternoon,
-                </p>
-                <h2 className="text-2xl font-semibold">{userName}!</h2>
-                <p className="text-sm text-slate-50 dark:text-slate-300">
-                  Let&apos;s make your college dream happen
-                </p>
-              </div>
+            <div>
+              <p className="text-xs font-medium tracking-widest uppercase text-black/40 mb-1">
+                Your Profile
+              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-black leading-none">
+                {userName}
+              </h1>
+              <p className="text-sm text-black/50 mt-1">
+                Let&apos;s make your college dream happen
+              </p>
             </div>
           </div>
 
-          {/* RIGHT: Profile strength card */}
-          <div className="w-full max-w-md">
-            <div className="rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-slate-50 shadow-xl backdrop-blur-xl">
-              <div className="mb-1 flex items-center justify-between text-sm font-semibold">
-                <span className="text-pink">Profile Strength</span>
-                <span className="text-pink">
-                  {loading ? "..." : `${completionPercentage}%`}
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mt-2 h-3 w-full rounded-full bg-white/10">
-                <div 
-                  className="h-3 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500" 
-                  style={{ width: `${completionPercentage}%` }}
-                />
-              </div>
-
-              <p className="mt-3 text-sm text-slate-800 dark:text-slate-300">
-                {getCompletionMessage()}
-              </p>
-
-              <div className="mt-5">
-                <Button
-                  variant="DarkGradient"
-                  size="md"
-                  className="w-full justify-center"
-                >
-                  See Full List →
-                </Button>
-              </div>
+          {/* Profile Strength — no card, just inline */}
+          <div className="w-full max-w-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-black">Profile Strength</span>
+              <span className="rounded-full bg-[#FAD53C] px-3 py-0.5 text-xs font-bold text-black">
+                {loading ? "..." : `${completionPercentage}%`}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-[#eaf4ff] overflow-hidden">
+              <div
+                className="h-2 rounded-full bg-[#FAD53C] transition-all duration-700"
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-black/50">{getCompletionMessage()}</p>
+            <div className="mt-4">
+              <Button
+                variant="DarkGradient"
+                size="md"
+                className="w-full justify-center rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111] text-sm"
+              >
+                See Full List →
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Stat cards */}
-        {/* ⬇️ small extra padding at bottom so they don't sit right on the edge */}
-        <div className="mt-10 pb-2">
-          <div className="grid gap-5 md:grid-cols-4 xl:grid-cols-4">
-            {/* Stream card */}
-            <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-white shadow-lg backdrop-blur-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-darkGradient text-2xl">
-                <PiGraduationCapFill />
+        {/* Stats row — flat, no boxes */}
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[
+            { icon: <PiGraduationCapFill />, value: "PCM", label: "Stream" },
+            { icon: <FaChartBar />, value: "87.5%", label: "Overall" },
+            { icon: <PiTargetBold />, value: "3", label: "Colleges" },
+            { icon: <PiLightningFill />, value: "2", label: "Events" },
+          ].map(({ icon, value, label }) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 py-1"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf4ff] text-lg text-black">
+                {icon}
               </div>
               <div>
-                <p className="text-xl font-semibold text-pink">PCM</p>
-                <p className="text-sm text-slate-800 dark:text-slate-300">
-                  Stream
-                </p>
+                <p className="text-lg font-bold leading-none text-black">{value}</p>
+                <p className="text-xs text-black/50 mt-0.5">{label}</p>
               </div>
             </div>
-
-            {/* Overall card */}
-            <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-white shadow-lg backdrop-blur-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-darkGradient text-2xl">
-                <FaChartBar />
-              </div>
-              <div>
-                <p className="text-xl font-semibold text-pink">87.5%</p>
-                <p className="text-sm text-slate-800 dark:text-slate-300">
-                  Overall
-                </p>
-              </div>
-            </div>
-
-            {/* Colleges card */}
-            <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-white shadow-lg backdrop-blur-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-darkGradient text-2xl">
-                <PiTargetBold />
-              </div>
-              <div>
-                <p className="text-xl font-semibold text-pink">3</p>
-                <p className="text-sm text-slate-800 dark:text-slate-300">
-                  Colleges
-                </p>
-              </div>
-            </div>
-
-            {/* Events card */}
-            <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-lightGradient dark:bg-none dark:bg-slate-900 px-6 py-5 text-white shadow-lg backdrop-blur-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-darkGradient text-2xl">
-                <PiLightningFill />
-              </div>
-              <div>
-                <p className="text-xl font-semibold text-pink">2</p>
-                <p className="text-sm text-slate-800 dark:text-slate-300">
-                  Events
-                </p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>

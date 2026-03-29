@@ -63,9 +63,9 @@ export default function CategoryAndReservationTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5 space-y-5">
+        <h2 className="text-lg font-bold text-black">
           Category and Reservation
         </h2>
 
@@ -89,7 +89,7 @@ export default function CategoryAndReservationTab({
 
         {/* Category */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Category
           </label>
           <Select
@@ -105,12 +105,12 @@ export default function CategoryAndReservationTab({
 
         {/* EWS Status */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={catResData.ews_status}
               onChange={(e) => setCatResData({ ...catResData, ews_status: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             EWS Status
           </label>
@@ -118,12 +118,12 @@ export default function CategoryAndReservationTab({
 
         {/* PwBD/PWD Status */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={catResData.pwbd_status}
               onChange={(e) => setCatResData({ ...catResData, pwbd_status: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             PwBD/PWD Status
           </label>
@@ -133,8 +133,8 @@ export default function CategoryAndReservationTab({
         {catResData.pwbd_status && (
           <>
             <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-                Type of Disability <span className="text-xs text-slate-400">(if applicable)</span>
+              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+                Type of Disability <span className="text-xs text-black/50">(if applicable)</span>
               </label>
               <input
                 type="text"
@@ -150,7 +150,7 @@ export default function CategoryAndReservationTab({
 
             {/* Disability Percentage */}
             <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
                 Disability Percentage
               </label>
               <input
@@ -170,8 +170,8 @@ export default function CategoryAndReservationTab({
 
             {/* UDID Number (if applicable) */}
             <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-                UDID Number <span className="text-xs text-slate-400">(if applicable)</span>
+              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+                UDID Number <span className="text-xs text-black/50">(if applicable)</span>
               </label>
               <input
                 type="text"
@@ -189,8 +189,8 @@ export default function CategoryAndReservationTab({
 
         {/* Minority Status */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-            Minority Status <span className="text-xs text-slate-400">(where applicable)</span>
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+            Minority Status <span className="text-xs text-black/50">(where applicable)</span>
           </label>
           <input
             type="text"
@@ -206,12 +206,12 @@ export default function CategoryAndReservationTab({
 
         {/* Ex-serviceman/Defence-quota */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={catResData.ex_serviceman_defence_quota}
               onChange={(e) => setCatResData({ ...catResData, ex_serviceman_defence_quota: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             Ex-serviceman/Defence-quota
           </label>
@@ -219,12 +219,12 @@ export default function CategoryAndReservationTab({
 
         {/* Kashmiri-migrant/Regional-quota */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={catResData.kashmiri_migrant_regional_quota}
               onChange={(e) => setCatResData({ ...catResData, kashmiri_migrant_regional_quota: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             Kashmiri-migrant/Regional-quota
           </label>
@@ -232,12 +232,12 @@ export default function CategoryAndReservationTab({
 
         {/* State Domicile */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             <input
               type="checkbox"
               checked={catResData.state_domicile}
               onChange={(e) => setCatResData({ ...catResData, state_domicile: e.target.checked })}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink focus:ring-pink"
+              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
             />
             State Domicile
           </label>
@@ -245,7 +245,7 @@ export default function CategoryAndReservationTab({
 
         {/* Home State for Quota */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Home State for Quota
           </label>
           <Select
@@ -272,7 +272,7 @@ export default function CategoryAndReservationTab({
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Category and Reservation"}

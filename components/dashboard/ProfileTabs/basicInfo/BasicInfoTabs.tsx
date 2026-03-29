@@ -87,9 +87,9 @@ export default function BasicInfoTabs({
 
   const basicInfoTabs: { key: BasicInfoTabKey; label: string }[] = [
     { key: "core-identity", label: "Core Identity" },
-    { key: "government-id", label: "Government Identification" },
-    { key: "category-reservation", label: "Category and Reservation" },
-    { key: "other-personal", label: "Other Personal Information" },
+    { key: "government-id", label: "Government ID" },
+    { key: "category-reservation", label: "Category & Reservation" },
+    { key: "other-personal", label: "Other Details" },
     { key: "address", label: "Address" },
   ];
 
@@ -111,11 +111,10 @@ export default function BasicInfoTabs({
     setSaving({ ...saving, [tabKey]: false });
   };
 
-
   return (
     <>
-      {/* Inner Tabs Bar */}
-      <div className="mb-5 flex w-full flex-wrap rounded-md bg-white/10 text-sm font-medium text-slate-300">
+      {/* Inner sub-tab bar */}
+      <div className="mb-5 flex w-full flex-wrap gap-1 overflow-x-auto scrollbar-hide pb-1">
         {basicInfoTabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -123,8 +122,12 @@ export default function BasicInfoTabs({
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center justify-center gap-2 whitespace-nowrap px-4 py-3 text-center transition ${isActive ? "bg-pink text-white" : "hover:bg-white/5"
-                }`}
+              className={[
+                "flex items-center whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-200",
+                isActive
+                  ? "bg-[#FAD53C] text-black"
+                  : "bg-[#eaf4ff] text-black/55 hover:bg-[#dceeff] hover:text-black",
+              ].join(" ")}
             >
               {tab.label}
             </button>
@@ -132,8 +135,8 @@ export default function BasicInfoTabs({
         })}
       </div>
 
-      {/* Tab Content */}
-      <div className="space-y-6 rounded-md bg-white/10 p-6 text-sm text-slate-200 shadow-sm">
+      {/* Tab Content — no surrounding card */}
+      <div>
         {activeTab === "core-identity" && (
           <CoreIdentityTab
             formData={formData}
@@ -216,4 +219,3 @@ export default function BasicInfoTabs({
     </>
   );
 }
-

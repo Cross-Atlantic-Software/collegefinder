@@ -294,6 +294,58 @@ button {
   z-index: 9999 !important;
 }
 
+/* Premium profile palette overrides */
+.profile-premium .bg-white\/10 {
+  background-color: rgba(234, 244, 255, 0.78) !important;
+}
+
+.profile-premium .bg-white\/5 {
+  background-color: rgba(234, 244, 255, 0.5) !important;
+}
+
+.profile-premium .border-white\/10,
+.profile-premium .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+.profile-premium .text-slate-50,
+.profile-premium .text-slate-200,
+.profile-premium .text-slate-300 {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+
+.profile-premium .text-slate-400 {
+  color: rgba(0, 0, 0, 0.58) !important;
+}
+
+.profile-premium .text-pink {
+  color: #000 !important;
+}
+
+.profile-premium .bg-pink {
+  background-color: #FAD53C !important;
+  color: #000 !important;
+}
+
+.profile-premium .bg-darkGradient,
+.profile-premium .bg-lightGradient {
+  background-image: none !important;
+  background-color: #eaf4ff !important;
+  color: #000 !important;
+}
+
+.profile-premium [class*="focus:ring-pink"]:focus {
+  --tw-ring-color: #FAD53C !important;
+}
+
+.profile-premium [class*="focus:border-pink"]:focus {
+  border-color: #FAD53C !important;
+}
+
+.profile-premium input[type="checkbox"] {
+  accent-color: #FAD53C;
+}
+
 /* Toast Animations */
 @keyframes slide-in-from-right {
   from {

@@ -172,11 +172,9 @@ export default function CoreIdentityTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-5 rounded-md bg-white/5 p-6">
-        <h2 className="text-base font-semibold text-pink sm:text-lg">
-          Core Identity
-        </h2>
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+      <div className="space-y-5">
+        <h2 className="text-lg font-bold text-black">Core Identity</h2>
 
         {error && (
           <Notification
@@ -198,11 +196,11 @@ export default function CoreIdentityTab({
 
         {/* Profile Photo */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Profile Photo
           </label>
           <div className="flex items-center gap-4">
-            <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-white/20">
+            <div className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-[#FAD53C] bg-[#eaf4ff] flex items-center justify-center">
               {profilePhotoPreview ? (
                 <Image
                   src={profilePhotoPreview}
@@ -212,8 +210,8 @@ export default function CoreIdentityTab({
                   unoptimized
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-white/5">
-                  <FaUser className="h-8 w-8 text-slate-400" />
+                <div className="flex h-full w-full items-center justify-center bg-[#eaf4ff]">
+                  <FaUser className="h-8 w-8 text-black/50" />
                 </div>
               )}
             </div>
@@ -244,7 +242,7 @@ export default function CoreIdentityTab({
                   }}
                   disabled={uploadingPhoto}
                 />
-                <span className="inline-block rounded-md bg-pink px-4 py-2 text-sm font-medium text-white transition hover:bg-pink/90">
+                <span className="inline-block rounded-full bg-black px-4 py-2 text-sm font-medium text-[#FAD53C] transition hover:bg-[#111]">
                   {uploadingPhoto ? "Uploading..." : profilePhotoPreview ? "Change Photo" : "Upload Photo"}
                 </span>
               </label>
@@ -279,7 +277,7 @@ export default function CoreIdentityTab({
 
         {/* Name */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Name
           </label>
           <input
@@ -295,11 +293,11 @@ export default function CoreIdentityTab({
         </div>
 
         {/* First Name & Last Name */}
-        <p className="text-xs text-pink italic">First Name and Last Name must be as per 10th marksheet</p>
+        <p className="text-xs text-black/50 italic">First Name and Last Name must be as per 10th marksheet</p>
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-              First Name <span className="text-pink">*</span>
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+              First Name <span className="text-[#FAD53C] bg-black rounded-full px-1.5 text-xs">*</span>
             </label>
             <input
               type="text"
@@ -315,7 +313,7 @@ export default function CoreIdentityTab({
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
               Last Name
             </label>
             <input
@@ -333,7 +331,7 @@ export default function CoreIdentityTab({
 
         {/* Date of Birth */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
             Date of Birth
           </label>
           <DateOfBirthPicker
@@ -347,7 +345,7 @@ export default function CoreIdentityTab({
         {/* Email */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-slate-300">Email</p>
+            <p className="text-sm font-medium text-black/70">Email</p>
             {email ? (
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${emailVerified
                   ? "bg-emerald-100/20 text-emerald-300"
@@ -357,7 +355,7 @@ export default function CoreIdentityTab({
                 {emailVerified ? "Verified" : "Unverified"}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-slate-100/20 text-slate-300">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-[#eaf4ff] text-black/60">
                 <CiCircleInfo className="text-xs" />
                 Not Added
               </span>
@@ -394,7 +392,7 @@ export default function CoreIdentityTab({
             )}
           </div>
           {!email && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-black/50">
               Add your email to receive important updates and recover your account
             </p>
           )}
@@ -402,7 +400,7 @@ export default function CoreIdentityTab({
 
         {/* Phone */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Phone Number
           </label>
           <PhoneInput
@@ -416,7 +414,7 @@ export default function CoreIdentityTab({
 
         {/* Alternate Mobile Number */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Alternate Mobile Number
           </label>
           <PhoneInput
@@ -430,8 +428,8 @@ export default function CoreIdentityTab({
 
         {/* Gender */}
         <div className="space-y-3">
-          <p className="flex items-center gap-2 text-sm font-medium text-slate-300">
-            Gender <FaUser className="text-pink" />
+          <p className="flex items-center gap-2 text-sm font-medium text-black/70">
+            Gender <FaUser className="text-black/30" />
           </p>
           <div className="grid gap-3 md:grid-cols-3">
             {genderOptions.map((gender) => {
@@ -443,8 +441,8 @@ export default function CoreIdentityTab({
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: gender.label })}
                   className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition ${isActive
-                      ? "border-transparent bg-pink text-white shadow"
-                      : "border-white/10 bg-white/5 text-slate-200 hover:border-pink hover:bg-white/10"
+                      ? "border-[#FAD53C] bg-[#FAD53C] text-black shadow"
+                      : "border-[#dceeff] bg-[#eaf4ff] text-black/70 hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
                     }`}
                 >
                   <Image
@@ -466,7 +464,7 @@ export default function CoreIdentityTab({
 
         {/* Nationality */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Nationality
           </label>
           <Select
@@ -485,7 +483,7 @@ export default function CoreIdentityTab({
 
         {/* Marital Status */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
             Marital Status
           </label>
           <Select
@@ -507,8 +505,8 @@ export default function CoreIdentityTab({
 
         {/* Father's Full Name */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-            Father&apos;s Full Name <span className="text-xs text-pink italic">(As per 10th marksheet)</span>
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+            Father&apos;s Full Name <span className="text-xs text-black/40 italic">(As per 10th marksheet)</span>
           </label>
           <input
             type="text"
@@ -524,8 +522,8 @@ export default function CoreIdentityTab({
 
         {/* Mother's Full Name */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-            Mother&apos;s Full Name <span className="text-xs text-pink italic">(As per 10th marksheet)</span>
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+            Mother&apos;s Full Name <span className="text-xs text-black/40 italic">(As per 10th marksheet)</span>
           </label>
           <input
             type="text"
@@ -541,8 +539,8 @@ export default function CoreIdentityTab({
 
         {/* Guardian Name (Optional) */}
         <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-300">
-            Guardian Name <span className="text-xs text-slate-400">(if applicable)</span>
+          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
+            Guardian Name <span className="text-xs text-black/50">(if applicable)</span>
           </label>
           <input
             type="text"
@@ -558,12 +556,12 @@ export default function CoreIdentityTab({
 
         {/* Automation Password (Read-Only) */}
         {automationPassword && (
-          <div className="space-y-2 rounded-md border border-pink/30 bg-pink/5 p-4">
-            <label className="flex items-center gap-2 text-sm font-medium text-pink">
+          <div className="space-y-2 rounded-2xl border border-[#FAD53C]/30 bg-[#eaf4ff] p-4">
+            <label className="flex items-center gap-2 text-sm font-semibold text-black">
               <CiCircleInfo className="text-lg" />
               Automation Password
             </label>
-            <p className="text-xs text-slate-400 mb-2">
+            <p className="text-xs text-black/50 mb-2">
               This is your auto-generated password used by the automation system to fill exam registration forms. It is NOT your login password.
             </p>
             <div className="flex items-center gap-2">
@@ -571,14 +569,15 @@ export default function CoreIdentityTab({
                 type="text"
                 value={automationPassword}
                 readOnly
-                className={`${inputBase} flex-1 cursor-default bg-white/5 font-mono text-sm`}
+                className={`${inputBase} flex-1 cursor-default font-mono text-sm`}
               />
               <button
                 type="button"
                 onClick={copyPassword}
-                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${copiedPassword
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-pink/20 text-pink hover:bg-pink/30"
+                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                    copiedPassword
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-[#FAD53C] text-black hover:bg-[#f0c935]"
                   }`}
               >
                 <FaCopy className="text-sm" />
@@ -595,7 +594,7 @@ export default function CoreIdentityTab({
           type="submit"
           variant="DarkGradient"
           size="md"
-          className="w-full flex-1 rounded-full"
+          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Core Identity"}
