@@ -195,8 +195,14 @@ export default function OtherInfoTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-black/60">Loading...</div>
+      <div className="space-y-4 py-4">
+        <div className="shimmer-skeleton h-6 w-44 rounded-md" />
+        <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+        <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -226,91 +232,84 @@ export default function OtherInfoTab() {
           />
         )}
 
-        {/* Medium of Examination */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Medium of Examination
-          </label>
-          <Select
-            options={mediumOptions}
-            value={medium}
-            onChange={(value) => setMedium(value || "")}
-            placeholder="Select Medium"
-            error={validationErrors.medium}
-            isSearchable={false}
-            isClearable={true}
-          />
-        </div>
-
-        {/* Language Preference */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Language Preference
-          </label>
-          <input
-            type="text"
-            placeholder="Enter language preference"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className={`${inputBase} ${validationErrors.language ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.language && (
-            <p className="text-xs text-red-400">{validationErrors.language}</p>
-          )}
-        </div>
-
-        {/* Course & Program Preference */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Course & Program Preference
-            </label>
-            {validationErrors.programPreferences && (
-              <p className="text-xs text-red-400">{validationErrors.programPreferences}</p>
-            )}
-          </div>
-
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="space-y-2">
-              <label className="text-xs text-black/55">
-                Course Preference {index + 1}
-              </label>
+        {/* Row 1: Medium + Language in 2-col grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[100px] text-right">Medium</label>
+            <div className="flex-1 min-w-0">
               <Select
-                options={getAvailablePrograms(index)}
-                value={programPreferences[index]}
-                onChange={(value) => handleProgramChange(index, value)}
-                placeholder={`Select Program ${index + 1}`}
-                isSearchable={true}
+                options={mediumOptions}
+                value={medium}
+                onChange={(value) => setMedium(value || "")}
+                placeholder="Exam Medium"
+                error={validationErrors.medium}
+                isSearchable={false}
                 isClearable={true}
               />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[100px] text-right">Language</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Language preference"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className={`${inputBase} ${validationErrors.language ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.language && <p className="mt-0.5 text-xs text-red-400">{validationErrors.language}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Course & Program Preferences in 2-col grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <p className="sm:col-span-2 text-xs font-semibold text-black/55">
+            Course Preference
+            {validationErrors.programPreferences && (
+              <span className="ml-2 text-red-400 font-normal">{validationErrors.programPreferences}</span>
+            )}
+          </p>
+          {[0, 1, 2].map((index) => (
+            <div key={index} className="flex items-center gap-2 min-w-0">
+              <label className="shrink-0 text-xs font-semibold text-black/40 w-[100px] text-right">Choice {index + 1}</label>
+              <div className="flex-1 min-w-0">
+                <Select
+                  options={getAvailablePrograms(index)}
+                  value={programPreferences[index]}
+                  onChange={(value) => handleProgramChange(index, value)}
+                  placeholder={`Program ${index + 1}`}
+                  isSearchable={true}
+                  isClearable={true}
+                />
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Exam City Preference */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Exam City Preference
-            </label>
+        {/* Exam City Preferences in 2-col grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <p className="sm:col-span-2 text-xs font-semibold text-black/55">
+            Exam City Preference
             {validationErrors.examCityPreferences && (
-              <p className="text-xs text-red-400">{validationErrors.examCityPreferences}</p>
+              <span className="ml-2 text-red-400 font-normal">{validationErrors.examCityPreferences}</span>
             )}
-          </div>
-
+          </p>
           {[0, 1, 2, 3].map((index) => (
-            <div key={index} className="space-y-2">
-              <label className="text-xs text-black/55">
-                Exam City Preference {index + 1}
-              </label>
-              <Select
-                options={getAvailableExamCities(index)}
-                value={examCityPreferences[index]}
-                onChange={(value) => handleExamCityChange(index, value)}
-                placeholder={`Select Exam City ${index + 1}`}
-                isSearchable={true}
-                isClearable={true}
-              />
+            <div key={index} className="flex items-center gap-2 min-w-0">
+              <label className="shrink-0 text-xs font-semibold text-black/40 w-[100px] text-right">Choice {index + 1}</label>
+              <div className="flex-1 min-w-0">
+                <Select
+                  options={getAvailableExamCities(index)}
+                  value={examCityPreferences[index]}
+                  onChange={(value) => handleExamCityChange(index, value)}
+                  placeholder={`City ${index + 1}`}
+                  isSearchable={true}
+                  isClearable={true}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -320,9 +319,9 @@ export default function OtherInfoTab() {
       <div className="pt-2 flex flex-col gap-4 sm:flex-row">
         <Button
           type="submit"
-          variant="DarkGradient"
+          variant="primary"
           size="md"
-          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+          className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Other Information"}

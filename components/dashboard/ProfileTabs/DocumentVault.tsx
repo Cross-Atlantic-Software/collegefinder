@@ -276,7 +276,15 @@ export default function DocumentVault() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-sm text-black/40">Loading documents...</div>
+      <div className="space-y-4 py-4">
+        <div className="shimmer-skeleton h-6 w-48 rounded-md" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+        </div>
+      </div>
     );
   }
 

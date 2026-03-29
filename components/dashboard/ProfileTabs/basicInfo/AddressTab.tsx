@@ -19,6 +19,8 @@ interface AddressTabProps {
   onError: (error: string | null) => void;
 }
 
+const L = "shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right";
+
 export default function AddressTab({
   addressData,
   setAddressData,
@@ -60,173 +62,130 @@ export default function AddressTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
-      <div className="space-y-5 space-y-5">
-        <h2 className="text-lg font-bold text-black">
-          Address
-        </h2>
+    <form onSubmit={handleSubmit} className="space-y-5 text-sm text-black">
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-black">Address</h2>
 
-        {error && (
-          <Notification
-            type="error"
-            message={error}
-            onClose={() => onError(null)}
-          />
-        )}
-
+        {error && <Notification type="error" message={error} onClose={() => onError(null)} />}
         {success && (
-          <Notification
-            type="success"
-            message="Address updated successfully!"
-            onClose={() => {}}
-            autoClose={true}
-            duration={3000}
-          />
+          <Notification type="success" message="Address updated successfully!" onClose={() => {}} autoClose duration={3000} />
         )}
 
-        {/* Correspondence Address Line 1 */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Correspondence Address Line 1
-          </label>
-          <input
-            type="text"
-            placeholder="Enter address line 1"
-            value={addressData.correspondence_address_line1}
-            onChange={(e) => setAddressData({ ...addressData, correspondence_address_line1: e.target.value })}
-            className={`${inputBase} ${validationErrors.correspondence_address_line1 ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.correspondence_address_line1 && (
-            <p className="text-xs text-red-400">{validationErrors.correspondence_address_line1}</p>
-          )}
-        </div>
-
-        {/* Correspondence Address Line 2 */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Correspondence Address Line 2
-          </label>
-          <input
-            type="text"
-            placeholder="Enter address line 2 (optional)"
-            value={addressData.correspondence_address_line2}
-            onChange={(e) => setAddressData({ ...addressData, correspondence_address_line2: e.target.value })}
-            className={`${inputBase} ${validationErrors.correspondence_address_line2 ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.correspondence_address_line2 && (
-            <p className="text-xs text-red-400">{validationErrors.correspondence_address_line2}</p>
-          )}
-        </div>
-
-        {/* City / Town / Village */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            City / Town / Village
-          </label>
-          <input
-            type="text"
-            placeholder="Enter city, town, or village"
-            value={addressData.city_town_village}
-            onChange={(e) => setAddressData({ ...addressData, city_town_village: e.target.value })}
-            className={`${inputBase} ${validationErrors.city_town_village ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.city_town_village && (
-            <p className="text-xs text-red-400">{validationErrors.city_town_village}</p>
-          )}
-        </div>
-
-        {/* State & District */}
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-              State <IoLocationSharp className="h-4 w-4 text-black/40" />
-            </label>
-            <Select
-              options={getAllStates().map((state) => ({
-                value: state,
-                label: state,
-              }))}
-              value={addressData.state}
-              onChange={(value) => {
-                setAddressData({
-                  ...addressData,
-                  state: value || "",
-                  district: "", // Reset district when state changes
-                });
-              }}
-              placeholder="Select State"
-              error={validationErrors.state}
-              isSearchable={true}
-              isClearable={true}
-            />
+        {/* Correspondence Address Lines */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Address L1</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Correspondence line 1"
+                value={addressData.correspondence_address_line1}
+                onChange={(e) => setAddressData({ ...addressData, correspondence_address_line1: e.target.value })}
+                className={`${inputBase} ${validationErrors.correspondence_address_line1 ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.correspondence_address_line1 && <p className="mt-0.5 text-xs text-red-400">{validationErrors.correspondence_address_line1}</p>}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-              District <IoLocationSharp className="h-4 w-4 text-black/40" />
-            </label>
-            <Select
-              options={
-                addressData.state
-                  ? getDistrictsForState(addressData.state).map((district) => ({
-                      value: district,
-                      label: district,
-                    }))
-                  : []
-              }
-              value={addressData.district}
-              onChange={(value) => setAddressData({ ...addressData, district: value || "" })}
-              placeholder={addressData.state ? "Select District" : "Select State first"}
-              error={validationErrors.district}
-              disabled={!addressData.state}
-              isSearchable={true}
-              isClearable={true}
-            />
-          </div>
-        </div>
-
-        {/* Country & Pincode */}
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Country
-            </label>
-            <input
-              type="text"
-              placeholder="Enter country"
-              value={addressData.country}
-              onChange={(e) => setAddressData({ ...addressData, country: e.target.value })}
-              className={`${inputBase} ${validationErrors.country ? 'border-red-500' : ''}`}
-            />
-            {validationErrors.country && (
-              <p className="text-xs text-red-400">{validationErrors.country}</p>
-            )}
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Address L2</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Line 2 (optional)"
+                value={addressData.correspondence_address_line2}
+                onChange={(e) => setAddressData({ ...addressData, correspondence_address_line2: e.target.value })}
+                className={`${inputBase} ${validationErrors.correspondence_address_line2 ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.correspondence_address_line2 && <p className="mt-0.5 text-xs text-red-400">{validationErrors.correspondence_address_line2}</p>}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Pincode
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>City / Village</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="City / Town / Village"
+                value={addressData.city_town_village}
+                onChange={(e) => setAddressData({ ...addressData, city_town_village: e.target.value })}
+                className={`${inputBase} ${validationErrors.city_town_village ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.city_town_village && <p className="mt-0.5 text-xs text-red-400">{validationErrors.city_town_village}</p>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={`${L} flex items-center justify-end gap-1`}>
+              State <IoLocationSharp className="h-3.5 w-3.5 text-black/40" />
             </label>
-            <input
-              type="text"
-              placeholder="Enter pincode"
-              value={addressData.pincode}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setAddressData({ ...addressData, pincode: value });
-              }}
-              maxLength={10}
-              className={`${inputBase} ${validationErrors.pincode ? 'border-red-500' : ''}`}
-            />
-            {validationErrors.pincode && (
-              <p className="text-xs text-red-400">{validationErrors.pincode}</p>
-            )}
+            <div className="flex-1 min-w-0">
+              <Select
+                options={getAllStates().map((state) => ({ value: state, label: state }))}
+                value={addressData.state}
+                onChange={(value) => setAddressData({ ...addressData, state: value || "", district: "" })}
+                placeholder="Select State"
+                error={validationErrors.state}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={`${L} flex items-center justify-end gap-1`}>
+              District <IoLocationSharp className="h-3.5 w-3.5 text-black/40" />
+            </label>
+            <div className="flex-1 min-w-0">
+              <Select
+                options={addressData.state ? getDistrictsForState(addressData.state).map((d) => ({ value: d, label: d })) : []}
+                value={addressData.district}
+                onChange={(value) => setAddressData({ ...addressData, district: value || "" })}
+                placeholder={addressData.state ? "Select District" : "Select state first"}
+                error={validationErrors.district}
+                disabled={!addressData.state}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Country</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Country"
+                value={addressData.country}
+                onChange={(e) => setAddressData({ ...addressData, country: e.target.value })}
+                className={`${inputBase} ${validationErrors.country ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.country && <p className="mt-0.5 text-xs text-red-400">{validationErrors.country}</p>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Pincode</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Pincode"
+                value={addressData.pincode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setAddressData({ ...addressData, pincode: value });
+                }}
+                maxLength={10}
+                className={`${inputBase} ${validationErrors.pincode ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.pincode && <p className="mt-0.5 text-xs text-red-400">{validationErrors.pincode}</p>}
+            </div>
           </div>
         </div>
 
-        {/* Permanent Address Same as Correspondence */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
+        {/* Same-as toggle */}
+        <div className="flex items-center gap-2 pt-4 border-t border-black/5">
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-black/70">
             <input
               type="checkbox"
               checked={addressData.permanent_address_same_as_correspondence}
@@ -237,33 +196,31 @@ export default function AddressTab({
           </label>
         </div>
 
-        {/* Permanent Address (if different) */}
+        {/* Permanent Address textarea */}
         {!addressData.permanent_address_same_as_correspondence && (
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Permanent Address <span className="text-xs text-black/50">(if different)</span>
-            </label>
-            <textarea
-              placeholder="Enter permanent address"
-              value={addressData.permanent_address}
-              onChange={(e) => setAddressData({ ...addressData, permanent_address: e.target.value })}
-              rows={4}
-              className={`${inputBase} ${validationErrors.permanent_address ? 'border-red-500' : ''}`}
-            />
-            {validationErrors.permanent_address && (
-              <p className="text-xs text-red-400">{validationErrors.permanent_address}</p>
-            )}
+          <div className="flex items-start gap-2 min-w-0">
+            <label className={`${L} pt-2`}>Permanent Address</label>
+            <div className="flex-1 min-w-0">
+              <textarea
+                placeholder="Enter permanent address (if different)"
+                value={addressData.permanent_address}
+                onChange={(e) => setAddressData({ ...addressData, permanent_address: e.target.value })}
+                rows={3}
+                className={`${inputBase} resize-none ${validationErrors.permanent_address ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.permanent_address && <p className="mt-0.5 text-xs text-red-400">{validationErrors.permanent_address}</p>}
+            </div>
           </div>
         )}
       </div>
 
       {/* Save Button */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           type="submit"
-          variant="DarkGradient"
+          variant="primary"
           size="md"
-          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+          className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Address"}
@@ -272,4 +229,3 @@ export default function AddressTab({
     </form>
   );
 }
-
