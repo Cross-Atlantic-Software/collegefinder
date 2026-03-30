@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 type AdminHeaderProps = {
   title?: string;
   subtitle?: string;
-  /** Optional section tabs (e.g. Exams | Generation prompts) rendered below the title row */
+  /** Optional tabs rendered below the title row */
   tabs?: React.ReactNode;
 };
 

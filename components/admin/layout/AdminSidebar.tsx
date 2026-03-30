@@ -37,13 +37,13 @@ import {
   FiMap,
   FiEdit3,
   FiVideo,
-  FiType,
+  FiFile,
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
 const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 
-/** Match nav hrefs that may include ?query= (e.g. /admin/exams vs /admin/exams?section=prompts). */
+/** Match nav hrefs that may include ?query= (same pathname, different search). */
 function childNavMatches(
   pathname: string,
   search: { get: (key: string) => string | null },
@@ -77,25 +77,7 @@ interface NavGroup {
   label: string;
   icon: React.ReactNode;
   children: NavItem[];
-  /** If set, clicking the group label/icon navigates here; use a separate control to expand/collapse. */
-  groupHref?: string;
   superAdminOnly?: boolean; // Users group: only for super_admin
-}
-
-function groupNavActive(
-  group: NavGroup,
-  pathname: string,
-  search: { get: (key: string) => string | null }
-): boolean {
-  const childMatch = group.children.some((c) => childNavMatches(pathname, search, c.href));
-  if (group.groupHref === '/admin/exams') {
-    const onExamsList = pathname === '/admin/exams' && search.get('section') !== 'prompts';
-    const onExamsSubpath = pathname.startsWith('/admin/exams/');
-    const onMock =
-      pathname === '/admin/mock-prompts' || pathname.startsWith('/admin/mock-prompts/');
-    return childMatch || onExamsList || onExamsSubpath || onMock;
-  }
-  return childMatch;
 }
 
 const navGroups: NavGroup[] = [
@@ -142,14 +124,8 @@ const navGroups: NavGroup[] = [
   {
     label: 'Exams',
     icon: <FiClipboard className="h-4 w-4" />,
-    groupHref: '/admin/exams',
     children: [
-      {
-        label: 'Generation prompts',
-        href: '/admin/exams?section=prompts',
-        icon: <FiType className="h-4 w-4" />,
-        moduleCode: 'exams',
-      },
+      { label: 'Exams', href: '/admin/exams', icon: <FiFile className="h-4 w-4" />, moduleCode: 'exams' },
       {
         label: 'Mock prompts',
         href: '/admin/mock-prompts',
@@ -243,7 +219,10 @@ function AdminSidebarInner() {
     const activeGroups = new Set<string>();
     navGroups.forEach((group) => {
       if (group.superAdminOnly && admin?.type !== 'super_admin') return;
-      if (groupNavActive(group, pathname, searchParams)) activeGroups.add(group.label);
+      const hasActiveChild = group.children.some((child) =>
+        childNavMatches(pathname, searchParams, child.href)
+      );
+      if (hasActiveChild) activeGroups.add(group.label);
     });
     queueMicrotask(() => setExpandedGroups(activeGroups));
   }, [pathname, admin, searchParams]);
@@ -363,108 +342,42 @@ function AdminSidebarInner() {
       <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2.5 text-[13px] scrollbar-hide">
         {filteredGroups.map((group) => {
           const isExpanded = isGroupExpanded(group.label);
-          const hasActiveChild = groupNavActive(group, pathname, searchParams);
-
-          const expandOnNavigate = () => {
-            setExpandedGroups((prev) => new Set(prev).add(group.label));
-          };
-
-          const activeRowClass = hasActiveChild
-            ? 'bg-highlight-100 text-brand-ink dark:bg-slate-800 dark:text-slate-100'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200';
+          const hasActiveChild = group.children.some((child) =>
+            childNavMatches(pathname, searchParams, child.href)
+          );
 
           return (
             <div key={group.label} className="space-y-1">
-              {group.groupHref ? (
-                railMode ? (
-                  <div
-                    className={`flex flex-col items-stretch overflow-hidden rounded-xl transition-all duration-200 ${activeRowClass}`}
-                  >
-                    <Link
-                      href={group.groupHref}
-                      onClick={expandOnNavigate}
-                      title={group.label}
-                      className="group relative flex w-full items-center justify-center px-2 py-2 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-inset"
-                    >
-                      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center [&>svg]:h-[18px] [&>svg]:w-[18px]">
-                        {group.icon}
-                      </span>
-                      <span className={tooltipClass}>{group.label}</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.label)}
-                      aria-expanded={isExpanded}
-                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${group.label} submenu`}
-                      className="flex w-full items-center justify-center py-1 text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-inset dark:text-slate-400 dark:hover:text-slate-200"
-                    >
-                      {isExpanded ? (
-                        <FiChevronDown className="h-3.5 w-3.5 shrink-0" />
-                      ) : (
-                        <FiChevronRight className="h-3.5 w-3.5 shrink-0" />
-                      )}
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    className={`flex w-full items-stretch overflow-hidden rounded-xl transition-all duration-200 ${activeRowClass}`}
-                  >
-                    <Link
-                      href={group.groupHref}
-                      onClick={expandOnNavigate}
-                      className="group relative flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-inset"
-                    >
-                      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center [&>svg]:h-[18px] [&>svg]:w-[18px]">
-                        {group.icon}
-                      </span>
-                      <span className="flex-1 text-left text-sm font-medium">{group.label}</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleGroup(group.label);
-                      }}
-                      aria-expanded={isExpanded}
-                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${group.label} submenu`}
-                      className="flex shrink-0 items-center px-2.5 text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-inset dark:text-slate-400 dark:hover:text-slate-200"
-                    >
-                      {isExpanded ? (
-                        <FiChevronDown className="h-3.5 w-3.5 shrink-0" />
-                      ) : (
-                        <FiChevronRight className="h-3.5 w-3.5 shrink-0" />
-                      )}
-                    </button>
-                  </div>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.label)}
-                  title={railMode ? group.label : undefined}
-                  className={`
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label)}
+                title={railMode ? group.label : undefined}
+                className={`
                   group relative flex w-full items-center rounded-xl text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300
                   ${railMode ? 'justify-center px-2 py-2.5' : 'gap-2.5 px-3 py-2.5'}
-                  ${activeRowClass}
+                  ${
+                    hasActiveChild
+                      ? 'bg-highlight-100 text-brand-ink dark:bg-slate-800 dark:text-slate-100'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200'
+                  }
                 `}
-                >
-                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center [&>svg]:h-[18px] [&>svg]:w-[18px]">
-                    {group.icon}
-                  </span>
-                  {railMode ? (
-                    <span className={tooltipClass}>{group.label}</span>
-                  ) : (
-                    <>
-                      <span className="flex-1 text-left text-sm font-medium">{group.label}</span>
-                      {isExpanded ? (
-                        <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                      ) : (
-                        <FiChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                      )}
-                    </>
-                  )}
-                </button>
-              )}
+              >
+                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center [&>svg]:h-[18px] [&>svg]:w-[18px]">
+                  {group.icon}
+                </span>
+                {railMode ? (
+                  <span className={tooltipClass}>{group.label}</span>
+                ) : (
+                  <>
+                    <span className="flex-1 text-left text-sm font-medium">{group.label}</span>
+                    {isExpanded ? (
+                      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    ) : (
+                      <FiChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    )}
+                  </>
+                )}
+              </button>
 
               {isExpanded && (
                 <div
