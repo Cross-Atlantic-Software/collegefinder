@@ -40,8 +40,8 @@ export async function apiRequest<T>(
     
     // Determine which token to use based on endpoint
     let token = null;
-    if (endpoint.startsWith('/admin')) {
-      // Admin routes: prefer admin token, fallback to user token
+    if (endpoint.startsWith('/admin') || endpoint.startsWith('/social')) {
+      // Admin routes & social tools: prefer admin token, fallback to user token
       token = adminToken || userToken;
     } else {
       // Auth routes: use user token only
@@ -120,13 +120,12 @@ export async function apiRequest<T>(
         };
       }
     } else {
-      // Non-JSON response - get text
+      // Non-JSON response (e.g. proxy 502, Express default body, HTML error page)
+      let plain = '';
       try {
-        const text = await response.text();
-        console.error('Non-JSON response received:', text.substring(0, 200));
-        
-        // If it looks like multipart/form-data, it might be a misconfigured request
-        if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
+        plain = await response.text();
+        console.error('Non-JSON response received:', plain.substring(0, 200));
+        if (plain.includes('------WebKit') || plain.includes('multipart') || plain.startsWith('------')) {
           return {
             success: false,
             message: 'Server received multipart data but expected JSON. Please check your request format.',
@@ -136,9 +135,17 @@ export async function apiRequest<T>(
       } catch (textError) {
         console.error('Failed to read response as text:', textError);
       }
+      const trimmed = plain.trim();
+      const hint =
+        /internal server error/i.test(trimmed) || response.status >= 500
+          ? ' Is the Node backend running on the API URL, and is GOOGLE_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY set in backend/.env? (Python Gemini keys do not apply to this route.)'
+          : '';
       return {
         success: false,
-        message: 'Server returned an invalid response format',
+        message:
+          trimmed.length > 0 && trimmed.length < 400
+            ? `${trimmed}${hint}`
+            : `Server returned a non-JSON response (${response.status}).${hint}`,
         errors: undefined,
       };
     }

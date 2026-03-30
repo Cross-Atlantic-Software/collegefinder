@@ -24,6 +24,7 @@ import {
   FiMessageSquare,
   FiActivity,
   FiUserPlus,
+  FiShare2,
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -97,6 +98,17 @@ const navGroups: NavGroup[] = [
         label: 'Prompts',
         href: '/admin/mock-prompts',
         icon: <FiMessageSquare className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Social Media',
+    icon: <FiShare2 className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Post Generator',
+        href: '/admin/social/post-generator',
+        icon: <FiShare2 className="h-4 w-4" />,
       },
     ],
   },

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:with-api": "concurrently -n next,api -c cyan,magenta \"next dev --webpack\" \"cd backend && node server.js\"",
     "dev:fast": "next dev",
     "build": "next build --webpack",
     "start": "next start",

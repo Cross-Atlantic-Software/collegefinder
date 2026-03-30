@@ -45,6 +45,7 @@ app.use('/api/admin/experts', require('./src/routes/admin/expertRoutes'));
 app.use('/api/experts', require('./src/routes/public/expertsRoutes'));
 app.use('/api/tests', require('./src/routes/test/testRoutes'));
 app.use('/api/mock-tests', require('./src/routes/test/mockTestRoutes'));
+app.use('/api/social', require('./src/routes/social/socialRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

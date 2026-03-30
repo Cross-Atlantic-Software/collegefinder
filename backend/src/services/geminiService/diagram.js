@@ -2,6 +2,7 @@
  * Diagram image generation (Gemini image model) and S3 upload; placeholder fallbacks.
  */
 const { IMAGE_GENERATION_MODEL, DIAGRAM_IMAGE_URLS, getUploadToS3 } = require('./config');
+const { getGoogleApiKey } = require('./env');
 
 /**
  * Generate a diagram image buffer using Gemini image-generation model (REST API).
@@ -10,7 +11,7 @@ const { IMAGE_GENERATION_MODEL, DIAGRAM_IMAGE_URLS, getUploadToS3 } = require('.
  * @returns {Promise<{ buffer: Buffer, mimeType: string } | null>}
  */
 async function generateDiagramImageBuffer(questionText, diagramType) {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = getGoogleApiKey();
   if (!apiKey) return null;
   const prompt = `Generate a single clear, educational diagram or figure suitable for this exam question. Style: clean line diagram, labels where helpful. Do not add extra text explanation.
 

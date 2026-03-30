@@ -9,6 +9,7 @@ const { buildQuestionPrompt, buildBatchQuestionPrompt, substitutePromptPlacehold
 const { setDiagramImageUrl } = require('./diagram');
 const { parseQuestionResponse, parseQuestionBatchResponse } = require('./parser');
 const { withRetry, isRetryableError } = require('./requestHelper');
+const { getGoogleApiKey } = require('./env');
 
 const GEMINI_CONCURRENCY = 3;
 const apiLimit = pLimit(GEMINI_CONCURRENCY);
@@ -22,9 +23,11 @@ class GeminiService {
     this._initPromise = null;
     this._excludedModelNames = new Set();
 
-    if (!process.env.GOOGLE_API_KEY) {
-      this._initError = 'GOOGLE_API_KEY is not set. Add it to backend/.env (see .env.example) and restart the backend for mock test generation.';
-      console.warn('⚠️  GOOGLE_API_KEY not found. Mock test generation will fail until you add GOOGLE_API_KEY to backend/.env and restart.');
+    const apiKey = getGoogleApiKey();
+    if (!apiKey) {
+      this._initError =
+        'No Google API key for Node backend. Set GOOGLE_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY in backend/.env (the Post Generator and mock tests use the Node server, not Python).';
+      console.warn('⚠️  GOOGLE_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY not found in backend/.env — Gemini features on this server are disabled.');
       return;
     }
 
@@ -34,7 +37,7 @@ class GeminiService {
       if (!GoogleGenerativeAI || typeof GoogleGenerativeAI !== 'function') {
         throw new Error('@google/generative-ai did not export GoogleGenerativeAI constructor (got ' + typeof pkg.GoogleGenerativeAI + ')');
       }
-      this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+      this.genAI = new GoogleGenerativeAI(apiKey);
       if (process.env.GEMINI_MODEL) {
         this._modelName = process.env.GEMINI_MODEL;
         this.model = this.genAI.getGenerativeModel({
@@ -53,7 +56,7 @@ class GeminiService {
   }
 
   async _fetchAndPickModelName() {
-    return fetchAndPickModelName(process.env.GOOGLE_API_KEY, this._excludedModelNames);
+    return fetchAndPickModelName(getGoogleApiKey(), this._excludedModelNames);
   }
 
   async ensureInitialized() {
@@ -305,6 +308,95 @@ class GeminiService {
       successCount: results.length,
       errorCount: errors.length
     };
+  }
+
+  /**
+   * Single-turn JSON generation (admin tools, social content, etc.).
+   * Uses responseMimeType application/json when supported by the model.
+   * @param {string} prompt - Full user prompt; model must return a single JSON object.
+   * @returns {Promise<object>} Parsed JSON object.
+   */
+  async generateJsonFromPrompt(prompt) {
+    await this.ensureInitialized();
+    if (this.model === null) {
+      throw new Error(this._initError || 'Gemini service is not available.');
+    }
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      throw new Error('Prompt is required');
+    }
+
+    const jsonGenerationConfig = {
+      ...GENERATION_CONFIG,
+      responseMimeType: 'application/json',
+    };
+
+    const parseModelJson = (text) => {
+      const trimmed = String(text || '').trim();
+      try {
+        return JSON.parse(trimmed);
+      } catch (e) {
+        const match = trimmed.match(/\{[\s\S]*\}/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+        throw new Error(`Model did not return valid JSON: ${e.message}`);
+      }
+    };
+
+    const doRequestWithConfig = async (generationConfig) => {
+      const result = await this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
+      });
+      const response = result.response;
+      const text = response.text();
+      return parseModelJson(text);
+    };
+
+    const doRequest = async () => {
+      try {
+        return await doRequestWithConfig(jsonGenerationConfig);
+      } catch (firstErr) {
+        const msg = String(firstErr.message || firstErr);
+        const retryPlain =
+          /JSON|mime|responseMimeType|400|INVALID_ARGUMENT|unsupported/i.test(msg) ||
+          firstErr.status === 400;
+        if (!retryPlain) throw firstErr;
+        console.warn('⚠️  Gemini JSON mime request failed; retrying without responseMimeType:', msg.slice(0, 200));
+        return doRequestWithConfig({ ...GENERATION_CONFIG });
+      }
+    };
+
+    return apiLimit(async () => {
+      try {
+        return await withRetry(doRequest, { operationName: 'generateJsonFromPrompt' });
+      } catch (error) {
+        const isModelUnavailable = error.message && (
+          error.message.includes('404') ||
+          error.message.includes('no longer available') ||
+          error.message.includes('is not found')
+        );
+        if (isModelUnavailable && this._modelName) {
+          console.warn('⚠️  Model', this._modelName, 'unavailable; refetching for JSON prompt');
+          this._excludedModelNames.add(this._modelName);
+          this.model = null;
+          this._modelName = null;
+          this._initPromise = null;
+          await this.ensureInitialized();
+          return await withRetry(doRequest, { operationName: 'generateJsonFromPrompt (new model)' });
+        }
+        if (error.message?.includes('API_KEY_INVALID')) {
+          throw new Error('Invalid Google API key. Please check your GOOGLE_API_KEY configuration.');
+        }
+        if (error.message?.includes('QUOTA_EXCEEDED') || error.message?.includes('429')) {
+          throw new Error('Google API quota exceeded. Please try again later.');
+        }
+        if (isRetryableError(error)) {
+          throw new Error(`Gemini API failed after retries. Last error: ${error.message}`);
+        }
+        throw error;
+      }
+    });
   }
 
   async testService() {
