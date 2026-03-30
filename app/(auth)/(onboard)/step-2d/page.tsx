@@ -138,13 +138,7 @@ export default function StepTwoD() {
   };
 
   return (
-    <div
-      className="h-screen w-full flex flex-col"
-      style={{
-        background:
-          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
-      }}
-    >
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={95}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           <div className="flex-shrink-0">
@@ -155,7 +149,7 @@ export default function StepTwoD() {
             <Bubble>Where are you located? Select your state and district.</Bubble>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}

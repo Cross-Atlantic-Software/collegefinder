@@ -280,12 +280,12 @@ export default function SubjectsPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -295,33 +295,33 @@ export default function SubjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Subjects Manager</h1>
-            <p className="text-sm text-gray-600">Manage subject options that users can select.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Subjects Manager</h1>
+            <p className="text-sm text-slate-600">Manage subject options that users can select.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All subjects</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All subjects</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allSubjects.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
@@ -331,7 +331,7 @@ export default function SubjectsPage() {
                   type="button"
                   onClick={handleDownloadExcel}
                   disabled={downloadingExcel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -340,14 +340,14 @@ export default function SubjectsPage() {
               <button
                 type="button"
                 onClick={() => { setShowBulkModal(true); setBulkResult(null); setBulkError(null); setBulkExcelFile(null); }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
                 Upload Excel
               </button>
               <button
                 onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 <FiPlus className="h-4 w-4" />
                 Add Subject
@@ -363,38 +363,38 @@ export default function SubjectsPage() {
           )}
 
           {/* Subjects Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading subjects...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading subjects...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         NAME
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STREAMS
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STATUS
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CREATED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         LAST UPDATED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         ACTIONS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {subjects.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {subjects.length < allSubjects.length ? 'No subjects found matching your search' : 'No subjects found'}
                         </td>
                       </tr>
@@ -402,9 +402,9 @@ export default function SubjectsPage() {
                       subjects.map((subject) => {
                         const streams = Array.isArray(subject.streams) ? subject.streams : [];
                         return (
-                          <tr key={subject.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={subject.id} className="hover:bg-[#F6F8FA] transition-colors">
                             <td className="px-4 py-2">
-                              <span className="text-sm font-medium text-gray-900">{subject.name}</span>
+                              <span className="text-sm font-medium text-slate-900">{subject.name}</span>
                             </td>
                             <td className="px-4 py-2">
                               {streams.length > 0 ? (
@@ -421,11 +421,11 @@ export default function SubjectsPage() {
                                     );
                                   })}
                                   {streams.length > 2 && (
-                                    <span className="text-xs text-gray-500">+{streams.length - 2}</span>
+                                    <span className="text-xs text-slate-500">+{streams.length - 2}</span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-gray-400">-</span>
+                                <span className="text-xs text-slate-400">-</span>
                               )}
                             </td>
                             <td className="px-4 py-2">
@@ -434,19 +434,19 @@ export default function SubjectsPage() {
                                   Active
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                                   Inactive
                                 </span>
                               )}
                             </td>
-                          <td className="px-4 py-2 text-xs text-gray-600">
+                          <td className="px-4 py-2 text-xs text-slate-600">
                             {new Date(subject.created_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
                             })}
                           </td>
-                          <td className="px-4 py-2 text-xs text-gray-600">
+                          <td className="px-4 py-2 text-xs text-slate-600">
                             {new Date(subject.updated_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -477,13 +477,13 @@ export default function SubjectsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingSubject ? 'Edit Subject' : 'Create Subject'}
               </h2>
               <button
                 onClick={handleModalClose}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -493,8 +493,8 @@ export default function SubjectsPage() {
             <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Name <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Name <span className="text-[#341050]">*</span>
                   </label>
                   <input
                     type="text"
@@ -502,12 +502,12 @@ export default function SubjectsPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                     placeholder="e.g., Mathematics, Physics, Chemistry"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Streams
                   </label>
                   <MultiSelect
@@ -520,7 +520,7 @@ export default function SubjectsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Status
                   </label>
                   <div className="flex items-center gap-4">
@@ -530,9 +530,9 @@ export default function SubjectsPage() {
                         name="status"
                         checked={formData.status === true}
                         onChange={() => setFormData({ ...formData, status: true })}
-                        className="w-4 h-4 text-pink focus:ring-pink"
+                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
                       />
-                      <span className="text-sm text-gray-700">Active</span>
+                      <span className="text-sm text-slate-700">Active</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -540,9 +540,9 @@ export default function SubjectsPage() {
                         name="status"
                         checked={formData.status === false}
                         onChange={() => setFormData({ ...formData, status: false })}
-                        className="w-4 h-4 text-pink focus:ring-pink"
+                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
                       />
-                      <span className="text-sm text-gray-700">Inactive</span>
+                      <span className="text-sm text-slate-700">Inactive</span>
                     </label>
                   </div>
                 </div>
@@ -557,11 +557,11 @@ export default function SubjectsPage() {
             </form>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end relative z-10">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end relative z-10">
               <button
                 type="button"
                 onClick={handleModalClose}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
               >
                 Cancel
               </button>
@@ -569,7 +569,7 @@ export default function SubjectsPage() {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={!formData.name}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingSubject ? 'Update' : 'Create'}
               </button>
@@ -582,40 +582,40 @@ export default function SubjectsPage() {
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Bulk Upload Subjects</h2>
-              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-white hover:text-gray-200">
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-slate-500 hover:text-slate-800">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-gray-600 mb-3">Your Excel file must have these columns. streams: comma/semicolon-separated names or IDs (e.g. PCM, PCB, PCMB).</p>
-                <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+              <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
+                <p className="text-xs text-slate-600 mb-3">Your Excel file must have these columns. streams: comma/semicolon-separated names or IDs (e.g. PCM, PCB, PCMB).</p>
+                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">name</th>
-                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r border-gray-200">streams</th>
-                        <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">status</th>
+                      <tr className="bg-slate-100">
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">name</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">streams</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-gray-200">
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Physics</td>
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCB, PCMB</td>
-                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                      <tr className="border-b border-slate-200">
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Physics</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCM, PCB, PCMB</td>
+                        <td className="px-3 py-2 text-slate-800">TRUE</td>
                       </tr>
-                      <tr className="border-b border-gray-200">
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Chemistry</td>
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCB, PCMB</td>
-                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                      <tr className="border-b border-slate-200">
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Chemistry</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCM, PCB, PCMB</td>
+                        <td className="px-3 py-2 text-slate-800">TRUE</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">Mathematics</td>
-                        <td className="px-3 py-2 text-gray-800 border-r border-gray-200">PCM, PCMB</td>
-                        <td className="px-3 py-2 text-gray-800">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Mathematics</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCM, PCMB</td>
+                        <td className="px-3 py-2 text-slate-800">TRUE</td>
                       </tr>
                     </tbody>
                   </table>
@@ -624,28 +624,28 @@ export default function SubjectsPage() {
                   type="button"
                   onClick={handleDownloadTemplate}
                   disabled={downloadingTemplate}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingTemplate ? 'Downloading...' : 'Download template'}
                 </button>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Upload your Excel file</h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm border border-gray-300 rounded-lg p-2"
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
                 />
               </div>
               {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
               {bulkResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
                   <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
                   {bulkResult.errorDetails?.length > 0 && (
-                    <ul className="mt-2 text-xs text-gray-600 max-h-32 overflow-auto">
+                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
                       {bulkResult.errorDetails.map((err, i) => (
                         <li key={i}>Row {err.row}: {err.message}</li>
                       ))}
@@ -654,11 +654,11 @@ export default function SubjectsPage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
-              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]">
                 Close
               </button>
-              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50">
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
@@ -687,14 +687,14 @@ export default function SubjectsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">View Subject</h2>
               <button
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingSubject(null);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -704,13 +704,13 @@ export default function SubjectsPage() {
             <div className="flex-1 overflow-auto p-6 space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Name</label>
-                <p className="text-lg font-bold text-gray-900">{viewingSubject.name}</p>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Name</label>
+                <p className="text-lg font-bold text-slate-900">{viewingSubject.name}</p>
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                   viewingSubject.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
@@ -721,7 +721,7 @@ export default function SubjectsPage() {
               {/* Streams */}
               {viewingSubject.streams && viewingSubject.streams.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Streams</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Streams</label>
                   <div className="flex flex-wrap gap-1">
                     {viewingSubject.streams.map((streamId) => {
                       const stream = availableStreams.find((s) => Number(s.value) === streamId);
@@ -740,8 +740,8 @@ export default function SubjectsPage() {
 
               {/* Created At */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Created At</label>
-                <p className="text-sm text-gray-700">
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Created At</label>
+                <p className="text-sm text-slate-700">
                   {new Date(viewingSubject.created_at).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -754,8 +754,8 @@ export default function SubjectsPage() {
 
               {/* Updated At */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated At</label>
-                <p className="text-sm text-gray-700">
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Updated At</label>
+                <p className="text-sm text-slate-700">
                   {new Date(viewingSubject.updated_at).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -768,13 +768,13 @@ export default function SubjectsPage() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingSubject(null);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
               >
                 Close
               </button>

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sendOTP, initiateGoogleAuth, initiateFacebookAuth } from "@/api";
 
 export function LoginStepOneForm() {
@@ -12,6 +12,15 @@ export function LoginStepOneForm() {
   const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Persist ?ref= referral code so it survives the OTP flow and OAuth redirects
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      sessionStorage.setItem("cf_pending_ref", ref.trim().toUpperCase());
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,11 +53,11 @@ export function LoginStepOneForm() {
   }
 
   function handleGoogleButtonClick() {
-    initiateGoogleAuth();
+    initiateGoogleAuth(sessionStorage.getItem("cf_pending_ref") || undefined);
   }
 
   function handleFacebookButtonClick() {
-    initiateFacebookAuth();
+    initiateFacebookAuth(sessionStorage.getItem("cf_pending_ref") || undefined);
   }
 
   return (

@@ -489,45 +489,45 @@ export default function LoansPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => router.replace('/admin/login')} className="text-pink hover:underline">Go to login</button>
+          <button onClick={() => router.replace('/admin/login')} className="text-[#341050] hover:underline">Go to login</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Loan Providers Manager</h1>
-            <p className="text-sm text-gray-600">Manage loan providers with terms, disbursement process, eligible countries and course types. CRUD and Excel + logos bulk upload.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Loan Providers Manager</h1>
+            <p className="text-sm text-slate-600">Manage loan providers with terms, disbursement process, eligible countries and course types. CRUD and Excel + logos bulk upload.</p>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button type="button" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                <span className="text-xs font-medium text-gray-700">All providers</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{allProviders.length}</span>
+              <button type="button" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">
+                <span className="text-xs font-medium text-slate-700">All providers</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">{allProviders.length}</span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name, type, email"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64"
                 />
               </div>
             </div>
             <div className="inline-flex items-center gap-2">
-              <button type="button" onClick={handleCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90">
+              <button type="button" onClick={handleCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90">
                 <FiPlus className="h-4 w-4" />
                 Add Loan Provider
               </button>
@@ -541,7 +541,7 @@ export default function LoansPage() {
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
@@ -555,7 +555,7 @@ export default function LoansPage() {
                     setMissingLogosResult(null);
                     setMissingLogosError(null);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
                 >
                   <FiUpload className="h-4 w-4" />
                   Upload missing logos
@@ -566,7 +566,7 @@ export default function LoansPage() {
                   type="button"
                   onClick={handleDownloadAllExcel}
                   disabled={downloadingExcel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -588,49 +588,49 @@ export default function LoansPage() {
 
           {error && <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{error}</div>}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading loan providers...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading loan providers...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">LOGO</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">INTEREST RATE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">MAX LOAN</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">INTEREST RATE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">MAX LOAN</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {providers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {providers.length < allProviders.length ? 'No providers match your search' : 'No loan providers yet'}
                         </td>
                       </tr>
                     ) : (
                       providers.map((p) => (
-                        <tr key={p.id} className="hover:bg-gray-50">
+                        <tr key={p.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
-                            <div className="h-12 w-12 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+                            <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
                               {p.logo ? (
                                 <Image src={p.logo} alt={p.provider_name} width={48} height={48} className="object-contain" unoptimized />
                               ) : (
-                                <span className="text-xs text-gray-400">No logo</span>
+                                <span className="text-xs text-slate-400">No logo</span>
                               )}
                             </div>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{p.provider_name}</span>
+                            <span className="text-sm font-medium text-slate-900">{p.provider_name}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">{p.provider_type || '-'}</span>
+                            <span className="text-sm text-slate-600">{p.provider_type || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-slate-600">
                               {p.interest_rate_min != null && p.interest_rate_max != null
                                 ? `${p.interest_rate_min}% - ${p.interest_rate_max}%`
                                 : p.interest_rate_min != null
@@ -639,7 +639,7 @@ export default function LoansPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">{p.max_loan_amount || '-'}</span>
+                            <span className="text-sm text-slate-600">{p.max_loan_amount || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
                             <AdminTableActions
@@ -664,19 +664,19 @@ export default function LoansPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">{editingProvider ? 'Edit Loan Provider' : 'Create Loan Provider'}</h2>
-              <button type="button" onClick={handleModalClose} className="text-white hover:text-gray-200">
+              <button type="button" onClick={handleModalClose} className="text-slate-500 hover:text-slate-800">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="shrink-0 flex border-b border-gray-200 bg-gray-100 px-4 gap-1 overflow-x-auto min-h-[44px] items-end">
+            <div className="shrink-0 flex border-b border-slate-200 bg-slate-100 px-4 gap-1 overflow-x-auto min-h-[44px] items-end">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-2.5 px-3 text-sm font-medium border-b-2 whitespace-nowrap -mb-px ${activeTab === tab.id ? 'border-pink text-pink bg-white rounded-t' : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-gray-200/50'}`}
+                  className={`py-2.5 px-3 text-sm font-medium border-b-2 whitespace-nowrap -mb-px ${activeTab === tab.id ? 'border-[#341050] text-[#341050] bg-white rounded-t' : 'border-transparent text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'}`}
                 >
                   {tab.label}
                 </button>
@@ -686,103 +686,103 @@ export default function LoansPage() {
               {activeTab === 'basic' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Provider Name *</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Provider Name *</label>
                     <input
                       type="text"
                       value={formData.provider_name}
                       onChange={(e) => setFormData({ ...formData, provider_name: e.target.value })}
                       required
                       placeholder="e.g. HDFC Credila"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Provider Type</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Provider Type</label>
                     <input
                       type="text"
                       value={formData.provider_type}
                       onChange={(e) => setFormData({ ...formData, provider_type: e.target.value })}
                       placeholder="e.g. NBFC, Bank"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Logo</label>
                     {logoPreview && (
-                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-gray-100 border border-gray-300 mb-2">
+                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-slate-100 border border-slate-300 mb-2">
                         <Image src={logoPreview} alt="Logo" fill className="object-contain" unoptimized />
                       </div>
                     )}
-                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer">
                       <FiUpload className="h-4 w-4" />
                       <span>{logoPreview ? 'Change Logo' : 'Upload Logo'}</span>
                       <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" disabled={uploading} />
                     </label>
-                    {uploading && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
+                    {uploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Interest Rate Min (%)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Interest Rate Min (%)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.interest_rate_min}
                         onChange={(e) => setFormData({ ...formData, interest_rate_min: e.target.value === '' ? '' : e.target.value })}
                         placeholder="10.5"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Interest Rate Max (%)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Interest Rate Max (%)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.interest_rate_max}
                         onChange={(e) => setFormData({ ...formData, interest_rate_max: e.target.value === '' ? '' : e.target.value })}
                         placeholder="14"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Processing Fee</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Processing Fee</label>
                     <input
                       type="text"
                       value={formData.processing_fee}
                       onChange={(e) => setFormData({ ...formData, processing_fee: e.target.value })}
                       placeholder="e.g. 1% of loan amount"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Max Loan Amount</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Max Loan Amount</label>
                     <input
                       type="text"
                       value={formData.max_loan_amount}
                       onChange={(e) => setFormData({ ...formData, max_loan_amount: e.target.value })}
                       placeholder="e.g. 50 Lakh"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Moratorium (months)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Moratorium (months)</label>
                       <input
                         type="number"
                         value={formData.moratorium_period_months}
                         onChange={(e) => setFormData({ ...formData, moratorium_period_months: e.target.value === '' ? '' : e.target.value })}
                         placeholder="12"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Repayment (years)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Repayment (years)</label>
                       <input
                         type="number"
                         value={formData.repayment_duration_years}
                         onChange={(e) => setFormData({ ...formData, repayment_duration_years: e.target.value === '' ? '' : e.target.value })}
                         placeholder="15"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </div>
@@ -792,7 +792,7 @@ export default function LoansPage() {
                         type="checkbox"
                         checked={formData.collateral_required}
                         onChange={(e) => setFormData({ ...formData, collateral_required: e.target.checked })}
-                        className="rounded border-gray-300 text-pink focus:ring-pink"
+                        className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm">Collateral required</span>
                     </label>
@@ -801,7 +801,7 @@ export default function LoansPage() {
                         type="checkbox"
                         checked={formData.coapplicant_required}
                         onChange={(e) => setFormData({ ...formData, coapplicant_required: e.target.checked })}
-                        className="rounded border-gray-300 text-pink focus:ring-pink"
+                        className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm">Co-applicant required</span>
                     </label>
@@ -810,51 +810,51 @@ export default function LoansPage() {
                         type="checkbox"
                         checked={formData.tax_benefit_available}
                         onChange={(e) => setFormData({ ...formData, tax_benefit_available: e.target.checked })}
-                        className="rounded border-gray-300 text-pink focus:ring-pink"
+                        className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm">Tax benefit available</span>
                     </label>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Official Website</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Official Website</label>
                     <input
                       type="url"
                       value={formData.official_website_link}
                       onChange={(e) => setFormData({ ...formData, official_website_link: e.target.value })}
                       placeholder="https://..."
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Contact Email</label>
                       <input
                         type="email"
                         value={formData.contact_email}
                         onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                         placeholder="support@example.com"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Contact Phone</label>
                       <input
                         type="text"
                         value={formData.contact_phone}
                         onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                         placeholder="9876543210"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Brief description..."
                       rows={3}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none resize-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                     />
                   </div>
                 </>
@@ -863,8 +863,8 @@ export default function LoansPage() {
               {activeTab === 'disbursement' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Disbursement Process</label>
-                    <button type="button" onClick={addDisbursementStep} className="text-sm text-pink hover:underline">+ Add step</button>
+                    <label className="block text-xs font-medium text-slate-700">Disbursement Process</label>
+                    <button type="button" onClick={addDisbursementStep} className="text-sm text-[#341050] hover:underline">+ Add step</button>
                   </div>
                   <div className="space-y-2 max-h-48 overflow-auto">
                     {formData.disbursementProcess.map((step, i) => (
@@ -874,19 +874,19 @@ export default function LoansPage() {
                           value={step.step_number}
                           onChange={(e) => updateDisbursementStep(i, 'step_number', e.target.value === '' ? '' : e.target.value)}
                           placeholder="Step #"
-                          className="w-20 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="w-20 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <input
                           type="text"
                           value={step.description}
                           onChange={(e) => updateDisbursementStep(i, 'description', e.target.value)}
                           placeholder="Description"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeDisbursementStep(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.disbursementProcess.length === 0 && <p className="text-sm text-gray-500">No steps. Click &quot;Add step&quot;.</p>}
+                    {formData.disbursementProcess.length === 0 && <p className="text-sm text-slate-500">No steps. Click &quot;Add step&quot;.</p>}
                   </div>
                 </>
               )}
@@ -894,8 +894,8 @@ export default function LoansPage() {
               {activeTab === 'countries' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Eligible Countries</label>
-                    <button type="button" onClick={addCountry} className="text-sm text-pink hover:underline">+ Add</button>
+                    <label className="block text-xs font-medium text-slate-700">Eligible Countries</label>
+                    <button type="button" onClick={addCountry} className="text-sm text-[#341050] hover:underline">+ Add</button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-auto">
                     {formData.eligibleCountries.map((item, i) => (
@@ -905,12 +905,12 @@ export default function LoansPage() {
                           value={item.country_name}
                           onChange={(e) => updateCountry(i, e.target.value)}
                           placeholder="e.g. India"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeCountry(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.eligibleCountries.length === 0 && <p className="text-sm text-gray-500">No countries. Click &quot;Add&quot;.</p>}
+                    {formData.eligibleCountries.length === 0 && <p className="text-sm text-slate-500">No countries. Click &quot;Add&quot;.</p>}
                   </div>
                 </>
               )}
@@ -918,8 +918,8 @@ export default function LoansPage() {
               {activeTab === 'courseTypes' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Eligible Course Types</label>
-                    <button type="button" onClick={addCourseType} className="text-sm text-pink hover:underline">+ Add</button>
+                    <label className="block text-xs font-medium text-slate-700">Eligible Course Types</label>
+                    <button type="button" onClick={addCourseType} className="text-sm text-[#341050] hover:underline">+ Add</button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-auto">
                     {formData.eligibleCourseTypes.map((item, i) => (
@@ -929,19 +929,19 @@ export default function LoansPage() {
                           value={item.course_type}
                           onChange={(e) => updateCourseType(i, e.target.value)}
                           placeholder="e.g. Engineering, MBA"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeCourseType(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.eligibleCourseTypes.length === 0 && <p className="text-sm text-gray-500">No course types. Click &quot;Add&quot;.</p>}
+                    {formData.eligibleCourseTypes.length === 0 && <p className="text-sm text-slate-500">No course types. Click &quot;Add&quot;.</p>}
                   </div>
                 </>
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
+                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
                   {isSaving ? 'Saving...' : editingProvider ? 'Update' : 'Create'}
                 </button>
               </div>
@@ -963,17 +963,17 @@ export default function LoansPage() {
                     className="h-12 w-12 rounded-lg object-cover shrink-0"
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-lg bg-gray-200 shrink-0 flex items-center justify-center text-gray-500 text-xl">
+                  <div className="h-12 w-12 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-500 text-xl">
                     <FiBarChart />
                   </div>
                 )}
-                <h2 className="text-lg font-bold text-gray-900 truncate">{viewingData.loanProvider?.provider_name ?? 'Loan Provider'}</h2>
+                <h2 className="text-lg font-bold text-slate-900 truncate">{viewingData.loanProvider?.provider_name ?? 'Loan Provider'}</h2>
               </div>
-              <button type="button" onClick={() => setViewingData(null)} className="text-gray-500 hover:text-gray-700 shrink-0">
+              <button type="button" onClick={() => setViewingData(null)} className="text-slate-500 hover:text-slate-700 shrink-0">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-2 text-sm text-gray-700">
+            <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Provider type:</strong> {viewingData.loanProvider?.provider_type ?? '-'}</p>
               <p>
                 <strong>Interest rate:</strong>{' '}
@@ -992,20 +992,20 @@ export default function LoansPage() {
               <p><strong>Contact phone:</strong> {viewingData.loanProvider?.contact_phone ?? '-'}</p>
               <p><strong>Website:</strong>{' '}
                 {viewingData.loanProvider?.official_website_link ? (
-                  <a href={viewingData.loanProvider.official_website_link} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">{viewingData.loanProvider.official_website_link}</a>
+                  <a href={viewingData.loanProvider.official_website_link} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.loanProvider.official_website_link}</a>
                 ) : '-'}
               </p>
             </div>
             {viewingData.loanProvider?.description && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Description</p>
-                <p className="text-sm text-gray-600">{viewingData.loanProvider.description}</p>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Description</p>
+                <p className="text-sm text-slate-600">{viewingData.loanProvider.description}</p>
               </div>
             )}
             {((viewingData.disbursementProcess ?? []).length > 0) && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Disbursement process</p>
-                <ol className="text-sm text-gray-600 list-decimal list-inside">
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Disbursement process</p>
+                <ol className="text-sm text-slate-600 list-decimal list-inside">
                   {(viewingData.disbursementProcess ?? []).map((s) => (
                     <li key={s.id}>{s.description || `Step ${s.step_number}`}</li>
                   ))}
@@ -1014,17 +1014,17 @@ export default function LoansPage() {
             )}
             {((viewingData.eligibleCountries ?? []).length > 0) && (
               <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Eligible countries</p>
-                <p className="text-sm text-gray-600">{(viewingData.eligibleCountries ?? []).map((c) => c.country_name).filter(Boolean).join(', ')}</p>
+                <p className="text-sm font-medium text-slate-700">Eligible countries</p>
+                <p className="text-sm text-slate-600">{(viewingData.eligibleCountries ?? []).map((c) => c.country_name).filter(Boolean).join(', ')}</p>
               </div>
             )}
             {((viewingData.eligibleCourseTypes ?? []).length > 0) && (
               <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Eligible course types</p>
-                <p className="text-sm text-gray-600">{(viewingData.eligibleCourseTypes ?? []).map((c) => c.course_type).filter(Boolean).join(', ')}</p>
+                <p className="text-sm font-medium text-slate-700">Eligible course types</p>
+                <p className="text-sm text-slate-600">{(viewingData.eligibleCourseTypes ?? []).map((c) => c.course_type).filter(Boolean).join(', ')}</p>
               </div>
             )}
-            <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData.loanProvider); }} className="mt-4 px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90">Edit</button>
+            <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData.loanProvider); }} className="mt-4 px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90">Edit</button>
           </div>
         </div>
       )}
@@ -1035,20 +1035,20 @@ export default function LoansPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Bulk Upload Loan Providers</h2>
-              <button type="button" onClick={() => setShowBulkModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={() => setShowBulkModal(false)} className="text-slate-500 hover:text-slate-700">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Upload an Excel file (use template). Optionally attach a ZIP of logos; filenames must match the <code className="bg-gray-100 px-1 rounded">logo_filename</code> column.
+            <p className="text-sm text-slate-600 mb-4">
+              Upload an Excel file (use template). Optionally attach a ZIP of logos; filenames must match the <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
                 <input type="file" accept=".xlsx,.xls" onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)} className="w-full text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Logos (ZIP file)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Logos (ZIP file)</label>
                 <input
                   type="file"
                   accept=".zip"
@@ -1064,7 +1064,7 @@ export default function LoansPage() {
                 />
               </div>
               {canDownloadExcel && (
-                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
+                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline">
                   <FiDownload className="h-4 w-4" />
                   Download Excel template
                 </button>
@@ -1077,8 +1077,8 @@ export default function LoansPage() {
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">
-              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
-              <button type="button" onClick={handleBulkSubmit} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
+              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Close</button>
+              <button type="button" onClick={handleBulkSubmit} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
@@ -1090,12 +1090,12 @@ export default function LoansPage() {
       {showMissingLogosModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
-            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-white/20"><FiUpload className="h-5 w-5" /></div>
-                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+                <div className="p-1.5 rounded-lg bg-highlight-100 text-[#341050]"><FiUpload className="h-5 w-5" /></div>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Upload missing logos</h2>
               </div>
-              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20" aria-label="Close"><FiX className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80" aria-label="Close"><FiX className="h-5 w-5" /></button>
             </div>
             <div className="p-5 overflow-auto space-y-5">
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
@@ -1105,7 +1105,7 @@ export default function LoansPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 transition-all cursor-pointer group">
                   <input type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden" onChange={(e) => { setMissingLogosZipFile(e.target.files?.[0] ?? null); setMissingLogosResult(null); setMissingLogosError(null); e.target.value = ''; }} />
                   {missingLogosZipFile ? (
                     <div className="flex flex-col items-center gap-2 p-4">
@@ -1133,7 +1133,7 @@ export default function LoansPage() {
             </div>
             <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
               <button type="button" onClick={() => setShowMissingLogosModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Close</button>
-              <button type="button" onClick={handleMissingLogosSubmit} disabled={!missingLogosZipFile || missingLogosUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
+              <button type="button" onClick={handleMissingLogosSubmit} disabled={!missingLogosZipFile || missingLogosUploading} className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
                 {missingLogosUploading ? <><span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />Uploading…</> : <><FiUpload className="h-4 w-4" />Upload</>}
               </button>
             </div>

@@ -107,12 +107,12 @@ export default function EmailTemplatesPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -122,44 +122,52 @@ export default function EmailTemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Email Template Manager</h1>
-            <p className="text-sm text-gray-600">Manage email templates for different types of notifications.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Email Template Manager</h1>
+            <p className="text-sm text-slate-600">Manage email templates for different types of notifications.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All templates</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All templates</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allTemplates.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by type or subject"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               <FiPlus className="h-4 w-4" />
               Add Template
             </button>
           </div>
+
+          <p className="mb-3 text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+            Referral program: <span className="font-mono font-semibold">REFERRAL_INVITE</span> (student HTML),{" "}
+            <span className="font-mono font-semibold">REFERRAL_WHATSAPP</span> (student WhatsApp / plain text),{" "}
+            <span className="font-mono font-semibold">REFERRAL_INSTITUTE_INVITE</span> (institute referral from CMS).
+            Seed defaults:{" "}
+            <code className="text-[11px] bg-white px-1 rounded border">npm run seed:referral-templates</code>.
+          </p>
 
           {/* Error Message */}
           {error && (
@@ -169,43 +177,43 @@ export default function EmailTemplatesPage() {
           )}
 
           {/* Templates Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading email templates...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading email templates...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         TYPE
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         SUBJECT
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CREATED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         ACTIONS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {templates.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={4} className="px-4 py-4 text-center text-sm text-slate-500">
                           {templates.length < allTemplates.length ? 'No templates found matching your search' : 'No email templates found'}
                         </td>
                       </tr>
                     ) : (
                       templates.map((template) => (
-                        <tr key={template.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={template.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{template.type}</span>
+                            <span className="text-sm font-medium text-slate-900">{template.type}</span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{template.subject}</td>
-                          <td className="px-4 py-2 text-xs text-gray-600">
+                          <td className="px-4 py-2 text-sm text-slate-600">{template.subject}</td>
+                          <td className="px-4 py-2 text-xs text-slate-600">
                             {new Date(template.created_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',

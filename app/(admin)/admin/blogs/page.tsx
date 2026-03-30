@@ -215,12 +215,12 @@ export default function BlogsPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -230,39 +230,39 @@ export default function BlogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Blog Manager</h1>
-            <p className="text-sm text-gray-600">Manage blog posts and content.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Blog Manager</h1>
+            <p className="text-sm text-slate-600">Manage blog posts and content.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All blogs</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All blogs</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allBlogs.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by title or slug"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               <FiPlus className="h-4 w-4" />
               Add Blog
@@ -277,53 +277,53 @@ export default function BlogsPage() {
           )}
 
           {/* Blogs Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading blogs...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading blogs...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         IMAGE
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         TITLE
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         SLUG
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         TYPE
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         FEATURED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STREAMS
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CAREERS
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CREATED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         ACTIONS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {blogs.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-slate-500">
                           {blogs.length < allBlogs.length ? 'No blogs found matching your search' : 'No blogs found'}
                         </td>
                       </tr>
                     ) : (
                       blogs.map((blog) => (
-                        <tr key={blog.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={blog.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             {blog.blog_image ? (
                               <div className="relative h-12 w-12 rounded overflow-hidden">
@@ -336,15 +336,15 @@ export default function BlogsPage() {
                                 />
                               </div>
                             ) : (
-                              <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center">
-                                <FiImage className="h-5 w-5 text-gray-400" />
+                              <div className="h-12 w-12 rounded bg-slate-100 flex items-center justify-center">
+                                <FiImage className="h-5 w-5 text-slate-400" />
                               </div>
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{blog.title}</span>
+                            <span className="text-sm font-medium text-slate-900">{blog.title}</span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{blog.slug}</td>
+                          <td className="px-4 py-2 text-sm text-slate-600">{blog.slug}</td>
                           <td className="px-4 py-2">
                             {blog.content_type === 'VIDEO' ? (
                               <button
@@ -369,11 +369,11 @@ export default function BlogsPage() {
                           </td>
                           <td className="px-4 py-2">
                             {blog.is_featured ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#341050]-100 text-[#341050]-800">
                                 Featured
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400">-</span>
+                              <span className="text-xs text-slate-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-2">
@@ -388,11 +388,11 @@ export default function BlogsPage() {
                                   </span>
                                 ))}
                                 {blog.streams.length > 2 && (
-                                  <span className="text-xs text-gray-500">+{blog.streams.length - 2}</span>
+                                  <span className="text-xs text-slate-500">+{blog.streams.length - 2}</span>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-400">-</span>
+                              <span className="text-xs text-slate-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-2">
@@ -407,14 +407,14 @@ export default function BlogsPage() {
                                   </span>
                                 ))}
                                 {blog.careers.length > 2 && (
-                                  <span className="text-xs text-gray-500">+{blog.careers.length - 2}</span>
+                                  <span className="text-xs text-slate-500">+{blog.careers.length - 2}</span>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-400">-</span>
+                              <span className="text-xs text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-xs text-gray-600">
+                          <td className="px-4 py-2 text-xs text-slate-600">
                             {new Date(blog.created_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -468,14 +468,14 @@ export default function BlogsPage() {
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Video Player</h2>
               <button
                 onClick={() => {
                   setShowVideoModal(false);
                   setSelectedVideo(null);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-5 w-5" />
               </button>
@@ -501,14 +501,14 @@ export default function BlogsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">View Blog</h2>
               <button
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingBlog(null);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -518,7 +518,7 @@ export default function BlogsPage() {
             <div className="flex-1 overflow-auto p-6 space-y-4">
               {/* Blog Image */}
               {viewingBlog.blog_image && (
-                <div className="relative w-48 h-32 rounded-lg overflow-hidden border border-gray-200">
+                <div className="relative w-48 h-32 rounded-lg overflow-hidden border border-slate-200">
                   <Image
                     src={viewingBlog.blog_image}
                     alt={viewingBlog.title}
@@ -531,19 +531,19 @@ export default function BlogsPage() {
 
               {/* Title */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Title</label>
-                <p className="text-lg font-bold text-gray-900">{viewingBlog.title}</p>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Title</label>
+                <p className="text-lg font-bold text-slate-900">{viewingBlog.title}</p>
               </div>
 
               {/* Slug */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Slug</label>
-                <p className="text-sm text-gray-700">{viewingBlog.slug}</p>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Slug</label>
+                <p className="text-sm text-slate-700">{viewingBlog.slug}</p>
               </div>
 
               {/* Content Type */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Content Type</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Content Type</label>
                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                   viewingBlog.content_type === 'VIDEO' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                 }`}>
@@ -554,9 +554,9 @@ export default function BlogsPage() {
 
               {/* Featured */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Featured</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Featured</label>
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  viewingBlog.is_featured ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                  viewingBlog.is_featured ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-800'
                 }`}>
                   {viewingBlog.is_featured ? 'Yes' : 'No'}
                 </span>
@@ -565,7 +565,7 @@ export default function BlogsPage() {
               {/* URL and Source */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">URL</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">URL</label>
                   {viewingBlog.url ? (
                     <a
                       href={viewingBlog.url}
@@ -576,13 +576,13 @@ export default function BlogsPage() {
                       {viewingBlog.url}
                     </a>
                   ) : (
-                    <p className="text-sm text-gray-400">-</p>
+                    <p className="text-sm text-slate-400">-</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Source</label>
-                  <p className="text-sm text-gray-700">
-                    {viewingBlog.source_name ? viewingBlog.source_name : <span className="text-gray-400">-</span>}
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Source</label>
+                  <p className="text-sm text-slate-700">
+                    {viewingBlog.source_name ? viewingBlog.source_name : <span className="text-slate-400">-</span>}
                   </p>
                 </div>
               </div>
@@ -590,7 +590,7 @@ export default function BlogsPage() {
               {/* Streams */}
               {viewingBlog.streams && viewingBlog.streams.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Streams</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Streams</label>
                   <div className="flex flex-wrap gap-1">
                     {viewingBlog.streams.map((streamId) => (
                       <span
@@ -607,7 +607,7 @@ export default function BlogsPage() {
               {/* Careers */}
               {viewingBlog.careers && viewingBlog.careers.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Careers</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Careers</label>
                   <div className="flex flex-wrap gap-1">
                     {viewingBlog.careers.map((careerId) => (
                       <span
@@ -624,25 +624,25 @@ export default function BlogsPage() {
               {/* Teaser */}
               {viewingBlog.teaser && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Teaser</label>
-                  <p className="text-sm text-gray-700">{viewingBlog.teaser}</p>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Teaser</label>
+                  <p className="text-sm text-slate-700">{viewingBlog.teaser}</p>
                 </div>
               )}
 
               {/* Summary */}
               {viewingBlog.summary && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Summary</label>
-                  <p className="text-sm text-gray-700">{viewingBlog.summary}</p>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Summary</label>
+                  <p className="text-sm text-slate-700">{viewingBlog.summary}</p>
                 </div>
               )}
 
               {/* First Part (for TEXT content) */}
               {viewingBlog.content_type === 'TEXT' && viewingBlog.first_part && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">First Part</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">First Part</label>
                   <div 
-                    className="text-sm text-gray-700 prose prose-sm max-w-none"
+                    className="text-sm text-slate-700 prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: viewingBlog.first_part }}
                   />
                 </div>
@@ -651,9 +651,9 @@ export default function BlogsPage() {
               {/* Second Part (for TEXT content) */}
               {viewingBlog.content_type === 'TEXT' && viewingBlog.second_part && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Second Part</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Second Part</label>
                   <div 
-                    className="text-sm text-gray-700 prose prose-sm max-w-none"
+                    className="text-sm text-slate-700 prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: viewingBlog.second_part }}
                   />
                 </div>
@@ -662,7 +662,7 @@ export default function BlogsPage() {
               {/* Video File (for VIDEO content) */}
               {viewingBlog.content_type === 'VIDEO' && viewingBlog.video_file && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Video</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Video</label>
                   <button
                     onClick={() => {
                       setSelectedVideo(viewingBlog.video_file!);
@@ -679,8 +679,8 @@ export default function BlogsPage() {
 
               {/* Created At */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Created At</label>
-                <p className="text-sm text-gray-700">
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Created At</label>
+                <p className="text-sm text-slate-700">
                   {new Date(viewingBlog.created_at).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -693,8 +693,8 @@ export default function BlogsPage() {
 
               {/* Updated At */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated At</label>
-                <p className="text-sm text-gray-700">
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Updated At</label>
+                <p className="text-sm text-slate-700">
                   {new Date(viewingBlog.updated_at).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -707,13 +707,13 @@ export default function BlogsPage() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingBlog(null);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
               >
                 Close
               </button>

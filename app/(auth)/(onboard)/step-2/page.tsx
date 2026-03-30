@@ -87,13 +87,7 @@ export default function StepTwo() {
   };
 
   return (
-    <div
-      className="h-screen w-full flex flex-col"
-      style={{
-        background:
-          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
-      }}
-    >
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={40}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           {/* Robot */}
@@ -106,7 +100,7 @@ export default function StepTwo() {
             <Bubble>I am curious. What shall I call you?</Bubble>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
@@ -117,7 +111,7 @@ export default function StepTwo() {
                 placeholder="Type your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="block w-full rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-pink focus:outline-none transition duration-500"
+                className="block w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#341050] focus:ring-1 focus:ring-[#341050]/20 transition duration-300 shadow-sm"
                 required
                 minLength={1}
                 maxLength={255}

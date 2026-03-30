@@ -26,11 +26,12 @@ export async function sendOTP(email: string): Promise<ApiResponse<SendOTPRespons
  */
 export async function verifyOTP(
   email: string,
-  code: string
+  code: string,
+  ref?: string
 ): Promise<ApiResponse<VerifyOTPResponse>> {
   return apiRequest<VerifyOTPResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, {
     method: 'POST',
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({ email, code, ...(ref ? { ref } : {}) }),
   });
 }
 
@@ -47,16 +48,20 @@ export async function resendOTP(email: string): Promise<ApiResponse<SendOTPRespo
 /**
  * Initiate Google OAuth (redirects to Google)
  */
-export function initiateGoogleAuth() {
+export function initiateGoogleAuth(ref?: string) {
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  window.location.href = `${backendUrl}${API_ENDPOINTS.AUTH.GOOGLE_AUTH}`;
+  const url = new URL(`${backendUrl}${API_ENDPOINTS.AUTH.GOOGLE_AUTH}`);
+  if (ref) url.searchParams.set('ref', ref);
+  window.location.href = url.toString();
 }
 
 /**
  * Initiate Facebook OAuth (redirects to Facebook)
  */
-export function initiateFacebookAuth() {
+export function initiateFacebookAuth(ref?: string) {
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  window.location.href = `${backendUrl}${API_ENDPOINTS.AUTH.FACEBOOK_AUTH}`;
+  const url = new URL(`${backendUrl}${API_ENDPOINTS.AUTH.FACEBOOK_AUTH}`);
+  if (ref) url.searchParams.set('ref', ref);
+  window.location.href = url.toString();
 }
 

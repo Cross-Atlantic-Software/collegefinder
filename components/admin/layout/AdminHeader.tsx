@@ -2,8 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 
-export default function AdminHeader() {
-  // Get current admin info
+type AdminHeaderProps = {
+  title?: string;
+  subtitle?: string;
+  /** Optional section tabs (e.g. Exams | Generation prompts) rendered below the title row */
+  tabs?: React.ReactNode;
+};
+
+export default function AdminHeader({ title, subtitle, tabs }: AdminHeaderProps) {
   const [adminInfo, setAdminInfo] = useState<{ email: string; type: string } | null>(null);
 
   useEffect(() => {
@@ -26,22 +32,39 @@ export default function AdminHeader() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-4 flex items-center">
-      <div className="flex items-center justify-end w-full">
-        {/* User Info */}
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-20 shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex min-h-[52px] items-center justify-between gap-4 px-4 py-2.5 md:px-6">
+        <div className="min-w-0 flex-1 pr-2">
+          {title ? (
+            <div>
+              <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-xl">
+                {title}
+              </h1>
+              {subtitle ? (
+                <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="text-right">
-            <p className="text-xs font-medium text-gray-900">
+            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
               {adminInfo?.type === 'super_admin' ? 'Super Admin' : 'Admin'}
             </p>
-            <p className="text-xs text-gray-500">{adminInfo?.email || 'Admin'}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+              {adminInfo?.email || 'Admin'}
+            </p>
           </div>
-          <div className="h-8 w-8 rounded-full bg-darkGradient flex items-center justify-center text-white text-sm font-semibold">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-highlight-100 text-sm font-bold text-brand-ink dark:bg-slate-800 dark:text-highlight-300">
             {getAdminInitials()}
           </div>
         </div>
       </div>
+      {tabs ? (
+        <div className="border-t border-slate-200/90 bg-white/95 px-4 dark:border-slate-800 dark:bg-slate-900/90 md:px-6">
+          {tabs}
+        </div>
+      ) : null}
     </header>
   );
 }
-

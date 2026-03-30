@@ -26,6 +26,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, 
 import { MdSchool } from 'react-icons/md';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import InstituteReferralSendModal from '@/components/admin/modals/InstituteReferralSendModal';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
@@ -60,6 +61,13 @@ export default function InstitutesPage() {
     specializationExamNames?: string[];
     instituteStatistics: InstituteStatistics | null;
     instituteCourses: InstituteCourse[];
+    referralEmailPreview: { subject: string; defaultRecipients: string[] } | null;
+  } | null>(null);
+  const [referralSendModal, setReferralSendModal] = useState<{
+    instituteId: number;
+    instituteName: string;
+    emailSubject: string;
+    initialRecipients: string[];
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [activeTab, setActiveTab] = useState<FormTab>('basic');
@@ -70,6 +78,7 @@ export default function InstitutesPage() {
     logo: '',
     website: '',
     contact_number: '',
+    referral_contact_email: '',
     institute_description: '',
     demo_available: false,
     scholarship_available: false,
@@ -145,7 +154,8 @@ export default function InstitutesPage() {
             c.institute_name.toLowerCase().includes(q) ||
             (c.institute_location && c.institute_location.toLowerCase().includes(q)) ||
             (c.type && c.type.toLowerCase().includes(q)) ||
-            (c.website && c.website.toLowerCase().includes(q))
+            (c.website && c.website.toLowerCase().includes(q)) ||
+            (c.referral_contact_email && c.referral_contact_email.toLowerCase().includes(q))
         )
       );
     }, 300);
@@ -215,6 +225,7 @@ export default function InstitutesPage() {
         logo: formData.logo || null,
         website: formData.website.trim() || null,
         contact_number: formData.contact_number.trim() || null,
+        referral_contact_email: formData.referral_contact_email.trim() || null,
         institute_description: formData.institute_description.trim() || null,
         demo_available: formData.demo_available,
         scholarship_available: formData.scholarship_available,
@@ -278,9 +289,12 @@ export default function InstitutesPage() {
           institute: response.data.institute,
           instituteDetails: response.data.instituteDetails,
           examIds: response.data.examIds || [],
+          examNames: response.data.examNames,
           specializationExamIds: response.data.specializationExamIds || [],
+          specializationExamNames: response.data.specializationExamNames,
           instituteStatistics: response.data.instituteStatistics,
           instituteCourses: response.data.instituteCourses || [],
+          referralEmailPreview: response.data.referralEmailPreview ?? null,
         });
       } else {
         showError('Failed to load institute');
@@ -304,6 +318,7 @@ export default function InstitutesPage() {
           logo: d.institute.logo ?? '',
           website: d.institute.website ?? '',
           contact_number: d.institute.contact_number ?? '',
+          referral_contact_email: d.institute.referral_contact_email ?? '',
           institute_description: d.instituteDetails?.institute_description ?? '',
           demo_available: d.instituteDetails?.demo_available ?? false,
           scholarship_available: d.instituteDetails?.scholarship_available ?? false,
@@ -367,6 +382,7 @@ export default function InstitutesPage() {
       logo: '',
       website: '',
       contact_number: '',
+      referral_contact_email: '',
       institute_description: '',
       demo_available: false,
       scholarship_available: false,
@@ -514,10 +530,10 @@ export default function InstitutesPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => router.replace('/admin/login')} className="text-pink hover:underline">
+          <button onClick={() => router.replace('/admin/login')} className="text-[#341050] hover:underline">
             Go to login
           </button>
         </div>
@@ -526,14 +542,14 @@ export default function InstitutesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Institutes (Coachings) Manager</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Institutes (Coachings) Manager</h1>
+            <p className="text-sm text-slate-600">
               Manage institutes with details, exams, statistics, and courses. CRUD and bulk upload (Excel + logos).
             </p>
           </div>
@@ -542,21 +558,21 @@ export default function InstitutesPage() {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
               >
-                <span className="text-xs font-medium text-gray-700">All institutes</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                <span className="text-xs font-medium text-slate-700">All institutes</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allInstitutes.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name, location, type, website"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64"
                 />
               </div>
             </div>
@@ -564,7 +580,7 @@ export default function InstitutesPage() {
               <button
                 type="button"
                 onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90"
               >
                 <FiPlus className="h-4 w-4" />
                 Add Institute
@@ -579,7 +595,7 @@ export default function InstitutesPage() {
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
@@ -593,7 +609,7 @@ export default function InstitutesPage() {
                     setMissingLogosResult(null);
                     setMissingLogosError(null);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
                 >
                   <FiUpload className="h-4 w-4" />
                   Upload missing logos
@@ -604,7 +620,7 @@ export default function InstitutesPage() {
                   type="button"
                   onClick={handleDownloadAllExcel}
                   disabled={downloadingExcel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -630,26 +646,28 @@ export default function InstitutesPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading institutes...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading institutes...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">LOGO</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">LOCATION</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">WEBSITE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOCATION</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">WEBSITE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">REFERRAL CODE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700 max-w-[200px]">REFERRAL EMAILS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {institutes.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
                           {institutes.length < allInstitutes.length
                             ? 'No institutes match your search'
                             : 'No institutes yet'}
@@ -657,9 +675,9 @@ export default function InstitutesPage() {
                       </tr>
                     ) : (
                       institutes.map((inst) => (
-                        <tr key={inst.id} className="hover:bg-gray-50">
+                        <tr key={inst.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
-                            <div className="h-12 w-12 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+                            <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
                               {inst.logo ? (
                                 <Image
                                   src={inst.logo}
@@ -670,15 +688,15 @@ export default function InstitutesPage() {
                                   unoptimized
                                 />
                               ) : (
-                                <span className="text-xs text-gray-400">No logo</span>
+                                <span className="text-xs text-slate-400">No logo</span>
                               )}
                             </div>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{inst.institute_name}</span>
+                            <span className="text-sm font-medium text-slate-900">{inst.institute_name}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">{inst.institute_location || '-'}</span>
+                            <span className="text-sm text-slate-600">{inst.institute_location || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
                             {inst.type && (
@@ -688,8 +706,22 @@ export default function InstitutesPage() {
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600 truncate max-w-[120px] block">
+                            <span className="text-sm text-slate-600 truncate max-w-[120px] block">
                               {inst.website || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            {inst.referral_code ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-mono font-medium bg-purple-100 text-purple-800">
+                                {inst.referral_code}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 max-w-[200px]">
+                            <span className="text-xs text-slate-600 line-clamp-2 break-all" title={inst.referral_contact_email || ''}>
+                              {inst.referral_contact_email?.trim() || '—'}
                             </span>
                           </td>
                           <td className="px-4 py-2">
@@ -715,15 +747,15 @@ export default function InstitutesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingInstitute ? 'Edit Institute' : 'Create Institute'}
               </h2>
-              <button type="button" onClick={handleModalClose} className="text-white hover:text-gray-200">
+              <button type="button" onClick={handleModalClose} className="text-slate-500 hover:text-slate-800">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex border-b border-gray-200 px-4 gap-2 overflow-x-auto">
+            <div className="flex border-b border-slate-200 px-4 gap-2 overflow-x-auto">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -731,8 +763,8 @@ export default function InstitutesPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-2 px-2 text-sm font-medium border-b-2 whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'border-pink text-pink'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                      ? 'border-[#341050] text-[#341050]'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab.label}
@@ -743,7 +775,7 @@ export default function InstitutesPage() {
               {activeTab === 'basic' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Institute Name *</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Institute Name *</label>
                     <input
                       type="text"
                       value={formData.institute_name}
@@ -752,11 +784,11 @@ export default function InstitutesPage() {
                       }
                       required
                       placeholder="e.g. Allen Kota"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Location</label>
                     <input
                       type="text"
                       value={formData.institute_location}
@@ -764,11 +796,11 @@ export default function InstitutesPage() {
                         setFormData({ ...formData, institute_location: e.target.value })
                       }
                       placeholder="e.g. Kota"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
                     <Dropdown
                       value={formData.type || null}
                       onChange={(v) => setFormData({ ...formData, type: v })}
@@ -782,9 +814,9 @@ export default function InstitutesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Logo</label>
                     {logoPreview && (
-                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-gray-100 border border-gray-300 mb-2">
+                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-slate-100 border border-slate-300 mb-2">
                         <Image
                           src={logoPreview}
                           alt="Logo"
@@ -794,7 +826,7 @@ export default function InstitutesPage() {
                         />
                       </div>
                     )}
-                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer">
                       <FiUpload className="h-4 w-4" />
                       <span>{logoPreview ? 'Change Logo' : 'Upload Logo'}</span>
                       <input
@@ -805,20 +837,20 @@ export default function InstitutesPage() {
                         disabled={uploading}
                       />
                     </label>
-                    {uploading && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
+                    {uploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Website</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Website</label>
                     <input
                       type="url"
                       value={formData.website}
                       onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                       placeholder="https://..."
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Contact Number</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Contact Number</label>
                     <input
                       type="text"
                       value={formData.contact_number}
@@ -826,8 +858,25 @@ export default function InstitutesPage() {
                         setFormData({ ...formData, contact_number: e.target.value })
                       }
                       placeholder="e.g. 9876543210"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Referral contact email(s)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.referral_contact_email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, referral_contact_email: e.target.value })
+                      }
+                      placeholder="comma or space separated, e.g. partner@school.edu, admin@school.edu"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      Used to pre-fill recipients when sending referral invites from the institute view.
+                    </p>
                   </div>
                 </>
               )}
@@ -835,7 +884,7 @@ export default function InstitutesPage() {
               {activeTab === 'details' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
                     <textarea
                       value={formData.institute_description}
                       onChange={(e) =>
@@ -843,7 +892,7 @@ export default function InstitutesPage() {
                       }
                       placeholder="Brief description..."
                       rows={4}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                     />
                   </div>
                   <div className="flex items-center gap-4">
@@ -854,7 +903,7 @@ export default function InstitutesPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, demo_available: e.target.checked })
                         }
-                        className="rounded border-gray-300 text-pink focus:ring-pink"
+                        className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm">Demo available</span>
                     </label>
@@ -865,7 +914,7 @@ export default function InstitutesPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, scholarship_available: e.target.checked })
                         }
-                        className="rounded border-gray-300 text-pink focus:ring-pink"
+                        className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm">Scholarship available</span>
                     </label>
@@ -876,7 +925,7 @@ export default function InstitutesPage() {
               {activeTab === 'exams' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Exams offered</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Exams offered</label>
                     <MultiSelect
                       options={exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` }))}
                       value={formData.examIds.map(String)}
@@ -887,7 +936,7 @@ export default function InstitutesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Exam specializations
                     </label>
                     <MultiSelect
@@ -905,7 +954,7 @@ export default function InstitutesPage() {
               {activeTab === 'statistics' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Ranking score</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Ranking score</label>
                     <input
                       type="number"
                       step="0.01"
@@ -917,11 +966,11 @@ export default function InstitutesPage() {
                         })
                       }
                       placeholder="e.g. 4.5"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Success rate (%)</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Success rate (%)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -933,11 +982,11 @@ export default function InstitutesPage() {
                         })
                       }
                       placeholder="e.g. 85"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Student rating</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Student rating</label>
                     <input
                       type="number"
                       step="0.01"
@@ -951,7 +1000,7 @@ export default function InstitutesPage() {
                         })
                       }
                       placeholder="e.g. 4.2"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                 </>
@@ -960,11 +1009,11 @@ export default function InstitutesPage() {
               {activeTab === 'courses' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Courses</label>
+                    <label className="block text-xs font-medium text-slate-700">Courses</label>
                     <button
                       type="button"
                       onClick={addCourseRow}
-                      className="text-sm text-pink hover:underline"
+                      className="text-sm text-[#341050] hover:underline"
                     >
                       + Add course
                     </button>
@@ -973,10 +1022,10 @@ export default function InstitutesPage() {
                     {formData.instituteCourses.map((course, idx) => (
                       <div
                         key={idx}
-                        className="p-3 border border-gray-200 rounded-lg space-y-2 bg-gray-50"
+                        className="p-3 border border-slate-200 rounded-lg space-y-2 bg-[#F6F8FA]"
                       >
                         <div className="flex justify-between">
-                          <span className="text-xs font-medium text-gray-600">Course {idx + 1}</span>
+                          <span className="text-xs font-medium text-slate-600">Course {idx + 1}</span>
                           <button
                             type="button"
                             onClick={() => removeCourseRow(idx)}
@@ -991,14 +1040,14 @@ export default function InstitutesPage() {
                             placeholder="Course name"
                             value={course.course_name ?? ''}
                             onChange={(e) => updateCourseRow(idx, 'course_name', e.target.value)}
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                           <input
                             type="text"
                             placeholder="Target class"
                             value={course.target_class ?? ''}
                             onChange={(e) => updateCourseRow(idx, 'target_class', e.target.value)}
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                           <input
                             type="number"
@@ -1011,7 +1060,7 @@ export default function InstitutesPage() {
                                 e.target.value === '' ? undefined : parseInt(e.target.value, 10)
                               )
                             }
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                           <input
                             type="number"
@@ -1024,7 +1073,7 @@ export default function InstitutesPage() {
                                 e.target.value === '' ? undefined : parseFloat(e.target.value)
                               )
                             }
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                           <input
                             type="number"
@@ -1037,7 +1086,7 @@ export default function InstitutesPage() {
                                 e.target.value === '' ? undefined : parseInt(e.target.value, 10)
                               )
                             }
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                           <input
                             type="date"
@@ -1048,13 +1097,13 @@ export default function InstitutesPage() {
                                 : ''
                             }
                             onChange={(e) => updateCourseRow(idx, 'start_date', e.target.value || null)}
-                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
                         </div>
                       </div>
                     ))}
                     {formData.instituteCourses.length === 0 && (
-                      <p className="text-sm text-gray-500">No courses. Click &quot;Add course&quot; to add one.</p>
+                      <p className="text-sm text-slate-500">No courses. Click &quot;Add course&quot; to add one.</p>
                     )}
                   </div>
                 </>
@@ -1064,14 +1113,14 @@ export default function InstitutesPage() {
                 <button
                   type="button"
                   onClick={handleModalClose}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50"
                 >
                   {isSaving ? 'Saving...' : editingInstitute ? 'Update' : 'Create'}
                 </button>
@@ -1094,62 +1143,62 @@ export default function InstitutesPage() {
                     className="h-12 w-12 rounded-lg object-cover shrink-0"
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-lg bg-gray-200 shrink-0 flex items-center justify-center text-gray-500 text-xl">
+                  <div className="h-12 w-12 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-500 text-xl">
                     <MdSchool />
                   </div>
                 )}
-                <h2 className="text-lg font-bold text-gray-900 truncate">{viewingData.institute?.institute_name ?? 'Institute'}</h2>
+                <h2 className="text-lg font-bold text-slate-900 truncate">{viewingData.institute?.institute_name ?? 'Institute'}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingData(null)}
-                className="text-gray-500 hover:text-gray-700 shrink-0"
+                className="text-slate-500 hover:text-slate-700 shrink-0"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-2 text-sm text-gray-700">
+            <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Location:</strong> {viewingData.institute?.institute_location ?? '-'}</p>
               <p><strong>Type:</strong> {viewingData.institute?.type ?? '-'}</p>
               <p><strong>Contact:</strong> {viewingData.institute?.contact_number ?? '-'}</p>
               <p><strong>Website:</strong>{' '}
                 {viewingData.institute?.website ? (
-                  <a href={viewingData.institute.website} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">{viewingData.institute.website}</a>
+                  <a href={viewingData.institute.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.institute.website}</a>
                 ) : '-'}
               </p>
             </div>
             {viewingData.instituteDetails && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm text-gray-700">{viewingData.instituteDetails.institute_description ?? ''}</p>
-                <p className="text-sm text-gray-600 mt-1">
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm text-slate-700">{viewingData.instituteDetails.institute_description ?? ''}</p>
+                <p className="text-sm text-slate-600 mt-1">
                   Demo available: {viewingData.instituteDetails.demo_available ? 'Yes' : 'No'} · Scholarship available: {viewingData.instituteDetails.scholarship_available ? 'Yes' : 'No'}
                 </p>
               </div>
             )}
             {viewingData.instituteStatistics && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Statistics</p>
-                <p className="text-sm text-gray-600">
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Statistics</p>
+                <p className="text-sm text-slate-600">
                   Ranking score: {viewingData.instituteStatistics.ranking_score ?? '-'} · Success rate: {viewingData.instituteStatistics.success_rate ?? '-'}% · Student rating: {viewingData.instituteStatistics.student_rating ?? '-'}
                 </p>
               </div>
             )}
             {((viewingData.examNames ?? []).length > 0) && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Exams covered</p>
-                <p className="text-sm text-gray-600">{(viewingData.examNames ?? []).join(', ')}</p>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Exams covered</p>
+                <p className="text-sm text-slate-600">{(viewingData.examNames ?? []).join(', ')}</p>
               </div>
             )}
             {((viewingData.specializationExamNames ?? []).length > 0) && (
               <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Specialization exams</p>
-                <p className="text-sm text-gray-600">{(viewingData.specializationExamNames ?? []).join(', ')}</p>
+                <p className="text-sm font-medium text-slate-700">Specialization exams</p>
+                <p className="text-sm text-slate-600">{(viewingData.specializationExamNames ?? []).join(', ')}</p>
               </div>
             )}
             {((viewingData.instituteCourses ?? []).length > 0) && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700 mb-2">Courses</p>
-                <ul className="text-sm text-gray-600 space-y-1">
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700 mb-2">Courses</p>
+                <ul className="text-sm text-slate-600 space-y-1">
                   {(viewingData.instituteCourses ?? []).map((c) => (
                     <li key={c.id} className="flex flex-wrap gap-x-2">
                       <span className="font-medium">{c.course_name || 'Unnamed'}</span>
@@ -1159,15 +1208,68 @@ export default function InstitutesPage() {
                 </ul>
               </div>
             )}
+            {/* Referral Code Section */}
+            <div className="mt-3 pt-3 border-t border-slate-200">
+              <p className="text-sm font-medium text-slate-700 mb-2">Referral</p>
+              {viewingData.institute?.referral_code ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-mono font-bold bg-purple-100 text-purple-800 tracking-wider">
+                      {viewingData.institute.referral_code}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const p = viewingData.referralEmailPreview;
+                        setReferralSendModal({
+                          instituteId: viewingData.institute.id,
+                          instituteName: viewingData.institute.institute_name,
+                          emailSubject:
+                            p?.subject ||
+                            `${viewingData.institute.institute_name} — Join Unitracko with our referral code`,
+                          initialRecipients: p?.defaultRecipients?.length ? p.defaultRecipients : [],
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90"
+                    >
+                      <FiFileText className="h-3.5 w-3.5" />
+                      Send referral email
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-0.5">Saved referral email(s)</p>
+                    <p className="text-sm text-slate-800 break-all">
+                      {viewingData.institute.referral_contact_email?.trim() || (
+                        <span className="text-slate-400">None — add under Edit → Basic → Referral contact email(s)</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No referral code generated yet</p>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={() => { setViewingData(null); handleEdit(viewingData.institute); }}
-              className="mt-4 px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90"
+              className="mt-4 px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90"
             >
               Edit
             </button>
           </div>
         </div>
+      )}
+
+      {referralSendModal && (
+        <InstituteReferralSendModal
+          instituteId={referralSendModal.instituteId}
+          instituteName={referralSendModal.instituteName}
+          emailSubject={referralSendModal.emailSubject}
+          initialRecipients={referralSendModal.initialRecipients}
+          onClose={() => setReferralSendModal(null)}
+          onSent={() => fetchData(true)}
+        />
       )}
 
       {/* Bulk Upload Modal */}
@@ -1179,18 +1281,18 @@ export default function InstitutesPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-500 hover:text-slate-700"
               >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               Upload an Excel file (use template). Optionally attach a ZIP of logos; filenames must match the{' '}
-              <code className="bg-gray-100 px-1 rounded">logo_filename</code> column.
+              <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -1199,7 +1301,7 @@ export default function InstitutesPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Logos (ZIP file)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Logos (ZIP file)</label>
                 <input
                   type="file"
                   accept=".zip"
@@ -1218,7 +1320,7 @@ export default function InstitutesPage() {
                 <button
                   type="button"
                   onClick={handleBulkTemplateDownload}
-                  className="inline-flex items-center gap-2 text-sm text-pink hover:underline"
+                  className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline"
                 >
                   <FiDownload className="h-4 w-4" />
                   Download Excel template
@@ -1238,7 +1340,7 @@ export default function InstitutesPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
               >
                 Close
               </button>
@@ -1246,7 +1348,7 @@ export default function InstitutesPage() {
                 type="button"
                 onClick={handleBulkSubmit}
                 disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50"
               >
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
@@ -1259,14 +1361,14 @@ export default function InstitutesPage() {
       {showMissingLogosModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
-            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-white/20">
+                <div className="p-1.5 rounded-lg bg-highlight-100 text-[#341050]">
                   <FiUpload className="h-5 w-5" />
                 </div>
-                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Upload missing logos</h2>
               </div>
-              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20" aria-label="Close">
+              <button type="button" onClick={() => setShowMissingLogosModal(false)} className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80" aria-label="Close">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
@@ -1278,7 +1380,7 @@ export default function InstitutesPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 transition-all cursor-pointer group">
                   <input type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden" onChange={(e) => { setMissingLogosZipFile(e.target.files?.[0] ?? null); setMissingLogosResult(null); setMissingLogosError(null); e.target.value = ''; }} />
                   {missingLogosZipFile ? (
                     <div className="flex flex-col items-center gap-2 p-4">
@@ -1306,7 +1408,7 @@ export default function InstitutesPage() {
             </div>
             <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
               <button type="button" onClick={() => setShowMissingLogosModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">Close</button>
-              <button type="button" onClick={handleMissingLogosSubmit} disabled={!missingLogosZipFile || missingLogosUploading} className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
+              <button type="button" onClick={handleMissingLogosSubmit} disabled={!missingLogosZipFile || missingLogosUploading} className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
                 {missingLogosUploading ? <><span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />Uploading…</> : <><FiUpload className="h-4 w-4" />Upload</>}
               </button>
             </div>

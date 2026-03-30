@@ -275,7 +275,7 @@ export default function AutomationExamsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
@@ -283,8 +283,8 @@ export default function AutomationExamsPage() {
           {/* Header */}
           <div className="mb-6 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Automation Exams</h1>
-              <p className="text-gray-600">Manage exam configurations for automation workflows</p>
+              <h1 className="text-2xl font-bold text-slate-900">Automation Exams</h1>
+              <p className="text-slate-600">Manage exam configurations for automation workflows</p>
             </div>
             <button
               onClick={handleCreate}
@@ -298,13 +298,13 @@ export default function AutomationExamsPage() {
           {/* Search */}
           <div className="mb-6">
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search exams..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -319,34 +319,34 @@ export default function AutomationExamsPage() {
           {/* Exams Table */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             {isLoading ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-slate-500">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                 Loading exams...
               </div>
             ) : exams.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-slate-500">
                 No exams found. Create your first exam to get started.
               </div>
             ) : (
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-[#F6F8FA] border-b">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Slug</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">URL</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Created</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                   {exams.map((exam) => (
-                    <tr key={exam.id} className="hover:bg-gray-50">
+                    <tr key={exam.id} className="hover:bg-[#F6F8FA]">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{exam.name}</div>
+                        <div className="font-medium text-slate-900">{exam.name}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">{exam.slug}</code>
+                        <code className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{exam.slug}</code>
                       </td>
                       <td className="px-6 py-4">
                         <a
@@ -364,13 +364,13 @@ export default function AutomationExamsPage() {
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             exam.is_active
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-slate-100 text-slate-800'
                           }`}
                         >
                           {exam.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-slate-500">
                         {new Date(exam.created_at).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
@@ -398,7 +398,7 @@ export default function AutomationExamsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-slate-900">
                 {editingExam ? 'Edit Exam' : 'Create New Exam'}
               </h2>
               <button
@@ -406,7 +406,7 @@ export default function AutomationExamsPage() {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <FiX className="w-5 h-5" />
               </button>
@@ -415,45 +415,45 @@ export default function AutomationExamsPage() {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Exam Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
 
               {/* Slug */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Slug <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                   pattern="[a-z0-9-]+"
                   title="Slug must contain only lowercase letters, numbers, and hyphens"
                 />
-                <p className="mt-1 text-xs text-gray-500">URL-friendly identifier (e.g., jee-main-2024)</p>
+                <p className="mt-1 text-xs text-slate-500">URL-friendly identifier (e.g., jee-main-2024)</p>
               </div>
 
               {/* URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Registration URL <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="url"
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
@@ -465,41 +465,41 @@ export default function AutomationExamsPage() {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+                <label htmlFor="is_active" className="text-sm font-medium text-slate-700">
                   Active
                 </label>
               </div>
 
               {/* Field Mappings */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Field Mappings (JSON)
                 </label>
                 <textarea
                   value={fieldMappingsText}
                   onChange={(e) => setFieldMappingsText(e.target.value)}
                   rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                   placeholder='{"fullName": {"type": "text", "required": true}, "phone": {"type": "phone"}}'
                 />
-                <p className="mt-1 text-xs text-gray-500">JSON object mapping user data fields to form configurations</p>
+                <p className="mt-1 text-xs text-slate-500">JSON object mapping user data fields to form configurations</p>
               </div>
 
               {/* Agent Config */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Agent Config (JSON)
                 </label>
                 <textarea
                   value={agentConfigText}
                   onChange={(e) => setAgentConfigText(e.target.value)}
                   rows={8}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                   placeholder='{"max_retries": 3, "screenshot_interval_ms": 1000, "captcha": {"auto_solve_enabled": false}}'
                 />
-                <p className="mt-1 text-xs text-gray-500">JSON object for LLM agent configuration</p>
+                <p className="mt-1 text-xs text-slate-500">JSON object for LLM agent configuration</p>
               </div>
 
               {/* Notification Settings */}
@@ -510,9 +510,9 @@ export default function AutomationExamsPage() {
                     id="notify_on_complete"
                     checked={formData.notify_on_complete}
                     onChange={(e) => setFormData({ ...formData, notify_on_complete: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="notify_on_complete" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="notify_on_complete" className="text-sm font-medium text-slate-700">
                     Notify on Complete
                   </label>
                 </div>
@@ -522,9 +522,9 @@ export default function AutomationExamsPage() {
                     id="notify_on_failure"
                     checked={formData.notify_on_failure}
                     onChange={(e) => setFormData({ ...formData, notify_on_failure: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="notify_on_failure" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="notify_on_failure" className="text-sm font-medium text-slate-700">
                     Notify on Failure
                   </label>
                 </div>
@@ -532,14 +532,14 @@ export default function AutomationExamsPage() {
 
               {/* Notification Emails */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Notification Emails (comma-separated)
                 </label>
                 <input
                   type="text"
                   value={notificationEmailsText}
                   onChange={(e) => setNotificationEmailsText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="email1@example.com, email2@example.com"
                 />
               </div>
@@ -559,7 +559,7 @@ export default function AutomationExamsPage() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition"
                 >
                   Cancel
                 </button>
@@ -581,10 +581,10 @@ export default function AutomationExamsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Exam Details</h2>
+              <h2 className="text-xl font-bold text-slate-900">Exam Details</h2>
               <button
                 onClick={() => setViewingExam(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <FiX className="w-5 h-5" />
               </button>
@@ -593,15 +593,15 @@ export default function AutomationExamsPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Name</label>
-                  <p className="text-gray-900">{viewingExam.name}</p>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Name</label>
+                  <p className="text-slate-900">{viewingExam.name}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Slug</label>
-                  <code className="text-sm text-gray-900 bg-gray-100 px-2 py-1 rounded">{viewingExam.slug}</code>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Slug</label>
+                  <code className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded">{viewingExam.slug}</code>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-500 mb-1">URL</label>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">URL</label>
                   <a
                     href={viewingExam.url}
                     target="_blank"
@@ -612,42 +612,42 @@ export default function AutomationExamsPage() {
                   </a>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Status</label>
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       viewingExam.is_active
                         ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-slate-100 text-slate-800'
                     }`}
                   >
                     {viewingExam.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Created</label>
-                  <p className="text-gray-900">
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Created</label>
+                  <p className="text-slate-900">
                     {new Date(viewingExam.created_at).toLocaleString('en-IN')}
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Field Mappings</label>
-                <pre className="bg-gray-50 p-3 rounded-lg text-xs overflow-x-auto">
+                <label className="block text-sm font-medium text-slate-500 mb-1">Field Mappings</label>
+                <pre className="bg-[#F6F8FA] p-3 rounded-lg text-xs overflow-x-auto">
                   {JSON.stringify(viewingExam.field_mappings, null, 2)}
                 </pre>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Agent Config</label>
-                <pre className="bg-gray-50 p-3 rounded-lg text-xs overflow-x-auto">
+                <label className="block text-sm font-medium text-slate-500 mb-1">Agent Config</label>
+                <pre className="bg-[#F6F8FA] p-3 rounded-lg text-xs overflow-x-auto">
                   {JSON.stringify(viewingExam.agent_config, null, 2)}
                 </pre>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Notification Emails</label>
-                <p className="text-gray-900">
+                <label className="block text-sm font-medium text-slate-500 mb-1">Notification Emails</label>
+                <p className="text-slate-900">
                   {viewingExam.notification_emails && viewingExam.notification_emails.length > 0
                     ? viewingExam.notification_emails.join(', ')
                     : 'None'}
@@ -666,7 +666,7 @@ export default function AutomationExamsPage() {
                 </button>
                 <button
                   onClick={() => setViewingExam(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition"
                 >
                   Close
                 </button>

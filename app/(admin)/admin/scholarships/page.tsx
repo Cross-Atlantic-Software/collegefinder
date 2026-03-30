@@ -434,10 +434,10 @@ export default function ScholarshipsPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => router.replace('/admin/login')} className="text-pink hover:underline">
+          <button onClick={() => router.replace('/admin/login')} className="text-[#341050] hover:underline">
             Go to login
           </button>
         </div>
@@ -446,37 +446,37 @@ export default function ScholarshipsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Scholarships Manager</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Scholarships Manager</h1>
+            <p className="text-sm text-slate-600">
               Manage scholarships with eligibility, states, documents and related exams. CRUD and Excel bulk upload.
             </p>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button type="button" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                <span className="text-xs font-medium text-gray-700">All scholarships</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{allScholarships.length}</span>
+              <button type="button" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">
+                <span className="text-xs font-medium text-slate-700">All scholarships</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">{allScholarships.length}</span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name, authority, type"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64"
                 />
               </div>
             </div>
             <div className="inline-flex items-center gap-2">
-              <button type="button" onClick={handleCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90">
+              <button type="button" onClick={handleCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90">
                 <FiPlus className="h-4 w-4" />
                 Add Scholarship
               </button>
@@ -488,7 +488,7 @@ export default function ScholarshipsPage() {
                   setBulkError(null);
                   setBulkExcelFile(null);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
@@ -498,7 +498,7 @@ export default function ScholarshipsPage() {
                   type="button"
                   onClick={handleDownloadAllExcel}
                   disabled={downloadingExcel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -522,42 +522,42 @@ export default function ScholarshipsPage() {
             <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{error}</div>
           )}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading scholarships...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading scholarships...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">AUTHORITY</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">APPLICATION PERIOD</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">APPLICATION PERIOD</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {scholarships.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
                           {scholarships.length < allScholarships.length ? 'No scholarships match your search' : 'No scholarships yet'}
                         </td>
                       </tr>
                     ) : (
                       scholarships.map((s) => (
-                        <tr key={s.id} className="hover:bg-gray-50">
+                        <tr key={s.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{s.scholarship_name}</span>
+                            <span className="text-sm font-medium text-slate-900">{s.scholarship_name}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">{s.conducting_authority || '-'}</span>
+                            <span className="text-sm text-slate-600">{s.conducting_authority || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">{s.scholarship_type || '-'}</span>
+                            <span className="text-sm text-slate-600">{s.scholarship_type || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-slate-600">
                               {s.application_start_date && s.application_end_date
                                 ? `${String(s.application_start_date).slice(0, 10)} to ${String(s.application_end_date).slice(0, 10)}`
                                 : '-'}
@@ -586,20 +586,20 @@ export default function ScholarshipsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">{editingScholarship ? 'Edit Scholarship' : 'Create Scholarship'}</h2>
-              <button type="button" onClick={handleModalClose} className="text-white hover:text-gray-200">
+              <button type="button" onClick={handleModalClose} className="text-slate-500 hover:text-slate-800">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="shrink-0 flex border-b border-gray-200 bg-gray-100 px-4 gap-1 overflow-x-auto min-h-[44px] items-end">
+            <div className="shrink-0 flex border-b border-slate-200 bg-slate-100 px-4 gap-1 overflow-x-auto min-h-[44px] items-end">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-2.5 px-3 text-sm font-medium border-b-2 whitespace-nowrap -mb-px ${
-                    activeTab === tab.id ? 'border-pink text-pink bg-white rounded-t' : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-gray-200/50'
+                    activeTab === tab.id ? 'border-[#341050] text-[#341050] bg-white rounded-t' : 'border-transparent text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                   }`}
                 >
                   {tab.label}
@@ -610,48 +610,48 @@ export default function ScholarshipsPage() {
               {activeTab === 'basic' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Scholarship Name *</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Scholarship Name *</label>
                     <input
                       type="text"
                       value={formData.scholarship_name}
                       onChange={(e) => setFormData({ ...formData, scholarship_name: e.target.value })}
                       required
                       placeholder="e.g. National Scholarship Portal"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Conducting Authority</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Conducting Authority</label>
                     <input
                       type="text"
                       value={formData.conducting_authority}
                       onChange={(e) => setFormData({ ...formData, conducting_authority: e.target.value })}
                       placeholder="e.g. Ministry of Education"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Scholarship Type</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Scholarship Type</label>
                     <input
                       type="text"
                       value={formData.scholarship_type}
                       onChange={(e) => setFormData({ ...formData, scholarship_type: e.target.value })}
                       placeholder="e.g. Merit-cum-Means"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Brief description..."
                       rows={3}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Stream</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Stream</label>
                     <Dropdown<number>
                       value={typeof formData.stream_id === 'number' ? formData.stream_id : null}
                       onChange={(v) => setFormData({ ...formData, stream_id: v })}
@@ -662,84 +662,84 @@ export default function ScholarshipsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Income Limit</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Income Limit</label>
                       <input
                         type="text"
                         value={formData.income_limit}
                         onChange={(e) => setFormData({ ...formData, income_limit: e.target.value })}
                         placeholder="e.g. Up to 2.5 Lakh"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Minimum Marks Required</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Minimum Marks Required</label>
                       <input
                         type="text"
                         value={formData.minimum_marks_required}
                         onChange={(e) => setFormData({ ...formData, minimum_marks_required: e.target.value })}
                         placeholder="e.g. 60%"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Scholarship Amount</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Scholarship Amount</label>
                     <input
                       type="text"
                       value={formData.scholarship_amount}
                       onChange={(e) => setFormData({ ...formData, scholarship_amount: e.target.value })}
                       placeholder="e.g. Up to 20000 per annum"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Selection Process</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Selection Process</label>
                     <textarea
                       value={formData.selection_process}
                       onChange={(e) => setFormData({ ...formData, selection_process: e.target.value })}
                       placeholder="Merit and income based..."
                       rows={2}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none resize-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Application Start Date</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Application Start Date</label>
                       <input
                         type="date"
                         value={formData.application_start_date}
                         onChange={(e) => setFormData({ ...formData, application_start_date: e.target.value })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Application End Date</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Application End Date</label>
                       <input
                         type="date"
                         value={formData.application_end_date}
                         onChange={(e) => setFormData({ ...formData, application_end_date: e.target.value })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Mode</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Mode</label>
                     <input
                       type="text"
                       value={formData.mode}
                       onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
                       placeholder="e.g. Online"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Official Website</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Official Website</label>
                     <input
                       type="url"
                       value={formData.official_website}
                       onChange={(e) => setFormData({ ...formData, official_website: e.target.value })}
                       placeholder="https://..."
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
                 </>
@@ -748,8 +748,8 @@ export default function ScholarshipsPage() {
               {activeTab === 'categories' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Eligible Categories</label>
-                    <button type="button" onClick={addCategory} className="text-sm text-pink hover:underline">+ Add</button>
+                    <label className="block text-xs font-medium text-slate-700">Eligible Categories</label>
+                    <button type="button" onClick={addCategory} className="text-sm text-[#341050] hover:underline">+ Add</button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-auto">
                     {formData.eligibleCategories.map((item, i) => (
@@ -759,12 +759,12 @@ export default function ScholarshipsPage() {
                           value={item.category}
                           onChange={(e) => updateCategory(i, e.target.value)}
                           placeholder="e.g. SC, ST, OBC"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeCategory(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.eligibleCategories.length === 0 && <p className="text-sm text-gray-500">No categories. Click &quot;Add&quot; to add one.</p>}
+                    {formData.eligibleCategories.length === 0 && <p className="text-sm text-slate-500">No categories. Click &quot;Add&quot; to add one.</p>}
                   </div>
                 </>
               )}
@@ -772,8 +772,8 @@ export default function ScholarshipsPage() {
               {activeTab === 'states' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Applicable States</label>
-                    <button type="button" onClick={addState} className="text-sm text-pink hover:underline">+ Add</button>
+                    <label className="block text-xs font-medium text-slate-700">Applicable States</label>
+                    <button type="button" onClick={addState} className="text-sm text-[#341050] hover:underline">+ Add</button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-auto">
                     {formData.applicableStates.map((item, i) => (
@@ -783,12 +783,12 @@ export default function ScholarshipsPage() {
                           value={item.state_name}
                           onChange={(e) => updateState(i, e.target.value)}
                           placeholder="e.g. Maharashtra"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeState(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.applicableStates.length === 0 && <p className="text-sm text-gray-500">No states. Click &quot;Add&quot; to add one.</p>}
+                    {formData.applicableStates.length === 0 && <p className="text-sm text-slate-500">No states. Click &quot;Add&quot; to add one.</p>}
                   </div>
                 </>
               )}
@@ -796,8 +796,8 @@ export default function ScholarshipsPage() {
               {activeTab === 'documents' && (
                 <>
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-medium text-gray-700">Documents Required</label>
-                    <button type="button" onClick={addDocument} className="text-sm text-pink hover:underline">+ Add</button>
+                    <label className="block text-xs font-medium text-slate-700">Documents Required</label>
+                    <button type="button" onClick={addDocument} className="text-sm text-[#341050] hover:underline">+ Add</button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-auto">
                     {formData.documentsRequired.map((item, i) => (
@@ -807,19 +807,19 @@ export default function ScholarshipsPage() {
                           value={item.document_name}
                           onChange={(e) => updateDocument(i, e.target.value)}
                           placeholder="e.g. Income certificate"
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded"
                         />
                         <button type="button" onClick={() => removeDocument(i)} className="text-red-600 text-sm">Remove</button>
                       </div>
                     ))}
-                    {formData.documentsRequired.length === 0 && <p className="text-sm text-gray-500">No documents. Click &quot;Add&quot; to add one.</p>}
+                    {formData.documentsRequired.length === 0 && <p className="text-sm text-slate-500">No documents. Click &quot;Add&quot; to add one.</p>}
                   </div>
                 </>
               )}
 
               {activeTab === 'exams' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Related Exams</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Related Exams</label>
                   <MultiSelect
                     options={exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` }))}
                     value={formData.examIds.map(String)}
@@ -830,8 +830,8 @@ export default function ScholarshipsPage() {
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
+                <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
                   {isSaving ? 'Saving...' : editingScholarship ? 'Update' : 'Create'}
                 </button>
               </div>
@@ -845,12 +845,12 @@ export default function ScholarshipsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto p-4">
             <div className="flex justify-between items-start mb-4">
-              <h2 className="text-lg font-bold text-gray-900">{viewingData.scholarship?.scholarship_name ?? 'Scholarship'}</h2>
-              <button type="button" onClick={() => setViewingData(null)} className="text-gray-500 hover:text-gray-700">
+              <h2 className="text-lg font-bold text-slate-900">{viewingData.scholarship?.scholarship_name ?? 'Scholarship'}</h2>
+              <button type="button" onClick={() => setViewingData(null)} className="text-slate-500 hover:text-slate-700">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-2 text-sm text-gray-700">
+            <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Conducting authority:</strong> {viewingData.scholarship?.conducting_authority ?? '-'}</p>
               <p><strong>Type:</strong> {viewingData.scholarship?.scholarship_type ?? '-'}</p>
               <p><strong>Stream:</strong> {viewingData.streamName ?? '-'}</p>
@@ -862,41 +862,41 @@ export default function ScholarshipsPage() {
               <p><strong>Application period:</strong> {viewingData.scholarship?.application_start_date && viewingData.scholarship?.application_end_date ? `${String(viewingData.scholarship.application_start_date).slice(0, 10)} to ${String(viewingData.scholarship.application_end_date).slice(0, 10)}` : '-'}</p>
               <p><strong>Official website:</strong>{' '}
                 {viewingData.scholarship?.official_website ? (
-                  <a href={viewingData.scholarship.official_website} target="_blank" rel="noopener noreferrer" className="text-pink hover:underline">{viewingData.scholarship.official_website}</a>
+                  <a href={viewingData.scholarship.official_website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.scholarship.official_website}</a>
                 ) : '-'}
               </p>
             </div>
             {viewingData.scholarship?.description && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Description</p>
-                <p className="text-sm text-gray-600">{viewingData.scholarship.description}</p>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Description</p>
+                <p className="text-sm text-slate-600">{viewingData.scholarship.description}</p>
               </div>
             )}
             {((viewingData.eligibleCategories ?? []).length > 0) && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Eligible categories</p>
-                <p className="text-sm text-gray-600">{(viewingData.eligibleCategories ?? []).map((c) => c.category).filter(Boolean).join(', ')}</p>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Eligible categories</p>
+                <p className="text-sm text-slate-600">{(viewingData.eligibleCategories ?? []).map((c) => c.category).filter(Boolean).join(', ')}</p>
               </div>
             )}
             {((viewingData.applicableStates ?? []).length > 0) && (
               <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Applicable states</p>
-                <p className="text-sm text-gray-600">{(viewingData.applicableStates ?? []).map((s) => s.state_name).filter(Boolean).join(', ')}</p>
+                <p className="text-sm font-medium text-slate-700">Applicable states</p>
+                <p className="text-sm text-slate-600">{(viewingData.applicableStates ?? []).map((s) => s.state_name).filter(Boolean).join(', ')}</p>
               </div>
             )}
             {((viewingData.documentsRequired ?? []).length > 0) && (
               <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Documents required</p>
-                <p className="text-sm text-gray-600">{(viewingData.documentsRequired ?? []).map((d) => d.document_name).filter(Boolean).join(', ')}</p>
+                <p className="text-sm font-medium text-slate-700">Documents required</p>
+                <p className="text-sm text-slate-600">{(viewingData.documentsRequired ?? []).map((d) => d.document_name).filter(Boolean).join(', ')}</p>
               </div>
             )}
             {((viewingData.examNames ?? []).length > 0) && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-700">Related exams</p>
-                <p className="text-sm text-gray-600">{(viewingData.examNames ?? []).join(', ')}</p>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Related exams</p>
+                <p className="text-sm text-slate-600">{(viewingData.examNames ?? []).join(', ')}</p>
               </div>
             )}
-            <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData.scholarship); }} className="mt-4 px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90">Edit</button>
+            <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData.scholarship); }} className="mt-4 px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90">Edit</button>
           </div>
         </div>
       )}
@@ -907,16 +907,16 @@ export default function ScholarshipsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Bulk Upload Scholarships</h2>
-              <button type="button" onClick={() => setShowBulkModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={() => setShowBulkModal(false)} className="text-slate-500 hover:text-slate-700">
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               Upload an Excel file. Use the template; columns must match (scholarship_name, conducting_authority, stream_id, dates, etc.).
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Excel file *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -925,7 +925,7 @@ export default function ScholarshipsPage() {
                 />
               </div>
               {canDownloadExcel && (
-                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-pink hover:underline">
+                <button type="button" onClick={handleBulkTemplateDownload} className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline">
                   <FiDownload className="h-4 w-4" />
                   Download Excel template
                 </button>
@@ -938,8 +938,8 @@ export default function ScholarshipsPage() {
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">
-              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
-              <button type="button" onClick={handleBulkSubmit} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-pink text-white rounded-lg hover:bg-pink/90 disabled:opacity-50">
+              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Close</button>
+              <button type="button" onClick={handleBulkSubmit} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>

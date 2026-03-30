@@ -237,12 +237,12 @@ export default function SubtopicsPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -252,39 +252,39 @@ export default function SubtopicsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Subtopics Manager</h1>
-            <p className="text-sm text-gray-600">Manage subtopics that belong to topics.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Subtopics Manager</h1>
+            <p className="text-sm text-slate-600">Manage subtopics that belong to topics.</p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All subtopics</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All subtopics</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allSubtopics.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               <FiPlus className="h-4 w-4" />
               Add Subtopic
@@ -299,25 +299,25 @@ export default function SubtopicsPage() {
           )}
 
           {/* Subtopics Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading subtopics...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading subtopics...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TOPIC</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">STATUS</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CREATED</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TOPIC</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CREATED</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {subtopics.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
                           {subtopics.length < allSubtopics.length ? 'No subtopics found matching your search' : 'No subtopics found'}
                         </td>
                       </tr>
@@ -325,12 +325,12 @@ export default function SubtopicsPage() {
                       subtopics.map((subtopic) => {
                         const topic = availableTopics.find((t) => t.value === String(subtopic.topic_id));
                         return (
-                          <tr key={subtopic.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={subtopic.id} className="hover:bg-[#F6F8FA] transition-colors">
                             <td className="px-4 py-2">
-                              <span className="text-sm font-medium text-gray-900">{subtopic.name}</span>
+                              <span className="text-sm font-medium text-slate-900">{subtopic.name}</span>
                             </td>
                             <td className="px-4 py-2">
-                              <span className="text-sm text-gray-600">{topic?.label || `Topic ${subtopic.topic_id}`}</span>
+                              <span className="text-sm text-slate-600">{topic?.label || `Topic ${subtopic.topic_id}`}</span>
                             </td>
                             <td className="px-4 py-2">
                               {subtopic.status ? (
@@ -338,12 +338,12 @@ export default function SubtopicsPage() {
                                   Active
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                                   Inactive
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-2 text-xs text-gray-600">
+                            <td className="px-4 py-2 text-xs text-slate-600">
                               {new Date(subtopic.created_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -374,13 +374,13 @@ export default function SubtopicsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingSubtopic ? 'Edit Subtopic' : 'Create Subtopic'}
               </h2>
               <button
                 onClick={handleModalClose}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -390,8 +390,8 @@ export default function SubtopicsPage() {
             <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Topic <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Topic <span className="text-[#341050]">*</span>
                   </label>
                   <Select
                     options={availableTopics}
@@ -404,8 +404,8 @@ export default function SubtopicsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Name <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Name <span className="text-[#341050]">*</span>
                   </label>
                   <input
                     type="text"
@@ -413,12 +413,12 @@ export default function SubtopicsPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                     placeholder="e.g., Linear Equations, Quadratic Equations"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Exams (optional, max {MAX_EXAMS})
                   </label>
                   <MultiSelect
@@ -431,7 +431,7 @@ export default function SubtopicsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Description
                   </label>
                   <textarea
@@ -439,12 +439,12 @@ export default function SubtopicsPage() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Optional description"
                     rows={3}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Sort Order
                   </label>
                   <input
@@ -452,7 +452,7 @@ export default function SubtopicsPage() {
                     value={formData.sort_order}
                     onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                     min="0"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
                 </div>
 
@@ -462,9 +462,9 @@ export default function SubtopicsPage() {
                       type="checkbox"
                       checked={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
-                      className="w-4 h-4 text-pink border-gray-300 rounded focus:ring-pink"
+                      className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
                     />
-                    <span className="text-xs font-medium text-gray-700">Active</span>
+                    <span className="text-xs font-medium text-slate-700">Active</span>
                   </label>
                 </div>
               </div>
@@ -474,14 +474,14 @@ export default function SubtopicsPage() {
                 <button
                   type="button"
                   onClick={handleModalClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : editingSubtopic ? 'Update' : 'Create'}
                 </button>
@@ -495,11 +495,11 @@ export default function SubtopicsPage() {
       {showViewModal && viewingSubtopic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Subtopic Details</h2>
               <button
                 onClick={() => setShowViewModal(false)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -507,25 +507,25 @@ export default function SubtopicsPage() {
             <div className="p-4 overflow-auto">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-                  <p className="text-sm text-gray-900">{viewingSubtopic.name}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+                  <p className="text-sm text-slate-900">{viewingSubtopic.name}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
-                  <p className="text-sm text-gray-900">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Topic</label>
+                  <p className="text-sm text-slate-900">
                     {availableTopics.find((t) => t.value === String(viewingSubtopic.topic_id))?.label || `Topic ${viewingSubtopic.topic_id}`}
                   </p>
                 </div>
                 {viewingSubtopic.description && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                    <p className="text-sm text-gray-900">{viewingSubtopic.description}</p>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
+                    <p className="text-sm text-slate-900">{viewingSubtopic.description}</p>
                   </div>
                 )}
                 {(viewingSubtopic.exam_ids?.length ?? 0) > 0 && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Exams</label>
-                    <p className="text-sm text-gray-900">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Exams</label>
+                    <p className="text-sm text-slate-900">
                       {viewingSubtopic.exam_ids!
                         .map((id) => availableExams.find((e) => e.value === String(id))?.label ?? `Exam ${id}`)
                         .join(', ')}
@@ -534,16 +534,16 @@ export default function SubtopicsPage() {
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                    <p className="text-sm text-gray-900">{viewingSubtopic.status ? 'Active' : 'Inactive'}</p>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
+                    <p className="text-sm text-slate-900">{viewingSubtopic.status ? 'Active' : 'Inactive'}</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Sort Order</label>
-                    <p className="text-sm text-gray-900">{viewingSubtopic.sort_order}</p>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Sort Order</label>
+                    <p className="text-sm text-slate-900">{viewingSubtopic.sort_order}</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Created</label>
-                    <p className="text-sm text-gray-900">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Created</label>
+                    <p className="text-sm text-slate-900">
                       {new Date(viewingSubtopic.created_at).toLocaleString()}
                     </p>
                   </div>

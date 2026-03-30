@@ -25,11 +25,29 @@ class Institute {
   }
 
   static async create(data) {
-    const { institute_name, institute_location, type, logo, logo_filename, website, contact_number } = data;
+    const {
+      institute_name,
+      institute_location,
+      type,
+      logo,
+      logo_filename,
+      website,
+      contact_number,
+      referral_contact_email,
+    } = data;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, type, logo, logo_filename, website, contact_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [institute_name, institute_location || null, type || null, logo || null, logo_filename || null, website || null, contact_number || null]
+      `INSERT INTO institutes (institute_name, institute_location, type, logo, logo_filename, website, contact_number, referral_contact_email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [
+        institute_name,
+        institute_location || null,
+        type || null,
+        logo || null,
+        logo_filename || null,
+        website || null,
+        contact_number || null,
+        referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
+      ]
     );
     return result.rows[0];
   }
@@ -46,7 +64,16 @@ class Institute {
   }
 
   static async update(id, data) {
-    const { institute_name, institute_location, type, logo, logo_filename, website, contact_number } = data;
+    const {
+      institute_name,
+      institute_location,
+      type,
+      logo,
+      logo_filename,
+      website,
+      contact_number,
+      referral_contact_email,
+    } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -57,6 +84,10 @@ class Institute {
     if (logo_filename !== undefined) { updates.push(`logo_filename = $${paramCount++}`); values.push(logo_filename); }
     if (website !== undefined) { updates.push(`website = $${paramCount++}`); values.push(website); }
     if (contact_number !== undefined) { updates.push(`contact_number = $${paramCount++}`); values.push(contact_number); }
+    if (referral_contact_email !== undefined) {
+      updates.push(`referral_contact_email = $${paramCount++}`);
+      values.push(referral_contact_email != null ? String(referral_contact_email).trim() || null : null);
+    }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);
     const result = await db.query(

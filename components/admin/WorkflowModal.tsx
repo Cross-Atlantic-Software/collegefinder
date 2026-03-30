@@ -166,7 +166,7 @@ export function WorkflowModal({
             case 'waiting': return 'text-amber-500';
             case 'success': return 'text-green-500';
             case 'failed': return 'text-red-500';
-            default: return 'text-gray-400';
+            default: return 'text-slate-400';
         }
     };
 
@@ -187,7 +187,7 @@ export function WorkflowModal({
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
                     <div>
                         <h2 className="text-xl font-bold text-white">Automation Workflow</h2>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-slate-400">
                             {examName} • {userName}
                         </p>
                     </div>
@@ -198,7 +198,7 @@ export function WorkflowModal({
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 text-gray-400 hover:text-white transition"
+                            className="p-2 text-slate-400 hover:text-white transition"
                         >
                             <FiX className="w-6 h-6" />
                         </button>
@@ -209,7 +209,7 @@ export function WorkflowModal({
                 <div className="flex-1 flex overflow-hidden">
                     {/* Screenshot Panel */}
                     <div className="flex-1 p-4 flex flex-col">
-                        <h3 className="text-sm font-medium text-gray-400 mb-2">Live Preview</h3>
+                        <h3 className="text-sm font-medium text-slate-400 mb-2">Live Preview</h3>
                         <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
                             {screenshot ? (
                                 <img
@@ -218,7 +218,7 @@ export function WorkflowModal({
                                     className="w-full h-full object-contain"
                                 />
                             ) : (
-                                <p className="text-gray-500">
+                                <p className="text-slate-500">
                                     {status === 'idle' ? 'Click "Start" to begin automation' : 'Waiting for screenshot...'}
                                 </p>
                             )}
@@ -228,8 +228,8 @@ export function WorkflowModal({
                         {status !== 'idle' && (
                             <div className="mt-4">
                                 <div className="flex justify-between text-sm mb-1">
-                                    <span className="text-gray-400">{currentStep || 'Initializing...'}</span>
-                                    <span className="text-gray-400">{progress}%</span>
+                                    <span className="text-slate-400">{currentStep || 'Initializing...'}</span>
+                                    <span className="text-slate-400">{progress}%</span>
                                 </div>
                                 <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div
@@ -243,10 +243,10 @@ export function WorkflowModal({
 
                     {/* Logs Panel - commented out
                     <div className="w-80 border-l border-gray-700 p-4 flex flex-col">
-                        <h3 className="text-sm font-medium text-gray-400 mb-2">Activity Log</h3>
+                        <h3 className="text-sm font-medium text-slate-400 mb-2">Activity Log</h3>
                         <div className="flex-1 overflow-y-auto bg-gray-800 rounded-lg p-3 font-mono text-xs">
                             {logs.length === 0 ? (
-                                <p className="text-gray-500">No activity yet</p>
+                                <p className="text-slate-500">No activity yet</p>
                             ) : (
                                 logs.map((log, i) => (
                                     <div
@@ -256,7 +256,7 @@ export function WorkflowModal({
                                                     log.level === 'success' ? 'text-green-400' : 'text-gray-300'
                                             }`}
                                     >
-                                        <span className="text-gray-500">[{log.timestamp}]</span> {log.message}
+                                        <span className="text-slate-500">[{log.timestamp}]</span> {log.message}
                                     </div>
                                 ))
                             )}
@@ -378,7 +378,7 @@ function InputModal({
                     </div>
                     <h3 className="text-lg font-semibold text-white">{title}</h3>
                 </div>
-                <p className="text-gray-400 text-sm mb-4">{description}</p>
+                <p className="text-slate-400 text-sm mb-4">{description}</p>
 
                 {captchaImage && (
                     <img

@@ -24,16 +24,11 @@ export default async function SiteUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader />
+        <AdminHeader title="Site Users" subtitle="View and manage all site users." />
         <main className="flex-1 p-4 overflow-auto">
-          <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Site Users</h1>
-            <p className="text-sm text-gray-600">View and manage all site users.</p>
-          </div>
-
           <SimplifiedUsersTable initialUsers={users} />
         </main>
       </div>

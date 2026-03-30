@@ -266,15 +266,15 @@ export default function ApplicationsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="min-h-screen bg-[#F6F8FA] flex">
             <AdminSidebar />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <AdminHeader />
                 <main className="flex-1 p-4 overflow-auto">
                     {/* Header */}
                     <div className="mb-3">
-                        <h1 className="text-xl font-bold text-gray-900 mb-1">Exam Applications</h1>
-                        <p className="text-sm text-gray-600">Manage and automate exam registrations</p>
+                        <h1 className="text-xl font-bold text-slate-900 mb-1">Exam Applications</h1>
+                        <p className="text-sm text-slate-600">Manage and automate exam registrations</p>
                     </div>
 
                     {/* Error Message */}
@@ -287,15 +287,15 @@ export default function ApplicationsPage() {
                     {/* Controls: filters + refresh + New Application */}
                     <div className="mb-3 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 flex-wrap">
-                            <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                            <div className="flex rounded-lg border border-slate-300 overflow-hidden">
                                 {(['all', 'pending', 'approved', 'running', 'completed', 'failed'] as const).map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setFilter(tab)}
                                         className={`min-w-[72px] px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                                             filter === tab
-                                                ? 'bg-pink text-white'
-                                                : 'bg-white text-gray-700 hover:bg-gray-50'
+                                                ? 'bg-brand-ink text-white'
+                                                : 'bg-white text-slate-700 hover:bg-[#F6F8FA]'
                                         }`}
                                     >
                                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -304,7 +304,7 @@ export default function ApplicationsPage() {
                             </div>
                             <button
                                 onClick={fetchApplications}
-                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
+                                className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 hover:border-slate-400 transition-colors"
                                 title="Refresh"
                             >
                                 <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -316,7 +316,7 @@ export default function ApplicationsPage() {
                                 fetchAutomationExams();
                                 searchUsers('');
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
                         >
                             <FiPlus className="h-4 w-4" />
                             New Application
@@ -324,52 +324,52 @@ export default function ApplicationsPage() {
                     </div>
 
                     {/* Applications Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                         {isLoading ? (
-                            <div className="p-4 text-center text-sm text-gray-500">Loading applications...</div>
+                            <div className="p-4 text-center text-sm text-slate-500">Loading applications...</div>
                         ) : (
                             <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
+                                <thead className="bg-[#F6F8FA] border-b border-slate-200">
                                     <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">USER</th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">EXAM</th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">STATUS</th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">APPLIED</th>
-                                        <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">ACTIONS</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">USER</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">EXAM</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">APPLIED</th>
+                                        <th className="px-4 py-2 text-right text-xs font-semibold text-slate-700">ACTIONS</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-slate-200">
                                     {applications.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                                            <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
                                                 No applications found for this filter.
                                             </td>
                                         </tr>
                                     ) : (
                                         applications.map((app) => (
-                                        <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={app.id} className="hover:bg-[#F6F8FA] transition-colors">
                                             <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-pink/10 flex items-center justify-center shrink-0">
-                                                        <FiUser className="w-4 h-4 text-pink" />
+                                                    <div className="w-8 h-8 rounded-full bg-[#341050]/10 flex items-center justify-center shrink-0">
+                                                        <FiUser className="w-4 h-4 text-[#341050]" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-medium text-gray-900 text-sm truncate">{app.user_name || 'Unknown'}</p>
-                                                        <p className="text-xs text-gray-500 truncate">{app.user_email}</p>
+                                                        <p className="font-medium text-slate-900 text-sm truncate">{app.user_name || 'Unknown'}</p>
+                                                        <p className="text-xs text-slate-500 truncate">{app.user_email}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <FiFileText className="w-4 h-4 text-gray-400 shrink-0" />
-                                                    <span className="text-gray-900 text-sm">{app.exam_name}</span>
+                                                    <FiFileText className="w-4 h-4 text-slate-400 shrink-0" />
+                                                    <span className="text-slate-900 text-sm">{app.exam_name}</span>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2">
                                                 {getStatusBadge(app.status)}
                                             </td>
-                                            <td className="px-4 py-2 text-gray-600 text-xs">
+                                            <td className="px-4 py-2 text-slate-600 text-xs">
                                                 {new Date(app.created_at).toLocaleDateString('en-IN', {
                                                     day: 'numeric',
                                                     month: 'short',
@@ -420,7 +420,7 @@ export default function ApplicationsPage() {
                                                     {(app.status === 'completed' || app.status === 'failed') && (
                                                         <button
                                                             onClick={() => handleStartAutomation(app)}
-                                                            className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg flex items-center gap-1 transition"
+                                                            className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg flex items-center gap-1 transition"
                                                         >
                                                             <FiRefreshCw className="w-3 h-3" />
                                                             Retry
@@ -456,18 +456,18 @@ export default function ApplicationsPage() {
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-                        <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
                             <h2 className="text-lg font-bold">New Application</h2>
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="text-white hover:text-gray-200 transition-colors"
+                                className="text-slate-500 hover:text-slate-800 transition-colors"
                             >
                                 <FiX className="h-4 w-4" />
                             </button>
                         </div>
                         <div className="flex-1 overflow-auto p-4 space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Search User</label>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Search User</label>
                                 <input
                                     type="text"
                                     placeholder="Search by name, email or phone..."
@@ -476,26 +476,26 @@ export default function ApplicationsPage() {
                                         setUserSearch(e.target.value);
                                         searchUsers(e.target.value);
                                     }}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none text-gray-900"
+                                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-900"
                                 />
                                 {users.length > 0 && (
-                                    <div className="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-auto">
+                                    <div className="mt-2 border border-slate-200 rounded-lg max-h-40 overflow-auto">
                                         {users.map(user => (
                                             <button
                                                 key={user.id}
                                                 type="button"
                                                 onClick={() => setNewAppUserId(user.id)}
-                                                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${newAppUserId === user.id ? 'bg-pink/10' : ''}`}
+                                                className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F6F8FA] ${newAppUserId === user.id ? 'bg-[#341050]/10' : ''}`}
                                             >
-                                                <p className="font-medium text-gray-900">{user.name || user.email}</p>
-                                                <p className="text-xs text-gray-500">{user.email}</p>
+                                                <p className="font-medium text-slate-900">{user.name || user.email}</p>
+                                                <p className="text-xs text-slate-500">{user.email}</p>
                                             </button>
                                         ))}
                                     </div>
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Select Exam</label>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Select Exam</label>
                                 <Dropdown<number>
                                     value={newAppExamId ?? null}
                                     onChange={(v) => setNewAppExamId(v)}
@@ -505,17 +505,17 @@ export default function ApplicationsPage() {
                                 />
                             </div>
                         </div>
-                        <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+                        <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCreateApplication}
                                 disabled={isCreating || !newAppUserId || !newAppExamId}
-                                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isCreating ? 'Creating...' : 'Create'}
                             </button>

@@ -29,10 +29,13 @@ export default function AdminProtectedRoute({ children }: AdminProtectedRoutePro
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#F6F8FA] dark:bg-slate-950">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div
+            className="mx-auto mb-4 h-11 w-11 animate-spin rounded-full border-2 border-slate-200 border-t-[#341050] dark:border-slate-700 dark:border-t-highlight-300"
+            aria-hidden
+          />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Loading…</p>
         </div>
       </div>
     );

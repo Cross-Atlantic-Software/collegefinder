@@ -118,3 +118,25 @@ export interface GetAllEmailTemplatesResponse {
   total: number;
 }
 
+/**
+ * Referral Code types
+ */
+export interface ReferralCodeResponse {
+  referralCode: string;
+  qrCodeDataUrl: string;
+  shareUrl: string;
+  /** Resolved from REFERRAL_INVITE row (Admin → Email Templates). */
+  emailSubject: string;
+  /** Resolved from REFERRAL_WHATSAPP row (plain text in CMS). */
+  whatsappShareText: string;
+}
+
+export interface ReferralUse {
+  used_by_email: string;
+  used_at: string;
+}
+
+export interface ReferralUsesResponse {
+  uses: ReferralUse[];
+}
+

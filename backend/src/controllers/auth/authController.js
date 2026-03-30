@@ -6,6 +6,7 @@ const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const { downloadAndUploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const Referral = require('../../models/referral/Referral');
 
 class AuthController {
   /**
@@ -91,7 +92,7 @@ class AuthController {
         });
       }
 
-      const { email, code } = req.body;
+      const { email, code, ref: referralRef } = req.body;
 
       // Find valid OTP
       const otpRecord = await Otp.findByCodeAndEmail(code, email);
@@ -117,8 +118,26 @@ class AuthController {
       // Mark email as verified
       await User.markEmailAsVerified(user.id);
 
+      // Auto-generate referral code if the user doesn't have one yet
+      try {
+        if (!user.referral_code) {
+          await Referral.generateAndSaveUserCode(user.id);
+        }
+      } catch (refErr) {
+        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
+      }
+
       // Update last login
       await User.updateLastLogin(user.id);
+
+      // Record referral code use (non-blocking)
+      if (referralRef) {
+        try {
+          await Referral.recordUse(referralRef.trim().toUpperCase(), user.id, user.email);
+        } catch (refErr) {
+          console.error('⚠️ Non-blocking: failed to record referral use', refErr);
+        }
+      }
 
       // Get fresh user data first
       const updatedUser = await User.findById(user.id);
@@ -353,6 +372,11 @@ class AuthController {
 
       const client = new OAuth2Client(clientId, clientSecret, redirectUri);
 
+      // Encode referral ref in state if provided
+      const statePayload = req.query.ref
+        ? JSON.stringify({ ref: req.query.ref })
+        : undefined;
+
       // Generate the authorization URL
       const authUrl = client.generateAuthUrl({
         access_type: 'offline',
@@ -361,7 +385,8 @@ class AuthController {
           'https://www.googleapis.com/auth/userinfo.profile',
           'openid'
         ],
-        prompt: 'consent'
+        prompt: 'consent',
+        ...(statePayload ? { state: Buffer.from(statePayload).toString('base64') } : {})
       });
 
       // Redirect to Google
@@ -381,7 +406,14 @@ class AuthController {
    */
   static async googleCallback(req, res) {
     try {
-      const { code } = req.query;
+      const { code, state: oauthState } = req.query;
+      let pendingRef = null;
+      if (oauthState) {
+        try {
+          const decoded = JSON.parse(Buffer.from(oauthState, 'base64').toString('utf8'));
+          pendingRef = decoded?.ref || null;
+        } catch (_) { /* ignore malformed state */ }
+      }
 
       if (!code) {
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
@@ -498,6 +530,24 @@ class AuthController {
         user = await User.findById(user.id);
       }
 
+      // Auto-generate referral code if the user doesn't have one yet
+      try {
+        if (!user.referral_code) {
+          await Referral.generateAndSaveUserCode(user.id);
+        }
+      } catch (refErr) {
+        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
+      }
+
+      // Record referral code use if one was passed via OAuth state (non-blocking)
+      if (pendingRef) {
+        try {
+          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+        } catch (refErr) {
+          console.error('⚠️ Non-blocking: failed to record referral use (Google)', refErr);
+        }
+      }
+
       // Update last login
       await User.updateLastLogin(user.id);
 
@@ -533,10 +583,16 @@ class AuthController {
         });
       }
 
+      // Encode referral ref in state if provided
+      const statePayload = req.query.ref
+        ? Buffer.from(JSON.stringify({ ref: req.query.ref })).toString('base64')
+        : null;
+
       // Facebook OAuth URL with email and public_profile permissions
-      const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${encodeURIComponent(
+      let authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${encodeURIComponent(
         appId
       )}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email,public_profile&response_type=code`;
+      if (statePayload) authUrl += `&state=${encodeURIComponent(statePayload)}`;
 
       return res.redirect(authUrl);
     } catch (error) {
@@ -554,7 +610,14 @@ class AuthController {
    */
   static async facebookCallback(req, res) {
     try {
-      const { code, error: fbError } = req.query;
+      const { code, error: fbError, state: oauthState } = req.query;
+      let pendingRef = null;
+      if (oauthState) {
+        try {
+          const decoded = JSON.parse(Buffer.from(oauthState, 'base64').toString('utf8'));
+          pendingRef = decoded?.ref || null;
+        } catch (_) { /* ignore malformed state */ }
+      }
       const appId = process.env.META_APP_ID;
       const appSecret = process.env.META_APP_SECRET;
       const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:5001'}/api/auth/facebook/callback`;
@@ -685,6 +748,24 @@ class AuthController {
           profilePhoto: profilePhotoUrl,
         });
         user = await User.findById(user.id);
+      }
+
+      // Auto-generate referral code if the user doesn't have one yet
+      try {
+        if (!user.referral_code) {
+          await Referral.generateAndSaveUserCode(user.id);
+        }
+      } catch (refErr) {
+        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
+      }
+
+      // Record referral code use if one was passed via OAuth state (non-blocking)
+      if (pendingRef && user.email) {
+        try {
+          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+        } catch (refErr) {
+          console.error('⚠️ Non-blocking: failed to record referral use (Facebook)', refErr);
+        }
       }
 
       // Update last login

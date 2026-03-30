@@ -49,17 +49,17 @@ const Select: React.FC<SelectProps> = ({
       borderColor: error
         ? "#ef4444"
         : state.isFocused
-        ? "#ec4899"
-        : "#d1d5db",
+        ? "#341050"
+        : "#e2e8f0",
       borderWidth: "1px",
-      borderRadius: "0.375rem",
+      borderRadius: "0.75rem",
       padding: "0.25rem 0",
       minHeight: "48px",
       boxShadow: state.isFocused
-        ? "0 0 0 1px #ec4899"
-        : "none",
+        ? "0 0 0 3px rgba(52,16,80,0.10)"
+        : "0 1px 2px 0 rgba(0,0,0,0.04)",
       "&:hover": {
-        borderColor: error ? "#ef4444" : "#ec4899",
+        borderColor: error ? "#ef4444" : "#341050",
       },
       cursor: disabled ? "not-allowed" : "pointer",
       opacity: disabled ? 0.5 : 1,
@@ -83,9 +83,9 @@ const Select: React.FC<SelectProps> = ({
           menu: (provided) => ({
             ...provided,
             backgroundColor: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "0.375rem",
-            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+            border: "1px solid #e2e8f0",
+            borderRadius: "0.75rem",
+            boxShadow: "0 10px 24px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06)",
             zIndex: 9999,
             marginTop: "4px",
           }),
@@ -97,23 +97,23 @@ const Select: React.FC<SelectProps> = ({
     option: (provided, state) => ({
       ...provided,
       backgroundColor: state.isSelected
-        ? "#ec4899"
+        ? "#341050"
         : state.isFocused
-        ? "rgba(236, 72, 153, 0.1)"
+        ? "rgba(52,16,80,0.08)"
         : "transparent",
       color: state.isSelected
         ? "#ffffff"
         : state.isFocused
-        ? "#ec4899"
+        ? "#341050"
         : "#111827",
       fontSize: "0.875rem",
       padding: "0.75rem 1rem",
       cursor: "pointer",
-      borderRadius: "0.25rem",
+      borderRadius: "0.5rem",
       margin: "2px 0",
       fontWeight: state.isSelected ? "600" : "400",
       "&:active": {
-        backgroundColor: "#ec4899",
+        backgroundColor: "#341050",
         color: "#ffffff",
       },
     }),
@@ -122,25 +122,25 @@ const Select: React.FC<SelectProps> = ({
     }),
     dropdownIndicator: (provided, state) => ({
       ...provided,
-      color: "#6b7280",
+      color: "#94a3b8",
       padding: "0 12px",
       "&:hover": {
-        color: "#ec4899",
+        color: "#341050",
       },
       transform: state.selectProps.menuIsOpen ? "rotate(180deg)" : "rotate(0deg)",
       transition: "transform 0.2s ease",
     }),
     clearIndicator: (provided) => ({
       ...provided,
-      color: "#6b7280",
+      color: "#94a3b8",
       padding: "0 8px",
       "&:hover": {
-        color: "#ec4899",
+        color: "#341050",
       },
     }),
     loadingIndicator: (provided) => ({
       ...provided,
-      color: "#ec4899",
+      color: "#341050",
     }),
   };
 
@@ -164,21 +164,21 @@ const Select: React.FC<SelectProps> = ({
           ...theme,
           colors: {
             ...theme.colors,
-            primary: "#ec4899",
-            primary25: "rgba(236, 72, 153, 0.2)",
-            primary50: "rgba(236, 72, 153, 0.3)",
-            primary75: "rgba(236, 72, 153, 0.4)",
-            neutral0: "#1e293b",
-            neutral5: "#334155",
-            neutral10: "#475569",
-            neutral20: "#64748b",
-            neutral30: "#94a3b8",
-            neutral40: "#cbd5e1",
-            neutral50: "#e2e8f0",
-            neutral60: "#f1f5f9",
-            neutral70: "#f8fafc",
-            neutral80: "#ffffff",
-            neutral90: "#ffffff",
+            primary: "#341050",
+            primary25: "rgba(52,16,80,0.08)",
+            primary50: "rgba(52,16,80,0.14)",
+            primary75: "rgba(52,16,80,0.22)",
+            neutral0: "#ffffff",
+            neutral5: "#f8fafc",
+            neutral10: "#f1f5f9",
+            neutral20: "#e2e8f0",
+            neutral30: "#cbd5e1",
+            neutral40: "#94a3b8",
+            neutral50: "#64748b",
+            neutral60: "#475569",
+            neutral70: "#334155",
+            neutral80: "#1e293b",
+            neutral90: "#0f172a",
           },
         })}
       />

@@ -113,13 +113,7 @@ export default function StepTwoA() {
   };
 
   return (
-    <div
-      className="h-screen w-full flex flex-col"
-      style={{
-        background:
-          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
-      }}
-    >
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={60}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           {/* Robot */}
@@ -132,18 +126,18 @@ export default function StepTwoA() {
             <Bubble className="w-full max-w-none">Which stream are you pursuing or have completed?</Bubble>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               {loadingStreams ? (
-                <div className="w-full min-h-[48px] flex items-center rounded-lg border border-white/15 bg-white/10 px-5 text-sm text-slate-400">
+                <div className="w-full min-h-[48px] flex items-center rounded-xl border border-slate-200 bg-white px-5 text-sm text-slate-400">
                   Loading streams...
                 </div>
               ) : streamOptions.length === 0 ? (
-                <div className="w-full min-h-[48px] flex items-center rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-5 text-sm text-yellow-400">
+                <div className="w-full min-h-[48px] flex items-center rounded-xl border border-amber-200 bg-amber-50 px-5 text-sm text-amber-700">
                   No streams available. Please contact support.
                 </div>
               ) : (

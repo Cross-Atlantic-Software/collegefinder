@@ -248,14 +248,14 @@ export default function CounsellorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Counsellor Panel</h1>
-            <p className="text-sm text-gray-600">Look up students and enter strength analysis results.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Counsellor Panel</h1>
+            <p className="text-sm text-slate-600">Look up students and enter strength analysis results.</p>
           </div>
 
           {/* Bulk upload controls */}
@@ -268,7 +268,7 @@ export default function CounsellorPage() {
                 setBulkError(null);
                 setBulkExcelFile(null);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors"
             >
               <FiUpload className="h-4 w-4" />
               Bulk upload (Excel)
@@ -277,7 +277,7 @@ export default function CounsellorPage() {
               type="button"
               onClick={handleDownloadExcel}
               disabled={downloadingExcel}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors disabled:opacity-50"
             >
               <FiDownload className="h-4 w-4" />
               {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -290,7 +290,7 @@ export default function CounsellorPage() {
                 setReportPdfsResult(null);
                 setReportPdfsError(null);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors"
             >
               <FiFileText className="h-4 w-4" />
               Upload report PDFs
@@ -299,28 +299,28 @@ export default function CounsellorPage() {
 
           <div className="max-w-4xl space-y-6">
             {/* Search card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/80">
-                  <h2 className="text-xs font-semibold text-gray-800">Find student</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Enter the student’s user ID to load their details and add or edit strength results.</p>
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-[#F6F8FA]/80">
+                  <h2 className="text-xs font-semibold text-slate-800">Find student</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Enter the student’s user ID to load their details and add or edit strength results.</p>
                 </div>
                 <div className="p-4">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 relative">
-                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
                       <input
                         type="number"
                         value={searchId}
                         onChange={(e) => setSearchId(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         placeholder="e.g. 42"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-pink focus:border-pink outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none transition-all"
                       />
                     </div>
                     <button
                       onClick={handleSearch}
                       disabled={searching || !searchId.trim()}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-darkGradient rounded-lg shadow-sm hover:opacity-95 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg shadow-sm hover:opacity-95 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                     >
                       {searching ? (
                         <>
@@ -336,7 +336,7 @@ export default function CounsellorPage() {
                     </button>
                   </div>
                   {!studentData && !searching && (
-                    <p className="text-xs text-gray-400 mt-3">Press Enter or click Search after entering an ID.</p>
+                    <p className="text-xs text-slate-400 mt-3">Press Enter or click Search after entering an ID.</p>
                 )}
               </div>
             </div>
@@ -345,10 +345,10 @@ export default function CounsellorPage() {
             {studentData && (
               <>
                 {/* Student details card */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-                    <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink/10 text-pink">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                    <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#341050]/10 text-[#341050]">
                         <FiUser className="w-4 h-4" />
                       </span>
                       Student details
@@ -366,7 +366,7 @@ export default function CounsellorPage() {
                   <div className="p-5">
                     <div className="flex flex-col sm:flex-row gap-5">
                       <div className="shrink-0">
-                        <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center ring-2 ring-gray-200">
+                        <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden flex items-center justify-center ring-2 ring-slate-200">
                           {studentData.student.profile_photo ? (
                             <Image
                               src={studentData.student.profile_photo}
@@ -377,7 +377,7 @@ export default function CounsellorPage() {
                               unoptimized
                             />
                           ) : (
-                            <FiUser className="w-10 h-10 text-gray-400" />
+                            <FiUser className="w-10 h-10 text-slate-400" />
                           )}
                         </div>
                       </div>
@@ -394,17 +394,17 @@ export default function CounsellorPage() {
                 </div>
 
                 {/* Results form card */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/80">
-                    <h2 className="text-sm font-semibold text-gray-800">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-[#F6F8FA]/80">
+                    <h2 className="text-sm font-semibold text-slate-800">
                       {isEditing ? 'Edit strength results' : 'Enter strength results'}
                     </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">Fill in strengths, career recommendations, and optionally attach the full report.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Fill in strengths, career recommendations, and optionally attach the full report.</p>
                   </div>
                   <div className="p-5 space-y-6">
                     {/* Assign consultants (multiselect) */}
                     <section>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
                         Assign consultant (Strength Masters CRM)
                       </label>
                       <MultiSelect
@@ -421,7 +421,7 @@ export default function CounsellorPage() {
 
                     {/* Top 5 Strengths */}
                     <section>
-                      <h3 className="text-sm font-medium text-gray-700 mb-3">Top 5 strengths</h3>
+                      <h3 className="text-sm font-medium text-slate-700 mb-3">Top 5 strengths</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                         {strengths.map((s, idx) => (
                           <input
@@ -434,7 +434,7 @@ export default function CounsellorPage() {
                               setStrengths(next);
                             }}
                             placeholder={`Strength ${idx + 1}`}
-                            className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                            className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                           />
                         ))}
                       </div>
@@ -442,7 +442,7 @@ export default function CounsellorPage() {
 
                     {/* Career recommendations */}
                     <section>
-                      <h3 className="text-sm font-medium text-gray-700 mb-3">Career recommendations</h3>
+                      <h3 className="text-sm font-medium text-slate-700 mb-3">Career recommendations</h3>
                       <div className="space-y-3">
                         {careers.map((c, idx) => (
                           <div key={idx} className="flex flex-col sm:flex-row gap-2">
@@ -455,7 +455,7 @@ export default function CounsellorPage() {
                                 setCareers(next);
                               }}
                               placeholder={`Career ${idx + 1}`}
-                              className="sm:w-56 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none shrink-0"
+                              className="sm:w-56 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none shrink-0"
                             />
                             <input
                               type="text"
@@ -466,7 +466,7 @@ export default function CounsellorPage() {
                                 setCareers(next);
                               }}
                               placeholder="Details"
-                              className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                              className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                             />
                           </div>
                         ))}
@@ -475,10 +475,10 @@ export default function CounsellorPage() {
 
                     {/* PDF upload */}
                     <section>
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Full report (PDF)</h3>
-                      <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-pink/40 hover:bg-pink/5 cursor-pointer transition-colors">
-                        <FiUpload className="w-5 h-5 text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-600">
+                      <h3 className="text-sm font-medium text-slate-700 mb-2">Full report (PDF)</h3>
+                      <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 cursor-pointer transition-colors">
+                        <FiUpload className="w-5 h-5 text-slate-400 shrink-0" />
+                        <span className="text-sm text-slate-600">
                           {reportFile ? reportFile.name : 'Choose file or drag PDF here'}
                         </span>
                         <input
@@ -498,7 +498,7 @@ export default function CounsellorPage() {
                       <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-darkGradient rounded-lg shadow-sm hover:opacity-95 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg shadow-sm hover:opacity-95 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {saving ? (
                           <>
@@ -525,7 +525,7 @@ export default function CounsellorPage() {
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Bulk upload strength results</h2>
               <button
                 onClick={() => {
@@ -535,13 +535,13 @@ export default function CounsellorPage() {
                   setBulkResult(null);
                   setBulkError(null);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-slate-600">
                 Upload an Excel file with columns: user_id, strengths (1-5), career recommendations (1-5), assigned_consultant_names, report_file_name (e.g. 123.pdf). Optionally attach a ZIP of report PDFs—file names in the ZIP must match report_file_name in the Excel. You can also upload report PDFs later via &quot;Upload report PDFs&quot;.
               </p>
               <div>
@@ -549,17 +549,17 @@ export default function CounsellorPage() {
                   type="button"
                   onClick={handleDownloadTemplate}
                   disabled={downloadingTemplate}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingTemplate ? 'Downloading...' : 'Download template'}
                 </button>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Excel file</label>
-                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-pink/50 hover:bg-pink/5 cursor-pointer transition-colors">
-                  <FiUpload className="w-5 h-5 text-gray-400 shrink-0" />
-                  <span className="text-sm text-gray-600">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Excel file</label>
+                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 cursor-pointer transition-colors">
+                  <FiUpload className="w-5 h-5 text-slate-400 shrink-0" />
+                  <span className="text-sm text-slate-600">
                     {bulkExcelFile ? bulkExcelFile.name : 'Choose .xlsx or .xls file'}
                   </span>
                   <input
@@ -571,10 +571,10 @@ export default function CounsellorPage() {
                 </label>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Report PDFs (ZIP) <span className="text-gray-500 font-normal">optional</span></label>
-                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-pink/50 hover:bg-pink/5 cursor-pointer transition-colors">
-                  <FiFileText className="w-5 h-5 text-gray-400 shrink-0" />
-                  <span className="text-sm text-gray-600">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Report PDFs (ZIP) <span className="text-slate-500 font-normal">optional</span></label>
+                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 cursor-pointer transition-colors">
+                  <FiFileText className="w-5 h-5 text-slate-400 shrink-0" />
+                  <span className="text-sm text-slate-600">
                     {bulkReportsZip ? bulkReportsZip.name : 'Choose .zip (PDFs named to match report_file_name)'}
                   </span>
                   <input
@@ -591,7 +591,7 @@ export default function CounsellorPage() {
                 </div>
               )}
               {bulkResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
                   <p className="font-medium text-green-700">Created/updated: {bulkResult.created}</p>
                   {bulkResult.reportsAdded != null && bulkResult.reportsAdded > 0 && (
                     <p className="text-green-700 mt-1">Report PDFs attached: {bulkResult.reportsAdded}</p>
@@ -600,7 +600,7 @@ export default function CounsellorPage() {
                     <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>
                   )}
                   {bulkResult.errorDetails && bulkResult.errorDetails.length > 0 && (
-                    <ul className="mt-2 text-xs text-gray-600 max-h-32 overflow-auto">
+                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
                       {bulkResult.errorDetails.map((err, i) => (
                         <li key={i}>
                           Row {err.row}: {err.message}
@@ -611,7 +611,7 @@ export default function CounsellorPage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -621,7 +621,7 @@ export default function CounsellorPage() {
                   setBulkResult(null);
                   setBulkError(null);
                 }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
               >
                 Close
               </button>
@@ -629,7 +629,7 @@ export default function CounsellorPage() {
                 type="button"
                 onClick={handleBulkUpload}
                 disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
@@ -642,7 +642,7 @@ export default function CounsellorPage() {
       {showReportPdfsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Upload report PDFs</h2>
               <button
                 onClick={() => {
@@ -651,20 +651,20 @@ export default function CounsellorPage() {
                   setReportPdfsResult(null);
                   setReportPdfsError(null);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-slate-600">
                 Upload a ZIP containing report PDFs. File names inside the ZIP must match the <strong>report_file_name</strong> stored for each strength result (e.g. 123.pdf). Use the bulk Excel template with report_file_name column, then upload the ZIP here or together with the Excel.
               </p>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">ZIP file</label>
-                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-pink/50 hover:bg-pink/5 cursor-pointer transition-colors">
-                  <FiFileText className="w-5 h-5 text-gray-400 shrink-0" />
-                  <span className="text-sm text-gray-600">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">ZIP file</label>
+                <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 cursor-pointer transition-colors">
+                  <FiFileText className="w-5 h-5 text-slate-400 shrink-0" />
+                  <span className="text-sm text-slate-600">
                     {reportPdfsZipFile ? reportPdfsZipFile.name : 'Choose .zip file'}
                   </span>
                   <input
@@ -685,7 +685,7 @@ export default function CounsellorPage() {
                 </div>
               )}
               {reportPdfsResult && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
                   <p className="font-medium text-green-700">Reports attached: {reportPdfsResult.summary.reportsAdded}</p>
                   {reportPdfsResult.summary.filesSkipped > 0 && (
                     <p className="text-amber-700 mt-1">Files skipped (no matching report_file_name): {reportPdfsResult.summary.filesSkipped}</p>
@@ -696,7 +696,7 @@ export default function CounsellorPage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -705,7 +705,7 @@ export default function CounsellorPage() {
                   setReportPdfsResult(null);
                   setReportPdfsError(null);
                 }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
               >
                 Close
               </button>
@@ -713,7 +713,7 @@ export default function CounsellorPage() {
                 type="button"
                 onClick={handleUploadReportPdfs}
                 disabled={!reportPdfsZipFile || reportPdfsUploading}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {reportPdfsUploading ? 'Uploading...' : 'Upload'}
               </button>
@@ -728,8 +728,8 @@ export default function CounsellorPage() {
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-xs text-gray-500 font-medium">{label}</span>
-      <span className="text-sm font-medium text-gray-900 truncate">{value || '—'}</span>
+      <span className="text-xs text-slate-500 font-medium">{label}</span>
+      <span className="text-sm font-medium text-slate-900 truncate">{value || '—'}</span>
     </div>
   );
 }

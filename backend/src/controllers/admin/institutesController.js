@@ -7,6 +7,17 @@ const InstituteStatistics = require('../../models/institute/InstituteStatistics'
 const InstituteCourse = require('../../models/institute/InstituteCourse');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const Referral = require('../../models/referral/Referral');
+const EmailTemplate = require('../../models/taxonomy/EmailTemplate');
+const { sendInstituteReferralInviteEmail } = require('../../../utils/email/emailService');
+
+const MAX_INSTITUTE_REFERRAL_RECIPIENTS = 10;
+
+/** Split stored referral_contact_email field (comma / semicolon / whitespace). */
+function splitReferralContactEmails(raw) {
+  if (!raw || typeof raw !== 'string') return [];
+  return [...new Set(raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
+}
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
 
@@ -59,6 +70,17 @@ class InstitutesController {
         if (ex && ex.name) specExamNames.push(ex.name);
       }
 
+      let referralEmailPreview = null;
+      if (institute.referral_code) {
+        const vars = EmailTemplate.buildInstituteReferralVariables(institute);
+        const tplRow = await EmailTemplate.findReferralInstituteInviteRow();
+        const tpl = tplRow || EmailTemplate.getReferralInstituteInviteDefaultTemplate();
+        referralEmailPreview = {
+          subject: EmailTemplate.replaceVariables(tpl.subject, vars),
+          defaultRecipients: splitReferralContactEmails(institute.referral_contact_email),
+        };
+      }
+
       res.json({
         success: true,
         data: {
@@ -69,12 +91,69 @@ class InstitutesController {
           specializationExamIds: specializationExamIds || [],
           specializationExamNames: specExamNames,
           instituteStatistics: statistics,
-          instituteCourses: courses || []
+          instituteCourses: courses || [],
+          referralEmailPreview,
         }
       });
     } catch (error) {
       console.error('Error fetching institute:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch institute' });
+    }
+  }
+
+  /**
+   * POST /api/admin/institutes/:id/send-referral-email
+   * Body: { recipients?: string[] } — defaults to institute.referral_contact_email when omitted
+   */
+  static async sendReferralEmail(req, res) {
+    try {
+      const instituteId = parseInt(req.params.id, 10);
+      const { recipients } = req.body;
+      const institute = await Institute.findById(instituteId);
+      if (!institute) {
+        return res.status(404).json({ success: false, message: 'Institute not found' });
+      }
+
+      let referralCode = institute.referral_code;
+      if (!referralCode) {
+        referralCode = await Referral.generateAndSaveInstituteCode(instituteId, institute.institute_name);
+      }
+      const fresh = await Institute.findById(instituteId);
+
+      let list =
+        Array.isArray(recipients) && recipients.length > 0
+          ? recipients.map((e) => String(e).trim().toLowerCase()).filter(Boolean)
+          : splitReferralContactEmails(fresh.referral_contact_email);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      list = [...new Set(list.filter((e) => emailRegex.test(e)))];
+
+      if (list.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'No valid recipients. Save referral contact email(s) on the institute or pass recipients in the request body.',
+        });
+      }
+      if (list.length > MAX_INSTITUTE_REFERRAL_RECIPIENTS) {
+        return res.status(400).json({
+          success: false,
+          message: `At most ${MAX_INSTITUTE_REFERRAL_RECIPIENTS} recipients per send`,
+        });
+      }
+
+      const { sent, failed } = await sendInstituteReferralInviteEmail(list, fresh);
+      res.json({
+        success: true,
+        data: { sent, failed },
+        message:
+          failed.length === 0
+            ? `Invite${sent.length > 1 ? 's' : ''} sent successfully`
+            : `Sent to ${sent.length}, failed for ${failed.length}`,
+      });
+    } catch (error) {
+      console.error('Error sending institute referral email:', error);
+      res.status(500).json({ success: false, message: 'Failed to send referral email' });
     }
   }
 
@@ -100,6 +179,7 @@ class InstitutesController {
         logo,
         website,
         contact_number,
+        referral_contact_email,
         institute_description,
         demo_available,
         scholarship_available,
@@ -126,7 +206,8 @@ class InstitutesController {
         type: type || null,
         logo: logo || null,
         website: website ? website.trim() : null,
-        contact_number: contact_number ? contact_number.trim() : null
+        contact_number: contact_number ? contact_number.trim() : null,
+        referral_contact_email: referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
       });
 
       if (institute_description != null || demo_available != null || scholarship_available != null) {
@@ -170,6 +251,14 @@ class InstitutesController {
         }
       }
 
+      // Auto-generate referral code for the new institute
+      try {
+        const refCode = await Referral.generateAndSaveInstituteCode(institute.id, institute.institute_name);
+        institute.referral_code = refCode;
+      } catch (refErr) {
+        console.error('⚠️ Non-blocking: failed to generate institute referral code', refErr);
+      }
+
       res.status(201).json({
         success: true,
         data: { institute },
@@ -197,6 +286,7 @@ class InstitutesController {
         logo,
         website,
         contact_number,
+        referral_contact_email,
         institute_description,
         demo_available,
         scholarship_available,
@@ -225,7 +315,13 @@ class InstitutesController {
         type: type !== undefined ? type || null : undefined,
         logo: logo !== undefined ? logo : undefined,
         website: website !== undefined ? (website && website.trim()) || null : undefined,
-        contact_number: contact_number !== undefined ? (contact_number && contact_number.trim()) || null : undefined
+        contact_number: contact_number !== undefined ? (contact_number && contact_number.trim()) || null : undefined,
+        referral_contact_email:
+          referral_contact_email !== undefined
+            ? referral_contact_email != null
+              ? String(referral_contact_email).trim() || null
+              : null
+            : undefined,
       });
 
       if (institute_description !== undefined || demo_available !== undefined || scholarship_available !== undefined) {

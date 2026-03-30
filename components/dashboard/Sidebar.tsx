@@ -12,6 +12,7 @@ import {
   FiInfo,
   FiLogOut,
   FiSettings,
+  FiShare2,
   FiUser,
 } from "react-icons/fi";
 import {
@@ -20,6 +21,7 @@ import {
   FaFileAlt,
   FaFlask,
   FaHome,
+  FaShareAlt,
   FaUniversity,
   FaUserCircle,
   FaBrain,
@@ -36,7 +38,8 @@ type SectionId =
   | "exam-prep"
   | "test-module"
   | "know-your-strengths"
-  | "admission-help";
+  | "admission-help"
+  | "referral";
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -127,6 +130,14 @@ const baseNavItems: {
     activeIcon: FaHandsHelping,
     getValue: () => "",
   },
+  {
+    id: "referral",
+    label: "Refer & Earn",
+    sub: "Invite friends",
+    icon: FiShare2,
+    activeIcon: FaShareAlt,
+    getValue: () => "",
+  },
 ];
 
 export default function Sidebar({
@@ -208,9 +219,9 @@ export default function Sidebar({
             <Image
               src="/svgs/logo-fav-unitracko.svg"
               alt="Unitracko icon"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-xl"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-xl"
               priority
             />
           )}
@@ -219,9 +230,9 @@ export default function Sidebar({
               <Image
                 src="/svgs/logo-unitracko.svg"
                 alt="Unitracko logo"
-                width={140}
-                height={32}
-                className="h-auto w-[160px] -pb-8 dark:invert"
+                width={168}
+                height={38}
+                className="h-auto w-[184px] -pb-8 dark:invert"
                 priority
               />
             </div>

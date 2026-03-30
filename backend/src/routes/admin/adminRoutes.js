@@ -838,6 +838,13 @@ router.post('/institutes/bulk-upload', authenticateAdmin, requireModuleAccess('i
 router.post('/institutes', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.create);
 router.delete('/institutes/all', authenticateAdmin, requireModuleAccess('institutes'), requireCanDelete, InstitutesController.deleteAll);
 router.get('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.getById);
+router.post(
+  '/institutes/:id/send-referral-email',
+  authenticateAdmin,
+  requireModuleAccess('institutes'),
+  requireCanEdit,
+  InstitutesController.sendReferralEmail
+);
 router.put('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanEdit, InstitutesController.update);
 router.delete('/institutes/:id', authenticateAdmin, requireModuleAccess('institutes'), requireCanDelete, InstitutesController.delete);
 

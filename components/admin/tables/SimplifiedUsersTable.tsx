@@ -80,16 +80,16 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-        <div className="text-gray-500">Loading users...</div>
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
+        <div className="text-slate-500">Loading users...</div>
       </div>
     );
   }
 
   if (initialUsers.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-        <div className="text-gray-500">No users found</div>
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
+        <div className="text-slate-500">No users found</div>
       </div>
     );
   }
@@ -98,57 +98,57 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
     <>
       <div className="mb-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            <span className="text-xs font-medium text-gray-700">All users</span>
-            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+            <span className="text-xs font-medium text-slate-700">All users</span>
+            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
               {initialUsers.length}
             </span>
           </button>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search by email, name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+              className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-[#F6F8FA] border-b border-slate-200">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   USER
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   PHONE
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   STATUS
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   EMAIL VERIFIED
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   DATE ADDED
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                   LAST LOGIN
                 </th>
-                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                <th className="px-4 py-2 text-center text-xs font-semibold text-slate-700">
                   ACTIONS
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-200">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
                     No users found matching your search
                   </td>
                 </tr>
@@ -158,21 +158,21 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
                   const initials = getInitials(displayName);
                   
                   return (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={user.id} className="hover:bg-[#F6F8FA] transition-colors">
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-darkGradient flex items-center justify-center text-white text-sm font-semibold">
+                          <div className="h-8 w-8 rounded-full bg-highlight-100 flex items-center justify-center text-[#341050] text-sm font-semibold">
                             {initials}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-slate-900">
                               {displayName}
                             </div>
-                            <div className="text-xs text-gray-500">{user.email || 'No email'}</div>
+                            <div className="text-xs text-slate-500">{user.email || 'No email'}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-sm text-gray-900">
+                      <td className="px-4 py-2 text-sm text-slate-900">
                         {user.phone_number ? String(user.phone_number) : '-'}
                       </td>
                       <td className="px-4 py-2">
@@ -180,7 +180,7 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             toBoolean(user.is_active as boolean | string | number | null | undefined)
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-slate-100 text-slate-800'
                           }`}
                         >
                           {toBoolean(user.is_active as boolean | string | number | null | undefined) ? 'Active' : 'Inactive'}
@@ -191,24 +191,24 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             toBoolean(user.email_verified as boolean | string | number | null | undefined)
                               ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-slate-100 text-slate-800'
                           }`}
                         >
                           {toBoolean(user.email_verified as boolean | string | number | null | undefined) ? 'Verified' : 'Not Verified'}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-xs text-gray-600">
+                      <td className="px-4 py-2 text-xs text-slate-600">
                         {formatDate(user.created_at)}
                       </td>
-                      <td className="px-4 py-2 text-xs text-gray-600">
+                      <td className="px-4 py-2 text-xs text-slate-600">
                         {user.last_login
                           ? formatDate(user.last_login)
-                          : <span className="text-gray-400">Never</span>}
+                          : <span className="text-slate-400">Never</span>}
                       </td>
                       <td className="px-4 py-2 text-center">
                         <button
                           onClick={() => handleViewDetails(user.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-pink bg-pink/10 rounded-lg hover:bg-pink/20 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#341050] bg-[#341050]/10 rounded-lg hover:bg-[#341050]/20 transition-colors"
                           title="View Details"
                         >
                           <Eye className="h-4 w-4" />
