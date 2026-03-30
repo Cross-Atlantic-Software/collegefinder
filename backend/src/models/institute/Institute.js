@@ -28,6 +28,7 @@ class Institute {
     const {
       institute_name,
       institute_location,
+      google_maps_link,
       type,
       logo,
       logo_filename,
@@ -36,11 +37,12 @@ class Institute {
       referral_contact_email,
     } = data;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, type, logo, logo_filename, website, contact_number, referral_contact_email)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         institute_name,
         institute_location || null,
+        google_maps_link != null ? String(google_maps_link).trim() || null : null,
         type || null,
         logo || null,
         logo_filename || null,
@@ -67,6 +69,7 @@ class Institute {
     const {
       institute_name,
       institute_location,
+      google_maps_link,
       type,
       logo,
       logo_filename,
@@ -79,6 +82,10 @@ class Institute {
     let paramCount = 1;
     if (institute_name !== undefined) { updates.push(`institute_name = $${paramCount++}`); values.push(institute_name); }
     if (institute_location !== undefined) { updates.push(`institute_location = $${paramCount++}`); values.push(institute_location); }
+    if (google_maps_link !== undefined) {
+      updates.push(`google_maps_link = $${paramCount++}`);
+      values.push(google_maps_link != null ? String(google_maps_link).trim() || null : null);
+    }
     if (type !== undefined) { updates.push(`type = $${paramCount++}`); values.push(type); }
     if (logo !== undefined) { updates.push(`logo = $${paramCount++}`); values.push(logo); }
     if (logo_filename !== undefined) { updates.push(`logo_filename = $${paramCount++}`); values.push(logo_filename); }

@@ -334,7 +334,7 @@ class ScholarshipsController {
           'Ministry of Education',
           'Merit-cum-Means',
           'Central sector scheme for college students.',
-          'Science',
+          'Science (PCM)',
           'Up to 2.5 Lakh',
           '60%',
           'Up to 20000 per annum',
@@ -346,7 +346,7 @@ class ScholarshipsController {
           'SC, ST, OBC, General',
           'All India, Delhi, Maharashtra',
           'Aadhar, Marksheet, Income Certificate',
-          'JEE Main, NEET, CUET'
+          'JEE Main'
         ],
         [
           'State Merit Scholarship',
@@ -365,7 +365,7 @@ class ScholarshipsController {
           'General, OBC',
           'Maharashtra, Gujarat',
           'Marksheet, Domicile',
-          'MHT CET, GUJCET'
+          'JEE Main'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Scholarships');

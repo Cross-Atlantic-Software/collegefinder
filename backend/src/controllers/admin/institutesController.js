@@ -21,6 +21,24 @@ function splitReferralContactEmails(raw) {
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
 
+/** Student / exam-style rating: integer 1–5 only (null if empty/invalid; values above 5 coerced to 5). */
+function clampStudentRating(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
+  if (Number.isNaN(n)) return null;
+  const r = Math.round(n);
+  if (r < 1) return null;
+  return Math.min(5, r);
+}
+
+/** For Excel export: coerce any numeric rating into 1–5 (rounded), empty if invalid. */
+function studentRatingForExport(val) {
+  if (val === undefined || val === null || val === '') return '';
+  const n = typeof val === 'number' ? val : parseFloat(String(val));
+  if (Number.isNaN(n)) return '';
+  return String(Math.min(5, Math.max(1, Math.round(n))));
+}
+
 async function resolveExamNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
   const names = splitList(namesStr);
@@ -175,6 +193,7 @@ class InstitutesController {
       const {
         institute_name,
         institute_location,
+        google_maps_link,
         type,
         logo,
         website,
@@ -203,6 +222,7 @@ class InstitutesController {
       const institute = await Institute.create({
         institute_name: institute_name.trim(),
         institute_location: institute_location ? institute_location.trim() : null,
+        google_maps_link: google_maps_link != null ? String(google_maps_link).trim() || null : null,
         type: type || null,
         logo: logo || null,
         website: website ? website.trim() : null,
@@ -231,7 +251,7 @@ class InstitutesController {
           institute_id: institute.id,
           ranking_score: ranking_score ?? null,
           success_rate: success_rate ?? null,
-          student_rating: student_rating ?? null
+          student_rating: clampStudentRating(student_rating)
         });
       }
 
@@ -282,6 +302,7 @@ class InstitutesController {
       const {
         institute_name,
         institute_location,
+        google_maps_link,
         type,
         logo,
         website,
@@ -312,6 +333,12 @@ class InstitutesController {
       await Institute.update(instituteId, {
         institute_name: institute_name !== undefined ? institute_name.trim() : undefined,
         institute_location: institute_location !== undefined ? (institute_location && institute_location.trim()) || null : undefined,
+        google_maps_link:
+          google_maps_link !== undefined
+            ? google_maps_link != null
+              ? String(google_maps_link).trim() || null
+              : null
+            : undefined,
         type: type !== undefined ? type || null : undefined,
         logo: logo !== undefined ? logo : undefined,
         website: website !== undefined ? (website && website.trim()) || null : undefined,
@@ -345,7 +372,7 @@ class InstitutesController {
           institute_id: instituteId,
           ranking_score: ranking_score ?? null,
           success_rate: success_rate ?? null,
-          student_rating: student_rating ?? null
+          student_rating: clampStudentRating(student_rating)
         });
       }
 
@@ -414,6 +441,7 @@ class InstitutesController {
       const headers = [
         'institute_name',
         'institute_location',
+        'google_maps_link',
         'type',
         'logo_filename',
         'website',
@@ -434,6 +462,7 @@ class InstitutesController {
         [
           'Allen Kota',
           'Kota',
+          'https://maps.app.goo.gl/example-allen',
           'Offline',
           'allen.png',
           'https://allen.ac.in',
@@ -443,14 +472,15 @@ class InstitutesController {
           'TRUE',
           '9.5',
           '85',
-          '4.8',
-          'JEE Main, NEET',
-          'JEE Advanced',
+          '5',
+          'JEE Main',
+          'JEE Main',
           'JEE Main|Class 12|12|50000|30|2025-01-01, NEET|Class 12|24|80000|25|2025-04-01'
         ],
         [
           'Unacademy',
           'Online',
+          '',
           'Online',
           'unacademy.png',
           'https://unacademy.com',
@@ -460,9 +490,9 @@ class InstitutesController {
           'FALSE',
           '8',
           '78',
-          '4.5',
-          'JEE Main, NEET, CUET',
-          '',
+          '4',
+          'JEE Main',
+          'JEE Main',
           'Crash Course|Class 12|6|25000|100|2025-01-15'
         ]
       ]);
@@ -482,7 +512,7 @@ class InstitutesController {
     try {
       const institutes = await Institute.findAll();
       const headers = [
-        'institute_name', 'institute_location', 'type', 'logo_filename', 'website', 'contact_number',
+        'institute_name', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
         'exam_names', 'specialization_exam_names', 'courses'
       ];
@@ -514,6 +544,7 @@ class InstitutesController {
         rows.push([
           inst.institute_name || '',
           inst.institute_location || '',
+          inst.google_maps_link || '',
           inst.type || '',
           logoFilename,
           inst.website || '',
@@ -523,7 +554,7 @@ class InstitutesController {
           (detail.scholarship_available === true || detail.scholarship_available === 't') ? 'TRUE' : 'FALSE',
           (stats.ranking_score != null) ? String(stats.ranking_score) : '',
           (stats.success_rate != null) ? String(stats.success_rate) : '',
-          (stats.student_rating != null) ? String(stats.student_rating) : '',
+          studentRatingForExport(stats.student_rating),
           examNames.join(','),
           specExamNames.join(','),
           coursesStr
@@ -630,6 +661,8 @@ class InstitutesController {
         }
 
         const location = (row.institute_location ?? row.institute_Location ?? '').toString().trim() || null;
+        const googleMapsLink =
+          (row.google_maps_link ?? row.google_Maps_Link ?? row.google_maps_Link ?? '').toString().trim() || null;
         const typeRaw = (row.type ?? '').toString().trim();
         const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
@@ -664,6 +697,7 @@ class InstitutesController {
           const institute = await Institute.create({
             institute_name: name,
             institute_location: location,
+            google_maps_link: googleMapsLink,
             type: instituteType,
             logo: logoUrl,
             logo_filename: logoFilename || null,
@@ -680,13 +714,13 @@ class InstitutesController {
           }
           const ranking_score = rankingScoreRaw ? parseFloat(rankingScoreRaw) : null;
           const success_rate = successRateRaw ? parseFloat(successRateRaw) : null;
-          const student_rating = studentRatingRaw ? parseFloat(studentRatingRaw) : null;
+          const student_rating = clampStudentRating(studentRatingRaw);
           if (ranking_score != null || success_rate != null || student_rating != null) {
             await InstituteStatistics.create({
               institute_id: institute.id,
               ranking_score: isNaN(ranking_score) ? null : ranking_score,
               success_rate: isNaN(success_rate) ? null : success_rate,
-              student_rating: isNaN(student_rating) ? null : student_rating
+              student_rating
             });
           }
           let examIds = [];

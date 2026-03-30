@@ -87,12 +87,16 @@ const uploadBulkExams = multer({
       ].includes(file.mimetype);
       return cb(ok ? null : new Error('Excel file required (.xlsx or .xls)'), ok);
     }
-    if (field === 'logos') {
+    if (field === 'logos' || field === 'thumbnails') {
       return cb(null, file.mimetype.startsWith('image/'));
     }
-    if (field === 'logos_zip') {
-      const ok = file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || (file.originalname || '').toLowerCase().endsWith('.zip');
-      return cb(ok ? null : new Error('ZIP file required for logos'), ok);
+    if (field === 'logos_zip' || field === 'thumbnails_zip') {
+      const ok =
+        file.mimetype === 'application/zip' ||
+        file.mimetype === 'application/x-zip-compressed' ||
+        file.mimetype === 'application/octet-stream' ||
+        (file.originalname || '').toLowerCase().endsWith('.zip');
+      return cb(ok ? null : new Error('ZIP file required'), ok);
     }
     cb(null, false);
   },
@@ -571,6 +575,54 @@ router.get('/lectures', authenticateAdmin, requireModuleAccess('lectures'), Lect
 router.get('/lectures/subtopic/:subtopicId', authenticateAdmin, requireModuleAccess('lectures'), LectureController.getLecturesBySubtopicId);
 
 /**
+ * Self-study material (lectures): Excel bulk + missing thumbnails ZIP
+ */
+router.get(
+  '/lectures/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanDownloadExcel,
+  LectureController.downloadBulkTemplate
+);
+router.get(
+  '/lectures/download-excel',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanDownloadExcel,
+  LectureController.downloadAllExcel
+);
+router.post(
+  '/lectures/upload-missing-thumbnails',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  uploadBulkExams.fields([{ name: 'thumbnails_zip', maxCount: 1 }]),
+  LectureController.uploadMissingThumbnails
+);
+router.post(
+  '/lectures/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  uploadBulkExams.fields([
+    { name: 'excel', maxCount: 1 },
+    { name: 'thumbnails', maxCount: 100 },
+    { name: 'thumbnails_zip', maxCount: 1 },
+  ]),
+  LectureController.bulkUpload
+);
+
+/**
+ * @route   POST /api/admin/lectures/youtube-metadata
+ * @desc    Resolve YouTube title/description from iframe or URL (admin form + preview)
+ * @access  Private (Admin)
+ */
+router.post(
+  '/lectures/youtube-metadata',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  LectureController.getYoutubeMetadata
+);
+
+/**
  * @route   GET /api/admin/lectures/:id
  * @desc    Get lecture by ID
  * @access  Private (Admin)
@@ -596,6 +648,19 @@ router.put('/lectures/:id', authenticateAdmin, requireModuleAccess('lectures'), 
   { name: 'video_file', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), validateUpdateLecture, LectureController.updateLecture);
+
+/**
+ * @route   DELETE /api/admin/lectures/all
+ * @desc    Delete all lectures (self study material)
+ * @access  Private (Admin)
+ */
+router.delete(
+  '/lectures/all',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanDelete,
+  LectureController.deleteAllLectures
+);
 
 /**
  * @route   DELETE /api/admin/lectures/:id

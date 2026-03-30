@@ -1,11 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllLectures, createLecture, updateLecture, deleteLecture, Lecture, getAllPurposes, getAllTopics, getSubtopicsByTopicId, getAllSubtopics } from '@/api';
-import { FiPlus, FiSearch, FiX, FiImage, FiVideo } from 'react-icons/fi';
+import {
+  getAllLectures,
+  createLecture,
+  updateLecture,
+  deleteLecture,
+  deleteAllLectures,
+  Lecture,
+  getAllPurposes,
+  getAllTopics,
+  getSubtopicsByTopicId,
+  getAllSubtopics,
+  getAllStreams,
+  getAllSubjects,
+  getAllExamsAdmin,
+  downloadLecturesBulkTemplate,
+  downloadLecturesAllExcel,
+  bulkUploadLectures,
+  uploadMissingLectureThumbnails,
+  fetchYoutubeLectureMetadata,
+  type Stream,
+  type Subject,
+  type Exam,
+} from '@/api';
+import { FiPlus, FiSearch, FiX, FiImage, FiVideo, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 import RichTextEditor from '@/components/shared/RichTextEditor';
@@ -13,6 +36,7 @@ import RichTextEditor from '@/components/shared/RichTextEditor';
 export default function LecturesPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const { canDownloadExcel, canDelete } = useAdminPermissions();
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [allLectures, setAllLectures] = useState<Lecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +65,8 @@ export default function LecturesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [viewingLecture, setViewingLecture] = useState<Lecture | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +74,106 @@ export default function LecturesPage() {
   // Purposes for lecture form (read-only)
   const [availablePurposes, setAvailablePurposes] = useState<SelectOption[]>([]);
   const [selectedPurposes, setSelectedPurposes] = useState<string[]>([]);
+  const [streamOptions, setStreamOptions] = useState<SelectOption[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<SelectOption[]>([]);
+  const [examOptions, setExamOptions] = useState<SelectOption[]>([]);
+  const [selectedStreamIds, setSelectedStreamIds] = useState<string[]>([]);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
+  const [thumbnailFilename, setThumbnailFilename] = useState('');
+
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkThumbnailsZip, setBulkThumbnailsZip] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<{
+    created: number;
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  } | null>(null);
+
+  const [showMissingThumbsModal, setShowMissingThumbsModal] = useState(false);
+  const [missingThumbsZip, setMissingThumbsZip] = useState<File | null>(null);
+  const [missingThumbsUploading, setMissingThumbsUploading] = useState(false);
+  const [missingThumbsError, setMissingThumbsError] = useState<string | null>(null);
+  const [missingThumbsResult, setMissingThumbsResult] = useState<{
+    updated: { id: number; name: string }[];
+    skipped: string[];
+    summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+  } | null>(null);
+
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  /** Avoid refetching YouTube metadata when opening edit with unchanged iframe */
+  const lastFetchedIframeRef = useRef('');
+  const [youtubeDescHint, setYoutubeDescHint] = useState<string | null>(null);
+
+  const applyYoutubeMetadata = useCallback(
+    async (codeInput: string, force: boolean, toastOnSuccess = false) => {
+      const code = codeInput.trim();
+      if (!code) {
+        setYoutubeDescHint('Paste a YouTube iframe or embed/watch URL first.');
+        return;
+      }
+      if (!force && code === lastFetchedIframeRef.current) return;
+
+      setYoutubeDescHint('Fetching description from YouTube…');
+      try {
+        const res = await fetchYoutubeLectureMetadata(code);
+        if (!res.success || !res.data) {
+          const msg = res.message || 'Could not load YouTube metadata.';
+          if (msg.includes('not configured') || msg.includes('YOUTUBE_API_KEY')) {
+            setYoutubeDescHint(
+              'Server has no YouTube API key — use a Google Cloud API key with YouTube Data API v3 enabled (AI Studio / Gemini-only keys will not work).'
+            );
+          } else {
+            setYoutubeDescHint(msg);
+          }
+          showError(msg);
+          return;
+        }
+        lastFetchedIframeRef.current = code;
+        setFormData((prev) => ({ ...prev, description: res.data!.description || '' }));
+        setYoutubeDescHint(
+          res.data!.description?.trim()
+            ? null
+            : 'YouTube returned no description for this video (the field may be empty on YouTube).'
+        );
+        if (toastOnSuccess && res.data!.description?.trim()) {
+          showSuccess('Description loaded from YouTube');
+        }
+      } catch {
+        const m = 'Network error — is the backend running and /api proxy correct?';
+        setYoutubeDescHint(m);
+        showError(m);
+      }
+    },
+    [showError, showSuccess]
+  );
+
+  useEffect(() => {
+    if (!showModal || formData.content_type !== 'VIDEO' || videoSourceType !== 'iframe') {
+      setYoutubeDescHint(null);
+      return;
+    }
+    const code = iframeCode.trim();
+    if (!code) {
+      setYoutubeDescHint(null);
+      return;
+    }
+    if (code === lastFetchedIframeRef.current) {
+      return;
+    }
+
+    const t = setTimeout(() => {
+      const settled = iframeCode.trim();
+      if (!settled || settled !== code) return;
+      void applyYoutubeMetadata(settled, false, false);
+    }, 600);
+
+    return () => clearTimeout(t);
+  }, [showModal, iframeCode, formData.content_type, videoSourceType, applyYoutubeMetadata]);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -61,8 +187,43 @@ export default function LecturesPage() {
     fetchTopics();
     fetchAllSubtopics();
     fetchPurposes();
+    fetchTaxonomyOptions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchTaxonomyOptions = async () => {
+    try {
+      const [streamsRes, subjectsRes, examsRes] = await Promise.all([
+        getAllStreams(),
+        getAllSubjects(),
+        getAllExamsAdmin(),
+      ]);
+      if (streamsRes.success && streamsRes.data) {
+        setStreamOptions(
+          streamsRes.data.streams
+            .filter((s: Stream) => s.status)
+            .map((s: Stream) => ({ value: String(s.id), label: s.name }))
+        );
+      }
+      if (subjectsRes.success && subjectsRes.data) {
+        setSubjectOptions(
+          subjectsRes.data.subjects
+            .filter((s: Subject) => s.status)
+            .map((s: Subject) => ({ value: String(s.id), label: s.name }))
+        );
+      }
+      if (examsRes.success && examsRes.data) {
+        setExamOptions(
+          examsRes.data.exams.map((e: Exam) => ({
+            value: String(e.id),
+            label: `${e.name} (${e.code})`,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Error loading taxonomy options:', e);
+    }
+  };
 
   const fetchTopics = async () => {
     try {
@@ -238,6 +399,11 @@ export default function LecturesPage() {
         formDataToSend.append('purposes', JSON.stringify([]));
       }
 
+      formDataToSend.append('thumbnail_filename', thumbnailFilename.trim());
+      formDataToSend.append('stream_ids', JSON.stringify(selectedStreamIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
+      formDataToSend.append('subject_ids', JSON.stringify(selectedSubjectIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
+      formDataToSend.append('exam_ids', JSON.stringify(selectedExamIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
+
       let response;
       if (editingLecture) {
         response = await updateLecture(editingLecture.id, formDataToSend);
@@ -246,7 +412,7 @@ export default function LecturesPage() {
       }
 
       if (response.success) {
-        showSuccess(editingLecture ? 'Lecture updated successfully' : 'Lecture created successfully');
+        showSuccess(editingLecture ? 'Self study item updated' : 'Self study item created');
         fetchLectures();
         handleModalClose();
       } else {
@@ -263,6 +429,7 @@ export default function LecturesPage() {
   };
 
   const handleCreate = () => {
+    lastFetchedIframeRef.current = '';
     setEditingLecture(null);
     resetForm();
     setShowModal(true);
@@ -295,9 +462,11 @@ export default function LecturesPage() {
     if (lecture.iframe_code) {
       setVideoSourceType('iframe');
       setIframeCode(lecture.iframe_code);
+      lastFetchedIframeRef.current = String(lecture.iframe_code).trim();
     } else {
       setVideoSourceType('file');
       setIframeCode('');
+      lastFetchedIframeRef.current = '';
     }
     // Set selected purposes
     if (lecture.purposes && lecture.purposes.length > 0) {
@@ -305,6 +474,10 @@ export default function LecturesPage() {
     } else {
       setSelectedPurposes([]);
     }
+    setSelectedStreamIds((lecture.streams || []).map((s) => String(s.id)));
+    setSelectedSubjectIds((lecture.subjects || []).map((s) => String(s.id)));
+    setSelectedExamIds((lecture.exams || []).map((e) => String(e.id)));
+    setThumbnailFilename(lecture.thumbnail_filename?.trim() || '');
     setShowModal(true);
   };
 
@@ -359,6 +532,8 @@ export default function LecturesPage() {
   };
 
   const resetForm = () => {
+    lastFetchedIframeRef.current = '';
+    setYoutubeDescHint(null);
     setFormData({ 
       topic_id: '',
       subtopic_id: '', 
@@ -375,6 +550,10 @@ export default function LecturesPage() {
     setThumbnailFile(null);
     setThumbnailPreview(null);
     setSelectedPurposes([]);
+    setSelectedStreamIds([]);
+    setSelectedSubjectIds([]);
+    setSelectedExamIds([]);
+    setThumbnailFilename('');
     setAvailableSubtopics([]);
     setError(null);
   };
@@ -385,6 +564,102 @@ export default function LecturesPage() {
     resetForm();
   };
 
+  const handleBulkTemplateDownload = async () => {
+    try {
+      await downloadLecturesBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    }
+  };
+
+  const handleDownloadAllExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      await downloadLecturesAllExcel();
+      showSuccess('Excel downloaded');
+    } catch {
+      showError('Failed to download Excel');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleBulkSubmit = async () => {
+    if (!bulkExcelFile) return;
+    setBulkUploading(true);
+    setBulkError(null);
+    setBulkResult(null);
+    try {
+      const res = await bulkUploadLectures(bulkExcelFile, [], bulkThumbnailsZip);
+      if (res.success && res.data) {
+        setBulkResult({
+          created: res.data.created,
+          errors: res.data.errors,
+          errorDetails: res.data.errorDetails || [],
+        });
+        showSuccess(res.message || 'Bulk upload finished');
+        fetchLectures();
+      } else {
+        setBulkError(res.message || 'Upload failed');
+        showError(res.message || 'Upload failed');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      setBulkError(msg);
+      showError(msg);
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllLectures();
+      if (response.success) {
+        showSuccess(response.message || 'All items deleted');
+        setShowDeleteAllConfirm(false);
+        fetchLectures();
+      } else {
+        showError(response.message || 'Failed to delete all');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch {
+      showError('Failed to delete all items');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const handleMissingThumbsSubmit = async () => {
+    if (!missingThumbsZip) return;
+    setMissingThumbsUploading(true);
+    setMissingThumbsError(null);
+    setMissingThumbsResult(null);
+    try {
+      const res = await uploadMissingLectureThumbnails(missingThumbsZip);
+      if (res.success && res.data) {
+        setMissingThumbsResult({
+          updated: res.data.updated,
+          skipped: res.data.skipped,
+          summary: res.data.summary,
+        });
+        showSuccess(res.message || 'Thumbnails uploaded');
+        fetchLectures();
+      } else {
+        setMissingThumbsError(res.message || 'Upload failed');
+        showError(res.message || 'Upload failed');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      setMissingThumbsError(msg);
+      showError(msg);
+    } finally {
+      setMissingThumbsUploading(false);
+    }
+  };
 
   if (error && !isLoading) {
     return (
@@ -409,15 +684,17 @@ export default function LecturesPage() {
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-slate-900 mb-1">Lectures Manager</h1>
-            <p className="text-sm text-slate-600">Manage lectures that belong to subtopics.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Self study material</h1>
+            <p className="text-sm text-slate-600">
+              Manage videos and articles under topics/subtopics. Tag streams, subjects, and exams; use Excel for bulk import.
+            </p>
           </div>
 
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
-                <span className="text-xs font-medium text-slate-700">All lectures</span>
+                <span className="text-xs font-medium text-slate-700">All items</span>
                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allLectures.length}
                 </span>
@@ -433,14 +710,73 @@ export default function LecturesPage() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {canDownloadExcel && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBulkTemplateDownload}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 bg-white rounded-lg hover:bg-[#F6F8FA]"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadAllExcel}
+                    disabled={downloadingExcel}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 bg-white rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    {downloadingExcel ? 'Downloading…' : 'Download Excel'}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkExcelFile(null);
+                  setBulkThumbnailsZip(null);
+                  setBulkError(null);
+                  setBulkResult(null);
+                  setShowBulkModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 bg-white rounded-lg hover:bg-[#F6F8FA]"
+              >
+                <FiUpload className="h-4 w-4" />
+                Bulk upload
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMissingThumbsZip(null);
+                  setMissingThumbsError(null);
+                  setMissingThumbsResult(null);
+                  setShowMissingThumbsModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 bg-white rounded-lg hover:bg-[#F6F8FA]"
+              >
+                <FiImage className="h-4 w-4" />
+                Missing thumbnails
+              </button>
               <button
                 onClick={handleCreate}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 <FiPlus className="h-4 w-4" />
-                Add Lecture
+                Add item
               </button>
+              {canDelete && allLectures.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete all
+                </button>
+              )}
             </div>
           </div>
 
@@ -454,7 +790,7 @@ export default function LecturesPage() {
           {/* Lectures Table */}
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-slate-500">Loading lectures...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading…</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -464,6 +800,9 @@ export default function LecturesPage() {
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TOPIC</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBTOPIC</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STREAMS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBJECTS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">EXAMS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CONTENT TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PURPOSES</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
@@ -474,8 +813,8 @@ export default function LecturesPage() {
                   <tbody className="divide-y divide-slate-200">
                     {lectures.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {lectures.length < allLectures.length ? 'No lectures found matching your search' : 'No lectures found'}
+                        <td colSpan={12} className="px-4 py-4 text-center text-sm text-slate-500">
+                          {lectures.length < allLectures.length ? 'No items match your search' : 'No items yet'}
                         </td>
                       </tr>
                     ) : (
@@ -485,6 +824,27 @@ export default function LecturesPage() {
                         const subtopic = availableSubtopics.find((s) => s.value === String(lecture.subtopic_id)) || 
                           (subtopicData ? { value: String(subtopicData.id), label: subtopicData.name } : null);
                         const lecturePurposes = lecture.purposes || [];
+                        const streamList = lecture.streams || [];
+                        const subjectList = lecture.subjects || [];
+                        const examList = lecture.exams || [];
+                        const chip = (items: { id: number; name: string }[], max = 2) =>
+                          items.length ? (
+                            <div className="flex flex-wrap gap-1">
+                              {items.slice(0, max).map((x) => (
+                                <span
+                                  key={x.id}
+                                  className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700"
+                                >
+                                  {x.name}
+                                </span>
+                              ))}
+                              {items.length > max && (
+                                <span className="text-[10px] text-slate-500">+{items.length - max}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          );
                         return (
                           <tr key={lecture.id} className="hover:bg-[#F6F8FA] transition-colors">
                             <td className="px-4 py-2">
@@ -509,6 +869,9 @@ export default function LecturesPage() {
                             <td className="px-4 py-2">
                               <span className="text-sm text-slate-600">{subtopic?.label || `Subtopic ${lecture.subtopic_id}`}</span>
                             </td>
+                            <td className="px-4 py-2 max-w-[140px]">{chip(streamList)}</td>
+                            <td className="px-4 py-2 max-w-[140px]">{chip(subjectList)}</td>
+                            <td className="px-4 py-2 max-w-[140px]">{chip(examList)}</td>
                             <td className="px-4 py-2">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                                 lecture.content_type === 'VIDEO' 
@@ -588,7 +951,7 @@ export default function LecturesPage() {
             {/* Header */}
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
-                {editingLecture ? 'Edit Lecture' : 'Create Lecture'}
+                {editingLecture ? 'Edit self study item' : 'Add self study item'}
               </h2>
               <button
                 onClick={handleModalClose}
@@ -648,6 +1011,37 @@ export default function LecturesPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Streams</label>
+                  <MultiSelect
+                    options={streamOptions}
+                    value={selectedStreamIds}
+                    onChange={setSelectedStreamIds}
+                    placeholder="Select streams"
+                    isSearchable
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Subjects</label>
+                  <MultiSelect
+                    options={subjectOptions}
+                    value={selectedSubjectIds}
+                    onChange={setSelectedSubjectIds}
+                    placeholder="Select subjects"
+                    isSearchable
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Exams</label>
+                  <MultiSelect
+                    options={examOptions}
+                    value={selectedExamIds}
+                    onChange={setSelectedExamIds}
+                    placeholder="Select exams"
+                    isSearchable
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     Content Type <span className="text-[#341050]">*</span>
                   </label>
@@ -676,9 +1070,10 @@ export default function LecturesPage() {
                             name="videoSource"
                             value="file"
                             checked={videoSourceType === 'file'}
-                            onChange={(e) => {
+                            onChange={() => {
                               setVideoSourceType('file');
                               setIframeCode('');
+                              lastFetchedIframeRef.current = '';
                             }}
                             className="w-4 h-4 text-[#341050] border-slate-300 focus:ring-[#341050]/25"
                           />
@@ -690,9 +1085,10 @@ export default function LecturesPage() {
                             name="videoSource"
                             value="iframe"
                             checked={videoSourceType === 'iframe'}
-                            onChange={(e) => {
+                            onChange={() => {
                               setVideoSourceType('iframe');
                               setVideoFile(null);
+                              lastFetchedIframeRef.current = '';
                             }}
                             className="w-4 h-4 text-[#341050] border-slate-300 focus:ring-[#341050]/25"
                           />
@@ -728,11 +1124,34 @@ export default function LecturesPage() {
                         <textarea
                           value={iframeCode}
                           onChange={(e) => setIframeCode(e.target.value)}
+                          onBlur={() => {
+                            if (iframeCode.trim()) void applyYoutubeMetadata(iframeCode, false, false);
+                          }}
                           placeholder="Paste your iframe embed code here (e.g., &lt;iframe src=&quot;...&quot;&gt;&lt;/iframe&gt;)"
                           rows={4}
                           className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
                         />
-                        <p className="text-xs text-slate-500 mt-1">Paste the complete iframe embed code from YouTube, Vimeo, etc.</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => void applyYoutubeMetadata(iframeCode, true, true)}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#341050] text-white hover:opacity-90"
+                          >
+                            Load description from YouTube
+                          </button>
+                          <span className="text-xs text-slate-500">
+                            Or tab out of the field — it also loads after a short pause.
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1.5">
+                          Requires a <strong className="font-medium">Google Cloud</strong> API key with{' '}
+                          <strong className="font-medium">YouTube Data API v3</strong> enabled (not the same as a Gemini-only key).
+                        </p>
+                        {youtubeDescHint && (
+                          <p className="text-xs text-slate-700 mt-1.5 rounded-md bg-amber-50 border border-amber-100 px-2 py-1.5">
+                            {youtubeDescHint}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -773,6 +1192,19 @@ export default function LecturesPage() {
                     onChange={handleThumbnailChange}
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
+                  <label className="block text-xs font-medium text-slate-700 mt-2 mb-1">
+                    Thumbnail file name (for Excel / ZIP bulk match)
+                  </label>
+                  <input
+                    type="text"
+                    value={thumbnailFilename}
+                    onChange={(e) => setThumbnailFilename(e.target.value)}
+                    placeholder="e.g. intro-thumb.png"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Must match the image file name in the ZIP when using bulk or “Missing thumbnails”.
+                  </p>
                 </div>
 
                 <div>
@@ -782,7 +1214,7 @@ export default function LecturesPage() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Optional description"
+                    placeholder="Optional; auto-filled for YouTube iframe videos when possible"
                     rows={3}
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
@@ -856,7 +1288,7 @@ export default function LecturesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Lecture Details</h2>
+              <h2 className="text-lg font-bold">Self study item</h2>
               <button
                 onClick={() => setShowViewModal(false)}
                 className="text-slate-500 hover:text-slate-800 transition-colors"
@@ -893,6 +1325,30 @@ export default function LecturesPage() {
                       const subtopicData = allSubtopics.find((s) => s.id === viewingLecture.subtopic_id);
                       return subtopicData?.name || availableSubtopics.find((s) => s.value === String(viewingLecture.subtopic_id))?.label || `Subtopic ${viewingLecture.subtopic_id}`;
                     })()}
+                  </p>
+                </div>
+                {viewingLecture.thumbnail_filename ? (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Thumbnail file name</label>
+                    <p className="text-sm text-slate-900 font-mono">{viewingLecture.thumbnail_filename}</p>
+                  </div>
+                ) : null}
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Streams</label>
+                  <p className="text-sm text-slate-900">
+                    {(viewingLecture.streams || []).map((s) => s.name).join(', ') || '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Subjects</label>
+                  <p className="text-sm text-slate-900">
+                    {(viewingLecture.subjects || []).map((s) => s.name).join(', ') || '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Exams</label>
+                  <p className="text-sm text-slate-900">
+                    {(viewingLecture.exams || []).map((e) => e.name).join(', ') || '—'}
                   </p>
                 </div>
                 <div>
@@ -995,6 +1451,159 @@ export default function LecturesPage() {
         </div>
       )}
 
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold">Bulk upload (Excel)</h2>
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="text-slate-500 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">
+              Use the template (columns include <code className="bg-slate-100 px-1 rounded">description</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">stream_names</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">subject_names</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">exam_names</code>). Use <code className="bg-slate-100 px-1 rounded">description</code> for{' '}
+              <code className="bg-slate-100 px-1 rounded">ARTICLE</code> rows and for <code className="bg-slate-100 px-1 rounded">VIDEO</code> rows with a{' '}
+              <code className="bg-slate-100 px-1 rounded">video_file</code> URL. For <code className="bg-slate-100 px-1 rounded">VIDEO</code> +{' '}
+              <code className="bg-slate-100 px-1 rounded">iframe_code</code>, leave description blank to pull from YouTube, or fill it to override. Optional ZIP: names must match{' '}
+              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code>.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm"
+                />
+                {bulkExcelFile && (
+                  <p className="text-xs text-slate-600 mt-1.5">
+                    Selected: <span className="font-medium text-slate-800 break-all">{bulkExcelFile.name}</span>
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Thumbnails (ZIP)</label>
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    setBulkThumbnailsZip(f?.name.toLowerCase().endsWith('.zip') ? f : null);
+                    e.target.value = '';
+                  }}
+                  className="w-full text-sm"
+                />
+                {bulkThumbnailsZip ? (
+                  <p className="text-xs text-slate-600 mt-1.5">
+                    Selected: <span className="font-medium text-slate-800 break-all">{bulkThumbnailsZip.name}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1">No ZIP selected (optional)</p>
+                )}
+              </div>
+            </div>
+            {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
+            {bulkResult && (
+              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
+                Created: {bulkResult.created}.
+                {bulkResult.errors > 0 && ` Errors: ${bulkResult.errors} row(s).`}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkSubmit}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMissingThumbsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold">Upload missing thumbnails</h2>
+              <button
+                type="button"
+                onClick={() => setShowMissingThumbsModal(false)}
+                className="text-slate-500 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">
+              ZIP of images only. Each file name must match <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code> on a row that has no thumbnail yet.
+            </p>
+            <input
+              type="file"
+              accept=".zip"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                setMissingThumbsZip(f?.name.toLowerCase().endsWith('.zip') ? f : null);
+                e.target.value = '';
+              }}
+              className="w-full text-sm"
+            />
+            {missingThumbsZip ? (
+              <p className="text-xs text-slate-600 mt-1.5">
+                Selected: <span className="font-medium text-slate-800 break-all">{missingThumbsZip.name}</span>
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 mt-1">No ZIP selected yet</p>
+            )}
+            {missingThumbsError && (
+              <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{missingThumbsError}</div>
+            )}
+            {missingThumbsResult && (
+              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
+                Added {missingThumbsResult.summary.logosAdded} thumbnail(s). Skipped {missingThumbsResult.summary.filesSkipped}{' '}
+                file(s).
+              </div>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowMissingThumbsModal(false)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMissingThumbsSubmit}
+                disabled={!missingThumbsZip || missingThumbsUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {missingThumbsUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
@@ -1003,11 +1612,25 @@ export default function LecturesPage() {
           setDeletingId(null);
         }}
         onConfirm={handleDelete}
-        title="Delete Lecture"
-        message="Are you sure you want to delete this lecture? This action cannot be undone."
+        title="Delete self study item"
+        message="Are you sure you want to delete this item? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         isLoading={isDeleting}
+        confirmButtonStyle="danger"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => {
+          setShowDeleteAllConfirm(false);
+        }}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete all self study material"
+        message={`Are you sure you want to delete all ${allLectures.length} item(s)? Videos and thumbnails stored in cloud storage will be removed where possible. This cannot be undone.`}
+        confirmText="Delete all"
+        cancelText="Cancel"
+        isLoading={isDeletingAll}
         confirmButtonStyle="danger"
       />
 

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "dev:fast": "next dev",
-    "build": "next build --webpack",
+    "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "dev:automation": "concurrently -n py,st -c blue,green \"cd python-backend && ./venv/bin/python -m uvicorn app.main:app --reload --port 8000\" \"npm run dev --prefix stagehand-backend\""

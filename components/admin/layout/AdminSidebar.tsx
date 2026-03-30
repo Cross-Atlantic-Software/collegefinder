@@ -141,13 +141,13 @@ const navGroups: NavGroup[] = [
       { label: 'Colleges', href: '/admin/colleges', icon: <FiMap className="h-4 w-4" />, moduleCode: 'colleges' },
     ],
   },
-  // {
-  //   label: 'Scholarships',
-  //   icon: <FiAward className="h-4 w-4" />,
-  //   children: [
-  //     { label: 'Scholarships', href: '/admin/scholarships', icon: <FiTag className="h-4 w-4" />, moduleCode: 'scholarships' },
-  //   ],
-  // },
+  {
+    label: 'Scholarships',
+    icon: <FiAward className="h-4 w-4" />,
+    children: [
+      { label: 'Scholarships', href: '/admin/scholarships', icon: <FiTag className="h-4 w-4" />, moduleCode: 'scholarships' },
+    ],
+  },
   // {
   //   label: 'Loans',
   //   icon: <FiBriefcase className="h-4 w-4" />,
@@ -160,7 +160,7 @@ const navGroups: NavGroup[] = [
 const navItems: NavItem[] = [
   { label: 'Email Templates', href: '/admin/email-templates', icon: <FiMail className="h-4 w-4" />, moduleCode: 'email_templates' },
   { label: 'Blogs', href: '/admin/blogs', icon: <FiEdit3 className="h-4 w-4" />, moduleCode: 'blogs' },
-  { label: 'Lectures', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },
+  { label: 'Self study material', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
   // { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
   { label: 'Add Experts', href: '/admin/experts', icon: <FiUserPlus className="h-4 w-4" /> },

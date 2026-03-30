@@ -32,6 +32,14 @@ import Image from 'next/image';
 
 type FormTab = 'basic' | 'details' | 'exams' | 'statistics' | 'courses';
 
+/** Coerce stored rating to 1–5 for the admin select; empty if missing/invalid. */
+function studentRatingToSelectValue(value: string | number | null | undefined): '' | number {
+  if (value === '' || value == null) return '';
+  const n = typeof value === 'number' ? value : Number(value);
+  if (Number.isNaN(n)) return '';
+  return Math.min(5, Math.max(1, Math.round(n)));
+}
+
 const emptyCourse: Partial<InstituteCourse> = {
   course_name: '',
   target_class: '',
@@ -74,6 +82,7 @@ export default function InstitutesPage() {
   const [formData, setFormData] = useState({
     institute_name: '',
     institute_location: '',
+    google_maps_link: '',
     type: '' as 'offline' | 'online' | 'hybrid' | '',
     logo: '',
     website: '',
@@ -221,6 +230,7 @@ export default function InstitutesPage() {
       const payload = {
         institute_name: formData.institute_name.trim(),
         institute_location: formData.institute_location.trim() || null,
+        google_maps_link: formData.google_maps_link.trim() || null,
         type: formData.type || null,
         logo: formData.logo || null,
         website: formData.website.trim() || null,
@@ -233,7 +243,14 @@ export default function InstitutesPage() {
         specializationExamIds: formData.specializationExamIds,
         ranking_score: formData.ranking_score === '' ? null : Number(formData.ranking_score),
         success_rate: formData.success_rate === '' ? null : Number(formData.success_rate),
-        student_rating: formData.student_rating === '' ? null : Number(formData.student_rating),
+        student_rating:
+          formData.student_rating === ''
+            ? null
+            : (() => {
+                const n = Number(formData.student_rating);
+                if (Number.isNaN(n)) return null;
+                return Math.min(5, Math.max(1, Math.round(n)));
+              })(),
         instituteCourses: formData.instituteCourses.filter(
           (c) =>
             c.course_name ||
@@ -314,6 +331,7 @@ export default function InstitutesPage() {
         setFormData({
           institute_name: d.institute.institute_name ?? '',
           institute_location: d.institute.institute_location ?? '',
+          google_maps_link: d.institute.google_maps_link ?? '',
           type: (d.institute.type as 'offline' | 'online' | 'hybrid') ?? '',
           logo: d.institute.logo ?? '',
           website: d.institute.website ?? '',
@@ -326,7 +344,7 @@ export default function InstitutesPage() {
           specializationExamIds: d.specializationExamIds ?? [],
           ranking_score: d.instituteStatistics?.ranking_score ?? '',
           success_rate: d.instituteStatistics?.success_rate ?? '',
-          student_rating: d.instituteStatistics?.student_rating ?? '',
+          student_rating: studentRatingToSelectValue(d.instituteStatistics?.student_rating ?? ''),
           instituteCourses:
             d.instituteCourses?.map((c) => ({
               id: c.id,
@@ -378,6 +396,7 @@ export default function InstitutesPage() {
     setFormData({
       institute_name: '',
       institute_location: '',
+      google_maps_link: '',
       type: '',
       logo: '',
       website: '',
@@ -800,6 +819,18 @@ export default function InstitutesPage() {
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Google Maps link</label>
+                    <input
+                      type="text"
+                      value={formData.google_maps_link}
+                      onChange={(e) =>
+                        setFormData({ ...formData, google_maps_link: e.target.value })
+                      }
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
                     <Dropdown
                       value={formData.type || null}
@@ -986,22 +1017,24 @@ export default function InstitutesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Student rating</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={5}
-                      value={formData.student_rating}
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Student rating (1–5)</label>
+                    <select
+                      value={formData.student_rating === '' ? '' : String(formData.student_rating)}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
                           student_rating: e.target.value === '' ? '' : Number(e.target.value),
                         })
                       }
-                      placeholder="e.g. 4.2"
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                    />
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none bg-white"
+                    >
+                      <option value="">—</option>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}
@@ -1088,17 +1121,19 @@ export default function InstitutesPage() {
                             }
                             className="px-2 py-1 text-sm border border-slate-300 rounded"
                           />
-                          <input
-                            type="date"
-                            placeholder="Start date"
-                            value={
-                              typeof course.start_date === 'string'
-                                ? course.start_date.slice(0, 10)
-                                : ''
-                            }
-                            onChange={(e) => updateCourseRow(idx, 'start_date', e.target.value || null)}
-                            className="px-2 py-1 text-sm border border-slate-300 rounded"
-                          />
+                          <div className="col-span-2">
+                            <label className="block text-xs font-medium text-slate-600 mb-0.5">Start date</label>
+                            <input
+                              type="date"
+                              value={
+                                typeof course.start_date === 'string'
+                                  ? course.start_date.slice(0, 10)
+                                  : ''
+                              }
+                              onChange={(e) => updateCourseRow(idx, 'start_date', e.target.value || null)}
+                              className="w-full px-2 py-1 text-sm border border-slate-300 rounded"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1159,6 +1194,21 @@ export default function InstitutesPage() {
             </div>
             <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Location:</strong> {viewingData.institute?.institute_location ?? '-'}</p>
+              <p>
+                <strong>Google Maps:</strong>{' '}
+                {viewingData.institute?.google_maps_link ? (
+                  <a
+                    href={viewingData.institute.google_maps_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#341050] hover:underline break-all"
+                  >
+                    {viewingData.institute.google_maps_link}
+                  </a>
+                ) : (
+                  '-'
+                )}
+              </p>
               <p><strong>Type:</strong> {viewingData.institute?.type ?? '-'}</p>
               <p><strong>Contact:</strong> {viewingData.institute?.contact_number ?? '-'}</p>
               <p><strong>Website:</strong>{' '}
@@ -1287,8 +1337,10 @@ export default function InstitutesPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Upload an Excel file (use template). Optionally attach a ZIP of logos; filenames must match the{' '}
-              <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
+              Upload an Excel file (use template). Columns match the template:{' '}
+              <code className="bg-slate-100 px-1 rounded">google_maps_link</code> sits after{' '}
+              <code className="bg-slate-100 px-1 rounded">institute_location</code>. Optionally attach a ZIP of logos;
+              filenames must match the <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
             </p>
             <div className="space-y-3">
               <div>

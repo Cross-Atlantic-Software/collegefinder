@@ -6,6 +6,8 @@ export interface Institute {
   id: number;
   institute_name: string;
   institute_location: string | null;
+  /** Google Maps (or other maps) URL for the institute location. */
+  google_maps_link?: string | null;
   type: 'offline' | 'online' | 'hybrid' | null;
   logo: string | null;
   website: string | null;
@@ -108,6 +110,7 @@ export async function uploadInstituteLogo(file: File): Promise<ApiResponse<{ log
 export async function createInstitute(data: {
   institute_name: string;
   institute_location?: string | null;
+  google_maps_link?: string | null;
   type?: 'offline' | 'online' | 'hybrid' | null;
   logo?: string | null;
   website?: string | null;
@@ -134,6 +137,7 @@ export async function updateInstitute(
   data: {
     institute_name?: string;
     institute_location?: string | null;
+    google_maps_link?: string | null;
     type?: 'offline' | 'online' | 'hybrid' | null;
     logo?: string | null;
     website?: string | null;
