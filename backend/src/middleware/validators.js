@@ -868,8 +868,8 @@ const validateCreateLecture = [
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 2000 })
-    .withMessage('Description must be less than 2000 characters'),
+    .isLength({ max: 10000 })
+    .withMessage('Description must be less than 10000 characters'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })
@@ -905,8 +905,8 @@ const validateUpdateLecture = [
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 2000 })
-    .withMessage('Description must be less than 2000 characters'),
+    .isLength({ max: 10000 })
+    .withMessage('Description must be less than 10000 characters'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })
