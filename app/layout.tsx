@@ -1,18 +1,15 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
 const Providers = dynamic(() => import("./Providers"), {
   ssr: true,
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter-sans",
-});
+// Avoid next/font/google here: production builds fetch Google Fonts at compile time and fail
+// on servers with no outbound HTTPS (e.g. locked-down EC2). Typography uses globals.css
+// --font-inter-sans + system fallbacks.
 
 export const metadata: Metadata = {
   title: "CollegeFinder",
@@ -27,7 +24,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
