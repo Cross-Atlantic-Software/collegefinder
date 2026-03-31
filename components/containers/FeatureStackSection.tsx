@@ -74,12 +74,9 @@ const featureCards: FeatureCard[] = [
 
 export default function FeatureStackSection() {
     const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-    const stickyHeaderRef = useRef<HTMLDivElement | null>(null);
     const stackSceneRef = useRef<HTMLDivElement | null>(null);
     const cardsStackRef = useRef<HTMLDivElement | null>(null);
-    const [stickyHeaderHeight, setStickyHeaderHeight] = useState(0);
     const [stickyHeaderTop, setStickyHeaderTop] = useState(76);
-    const [headerRailHeight, setHeaderRailHeight] = useState(0);
     const [headingVisible, setHeadingVisible] = useState(false);
     const [cardVisible, setCardVisible] = useState<boolean[]>(() => {
         if (
@@ -160,16 +157,6 @@ export default function FeatureStackSection() {
             const nextStickyHeaderTop = siteHeaderHeight + viewportGap;
 
             setStickyHeaderTop(nextStickyHeaderTop);
-
-            if (stickyHeaderRef.current) {
-                setStickyHeaderHeight(stickyHeaderRef.current.offsetHeight);
-            }
-
-            const cardsStackTop = cardsStackRef.current?.offsetTop ?? 0;
-            const lastCard = cardRefs.current[featureCards.length - 1];
-            const lastCardTop = lastCard?.offsetTop ?? 0;
-
-            setHeaderRailHeight(cardsStackTop + lastCardTop + 18);
         };
 
         updateStickyMetrics();
@@ -177,10 +164,6 @@ export default function FeatureStackSection() {
         const resizeObserver = new ResizeObserver(() => {
             updateStickyMetrics();
         });
-
-        if (stickyHeaderRef.current) {
-            resizeObserver.observe(stickyHeaderRef.current);
-        }
 
         if (cardsStackRef.current) {
             resizeObserver.observe(cardsStackRef.current);
@@ -221,7 +204,7 @@ export default function FeatureStackSection() {
         return () => observer.disconnect();
     }, []);
 
-    const stickyCardTop = stickyHeaderTop + Math.max(stickyHeaderHeight + 24, 0);
+    const stickyCardTop = stickyHeaderTop + 24;
 
     useEffect(() => {
         stickyCardTopRef.current = stickyCardTop;
@@ -233,7 +216,7 @@ export default function FeatureStackSection() {
             ref={(node) => {
                 cardRefs.current[index] = node;
             }}
-            className={`feature-stack-card group sticky overflow-hidden rounded-3xl ring-1 ring-black/[0.07] md:h-[420px] ${card.bgClass}`}
+            className={`feature-stack-card group sticky overflow-hidden rounded-3xl ring-1 ring-black/[0.07] md:h-[500px] ${card.bgClass}`}
             style={{ top: `${stickyCardTop}px`, zIndex: index + 1, transitionDelay: `${index * 0.05}s` }}
         >
             <div className="grid h-full items-stretch lg:grid-cols-[0.4fr_0.6fr]">
@@ -305,57 +288,44 @@ export default function FeatureStackSection() {
             <div className="appContainer">
                 <div ref={stackSceneRef} className="relative mx-auto max-w-6xl">
                     <div className="relative">
-                        <div
-                            className="pointer-events-none absolute inset-x-0 top-0 z-30"
-                            style={{ height: `${Math.max(headerRailHeight, stickyHeaderHeight + 24)}px` }}
-                        >
-                            <div
-                                ref={stickyHeaderRef}
-                                className="pointer-events-auto sticky bg-white pb-10 text-center md:pb-12"
-                                style={{ top: `${stickyHeaderTop}px` }}
-                            >
-                                <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                                    Unlock the{" "}
-                                    <RoughNotation
-                                        type="underline"
-                                        show={headingVisible}
-                                        color="#f0c544"
-                                        strokeWidth={4}
-                                        padding={4}
-                                        animationDelay={500}
-                                        animationDuration={1400}
-                                    >
-                                        Ultimate Command Centre
-                                    </RoughNotation>
-                                </h2>
-                                <p className="mt-4 text-sm text-black/50 md:text-base">
-                                    We&apos;ve built the unfair advantage you&apos;ve been looking for.
-                                </p>
+                        <div className="bg-white pb-10 text-center md:pb-12">
+                            <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
+                                Unlock the{" "}
+                                <RoughNotation
+                                    type="underline"
+                                    show={headingVisible}
+                                    color="#f0c544"
+                                    strokeWidth={4}
+                                    padding={4}
+                                    animationDelay={500}
+                                    animationDuration={1400}
+                                >
+                                    Ultimate Command Centre
+                                </RoughNotation>
+                            </h2>
+                            <p className="mt-4 text-sm text-black/50 md:text-base">
+                                We&apos;ve built the unfair advantage you&apos;ve been looking for.
+                            </p>
 
-                                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                                    <Link
-                                        href="/login"
-                                        className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
-                                    >
-                                        Get a demo
-                                        <FiChevronRight className="landing-icon-slide text-base" />
-                                    </Link>
-                                    <Link
-                                        href="/login"
-                                        className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
-                                    >
-                                        Get started free
-                                        <FiChevronRight className="landing-icon-slide text-base" />
-                                    </Link>
-                                </div>
+                            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                                <Link
+                                    href="/login"
+                                    className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
+                                >
+                                    Get a demo
+                                    <FiChevronRight className="landing-icon-slide text-base" />
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
+                                >
+                                    Get started free
+                                    <FiChevronRight className="landing-icon-slide text-base" />
+                                </Link>
                             </div>
                         </div>
 
-                        <div
-                            ref={cardsStackRef}
-                            className="relative space-y-10 md:space-y-12"
-                            style={{ paddingTop: `${stickyHeaderHeight + 24}px` }}
-                        >
+                        <div ref={cardsStackRef} className="relative space-y-10 md:space-y-12">
                             {featureCards.map((card, index) => renderFeatureCard(card, index))}
                         </div>
                     </div>

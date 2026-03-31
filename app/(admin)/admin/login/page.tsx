@@ -71,7 +71,7 @@ export default function AdminLoginPage() {
           <div className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-darkGradient shadow-xl">
             <Logo
               mode="dark"
-              darkSrc="/svgs/logo-white.svg"
+              darkSrc="/logo.svg"
               width={200}
               height={45}
             />

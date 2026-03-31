@@ -206,7 +206,7 @@ export default function AdminSidebar() {
         <Link href="/admin" className="block">
           <Logo
             mode="dark"
-            darkSrc="/svgs/logo-white.svg"
+            darkSrc="/logo.svg"
             width={160}
             height={36}
           />

@@ -18,8 +18,8 @@ type Props = {
 };
 
 export default function Logo({
-  lightSrc = "/svgs/logo-unitracko.svg",
-  darkSrc = "/svgs/logo-unitracko.svg",
+  lightSrc = "/logo.svg",
+  darkSrc = "/logo.svg",
   alt = "Unitracko logo",
   href,
   width = 200,
