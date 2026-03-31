@@ -39,12 +39,8 @@ export default function InfoSection() {
 
             <h2 className="mt-5 text-4xl font-extrabold leading-tight text-black md:text-5xl">
               <span className="text-black/45">
-                1k+ exams, 40k+ colleges
-                <br />
-                and 17 Mn students.
+                1k+ Exams • 40k+ Colleges • 20M Students
               </span>
-              <br />
-              You&apos;re expected to
               <br />
               <RoughNotation
                 type="highlight"
@@ -56,21 +52,21 @@ export default function InfoSection() {
                 animationDuration={1400}
                 multiline
               >
-                track all manually ?
+                Still tracking it all manually?
               </RoughNotation>
             </h2>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-black/60">
-              UniTracko puts your entire college admission journey into one
-              powerful, structured system — so nothing slips, nothing gets
-              missed, and nothing is left to chance.
+            UniTracko brings it all into one place - nothing slips, nothing gets missed.
+            <br />
+            No scattered portals · No forgotten forms · No last-minute chaos
             </p>
 
             <Link
               href="/login"
               className="landing-cta group mt-8 inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
             >
-              Remove your headache
+              Start Your Journey
               <FiArrowRight className="landing-icon-slide text-base" />
             </Link>
           </div>

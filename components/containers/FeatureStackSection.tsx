@@ -20,7 +20,7 @@ const featureCards: FeatureCard[] = [
         title: "Navigate the\nRight Exam",
         highlightWord: "Right Exam",
         description:
-            "Search and filter 1,000+ entrance exams. View eligibility, dates, fees and syllabus — verified in real time. No exam ever slips through.",
+            "Filter 1,000+ exams. Every detail verified. No exam ever slips through.",
         image: "/landing-page/feature-1.png",
         imageAlt: "Exam discovery interface",
         bgClass: "bg-[#cfe0f1]",
@@ -29,7 +29,7 @@ const featureCards: FeatureCard[] = [
         title: "All‑In\nTracking",
         highlightWord: "Tracking",
         description:
-            "Stay fully updated directly through UniTracko. Track exams, admits, and deadlines from one dashboard. No confusion, no overlap.",
+            "Exams, admits, and deadlines - all tracked from one dashboard. No confusion, no overlap.",
         image: "/landing-page/features-2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",
@@ -38,7 +38,7 @@ const featureCards: FeatureCard[] = [
         title: "The Clarity\nEngine",
         highlightWord: "Clarity",
         description:
-            "Before 1,000 decisions, compare not one, but every option side-by-side. Explore fees, cutoff trends and fit clarity.",
+            "Compare every option - fees, cutoff trends, and college fit - before you decide.",
         image: "/landing-page/features-3.png",
         imageAlt: "Clarity engine comparison",
         bgClass: "bg-sky-100",
@@ -47,7 +47,7 @@ const featureCards: FeatureCard[] = [
         title: "One‑Click Form\nFilling",
         highlightWord: "One\u2011Click",
         description:
-            "Auto-fill almost all college forms accurately with your data and save hours. No repeated entries, less errors, total clarity.",
+            "Your data, entered once, filled everywhere. No repetition, no errors, no wasted hours.",
         image: "/landing-page/auto-fill.gif",
         imageAlt: "One click form filling",
         bgClass: "bg-amber-100",
@@ -56,16 +56,16 @@ const featureCards: FeatureCard[] = [
         title: "Psycho-Analytical\nProfiling",
         highlightWord: "Profiling",
         description:
-            "Go beyond basic quizzes. Analyze personality, cognitive style, and risk appetite to discover where you are most likely to succeed.",
+            "Not just a quiz - a deep profile of who you are and where you'll thrive.",
         image: "/landing-page/features-5.png",
         imageAlt: "Psycho analytical profiling insights",
         bgClass: "bg-[#cfe0f1]",
     },
     {
-        title: "Perfect Fit\nAlgorithm",
+        title: "Assessment-Based Aptitude Mapping",
         highlightWord: "Perfect Fit",
         description:
-            "Assessments-based aptitude mapping recommends exams, courses and careers aligned to your strengths. Clarity for students and peace of mind for parents.",
+            "Maps your strengths to the right exams and courses. Clarity for students, peace of mind for parents.",
         image: "/landing-page/features-6.png",
         imageAlt: "Perfect fit algorithm",
         bgClass: "bg-amber-100",
