@@ -37,7 +37,7 @@ export function AdminTableActions({
           type="button"
           onClick={onView}
           disabled={loadingView}
-          className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="p-2 text-slate-600 hover:text-slate-900 transition-colors"
           title={viewTitle}
         >
           <FiEye className="h-4 w-4" />

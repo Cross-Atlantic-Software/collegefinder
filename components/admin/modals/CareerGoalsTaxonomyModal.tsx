@@ -198,11 +198,11 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">Interests Taxonomies</h2>
           <button
             onClick={handleClose}
-            className="text-white hover:text-gray-200 transition-colors"
+            className="text-slate-500 hover:text-slate-800 transition-colors"
           >
             <FiX className="h-4 w-4" />
           </button>
@@ -214,8 +214,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
             /* Form View */
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Label <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Label <span className="text-[#341050]">*</span>
                 </label>
                 <input
                   type="text"
@@ -223,17 +223,17 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                   onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                   required
                   placeholder="e.g., Technology, Design"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Logo <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Logo <span className="text-[#341050]">*</span>
                 </label>
                 <div className="space-y-2">
                   {logoPreview && (
-                    <div className="relative h-32 w-32 rounded-md overflow-hidden bg-gray-100 border border-gray-300">
+                    <div className="relative h-32 w-32 rounded-md overflow-hidden bg-slate-100 border border-slate-300">
                       <Image
                         src={logoPreview}
                         alt="Preview"
@@ -243,7 +243,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                       />
                     </div>
                   )}
-                  <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer transition-colors">
                     <FiUpload className="h-4 w-4" />
                     <span>{logoFile ? 'Change Logo' : 'Upload Logo'}</span>
                     <input
@@ -255,7 +255,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                     />
                   </label>
                   {uploading && (
-                    <p className="text-xs text-gray-500">Uploading...</p>
+                    <p className="text-xs text-slate-500">Uploading...</p>
                   )}
                 </div>
               </div>
@@ -273,14 +273,14 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                     setShowForm(false);
                     resetForm();
                   }}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading || !formData.label || !formData.logo}
-                  className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingCareerGoal ? 'Update' : 'Create'}
                 </button>
@@ -290,10 +290,10 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
             /* List View */
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-gray-900">All Taxonomies</h3>
+                <h3 className="text-sm font-semibold text-slate-900">All Taxonomies</h3>
                 <button
                   onClick={handleCreate}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
                 >
                   <FiPlus className="h-4 w-4" />
                   Add Taxonomy
@@ -307,18 +307,18 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
               )}
 
               {isLoading ? (
-                <div className="text-center text-sm text-gray-500 py-8">Loading taxonomies...</div>
+                <div className="text-center text-sm text-slate-500 py-8">Loading taxonomies...</div>
               ) : careerGoals.length === 0 ? (
-                <div className="text-center text-sm text-gray-500 py-8">No taxonomies found</div>
+                <div className="text-center text-sm text-slate-500 py-8">No taxonomies found</div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {careerGoals.map((cg) => (
                     <div
                       key={cg.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <div className="h-16 w-16 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                           {cg.logo ? (
                             <Image
                               src={cg.logo}
@@ -329,7 +329,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                               className="object-contain"
                             />
                           ) : (
-                            <span className="text-xs text-gray-400">No logo</span>
+                            <span className="text-xs text-slate-400">No logo</span>
                           )}
                         </div>
                         <div className="flex gap-1">
@@ -349,8 +349,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                           </button>
                         </div>
                       </div>
-                      <h4 className="text-sm font-medium text-gray-900">{cg.label}</h4>
-                      <p className="text-xs text-gray-500 mt-1">ID: {cg.id}</p>
+                      <h4 className="text-sm font-medium text-slate-900">{cg.label}</h4>
+                      <p className="text-xs text-slate-500 mt-1">ID: {cg.id}</p>
                     </div>
                   ))}
                 </div>

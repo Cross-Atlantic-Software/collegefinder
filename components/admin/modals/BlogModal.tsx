@@ -258,13 +258,13 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">
             {blog ? 'Edit Blog' : 'Create Blog'}
           </h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors"
+            className="text-slate-500 hover:text-slate-800 transition-colors"
           >
             <FiX className="h-4 w-4" />
           </button>
@@ -276,8 +276,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             {/* Slug and Title Row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Slug <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Slug <span className="text-[#341050]">*</span>
                 </label>
                 <input
                   type="text"
@@ -285,49 +285,49 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   onChange={(e) => setSlug(e.target.value)}
                   required
                   placeholder="my-blog-post"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   Use lowercase letters, numbers, and hyphens only (e.g., my-blog-post)
                 </p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Title <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Title <span className="text-[#341050]">*</span>
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   required
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
             </div>
 
             {/* Teaser and Summary */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Teaser
               </label>
               <textarea
                 value={teaser}
                 onChange={(e) => setTeaser(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 placeholder="Short teaser text..."
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Summary
               </label>
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 placeholder="Blog summary..."
               />
             </div>
@@ -335,8 +335,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             {/* Content Type and Featured */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Content Type <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Content Type <span className="text-[#341050]">*</span>
                 </label>
                 <Dropdown
                   value={contentType}
@@ -354,9 +354,9 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                     type="checkbox"
                     checked={isFeatured}
                     onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="w-4 h-4 text-pink border-gray-300 rounded focus:ring-pink"
+                    className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
                   />
-                  <span className="text-xs font-medium text-gray-700">Featured Blog</span>
+                  <span className="text-xs font-medium text-slate-700">Featured Blog</span>
                 </label>
               </div>
             </div>
@@ -364,7 +364,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             {/* Streams and Careers */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   Streams
                 </label>
                 <MultiSelect
@@ -376,7 +376,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   Careers
                 </label>
                 <MultiSelect
@@ -392,7 +392,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             {/* URL and Source Name */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   URL (Third-party link)
                 </label>
                 <input
@@ -400,14 +400,14 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com/article"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   If provided, blog will open in a new window
                 </p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   Source Name
                 </label>
                 <input
@@ -415,19 +415,19 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   value={sourceName}
                   onChange={(e) => setSourceName(e.target.value)}
                   placeholder="Source name"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
             </div>
 
             {/* Blog Image */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Blog Image
               </label>
               <div className="flex items-center gap-3">
                 {blogImagePreview && (
-                  <div className="relative h-24 w-24 rounded overflow-hidden border border-gray-300">
+                  <div className="relative h-24 w-24 rounded overflow-hidden border border-slate-300">
                     <Image
                       src={blogImagePreview}
                       alt="Blog preview"
@@ -448,7 +448,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                   >
                     <FiImage className="h-4 w-4" />
                     {blogImagePreview ? 'Change Image' : 'Upload Image'}
@@ -474,8 +474,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             {contentType === 'TEXT' ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    First Part <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    First Part <span className="text-[#341050]">*</span>
                   </label>
                   <RichTextEditor
                     value={firstPart}
@@ -484,8 +484,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Second Part <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Second Part <span className="text-[#341050]">*</span>
                   </label>
                   <RichTextEditor
                     value={secondPart}
@@ -496,12 +496,12 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Video File <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Video File <span className="text-[#341050]">*</span>
                 </label>
                 <div className="flex items-center gap-3">
                   {blog?.video_file && !videoFile && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gray-700">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-sm text-slate-700">
                       <FiVideo className="h-4 w-4" />
                       <span>Current video file</span>
                     </div>
@@ -522,7 +522,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   <button
                     type="button"
                     onClick={() => videoInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                   >
                     <FiVideo className="h-4 w-4" />
                     {videoFile || blog?.video_file ? 'Change Video' : 'Upload Video'}
@@ -553,11 +553,11 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
         </form>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+        <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
           >
             Cancel
           </button>
@@ -565,7 +565,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
             type="submit"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : blog ? 'Update Blog' : 'Create Blog'}
           </button>

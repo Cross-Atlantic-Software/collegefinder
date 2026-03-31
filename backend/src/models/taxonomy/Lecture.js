@@ -1,27 +1,56 @@
 const db = require('../../config/database');
 
 class Lecture {
+  static normalizeJsonAgg(arr) {
+    if (!arr || !Array.isArray(arr) || arr.length === 0) return [];
+    if (arr[0] != null && arr[0].id != null) return arr;
+    return [];
+  }
+
   /**
-   * Find all lectures (with purposes)
+   * Find all lectures (with purposes, streams, subjects, exams)
    */
   static async findAll() {
     const result = await db.query(
-      `SELECT l.*, 
+      `SELECT l.*,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
          FILTER (WHERE p.id IS NOT NULL),
          '[]'
-       ) as purposes
+       ) as purposes,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
+         FILTER (WHERE st.id IS NOT NULL),
+         '[]'
+       ) as streams,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', subj.id, 'name', subj.name))
+         FILTER (WHERE subj.id IS NOT NULL),
+         '[]'
+       ) as subjects,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', ex.id, 'name', ex.name, 'code', ex.code))
+         FILTER (WHERE ex.id IS NOT NULL),
+         '[]'
+       ) as exams
        FROM lectures l
        LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
        LEFT JOIN purposes p ON lp.purpose_id = p.id
+       LEFT JOIN lecture_streams ls ON l.id = ls.lecture_id
+       LEFT JOIN streams st ON ls.stream_id = st.id
+       LEFT JOIN lecture_subjects lsub ON l.id = lsub.lecture_id
+       LEFT JOIN subjects subj ON lsub.subject_id = subj.id
+       LEFT JOIN lecture_exams le ON l.id = le.lecture_id
+       LEFT JOIN exams_taxonomies ex ON le.exam_id = ex.id
        GROUP BY l.id
        ORDER BY l.sort_order ASC, l.name ASC`
     );
-    // Parse purposes JSON
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       ...row,
-      purposes: row.purposes && row.purposes.length > 0 && row.purposes[0].id ? row.purposes : []
+      purposes: Lecture.normalizeJsonAgg(row.purposes),
+      streams: Lecture.normalizeJsonAgg(row.streams),
+      subjects: Lecture.normalizeJsonAgg(row.subjects),
+      exams: Lecture.normalizeJsonAgg(row.exams),
     }));
   }
 
@@ -30,15 +59,36 @@ class Lecture {
    */
   static async findById(id) {
     const result = await db.query(
-      `SELECT l.*, 
+      `SELECT l.*,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
          FILTER (WHERE p.id IS NOT NULL),
          '[]'
-       ) as purposes
+       ) as purposes,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
+         FILTER (WHERE st.id IS NOT NULL),
+         '[]'
+       ) as streams,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', subj.id, 'name', subj.name))
+         FILTER (WHERE subj.id IS NOT NULL),
+         '[]'
+       ) as subjects,
+       COALESCE(
+         json_agg(DISTINCT jsonb_build_object('id', ex.id, 'name', ex.name, 'code', ex.code))
+         FILTER (WHERE ex.id IS NOT NULL),
+         '[]'
+       ) as exams
        FROM lectures l
        LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
        LEFT JOIN purposes p ON lp.purpose_id = p.id
+       LEFT JOIN lecture_streams ls ON l.id = ls.lecture_id
+       LEFT JOIN streams st ON ls.stream_id = st.id
+       LEFT JOIN lecture_subjects lsub ON l.id = lsub.lecture_id
+       LEFT JOIN subjects subj ON lsub.subject_id = subj.id
+       LEFT JOIN lecture_exams le ON l.id = le.lecture_id
+       LEFT JOIN exams_taxonomies ex ON le.exam_id = ex.id
        WHERE l.id = $1
        GROUP BY l.id`,
       [id]
@@ -47,7 +97,10 @@ class Lecture {
       const row = result.rows[0];
       return {
         ...row,
-        purposes: row.purposes && row.purposes.length > 0 && row.purposes[0].id ? row.purposes : []
+        purposes: Lecture.normalizeJsonAgg(row.purposes),
+        streams: Lecture.normalizeJsonAgg(row.streams),
+        subjects: Lecture.normalizeJsonAgg(row.subjects),
+        exams: Lecture.normalizeJsonAgg(row.exams),
       };
     }
     return null;
@@ -124,14 +177,15 @@ class Lecture {
       iframe_code,
       article_content,
       thumbnail,
+      thumbnail_filename,
       status = true,
       description,
       sort_order = 0
     } = data;
 
     const result = await db.query(
-      `INSERT INTO lectures (topic_id, subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, status, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO lectures (topic_id, subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, thumbnail_filename, status, description, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         topic_id,
@@ -142,6 +196,7 @@ class Lecture {
         content_type === 'VIDEO' ? (iframe_code || null) : null,
         content_type === 'ARTICLE' ? (article_content || null) : null,
         thumbnail || null,
+        thumbnail_filename != null ? String(thumbnail_filename).trim() || null : null,
         status,
         description || null,
         sort_order
@@ -163,6 +218,7 @@ class Lecture {
       iframe_code,
       article_content,
       thumbnail,
+      thumbnail_filename,
       status,
       description,
       sort_order
@@ -214,6 +270,10 @@ class Lecture {
       updates.push(`thumbnail = $${paramCount++}`);
       values.push(thumbnail);
     }
+    if (thumbnail_filename !== undefined) {
+      updates.push(`thumbnail_filename = $${paramCount++}`);
+      values.push(thumbnail_filename != null ? String(thumbnail_filename).trim() || null : null);
+    }
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
@@ -246,6 +306,65 @@ class Lecture {
   static async delete(id) {
     const result = await db.query('DELETE FROM lectures WHERE id = $1 RETURNING *', [id]);
     return result.rows[0] || null;
+  }
+
+  static async setStreams(lectureId, streamIds) {
+    await db.query('DELETE FROM lecture_streams WHERE lecture_id = $1', [lectureId]);
+    if (streamIds && streamIds.length > 0) {
+      const values = [];
+      const placeholders = [];
+      streamIds.forEach((sid, index) => {
+        values.push(lectureId, sid);
+        placeholders.push(`($${index * 2 + 1}, $${index * 2 + 2})`);
+      });
+      await db.query(
+        `INSERT INTO lecture_streams (lecture_id, stream_id) VALUES ${placeholders.join(', ')}`,
+        values
+      );
+    }
+  }
+
+  static async setSubjects(lectureId, subjectIds) {
+    await db.query('DELETE FROM lecture_subjects WHERE lecture_id = $1', [lectureId]);
+    if (subjectIds && subjectIds.length > 0) {
+      const values = [];
+      const placeholders = [];
+      subjectIds.forEach((sid, index) => {
+        values.push(lectureId, sid);
+        placeholders.push(`($${index * 2 + 1}, $${index * 2 + 2})`);
+      });
+      await db.query(
+        `INSERT INTO lecture_subjects (lecture_id, subject_id) VALUES ${placeholders.join(', ')}`,
+        values
+      );
+    }
+  }
+
+  static async setExams(lectureId, examIds) {
+    await db.query('DELETE FROM lecture_exams WHERE lecture_id = $1', [lectureId]);
+    if (examIds && examIds.length > 0) {
+      const values = [];
+      const placeholders = [];
+      examIds.forEach((eid, index) => {
+        values.push(lectureId, eid);
+        placeholders.push(`($${index * 2 + 1}, $${index * 2 + 2})`);
+      });
+      await db.query(
+        `INSERT INTO lecture_exams (lecture_id, exam_id) VALUES ${placeholders.join(', ')}`,
+        values
+      );
+    }
+  }
+
+  static async findMissingThumbnailsByFilename(filename) {
+    if (!filename || !String(filename).trim()) return [];
+    const result = await db.query(
+      `SELECT * FROM lectures
+       WHERE LOWER(TRIM(thumbnail_filename)) = LOWER(TRIM($1))
+       AND (thumbnail IS NULL OR thumbnail = '')`,
+      [String(filename).trim()]
+    );
+    return result.rows;
   }
 }
 

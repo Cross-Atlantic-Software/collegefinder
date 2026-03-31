@@ -88,10 +88,13 @@ export function OtpVerificationForm({
     setError(null);
 
     try {
-      const response = await verifyOTP(emailHint, code);
+      const pendingRef = sessionStorage.getItem("cf_pending_ref") || undefined;
+      const response = await verifyOTP(emailHint, code, pendingRef);
       
       if (response.success && response.data) {
         setSuccess(true);
+        // Clear pending referral ref after successful use
+        sessionStorage.removeItem("cf_pending_ref");
         // Store token and user data
         // Convert null to undefined for name property to match User type
         const user = {

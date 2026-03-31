@@ -6,10 +6,15 @@ export interface Institute {
   id: number;
   institute_name: string;
   institute_location: string | null;
+  /** Google Maps (or other maps) URL for the institute location. */
+  google_maps_link?: string | null;
   type: 'offline' | 'online' | 'hybrid' | null;
   logo: string | null;
   website: string | null;
   contact_number: string | null;
+  /** Comma/semicolon/space-separated emails for referral sends (admin). */
+  referral_contact_email: string | null;
+  referral_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,15 +62,33 @@ export async function getAllInstitutesAdmin(): Promise<ApiResponse<{ institutes:
   return apiRequest(API_ENDPOINTS.ADMIN.INSTITUTES, { method: 'GET' });
 }
 
+export interface ReferralEmailPreview {
+  subject: string;
+  defaultRecipients: string[];
+}
+
 export async function getInstituteById(id: number): Promise<ApiResponse<{
   institute: Institute;
   instituteDetails: InstituteDetails | null;
   examIds: number[];
+  examNames?: string[];
   specializationExamIds: number[];
+  specializationExamNames?: string[];
   instituteStatistics: InstituteStatistics | null;
   instituteCourses: InstituteCourse[];
+  referralEmailPreview: ReferralEmailPreview | null;
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/${id}`, { method: 'GET' });
+}
+
+export async function sendInstituteReferralEmail(
+  id: number,
+  body?: { recipients?: string[] }
+): Promise<ApiResponse<{ sent: string[]; failed: string[] }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.INSTITUTES}/${id}/send-referral-email`, {
+    method: 'POST',
+    body: JSON.stringify(body ?? {}),
+  });
 }
 
 export async function uploadInstituteLogo(file: File): Promise<ApiResponse<{ logoUrl: string }>> {
@@ -87,10 +110,12 @@ export async function uploadInstituteLogo(file: File): Promise<ApiResponse<{ log
 export async function createInstitute(data: {
   institute_name: string;
   institute_location?: string | null;
+  google_maps_link?: string | null;
   type?: 'offline' | 'online' | 'hybrid' | null;
   logo?: string | null;
   website?: string | null;
   contact_number?: string | null;
+  referral_contact_email?: string | null;
   institute_description?: string | null;
   demo_available?: boolean;
   scholarship_available?: boolean;
@@ -112,10 +137,12 @@ export async function updateInstitute(
   data: {
     institute_name?: string;
     institute_location?: string | null;
+    google_maps_link?: string | null;
     type?: 'offline' | 'online' | 'hybrid' | null;
     logo?: string | null;
     website?: string | null;
     contact_number?: string | null;
+    referral_contact_email?: string | null;
     institute_description?: string | null;
     demo_available?: boolean;
     scholarship_available?: boolean;

@@ -65,22 +65,22 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <div className="text-center text-gray-500">Loading users...</div>
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+        <div className="text-center text-slate-500">Loading users...</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-[#F6F8FA] border-b border-slate-200">
             <tr>
               <th className="px-4 py-2 text-left">
                 <button
                   onClick={() => handleSort('email')}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-pink transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[#341050] transition-colors"
                 >
                   USER NAME
                   {sortField === 'email' && (
@@ -92,19 +92,19 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                   )}
                 </button>
               </th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                 STATUS
               </th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                 EMAIL VERIFIED
               </th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                 AUTH PROVIDER
               </th>
               <th className="px-4 py-2 text-left">
                 <button
                   onClick={() => handleSort('created_at')}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-pink transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[#341050] transition-colors"
                 >
                   DATE ADDED
                   {sortField === 'created_at' && (
@@ -118,10 +118,10 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-slate-200">
             {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
                   No users found
                 </td>
               </tr>
@@ -131,17 +131,17 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                 const initials = getInitials(displayName);
                 
                 return (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={user.id} className="hover:bg-[#F6F8FA] transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-darkGradient flex items-center justify-center text-white text-sm font-semibold">
+                        <div className="h-8 w-8 rounded-full bg-highlight-100 flex items-center justify-center text-[#341050] text-sm font-semibold">
                           {initials}
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-slate-900">
                             {displayName}
                           </div>
-                          <div className="text-xs text-gray-500">{user.email}</div>
+                          <div className="text-xs text-slate-500">{user.email}</div>
                         </div>
                       </div>
                     </td>
@@ -150,7 +150,7 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           user.is_active
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}
                       >
                         {user.is_active ? 'Active' : 'Inactive'}
@@ -161,7 +161,7 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           user.email_verified
                             ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}
                       >
                         {user.email_verified ? 'Verified' : 'Not Verified'}
@@ -172,7 +172,7 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                         {user.auth_provider || 'Email'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-xs text-gray-600">
+                    <td className="px-4 py-2 text-xs text-slate-600">
                       {formatDate(user.created_at)}
                     </td>
                   </tr>

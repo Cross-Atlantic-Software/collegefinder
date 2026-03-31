@@ -7,7 +7,9 @@ type BubbleProps = {
 
 export function Bubble({ children, className = "" }: BubbleProps) {
   return (
-    <div className={`rounded-md bg-white/15 backdrop-blur-sm text-white text-sm sm:text-base px-5 py-4 max-w-lg shadow-md border border-white/10 min-h-[48px] flex items-center ${className}`.trim()}>
+    <div
+      className={`rounded-2xl bg-white border border-slate-200 shadow-sm text-slate-800 text-sm sm:text-base px-5 py-4 max-w-lg min-h-[52px] flex items-center ${className}`.trim()}
+    >
       {children}
     </div>
   );

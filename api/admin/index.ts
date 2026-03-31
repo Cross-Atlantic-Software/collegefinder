@@ -120,10 +120,22 @@ export {
   createLecture,
   updateLecture,
   deleteLecture,
+  deleteAllLectures,
   uploadLectureVideo,
   uploadLectureThumbnail,
+  downloadLecturesBulkTemplate,
+  downloadLecturesAllExcel,
+  bulkUploadLectures,
+  uploadMissingLectureThumbnails,
+  fetchYoutubeLectureMetadata,
 } from './lectures';
-export type { Lecture } from './lectures';
+export type {
+  Lecture,
+  LectureTaxonomyRef,
+  LecturesBulkUploadResult,
+  UploadMissingLectureThumbnailsResult,
+  YoutubeLectureMetadata,
+} from './lectures';
 
 // Export purposes taxonomy management APIs
 export {

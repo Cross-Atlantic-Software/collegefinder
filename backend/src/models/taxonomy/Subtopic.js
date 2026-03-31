@@ -51,6 +51,15 @@ class Subtopic {
     return result.rows[0] || null;
   }
 
+  /** Case-insensitive name match within topic (for bulk Excel). */
+  static async findByTopicIdAndNameInsensitive(topicId, name) {
+    const result = await db.query(
+      `SELECT * FROM subtopics WHERE topic_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1`,
+      [topicId, name]
+    );
+    return result.rows[0] || null;
+  }
+
   /**
    * Create a new subtopic
    */

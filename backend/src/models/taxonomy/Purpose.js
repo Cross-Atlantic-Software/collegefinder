@@ -37,6 +37,14 @@ class Purpose {
     return result.rows[0] || null;
   }
 
+  static async findByNameInsensitive(name) {
+    const result = await db.query(
+      'SELECT * FROM purposes WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1',
+      [name]
+    );
+    return result.rows[0] || null;
+  }
+
   /**
    * Create a new purpose
    */

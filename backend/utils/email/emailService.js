@@ -319,9 +319,137 @@ const sendStrengthPaymentNotification = async (studentData) => {
   }
 };
 
+/**
+ * Send referral invite email using the Referral_Invite template.
+ * @param {string} recipientEmail
+ * @param {string} referralCode
+ * @param {string} senderName - Name of the person sharing the code
+ * @returns {Promise<boolean>}
+ */
+/**
+ * Send referral invite email(s) using the Referral_Invite template.
+ * @param {string|string[]} recipients - One or multiple recipient email addresses
+ * @param {string} referralCode
+ * @param {string} senderName - Display name of the person sharing the code
+ * @returns {Promise<{ sent: string[], failed: string[] }>}
+ */
+const sendReferralInviteEmail = async (recipients, referralCode, senderName) => {
+  const transporter = createTransporter();
+
+  const variables = EmailTemplate.buildReferralVariables(
+    senderName ? { name: senderName } : null,
+    referralCode
+  );
+
+  let template = await EmailTemplate.findReferralInviteRow();
+  if (!template) {
+    template = EmailTemplate.getReferralInviteDefaultTemplate();
+  }
+
+  const subject = EmailTemplate.replaceVariables(template.subject, variables);
+  const html = EmailTemplate.replaceVariables(template.body_html, variables);
+
+  const waTpl = await EmailTemplate.findReferralWhatsAppRow();
+  const waBody =
+    waTpl?.body_html || EmailTemplate.getReferralWhatsAppDefaultTemplate().body_html;
+  const text = EmailTemplate.replaceVariables(waBody, variables);
+
+  const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+  const sent = [];
+  const failed = [];
+
+  for (const recipientEmail of recipientList) {
+    if (!transporter) {
+      console.log('📧 [DEV] Referral invite email would be sent to:', recipientEmail);
+      console.log('📧 [DEV] Referral code:', referralCode);
+      sent.push(recipientEmail);
+      continue;
+    }
+
+    const mailOptions = {
+      from: `"${variables.platformName}" <${process.env.EMAIL_USER}>`,
+      to: recipientEmail,
+      subject,
+      html,
+      text,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Referral invite email sent to ${recipientEmail}`);
+      sent.push(recipientEmail);
+    } catch (error) {
+      console.error(`❌ Error sending referral invite to ${recipientEmail}:`, error);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`⚠️  Email to ${recipientEmail} failed in dev — counting as sent`);
+        sent.push(recipientEmail);
+      } else {
+        failed.push(recipientEmail);
+      }
+    }
+  }
+
+  return { sent, failed };
+};
+
+/**
+ * Send institute referral invite (HTML from REFERRAL_INSTITUTE_INVITE template).
+ * @param {string[]} recipients
+ * @param {object} institute - row with institute_name, referral_code
+ * @returns {Promise<{ sent: string[], failed: string[] }>}
+ */
+const sendInstituteReferralInviteEmail = async (recipients, institute) => {
+  const transporter = createTransporter();
+  const variables = EmailTemplate.buildInstituteReferralVariables(institute);
+  let template = await EmailTemplate.findReferralInstituteInviteRow();
+  if (!template) {
+    template = EmailTemplate.getReferralInstituteInviteDefaultTemplate();
+  }
+  const subject = EmailTemplate.replaceVariables(template.subject, variables);
+  const html = EmailTemplate.replaceVariables(template.body_html, variables);
+  const text =
+    `${variables.instituteName} invites you to join ${variables.platformName}.\n\n` +
+    `Referral code: ${variables.referralCode}\n` +
+    `Sign up: ${variables.shareUrl}`;
+
+  const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+  const sent = [];
+  const failed = [];
+
+  for (const recipientEmail of recipientList) {
+    if (!transporter) {
+      console.log('📧 [DEV] Institute referral would send to:', recipientEmail);
+      sent.push(recipientEmail);
+      continue;
+    }
+    const mailOptions = {
+      from: `"${variables.platformName}" <${process.env.EMAIL_USER}>`,
+      to: recipientEmail,
+      subject,
+      html,
+      text,
+    };
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Institute referral email sent to ${recipientEmail}`);
+      sent.push(recipientEmail);
+    } catch (error) {
+      console.error(`❌ Institute referral email error (${recipientEmail}):`, error);
+      if (process.env.NODE_ENV === 'development') {
+        sent.push(recipientEmail);
+      } else {
+        failed.push(recipientEmail);
+      }
+    }
+  }
+  return { sent, failed };
+};
+
 module.exports = {
   sendOTPEmail,
   sendAdminWelcomeEmail,
-  sendStrengthPaymentNotification
+  sendStrengthPaymentNotification,
+  sendReferralInviteEmail,
+  sendInstituteReferralInviteEmail,
 };
 

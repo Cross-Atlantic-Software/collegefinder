@@ -8,9 +8,15 @@ const API_BASE_URL =
     ? '/api'
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
 
-/** Config for apiRequest - timeout in ms (default 10s, use 60s for question generation) */
+/** Config for apiRequest - timeout in ms (default 30s; pass higher for slow SMTP / heavy work) */
 export interface ApiRequestConfig {
   timeout?: number;
+}
+
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  if (error instanceof Error && error.name === 'AbortError') return true;
+  return false;
 }
 
 /**
@@ -22,7 +28,7 @@ export async function apiRequest<T>(
   config?: ApiRequestConfig
 ): Promise<import('./types').ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
-  const timeoutMs = config?.timeout ?? 10000;
+  const timeoutMs = config?.timeout ?? 30000;
 
   // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)
   const isFormData = options.body instanceof FormData;
@@ -54,7 +60,9 @@ export async function apiRequest<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => {
+    controller.abort(new DOMException('Request timed out', 'AbortError'));
+  }, timeoutMs);
   try {
      // Convert options.headers to plain object if it's a Headers object
      const headersObj: HeadersInit = { ...defaultHeaders };
@@ -166,11 +174,18 @@ export async function apiRequest<T>(
       ...(data as Record<string, unknown>),
     };
   } catch (error) {
-    const isAbort = error instanceof Error && error.name === 'AbortError';
-    console.error('API request error:', error);
+    const aborted = isAbortError(error);
+    // Do not console.error on timeout — Next.js dev overlay treats it as an app error.
+    if (!aborted) {
+      console.error('API request error:', error);
+    }
     return {
       success: false,
-      message: isAbort ? 'Request timed out' : (error instanceof Error ? error.message : 'Network error occurred'),
+      message: aborted
+        ? 'Request timed out. Check your connection or try again.'
+        : error instanceof Error
+          ? error.message
+          : 'Network error occurred',
     };
   } finally {
     clearTimeout(timeoutId);

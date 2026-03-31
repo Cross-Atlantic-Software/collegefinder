@@ -43,15 +43,15 @@ function PromptModal({ item, promptValue, onPromptChange, onSave, onClose, savin
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <h2 className="text-lg font-semibold text-slate-900">
             Edit prompt — {item.exam_name}
-            <span className="ml-2 text-sm font-normal text-gray-500 font-mono">{item.exam_code}</span>
+            <span className="ml-2 text-sm font-normal text-slate-500 font-mono">{item.exam_code}</span>
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
             aria-label="Close"
           >
             <FiX className="h-5 w-5" />
@@ -63,14 +63,14 @@ function PromptModal({ item, promptValue, onPromptChange, onSave, onClose, savin
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
             rows={14}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
+            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-y font-mono"
           />
         </div>
-        <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2 shrink-0">
+        <div className="px-4 py-3 border-t border-slate-200 flex justify-end gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors"
           >
             Cancel
           </button>
@@ -78,7 +78,7 @@ function PromptModal({ item, promptValue, onPromptChange, onSave, onClose, savin
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="px-4 py-2 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save prompt'}
           </button>
@@ -165,14 +165,14 @@ export default function MockPromptsPage() {
   const closeModal = () => setModalExam(null);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-4">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Mock Prompts</h1>
-            <p className="text-sm text-gray-600 max-w-2xl">
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Mock Prompts</h1>
+            <p className="text-sm text-slate-600 max-w-2xl">
               Write instructions for the AI that generates mock questions. One prompt per exam; the same prompt is used for every question in that exam, with placeholders filled in per question (e.g. which subject, section, and question number). Use placeholders in double curly braces so the system can inject context: exam and subject names, section and type, question type (MCQ/Numerical), and position (e.g. question 5 of 25). Expand the JEE Main example below to see a full template you can copy and adapt.
             </p>
           </div>
@@ -180,59 +180,59 @@ export default function MockPromptsPage() {
             <button
               type="button"
               onClick={() => setShowExample((v) => !v)}
-              className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+              className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
             >
               {showExample ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
               Example prompt for JEE Main
             </button>
             {showExample && (
-              <pre className="mt-2 p-4 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-800 text-left overflow-x-auto whitespace-pre-wrap font-sans">
+              <pre className="mt-2 p-4 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-800 text-left overflow-x-auto whitespace-pre-wrap font-sans">
                 {JEE_MAIN_EXAMPLE_PROMPT}
               </pre>
             )}
           </div>
           {!loading && items.length > 0 && (
             <div className="relative mb-4 max-w-sm">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by exam name or code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
               />
             </div>
           )}
           {loading ? (
-            <div className="py-8 text-center text-gray-500">Loading...</div>
+            <div className="py-8 text-center text-slate-500">Loading...</div>
           ) : (
             <div className="space-y-2">
               {items.length === 0 ? (
-                <p className="text-sm text-gray-500 py-4">No exams in the database. Add exams first from the Exams section.</p>
+                <p className="text-sm text-slate-500 py-4">No exams in the database. Add exams first from the Exams section.</p>
               ) : filteredItems.length === 0 ? (
-                <p className="text-sm text-gray-500 py-4">No exams match your search.</p>
+                <p className="text-sm text-slate-500 py-4">No exams match your search.</p>
               ) : (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Exam</th>
-                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Code</th>
-                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Action</th>
+                      <tr className="bg-[#F6F8FA] border-b border-slate-200">
+                        <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Exam</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Code</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Status</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-slate-700">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredItems.map((item) => (
                         <tr
                           key={item.exam_id}
-                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50"
+                          className="border-b border-slate-100 last:border-b-0 hover:bg-[#F6F8FA]/50"
                         >
                           <td className="px-4 py-3">
-                            <span className="font-medium text-gray-900">{item.exam_name}</span>
+                            <span className="font-medium text-slate-900">{item.exam_name}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-sm text-gray-500 font-mono">{item.exam_code}</span>
+                            <span className="text-sm text-slate-500 font-mono">{item.exam_code}</span>
                           </td>
                           <td className="px-4 py-3">
                             {item.prompt && item.prompt.trim() ? (
@@ -240,7 +240,7 @@ export default function MockPromptsPage() {
                                 Custom prompt set
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
                                 Uses generic prompt
                               </span>
                             )}
@@ -249,7 +249,7 @@ export default function MockPromptsPage() {
                             <button
                               type="button"
                               onClick={() => openModal(item)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] hover:border-slate-400 transition-colors"
                             >
                               <FiEdit2 className="h-4 w-4" />
                               Edit prompt

@@ -7,8 +7,37 @@ const InstituteStatistics = require('../../models/institute/InstituteStatistics'
 const InstituteCourse = require('../../models/institute/InstituteCourse');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const Referral = require('../../models/referral/Referral');
+const EmailTemplate = require('../../models/taxonomy/EmailTemplate');
+const { sendInstituteReferralInviteEmail } = require('../../../utils/email/emailService');
+
+const MAX_INSTITUTE_REFERRAL_RECIPIENTS = 10;
+
+/** Split stored referral_contact_email field (comma / semicolon / whitespace). */
+function splitReferralContactEmails(raw) {
+  if (!raw || typeof raw !== 'string') return [];
+  return [...new Set(raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
+}
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
 const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
+
+/** Student / exam-style rating: integer 1–5 only (null if empty/invalid; values above 5 coerced to 5). */
+function clampStudentRating(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
+  if (Number.isNaN(n)) return null;
+  const r = Math.round(n);
+  if (r < 1) return null;
+  return Math.min(5, r);
+}
+
+/** For Excel export: coerce any numeric rating into 1–5 (rounded), empty if invalid. */
+function studentRatingForExport(val) {
+  if (val === undefined || val === null || val === '') return '';
+  const n = typeof val === 'number' ? val : parseFloat(String(val));
+  if (Number.isNaN(n)) return '';
+  return String(Math.min(5, Math.max(1, Math.round(n))));
+}
 
 async function resolveExamNamesToIds(namesStr) {
   if (!namesStr || typeof namesStr !== 'string') return [];
@@ -59,6 +88,17 @@ class InstitutesController {
         if (ex && ex.name) specExamNames.push(ex.name);
       }
 
+      let referralEmailPreview = null;
+      if (institute.referral_code) {
+        const vars = EmailTemplate.buildInstituteReferralVariables(institute);
+        const tplRow = await EmailTemplate.findReferralInstituteInviteRow();
+        const tpl = tplRow || EmailTemplate.getReferralInstituteInviteDefaultTemplate();
+        referralEmailPreview = {
+          subject: EmailTemplate.replaceVariables(tpl.subject, vars),
+          defaultRecipients: splitReferralContactEmails(institute.referral_contact_email),
+        };
+      }
+
       res.json({
         success: true,
         data: {
@@ -69,12 +109,69 @@ class InstitutesController {
           specializationExamIds: specializationExamIds || [],
           specializationExamNames: specExamNames,
           instituteStatistics: statistics,
-          instituteCourses: courses || []
+          instituteCourses: courses || [],
+          referralEmailPreview,
         }
       });
     } catch (error) {
       console.error('Error fetching institute:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch institute' });
+    }
+  }
+
+  /**
+   * POST /api/admin/institutes/:id/send-referral-email
+   * Body: { recipients?: string[] } — defaults to institute.referral_contact_email when omitted
+   */
+  static async sendReferralEmail(req, res) {
+    try {
+      const instituteId = parseInt(req.params.id, 10);
+      const { recipients } = req.body;
+      const institute = await Institute.findById(instituteId);
+      if (!institute) {
+        return res.status(404).json({ success: false, message: 'Institute not found' });
+      }
+
+      let referralCode = institute.referral_code;
+      if (!referralCode) {
+        referralCode = await Referral.generateAndSaveInstituteCode(instituteId, institute.institute_name);
+      }
+      const fresh = await Institute.findById(instituteId);
+
+      let list =
+        Array.isArray(recipients) && recipients.length > 0
+          ? recipients.map((e) => String(e).trim().toLowerCase()).filter(Boolean)
+          : splitReferralContactEmails(fresh.referral_contact_email);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      list = [...new Set(list.filter((e) => emailRegex.test(e)))];
+
+      if (list.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'No valid recipients. Save referral contact email(s) on the institute or pass recipients in the request body.',
+        });
+      }
+      if (list.length > MAX_INSTITUTE_REFERRAL_RECIPIENTS) {
+        return res.status(400).json({
+          success: false,
+          message: `At most ${MAX_INSTITUTE_REFERRAL_RECIPIENTS} recipients per send`,
+        });
+      }
+
+      const { sent, failed } = await sendInstituteReferralInviteEmail(list, fresh);
+      res.json({
+        success: true,
+        data: { sent, failed },
+        message:
+          failed.length === 0
+            ? `Invite${sent.length > 1 ? 's' : ''} sent successfully`
+            : `Sent to ${sent.length}, failed for ${failed.length}`,
+      });
+    } catch (error) {
+      console.error('Error sending institute referral email:', error);
+      res.status(500).json({ success: false, message: 'Failed to send referral email' });
     }
   }
 
@@ -96,10 +193,12 @@ class InstitutesController {
       const {
         institute_name,
         institute_location,
+        google_maps_link,
         type,
         logo,
         website,
         contact_number,
+        referral_contact_email,
         institute_description,
         demo_available,
         scholarship_available,
@@ -123,10 +222,12 @@ class InstitutesController {
       const institute = await Institute.create({
         institute_name: institute_name.trim(),
         institute_location: institute_location ? institute_location.trim() : null,
+        google_maps_link: google_maps_link != null ? String(google_maps_link).trim() || null : null,
         type: type || null,
         logo: logo || null,
         website: website ? website.trim() : null,
-        contact_number: contact_number ? contact_number.trim() : null
+        contact_number: contact_number ? contact_number.trim() : null,
+        referral_contact_email: referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
       });
 
       if (institute_description != null || demo_available != null || scholarship_available != null) {
@@ -150,7 +251,7 @@ class InstitutesController {
           institute_id: institute.id,
           ranking_score: ranking_score ?? null,
           success_rate: success_rate ?? null,
-          student_rating: student_rating ?? null
+          student_rating: clampStudentRating(student_rating)
         });
       }
 
@@ -168,6 +269,14 @@ class InstitutesController {
             });
           }
         }
+      }
+
+      // Auto-generate referral code for the new institute
+      try {
+        const refCode = await Referral.generateAndSaveInstituteCode(institute.id, institute.institute_name);
+        institute.referral_code = refCode;
+      } catch (refErr) {
+        console.error('⚠️ Non-blocking: failed to generate institute referral code', refErr);
       }
 
       res.status(201).json({
@@ -193,10 +302,12 @@ class InstitutesController {
       const {
         institute_name,
         institute_location,
+        google_maps_link,
         type,
         logo,
         website,
         contact_number,
+        referral_contact_email,
         institute_description,
         demo_available,
         scholarship_available,
@@ -222,10 +333,22 @@ class InstitutesController {
       await Institute.update(instituteId, {
         institute_name: institute_name !== undefined ? institute_name.trim() : undefined,
         institute_location: institute_location !== undefined ? (institute_location && institute_location.trim()) || null : undefined,
+        google_maps_link:
+          google_maps_link !== undefined
+            ? google_maps_link != null
+              ? String(google_maps_link).trim() || null
+              : null
+            : undefined,
         type: type !== undefined ? type || null : undefined,
         logo: logo !== undefined ? logo : undefined,
         website: website !== undefined ? (website && website.trim()) || null : undefined,
-        contact_number: contact_number !== undefined ? (contact_number && contact_number.trim()) || null : undefined
+        contact_number: contact_number !== undefined ? (contact_number && contact_number.trim()) || null : undefined,
+        referral_contact_email:
+          referral_contact_email !== undefined
+            ? referral_contact_email != null
+              ? String(referral_contact_email).trim() || null
+              : null
+            : undefined,
       });
 
       if (institute_description !== undefined || demo_available !== undefined || scholarship_available !== undefined) {
@@ -249,7 +372,7 @@ class InstitutesController {
           institute_id: instituteId,
           ranking_score: ranking_score ?? null,
           success_rate: success_rate ?? null,
-          student_rating: student_rating ?? null
+          student_rating: clampStudentRating(student_rating)
         });
       }
 
@@ -318,6 +441,7 @@ class InstitutesController {
       const headers = [
         'institute_name',
         'institute_location',
+        'google_maps_link',
         'type',
         'logo_filename',
         'website',
@@ -338,6 +462,7 @@ class InstitutesController {
         [
           'Allen Kota',
           'Kota',
+          'https://maps.app.goo.gl/example-allen',
           'Offline',
           'allen.png',
           'https://allen.ac.in',
@@ -347,14 +472,15 @@ class InstitutesController {
           'TRUE',
           '9.5',
           '85',
-          '4.8',
-          'JEE Main, NEET',
-          'JEE Advanced',
+          '5',
+          'JEE Main',
+          'JEE Main',
           'JEE Main|Class 12|12|50000|30|2025-01-01, NEET|Class 12|24|80000|25|2025-04-01'
         ],
         [
           'Unacademy',
           'Online',
+          '',
           'Online',
           'unacademy.png',
           'https://unacademy.com',
@@ -364,9 +490,9 @@ class InstitutesController {
           'FALSE',
           '8',
           '78',
-          '4.5',
-          'JEE Main, NEET, CUET',
-          '',
+          '4',
+          'JEE Main',
+          'JEE Main',
           'Crash Course|Class 12|6|25000|100|2025-01-15'
         ]
       ]);
@@ -386,7 +512,7 @@ class InstitutesController {
     try {
       const institutes = await Institute.findAll();
       const headers = [
-        'institute_name', 'institute_location', 'type', 'logo_filename', 'website', 'contact_number',
+        'institute_name', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
         'exam_names', 'specialization_exam_names', 'courses'
       ];
@@ -418,6 +544,7 @@ class InstitutesController {
         rows.push([
           inst.institute_name || '',
           inst.institute_location || '',
+          inst.google_maps_link || '',
           inst.type || '',
           logoFilename,
           inst.website || '',
@@ -427,7 +554,7 @@ class InstitutesController {
           (detail.scholarship_available === true || detail.scholarship_available === 't') ? 'TRUE' : 'FALSE',
           (stats.ranking_score != null) ? String(stats.ranking_score) : '',
           (stats.success_rate != null) ? String(stats.success_rate) : '',
-          (stats.student_rating != null) ? String(stats.student_rating) : '',
+          studentRatingForExport(stats.student_rating),
           examNames.join(','),
           specExamNames.join(','),
           coursesStr
@@ -534,6 +661,8 @@ class InstitutesController {
         }
 
         const location = (row.institute_location ?? row.institute_Location ?? '').toString().trim() || null;
+        const googleMapsLink =
+          (row.google_maps_link ?? row.google_Maps_Link ?? row.google_maps_Link ?? '').toString().trim() || null;
         const typeRaw = (row.type ?? '').toString().trim();
         const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
@@ -568,6 +697,7 @@ class InstitutesController {
           const institute = await Institute.create({
             institute_name: name,
             institute_location: location,
+            google_maps_link: googleMapsLink,
             type: instituteType,
             logo: logoUrl,
             logo_filename: logoFilename || null,
@@ -584,13 +714,13 @@ class InstitutesController {
           }
           const ranking_score = rankingScoreRaw ? parseFloat(rankingScoreRaw) : null;
           const success_rate = successRateRaw ? parseFloat(successRateRaw) : null;
-          const student_rating = studentRatingRaw ? parseFloat(studentRatingRaw) : null;
+          const student_rating = clampStudentRating(studentRatingRaw);
           if (ranking_score != null || success_rate != null || student_rating != null) {
             await InstituteStatistics.create({
               institute_id: institute.id,
               ranking_score: isNaN(ranking_score) ? null : ranking_score,
               success_rate: isNaN(success_rate) ? null : success_rate,
-              student_rating: isNaN(student_rating) ? null : student_rating
+              student_rating
             });
           }
           let examIds = [];

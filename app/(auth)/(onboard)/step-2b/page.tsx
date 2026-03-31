@@ -135,13 +135,7 @@ export default function StepTwoB() {
   };
 
   return (
-    <div
-      className="h-screen w-full flex flex-col"
-      style={{
-        background:
-          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
-      }}
-    >
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={80}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           {/* Robot */}
@@ -151,19 +145,19 @@ export default function StepTwoB() {
 
           {/* Interests + Button */}
           <div className="flex flex-col gap-5 w-full max-w-2xl">
-            <Bubble className="w-full max-w-none">
-              <div>What interests you? Select all that apply.</div>
-              <div className="text-sm text-slate-400 font-normal mt-1">You can choose up to 3 interests.</div>
+            <Bubble className="w-full max-w-none flex-col items-start gap-0.5">
+              <div className="font-medium">What interests you? Select all that apply.</div>
+              <div className="text-sm text-slate-500 font-normal mt-0.5">You can choose up to 3 interests.</div>
             </Bubble>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
             {loadingInterests ? (
-              <div className="w-full rounded-md bg-white/10 p-6 text-center text-slate-400">
+              <div className="w-full rounded-2xl bg-white border border-slate-200 p-6 text-center text-slate-400">
                 Loading interests...
               </div>
             ) : (
@@ -178,10 +172,10 @@ export default function StepTwoB() {
                           type="button"
                           onClick={() => toggleInterest(opt.id)}
                           className={[
-                            "flex flex-col items-center justify-center rounded-lg p-5 text-center transition-all duration-200 min-h-[140px] w-full border group",
+                            "flex flex-col items-center justify-center rounded-2xl p-5 text-center transition-all duration-200 min-h-[140px] w-full border group",
                             active
-                              ? "bg-pink text-white border-pink shadow-lg shadow-pink/20"
-                              : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20",
+                              ? "bg-[#341050] text-white border-[#341050] shadow-lg shadow-[#341050]/20"
+                              : "bg-white border-slate-200 hover:border-[#341050]/40 hover:shadow-sm",
                           ].join(" ")}
                         >
                           {opt.logo ? (
@@ -195,12 +189,12 @@ export default function StepTwoB() {
                               unoptimized
                             />
                           ) : (
-                            <div className="mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 flex items-center justify-center">
-                              <span className="text-lg font-bold text-slate-400">{opt.label.charAt(0)}</span>
+                            <div className={`mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full flex items-center justify-center ${active ? "bg-white/20" : "bg-slate-100"}`}>
+                              <span className={`text-lg font-bold ${active ? "text-white" : "text-slate-500"}`}>{opt.label.charAt(0)}</span>
                             </div>
                           )}
                           <span
-                            className={`text-sm font-semibold leading-tight break-words transition-all duration-200 ${active ? "text-white" : "text-slate-200 group-hover:text-white"}`}
+                            className={`text-sm font-semibold leading-tight break-words transition-all duration-200 ${active ? "text-white" : "text-slate-700 group-hover:text-slate-900"}`}
                           >
                             {opt.label}
                           </span>

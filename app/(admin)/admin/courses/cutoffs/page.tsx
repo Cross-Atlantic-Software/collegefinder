@@ -226,38 +226,38 @@ export default function CourseCutoffsPage() {
     : exams;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Course Cutoffs Manager</h1>
-            <p className="text-sm text-gray-600">Manage course cutoffs.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Course Cutoffs Manager</h1>
+            <p className="text-sm text-slate-600">Manage course cutoffs.</p>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All cutoffs</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All cutoffs</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allCutoffs.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by exam, course, category..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               <FiPlus className="h-4 w-4" />
               Add Cutoff
@@ -270,46 +270,46 @@ export default function CourseCutoffsPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading cutoffs...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading cutoffs...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">EXAM</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">COURSE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">YEAR</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CATEGORY</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CUTOFF</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">EXAM</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">COURSE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">YEAR</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CATEGORY</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CUTOFF</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {cutoffs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {cutoffs.length < allCutoffs.length ? 'No cutoffs found matching your search' : 'No cutoffs found'}
                         </td>
                       </tr>
                     ) : (
                       cutoffs.map((cutoff) => (
-                        <tr key={cutoff.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={cutoff.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{cutoff.exam_name || '-'}</span>
+                            <span className="text-sm font-medium text-slate-900">{cutoff.exam_name || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700">{cutoff.course_title || '-'}</span>
+                            <span className="text-sm text-slate-700">{cutoff.course_title || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700">{cutoff.year}</span>
+                            <span className="text-sm text-slate-700">{cutoff.year}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700">{cutoff.category_name || '-'}</span>
+                            <span className="text-sm text-slate-700">{cutoff.category_name || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-700">{cutoff.cutoff_value}</span>
+                            <span className="text-sm text-slate-700">{cutoff.cutoff_value}</span>
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
@@ -341,13 +341,13 @@ export default function CourseCutoffsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingCutoff ? 'Edit Cutoff' : 'Create Cutoff'}
               </h2>
               <button
                 onClick={handleModalClose}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -356,7 +356,7 @@ export default function CourseCutoffsPage() {
             <form onSubmit={handleSubmit} className="p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Course <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -368,7 +368,7 @@ export default function CourseCutoffsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Exam <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -381,7 +381,7 @@ export default function CourseCutoffsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Year <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -390,13 +390,13 @@ export default function CourseCutoffsPage() {
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                     min="2000"
                     max="2100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                   <Select
                     options={categories.map(cat => ({ value: cat.id.toString(), label: cat.name }))}
                     value={formData.category_id}
@@ -407,7 +407,7 @@ export default function CourseCutoffsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Cutoff Value <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -415,7 +415,7 @@ export default function CourseCutoffsPage() {
                     step="0.01"
                     value={formData.cutoff_value}
                     onChange={(e) => setFormData({ ...formData, cutoff_value: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050]"
                     required
                   />
                 </div>
@@ -425,14 +425,14 @@ export default function CourseCutoffsPage() {
                 <button
                   type="button"
                   onClick={handleModalClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : editingCutoff ? 'Update' : 'Create'}
                 </button>

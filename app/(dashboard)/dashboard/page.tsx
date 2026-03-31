@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { ApplicationsPage, ExamPreparation, MiddleContent, Sidebar, TopBar, TestModule } from "@/components/dashboard";
+import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
@@ -18,7 +18,8 @@ type SectionId =
   | "exam-prep"
   | "test-module"
   | "know-your-strengths"
-  | "admission-help";
+  | "admission-help"
+  | "referral";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,6 +119,8 @@ export default function DashboardPage() {
                 {activeSection === "admission-help" && (
                   <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
                 )}
+
+                {activeSection === "referral" && <ReferralCard />}
               </main>
             </div>
           )}

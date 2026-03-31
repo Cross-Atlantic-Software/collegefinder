@@ -205,11 +205,11 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-darkGradient text-white px-4 py-2.5 flex items-center justify-between">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 flex items-center justify-between">
           <h2 className="text-base font-bold">User Details</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors"
+            className="text-slate-500 hover:text-slate-800 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -219,15 +219,15 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
         <div className="flex-1 overflow-auto p-3">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-pink" />
-              <span className="ml-2 text-sm text-gray-600">Loading user details...</span>
+              <Loader2 className="h-6 w-6 animate-spin text-[#341050]" />
+              <span className="ml-2 text-sm text-slate-600">Loading user details...</span>
             </div>
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-sm text-red-600 mb-3">{error}</p>
               <button
                 onClick={fetchUserDetails}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 Retry
               </button>
@@ -235,15 +235,15 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
           ) : details ? (
             <div className="space-y-5">
               {/* Personal Details */}
-              <section className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <User className="h-4 w-4 text-pink" />
+              <section className="bg-[#F6F8FA] rounded-lg p-4 border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4 text-[#341050]" />
                   Personal Details
                 </h3>
                 
                 {/* Profile Photo */}
-                <div className="mb-4 flex items-center gap-4 pb-4 border-b border-gray-200">
-                  <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-pink-500 bg-white/10 flex items-center justify-center">
+                <div className="mb-4 flex items-center gap-4 pb-4 border-b border-slate-200">
+                  <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-[#341050]/30 bg-slate-50 flex items-center justify-center">
                     {details.user.profile_photo ? (
                       <Image
                         src={details.user.profile_photo}
@@ -253,39 +253,39 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                         unoptimized
                       />
                     ) : (
-                      <FaUserCircle className="h-12 w-12 text-gray-400" />
+                      <FaUserCircle className="h-12 w-12 text-slate-400" />
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-slate-900">
                       {details.user.first_name && details.user.last_name
                         ? `${details.user.first_name} ${details.user.last_name}`
                         : details.user.name || details.user.email}
                     </p>
-                    <p className="text-xs text-gray-600">{details.user.email}</p>
+                    <p className="text-xs text-slate-600">{details.user.email}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Email:</span>
-                    <p className="text-sm text-gray-900 truncate font-medium" title={details.user.email}>{details.user.email}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Email:</span>
+                    <p className="text-sm text-slate-900 truncate font-medium" title={details.user.email}>{details.user.email}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Nickname:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.name || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Nickname:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.name || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">First Name:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.first_name || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">First Name:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.first_name || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Last Name:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.last_name || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Last Name:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.last_name || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Date of Birth:</span>
-                    <p className="text-sm text-gray-900 font-medium">
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Date of Birth:</span>
+                    <p className="text-sm text-slate-900 font-medium">
                       {details.user.date_of_birth
                         ? new Date(details.user.date_of_birth).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -295,43 +295,43 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                         : '-'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Gender:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.gender || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Gender:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.gender || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Phone:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.phone_number || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Phone:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.phone_number || '-'}</p>
                   </div>
                   {details.user.alternate_mobile_number && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Alternate Mobile:</span>
-                      <p className="text-sm text-gray-900 font-medium">{details.user.alternate_mobile_number}</p>
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Alternate Mobile:</span>
+                      <p className="text-sm text-slate-900 font-medium">{details.user.alternate_mobile_number}</p>
                     </div>
                   )}
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Email Verified:</span>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Email Verified:</span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       details.user.email_verified
                         ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-slate-100 text-slate-800'
                     }`}>
                       {details.user.email_verified ? 'Verified' : 'Not Verified'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Account Status:</span>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Account Status:</span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       details.user.is_active
                         ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-slate-100 text-slate-800'
                     }`}>
                       {details.user.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Created At:</span>
-                    <p className="text-sm text-gray-900 font-medium">
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Created At:</span>
+                    <p className="text-sm text-slate-900 font-medium">
                       {new Date(details.user.created_at).toLocaleString('en-US', {
                         year: 'numeric',
                         month: 'short',
@@ -342,9 +342,9 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     </p>
                   </div>
                   {details.user.last_login && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Last Login:</span>
-                      <p className="text-sm text-gray-900 font-medium">
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Last Login:</span>
+                      <p className="text-sm text-slate-900 font-medium">
                         {new Date(details.user.last_login).toLocaleString('en-US', {
                           year: 'numeric',
                           month: 'short',
@@ -356,9 +356,9 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     </div>
                   )}
                   {details.user.updated_at && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Last Updated:</span>
-                      <p className="text-sm text-gray-900 font-medium">
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Last Updated:</span>
+                      <p className="text-sm text-slate-900 font-medium">
                         {new Date(details.user.updated_at).toLocaleString('en-US', {
                           year: 'numeric',
                           month: 'short',
@@ -370,41 +370,41 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     </div>
                   )}
                   {details.user.auth_provider && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Auth Provider:</span>
-                      <p className="text-sm text-gray-900 font-medium capitalize">{details.user.auth_provider}</p>
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Auth Provider:</span>
+                      <p className="text-sm text-slate-900 font-medium capitalize">{details.user.auth_provider}</p>
                     </div>
                   )}
                   {(details.user.latitude !== null && details.user.latitude !== undefined && 
                     details.user.longitude !== null && details.user.longitude !== undefined &&
                     !isNaN(Number(details.user.latitude)) && !isNaN(Number(details.user.longitude))) && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Location:</span>
-                      <p className="text-sm text-gray-900 font-medium">
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Location:</span>
+                      <p className="text-sm text-slate-900 font-medium">
                         {Number(details.user.latitude).toFixed(6)}, {Number(details.user.longitude).toFixed(6)}
                       </p>
                     </div>
                   )}
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Nationality:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.nationality || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Nationality:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.nationality || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Marital Status:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.marital_status || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Marital Status:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.marital_status || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Father's Name:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.father_full_name || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Father's Name:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.father_full_name || '-'}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                    <span className="text-xs font-medium text-gray-600">Mother's Name:</span>
-                    <p className="text-sm text-gray-900 font-medium">{details.user.mother_full_name || '-'}</p>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">Mother's Name:</span>
+                    <p className="text-sm text-slate-900 font-medium">{details.user.mother_full_name || '-'}</p>
                   </div>
                   {details.user.guardian_name && (
-                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-gray-200">
-                      <span className="text-xs font-medium text-gray-600">Guardian Name:</span>
-                      <p className="text-sm text-gray-900 font-medium">{details.user.guardian_name}</p>
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Guardian Name:</span>
+                      <p className="text-sm text-slate-900 font-medium">{details.user.guardian_name}</p>
                     </div>
                   )}
                 </div>
@@ -412,60 +412,60 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
 
               {/* Academics */}
               <section className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-blue-600" />
                   Academics
                 </h3>
                 {details.academics ? (
                   <div className="space-y-4">
                     {/* Matric (10th) */}
-                    <div className="bg-white rounded-md p-3 border border-gray-200">
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Matriculation (10th)</h4>
+                    <div className="bg-white rounded-md p-3 border border-slate-200">
+                      <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">Matriculation (10th)</h4>
                       <div className="grid grid-cols-3 gap-3">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Board:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_board || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Board:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_board || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">School:</span>
-                          <p className="text-sm text-gray-900 truncate" title={details.academics.matric_school_name || ''}>{details.academics.matric_school_name || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">School:</span>
+                          <p className="text-sm text-slate-900 truncate" title={details.academics.matric_school_name || ''}>{details.academics.matric_school_name || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Year:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_passing_year || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Year:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_passing_year || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Roll No:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_roll_number || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Roll No:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_roll_number || '-'}</p>
                         </div>
                         {details.academics.matric_marks_type === 'Percentage' && (
                           <>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Total:</span>
-                              <p className="text-sm text-gray-900">{details.academics.matric_total_marks || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Total:</span>
+                              <p className="text-sm text-slate-900">{details.academics.matric_total_marks || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Obtained:</span>
-                              <p className="text-sm text-gray-900">{details.academics.matric_obtained_marks || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Obtained:</span>
+                              <p className="text-sm text-slate-900">{details.academics.matric_obtained_marks || '-'}</p>
                             </div>
                           </>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">State:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_state || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">State:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_state || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">City:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_city || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">City:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_city || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Marks Type:</span>
-                          <p className="text-sm text-gray-900">{details.academics.matric_marks_type || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Marks Type:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_marks_type || '-'}</p>
                         </div>
                         {details.academics.matric_marks_type === 'Percentage' ? (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-gray-500">Percentage:</span>
-                            <p className="text-sm text-gray-900">
+                            <span className="text-xs font-medium text-slate-500">Percentage:</span>
+                            <p className="text-sm text-slate-900">
                               {details.academics.matric_percentage !== null
                                 ? `${details.academics.matric_percentage}%`
                                 : '-'}
@@ -473,8 +473,8 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-gray-500">CGPA:</span>
-                            <p className="text-sm text-gray-900">
+                            <span className="text-xs font-medium text-slate-500">CGPA:</span>
+                            <p className="text-sm text-slate-900">
                               {details.academics.matric_cgpa !== null
                                 ? details.academics.matric_cgpa.toString()
                                 : '-'}
@@ -482,8 +482,8 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           </div>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Result Status:</span>
-                          <p className="text-sm text-gray-900 capitalize">{details.academics.matric_result_status || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Result Status:</span>
+                          <p className="text-sm text-slate-900 capitalize">{details.academics.matric_result_status || '-'}</p>
                         </div>
                       </div>
                     </div>
@@ -501,67 +501,67 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
 
                     {/* Post-Matric (12th) */}
                     {details.academics.is_pursuing_12th ? (
-                      <div className="bg-white rounded-md p-3 border border-gray-200">
-                        <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Post-Matriculation (12th)</h4>
+                      <div className="bg-white rounded-md p-3 border border-slate-200">
+                        <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">Post-Matriculation (12th)</h4>
                         <div className="space-y-2">
-                          <p className="text-sm text-gray-600 italic">Currently pursuing 12th standard</p>
+                          <p className="text-sm text-slate-600 italic">Currently pursuing 12th standard</p>
                           {details.academics.stream && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Stream:</span>
-                              <p className="text-sm text-gray-900 font-medium">{details.academics.stream}</p>
+                              <span className="text-xs font-medium text-slate-500">Stream:</span>
+                              <p className="text-sm text-slate-900 font-medium">{details.academics.stream}</p>
                             </div>
                           )}
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="bg-white rounded-md p-3 border border-gray-200">
-                          <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Post-Matriculation (12th)</h4>
+                        <div className="bg-white rounded-md p-3 border border-slate-200">
+                          <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">Post-Matriculation (12th)</h4>
                           <div className="grid grid-cols-3 gap-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Board:</span>
-                              <p className="text-sm text-gray-900">{details.academics.postmatric_board || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Board:</span>
+                              <p className="text-sm text-slate-900">{details.academics.postmatric_board || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">School:</span>
-                              <p className="text-sm text-gray-900 truncate" title={details.academics.postmatric_school_name || ''}>{details.academics.postmatric_school_name || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">School:</span>
+                              <p className="text-sm text-slate-900 truncate" title={details.academics.postmatric_school_name || ''}>{details.academics.postmatric_school_name || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Year:</span>
-                              <p className="text-sm text-gray-900">{details.academics.postmatric_passing_year || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Year:</span>
+                              <p className="text-sm text-slate-900">{details.academics.postmatric_passing_year || '-'}</p>
                             </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Roll No:</span>
-                          <p className="text-sm text-gray-900">{details.academics.postmatric_roll_number || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Roll No:</span>
+                          <p className="text-sm text-slate-900">{details.academics.postmatric_roll_number || '-'}</p>
                         </div>
                         {details.academics.postmatric_marks_type === 'Percentage' && (
                           <>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Total:</span>
-                              <p className="text-sm text-gray-900">{details.academics.postmatric_total_marks || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Total:</span>
+                              <p className="text-sm text-slate-900">{details.academics.postmatric_total_marks || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Obtained:</span>
-                              <p className="text-sm text-gray-900">{details.academics.postmatric_obtained_marks || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Obtained:</span>
+                              <p className="text-sm text-slate-900">{details.academics.postmatric_obtained_marks || '-'}</p>
                             </div>
                           </>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">State:</span>
-                          <p className="text-sm text-gray-900">{details.academics.postmatric_state || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">State:</span>
+                          <p className="text-sm text-slate-900">{details.academics.postmatric_state || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">City:</span>
-                          <p className="text-sm text-gray-900">{details.academics.postmatric_city || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">City:</span>
+                          <p className="text-sm text-slate-900">{details.academics.postmatric_city || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Marks Type:</span>
-                          <p className="text-sm text-gray-900">{details.academics.postmatric_marks_type || '-'}</p>
+                          <span className="text-xs font-medium text-slate-500">Marks Type:</span>
+                          <p className="text-sm text-slate-900">{details.academics.postmatric_marks_type || '-'}</p>
                         </div>
                         {details.academics.postmatric_marks_type === 'Percentage' ? (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-gray-500">Percentage:</span>
-                            <p className="text-sm text-gray-900">
+                            <span className="text-xs font-medium text-slate-500">Percentage:</span>
+                            <p className="text-sm text-slate-900">
                               {details.academics.postmatric_percentage !== null
                                 ? `${details.academics.postmatric_percentage}%`
                                 : '-'}
@@ -569,8 +569,8 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-gray-500">CGPA:</span>
-                            <p className="text-sm text-gray-900">
+                            <span className="text-xs font-medium text-slate-500">CGPA:</span>
+                            <p className="text-sm text-slate-900">
                               {details.academics.postmatric_cgpa !== null
                                 ? details.academics.postmatric_cgpa.toString()
                                 : '-'}
@@ -578,12 +578,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           </div>
                         )}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Result Status:</span>
-                              <p className="text-sm text-gray-900 capitalize">{details.academics.postmatric_result_status || '-'}</p>
+                              <span className="text-xs font-medium text-slate-500">Result Status:</span>
+                              <p className="text-sm text-slate-900 capitalize">{details.academics.postmatric_result_status || '-'}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Stream:</span>
-                              <p className="text-sm text-gray-900">
+                              <span className="text-xs font-medium text-slate-500">Stream:</span>
+                              <p className="text-sm text-slate-900">
                                 {details.academics.stream || '-'}
                               </p>
                             </div>
@@ -604,14 +604,14 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No academic information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No academic information available</p>
                 )}
               </section>
 
               {/* Document Vault */}
               {details.documentVault && (
                 <section className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                     <FileText className="h-4 w-4 text-slate-600" />
                     Documents Vault
                   </h3>
@@ -686,16 +686,16 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                         if (sectionDocuments.length === 0) return null;
 
                         return (
-                          <div key={section} className="bg-white rounded-md p-3 border border-gray-200">
-                            <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">{section}</h4>
+                          <div key={section} className="bg-white rounded-md p-3 border border-slate-200">
+                            <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">{section}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               {sectionDocuments.map((field) => {
                                 const url = details.documentVault?.[field.key as keyof typeof details.documentVault] as string;
                                 if (!url) return null;
 
                                 return (
-                                  <div key={field.key} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                                    <span className="text-xs text-gray-700 flex-1 truncate">{field.label}</span>
+                                  <div key={field.key} className="flex items-center justify-between p-2 bg-[#F6F8FA] rounded border border-slate-200">
+                                    <span className="text-xs text-slate-700 flex-1 truncate">{field.label}</span>
                                     <div className="flex items-center gap-1.5 ml-2">
                                       <button
                                         onClick={() => handleView(url)}
@@ -735,7 +735,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                      !details.documentVault.domicile_certificate &&
                      !details.documentVault.citizenship_certificate &&
                      !details.documentVault.migration_certificate && (
-                      <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No documents uploaded yet</p>
+                      <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No documents uploaded yet</p>
                     )}
                   </div>
                 </section>
@@ -743,7 +743,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
 
               {/* Interests */}
               <section className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <Target className="h-4 w-4 text-purple-600" />
                   Interests
                 </h3>
@@ -752,20 +752,20 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     {details.careerGoals.interests.map((interest, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-3 py-1.5 rounded-md bg-pink text-white text-xs font-medium shadow-sm"
+                        className="inline-flex items-center px-3 py-1.5 rounded-md bg-brand-ink text-white text-xs font-medium shadow-sm"
                       >
                         {interest}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No interests information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No interests information available</p>
                 )}
               </section>
 
               {/* Exam Preferences */}
               <section className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <GraduationCap className="h-4 w-4 text-amber-600" />
                   Exam Preferences
                 </h3>
@@ -773,8 +773,8 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                   <div className="space-y-4">
                     {/* Target Exams */}
                     {details.examPreferences.target_exams && details.examPreferences.target_exams.length > 0 ? (
-                      <div className="bg-white rounded-md p-3 border border-gray-200">
-                        <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Target Exams</h4>
+                      <div className="bg-white rounded-md p-3 border border-slate-200">
+                        <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Target Exams</h4>
                         <div className="flex flex-wrap gap-2">
                           {details.examPreferences.target_exams.map((exam, index) => (
                             <span
@@ -800,63 +800,63 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     ) : null}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No exam preferences information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No exam preferences information available</p>
                 )}
               </section>
 
               {/* Government Identification */}
               <section className="bg-green-50 rounded-lg p-4 border border-green-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <IdCard className="h-4 w-4 text-green-600" />
                   Government Identification
                 </h3>
                 {details.governmentIdentification ? (
-                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                  <div className="bg-white rounded-md p-3 border border-slate-200">
                     <div className="grid grid-cols-2 gap-3">
                       {details.governmentIdentification.aadhar_number && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Aadhar Number:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.aadhar_number}</p>
+                          <span className="text-xs font-medium text-slate-500">Aadhar Number:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.governmentIdentification.aadhar_number}</p>
                         </div>
                       )}
                       {details.governmentIdentification.apaar_id && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">APAAR ID:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.governmentIdentification.apaar_id}</p>
+                          <span className="text-xs font-medium text-slate-500">APAAR ID:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.governmentIdentification.apaar_id}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No government identification information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No government identification information available</p>
                 )}
               </section>
 
               {/* Other Personal Details */}
               <section className="bg-teal-50 rounded-lg p-4 border border-teal-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <User className="h-4 w-4 text-teal-600" />
                   Other Personal Details
                 </h3>
                 {details.otherPersonalDetails ? (
-                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                  <div className="bg-white rounded-md p-3 border border-slate-200">
                     <div className="grid grid-cols-2 gap-3">
                       {details.otherPersonalDetails.religion && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Religion:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.religion}</p>
+                          <span className="text-xs font-medium text-slate-500">Religion:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.otherPersonalDetails.religion}</p>
                         </div>
                       )}
                       {details.otherPersonalDetails.mother_tongue && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Mother Tongue:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.mother_tongue}</p>
+                          <span className="text-xs font-medium text-slate-500">Mother Tongue:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.otherPersonalDetails.mother_tongue}</p>
                         </div>
                       )}
                       {details.otherPersonalDetails.annual_family_income !== null && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Annual Family Income:</span>
-                          <p className="text-sm text-gray-900 font-medium">
+                          <span className="text-xs font-medium text-slate-500">Annual Family Income:</span>
+                          <p className="text-sm text-slate-900 font-medium">
                             {details.otherPersonalDetails.annual_family_income !== null
                               ? `₹${details.otherPersonalDetails.annual_family_income.toLocaleString('en-IN')}`
                               : '-'}
@@ -865,172 +865,172 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                       )}
                       {details.otherPersonalDetails.occupation_of_father && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Father's Occupation:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_father}</p>
+                          <span className="text-xs font-medium text-slate-500">Father's Occupation:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.otherPersonalDetails.occupation_of_father}</p>
                         </div>
                       )}
                       {details.otherPersonalDetails.occupation_of_mother && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Mother's Occupation:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.otherPersonalDetails.occupation_of_mother}</p>
+                          <span className="text-xs font-medium text-slate-500">Mother's Occupation:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.otherPersonalDetails.occupation_of_mother}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No other personal details information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No other personal details information available</p>
                 )}
               </section>
 
               {/* Category and Reservation */}
               <section className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <IdCard className="h-4 w-4 text-indigo-600" />
                   Category and Reservation
                 </h3>
                 {details.categoryAndReservation ? (
-                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                  <div className="bg-white rounded-md p-3 border border-slate-200">
                     <div className="grid grid-cols-2 gap-3">
                       {details.categoryAndReservation.category_name && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Category:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.category_name}</p>
+                          <span className="text-xs font-medium text-slate-500">Category:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.category_name}</p>
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-gray-500">EWS Status:</span>
+                        <span className="text-xs font-medium text-slate-500">EWS Status:</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           details.categoryAndReservation.ews_status
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}>
                           {details.categoryAndReservation.ews_status ? 'Yes' : 'No'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-gray-500">PwBD/PWD Status:</span>
+                        <span className="text-xs font-medium text-slate-500">PwBD/PWD Status:</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           details.categoryAndReservation.pwbd_status
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}>
                           {details.categoryAndReservation.pwbd_status ? 'Yes' : 'No'}
                         </span>
                       </div>
                       {details.categoryAndReservation.type_of_disability && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Type of Disability:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.type_of_disability}</p>
+                          <span className="text-xs font-medium text-slate-500">Type of Disability:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.type_of_disability}</p>
                         </div>
                       )}
                       {details.categoryAndReservation.disability_percentage !== null && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Disability Percentage:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.disability_percentage}%</p>
+                          <span className="text-xs font-medium text-slate-500">Disability Percentage:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.disability_percentage}%</p>
                         </div>
                       )}
                       {details.categoryAndReservation.udid_number && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">UDID Number:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.udid_number}</p>
+                          <span className="text-xs font-medium text-slate-500">UDID Number:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.udid_number}</p>
                         </div>
                       )}
                       {details.categoryAndReservation.minority_status && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Minority Status:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.minority_status}</p>
+                          <span className="text-xs font-medium text-slate-500">Minority Status:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.minority_status}</p>
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-gray-500">Ex-serviceman/Defence-quota:</span>
+                        <span className="text-xs font-medium text-slate-500">Ex-serviceman/Defence-quota:</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           details.categoryAndReservation.ex_serviceman_defence_quota
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}>
                           {details.categoryAndReservation.ex_serviceman_defence_quota ? 'Yes' : 'No'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-gray-500">Kashmiri-migrant/Regional-quota:</span>
+                        <span className="text-xs font-medium text-slate-500">Kashmiri-migrant/Regional-quota:</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           details.categoryAndReservation.kashmiri_migrant_regional_quota
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}>
                           {details.categoryAndReservation.kashmiri_migrant_regional_quota ? 'Yes' : 'No'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-gray-500">State Domicile:</span>
+                        <span className="text-xs font-medium text-slate-500">State Domicile:</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           details.categoryAndReservation.state_domicile
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-100 text-slate-800'
                         }`}>
                           {details.categoryAndReservation.state_domicile ? 'Yes' : 'No'}
                         </span>
                       </div>
                       {details.categoryAndReservation.home_state_for_quota && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Home State for Quota:</span>
-                          <p className="text-sm text-gray-900 font-medium">{details.categoryAndReservation.home_state_for_quota}</p>
+                          <span className="text-xs font-medium text-slate-500">Home State for Quota:</span>
+                          <p className="text-sm text-slate-900 font-medium">{details.categoryAndReservation.home_state_for_quota}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No category and reservation information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No category and reservation information available</p>
                 )}
               </section>
 
               {/* Address */}
               <section className="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-cyan-600" />
                   Address
                 </h3>
                 {details.userAddress ? (
                   <div className="space-y-4">
                     {/* Correspondence Address */}
-                    <div className="bg-white rounded-md p-3 border border-gray-200">
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Correspondence Address</h4>
+                    <div className="bg-white rounded-md p-3 border border-slate-200">
+                      <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">Correspondence Address</h4>
                       <div className="space-y-2">
                         {details.userAddress.correspondence_address_line1 && (
-                          <p className="text-sm text-gray-900">{details.userAddress.correspondence_address_line1}</p>
+                          <p className="text-sm text-slate-900">{details.userAddress.correspondence_address_line1}</p>
                         )}
                         {details.userAddress.correspondence_address_line2 && (
-                          <p className="text-sm text-gray-900">{details.userAddress.correspondence_address_line2}</p>
+                          <p className="text-sm text-slate-900">{details.userAddress.correspondence_address_line2}</p>
                         )}
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {details.userAddress.city_town_village && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">City/Town/Village:</span>
-                              <p className="text-sm text-gray-900">{details.userAddress.city_town_village}</p>
+                              <span className="text-xs font-medium text-slate-500">City/Town/Village:</span>
+                              <p className="text-sm text-slate-900">{details.userAddress.city_town_village}</p>
                             </div>
                           )}
                           {details.userAddress.district && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">District:</span>
-                              <p className="text-sm text-gray-900">{details.userAddress.district}</p>
+                              <span className="text-xs font-medium text-slate-500">District:</span>
+                              <p className="text-sm text-slate-900">{details.userAddress.district}</p>
                             </div>
                           )}
                           {details.userAddress.state && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">State:</span>
-                              <p className="text-sm text-gray-900">{details.userAddress.state}</p>
+                              <span className="text-xs font-medium text-slate-500">State:</span>
+                              <p className="text-sm text-slate-900">{details.userAddress.state}</p>
                             </div>
                           )}
                           {details.userAddress.country && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Country:</span>
-                              <p className="text-sm text-gray-900">{details.userAddress.country}</p>
+                              <span className="text-xs font-medium text-slate-500">Country:</span>
+                              <p className="text-sm text-slate-900">{details.userAddress.country}</p>
                             </div>
                           )}
                           {details.userAddress.pincode && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Pincode:</span>
-                              <p className="text-sm text-gray-900">{details.userAddress.pincode}</p>
+                              <span className="text-xs font-medium text-slate-500">Pincode:</span>
+                              <p className="text-sm text-slate-900">{details.userAddress.pincode}</p>
                             </div>
                           )}
                         </div>
@@ -1038,52 +1038,52 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                     </div>
 
                     {/* Permanent Address */}
-                    <div className="bg-white rounded-md p-3 border border-gray-200">
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2.5 uppercase tracking-wide">Permanent Address</h4>
+                    <div className="bg-white rounded-md p-3 border border-slate-200">
+                      <h4 className="text-xs font-semibold text-slate-700 mb-2.5 uppercase tracking-wide">Permanent Address</h4>
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-500">Same as Correspondence:</span>
+                          <span className="text-xs font-medium text-slate-500">Same as Correspondence:</span>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             details.userAddress.permanent_address_same_as_correspondence
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-slate-100 text-slate-800'
                           }`}>
                             {details.userAddress.permanent_address_same_as_correspondence ? 'Yes' : 'No'}
                           </span>
                         </div>
                         {!details.userAddress.permanent_address_same_as_correspondence && details.userAddress.permanent_address && (
-                          <p className="text-sm text-gray-900 whitespace-pre-line">{details.userAddress.permanent_address}</p>
+                          <p className="text-sm text-slate-900 whitespace-pre-line">{details.userAddress.permanent_address}</p>
                         )}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No address information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No address information available</p>
                 )}
               </section>
 
               {/* Other Information */}
               <section className="bg-violet-50 rounded-lg p-4 border border-violet-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <Info className="h-4 w-4 text-violet-600" />
                   Other Information
                 </h3>
                 {details.otherInfo ? (
-                  <div className="bg-white rounded-md p-3 border border-gray-200">
+                  <div className="bg-white rounded-md p-3 border border-slate-200">
                     <div className="space-y-4">
                       {/* Medium and Language */}
                       {(details.otherInfo.medium || details.otherInfo.language) && (
                         <div className="grid grid-cols-2 gap-3">
                           {details.otherInfo.medium && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Medium of Examination:</span>
-                              <p className="text-sm text-gray-900 font-medium">{details.otherInfo.medium}</p>
+                              <span className="text-xs font-medium text-slate-500">Medium of Examination:</span>
+                              <p className="text-sm text-slate-900 font-medium">{details.otherInfo.medium}</p>
                             </div>
                           )}
                           {details.otherInfo.language && (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-gray-500">Language Preference:</span>
-                              <p className="text-sm text-gray-900 font-medium">{details.otherInfo.language}</p>
+                              <span className="text-xs font-medium text-slate-500">Language Preference:</span>
+                              <p className="text-sm text-slate-900 font-medium">{details.otherInfo.language}</p>
                             </div>
                           )}
                         </div>
@@ -1092,7 +1092,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                       {/* Program Preferences */}
                       {details.otherInfo.program_names && details.otherInfo.program_names.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Course & Program Preferences</h4>
+                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Course & Program Preferences</h4>
                           <div className="flex flex-wrap gap-2">
                             {details.otherInfo.program_names.map((programName, index) => (
                               <span
@@ -1109,7 +1109,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                       {/* Exam City Preferences */}
                       {details.otherInfo.exam_city_names && details.otherInfo.exam_city_names.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Exam City Preferences</h4>
+                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Exam City Preferences</h4>
                           <div className="flex flex-wrap gap-2">
                             {details.otherInfo.exam_city_names.map((cityName, index) => (
                               <span
@@ -1128,12 +1128,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                        !details.otherInfo.language && 
                        (!details.otherInfo.program_names || details.otherInfo.program_names.length === 0) && 
                        (!details.otherInfo.exam_city_names || details.otherInfo.exam_city_names.length === 0) && (
-                        <p className="text-sm text-gray-500 italic">Other information record exists but no data has been entered yet.</p>
+                        <p className="text-sm text-slate-500 italic">Other information record exists but no data has been entered yet.</p>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic bg-white rounded-md p-3 border border-gray-200">No other information available</p>
+                  <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">No other information available</p>
                 )}
               </section>
             </div>

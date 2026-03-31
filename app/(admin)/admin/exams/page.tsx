@@ -16,8 +16,6 @@ import {
   downloadAllDataExcel,
   bulkUploadExams,
   uploadMissingLogos,
-  getExamPrompt,
-  updateExamPrompt,
   type Exam,
   type ExamDates,
   type ExamEligibilityCriteria,
@@ -125,16 +123,6 @@ export default function ExamsPage() {
     summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
   } | null>(null);
   const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<'exams' | 'prompts'>('exams');
-  const [promptsByExamId, setPromptsByExamId] = useState<Record<number, { prompt: string; hasCustomPrompt: boolean }>>({});
-  const [savingPromptExamId, setSavingPromptExamId] = useState<number | null>(null);
-  const [promptsSectionLoading, setPromptsSectionLoading] = useState(false);
-  const [promptExam, setPromptExam] = useState<Exam | null>(null);
-  const [showPromptModal, setShowPromptModal] = useState(false);
-  const [promptValue, setPromptValue] = useState('');
-  const [hasCustomPrompt, setHasCustomPrompt] = useState(false);
-  const [promptLoading, setPromptLoading] = useState(false);
-  const [promptSaving, setPromptSaving] = useState(false);
 
   // Run once on mount to prevent continuous API calls
   useEffect(() => {
@@ -171,34 +159,6 @@ export default function ExamsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allExams]);
-
-  useEffect(() => {
-    if (activeSection !== 'prompts' || allExams.length === 0) return;
-    let cancelled = false;
-    const load = async () => {
-      setPromptsSectionLoading(true);
-      const next: Record<number, { prompt: string; hasCustomPrompt: boolean }> = {};
-      for (const exam of allExams) {
-        if (cancelled) return;
-        try {
-          const res = await getExamPrompt(exam.id);
-          if (res.success && res.data) {
-            next[exam.id] = { prompt: res.data.prompt || '', hasCustomPrompt: !!res.data.hasCustomPrompt };
-          } else {
-            next[exam.id] = { prompt: '', hasCustomPrompt: false };
-          }
-        } catch {
-          next[exam.id] = { prompt: '', hasCustomPrompt: false };
-        }
-      }
-      if (!cancelled) {
-        setPromptsByExamId(next);
-      }
-      setPromptsSectionLoading(false);
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [activeSection, allExams]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -662,90 +622,14 @@ export default function ExamsPage() {
     { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
 
-  const handleOpenPrompt = async (exam: Exam) => {
-    setPromptExam(exam);
-    setShowPromptModal(true);
-    setPromptValue('');
-    setHasCustomPrompt(false);
-    setPromptLoading(true);
-    try {
-      const res = await getExamPrompt(exam.id);
-      if (res.success && res.data) {
-        setPromptValue(res.data.prompt || '');
-        setHasCustomPrompt(!!res.data.hasCustomPrompt);
-      }
-    } catch {
-      showError('Failed to load prompt');
-    } finally {
-      setPromptLoading(false);
-    }
-  };
-
-  const handleSavePrompt = async () => {
-    if (!promptExam) return;
-    setPromptSaving(true);
-    try {
-      const res = await updateExamPrompt(promptExam.id, promptValue);
-      if (res.success) {
-        showSuccess('Prompt updated. It will be used for mock question generation for this exam.');
-        setHasCustomPrompt(!!(promptValue && promptValue.trim()));
-      } else {
-        showError(res.message || 'Failed to save prompt');
-      }
-    } catch {
-      showError('Failed to save prompt');
-    } finally {
-      setPromptSaving(false);
-    }
-  };
-
-  const handleClosePromptModal = () => {
-    setShowPromptModal(false);
-    setPromptExam(null);
-    setPromptValue('');
-  };
-
-  const setPromptForExam = (examId: number, prompt: string) => {
-    setPromptsByExamId((prev) => ({
-      ...prev,
-      [examId]: {
-        ...prev[examId],
-        prompt,
-        hasCustomPrompt: prev[examId]?.hasCustomPrompt ?? false,
-      },
-    }));
-  };
-
-  const handleSavePromptInSection = async (exam: Exam) => {
-    const current = promptsByExamId[exam.id];
-    if (current === undefined) return;
-    setSavingPromptExamId(exam.id);
-    try {
-      const res = await updateExamPrompt(exam.id, current.prompt);
-      if (res.success) {
-        showSuccess(`Prompt saved for ${exam.name}`);
-        setPromptsByExamId((prev) => ({
-          ...prev,
-          [exam.id]: { ...prev[exam.id], prompt: current.prompt, hasCustomPrompt: !!(current.prompt && current.prompt.trim()) },
-        }));
-      } else {
-        showError(res.message || 'Failed to save prompt');
-      }
-    } catch {
-      showError('Failed to save prompt');
-    } finally {
-      setSavingPromptExamId(null);
-    }
-  };
-
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -755,67 +639,37 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader />
+        <AdminHeader
+          title="Exams Manager"
+          subtitle="Manage exam options with all related information."
+        />
         <main className="flex-1 p-4 overflow-auto">
-          <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Exams Manager</h1>
-            <p className="text-sm text-gray-600">Manage exam options with all related information.</p>
-          </div>
-
-          {/* Section tabs: Exams | Generation prompts */}
-          <div className="mb-4 flex gap-1 border-b border-gray-200">
-            <button
-              type="button"
-              onClick={() => setActiveSection('exams')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeSection === 'exams'
-                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              Exams
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection('prompts')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeSection === 'prompts'
-                  ? 'bg-white border border-gray-200 border-b-0 -mb-px text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              Generation prompts
-            </button>
-          </div>
-
-          {/* Controls (only for Exams section) */}
-          {activeSection === 'exams' && (
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-medium text-gray-700">All exams</span>
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
+                <span className="text-xs font-medium text-slate-700">All exams</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allExams.length}
                 </span>
               </button>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name, code, description, or authority"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <div className="inline-flex items-center gap-2">
               <button
                 onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 <FiPlus className="h-4 w-4" />
                 Add Exam
@@ -830,7 +684,7 @@ export default function ExamsPage() {
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors"
               >
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
@@ -844,7 +698,7 @@ export default function ExamsPage() {
                     setMissingLogosResult(null);
                     setMissingLogosError(null);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors"
                 >
                   <FiUpload className="h-4 w-4" />
                   Upload missing logos
@@ -855,7 +709,7 @@ export default function ExamsPage() {
                   type="button"
                   onClick={handleDownloadAllExcel}
                   disabled={downloadingExcel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors disabled:opacity-50"
                 >
                   <FiDownload className="h-4 w-4" />
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
@@ -874,45 +728,41 @@ export default function ExamsPage() {
               )}
             </div>
           </div>
-          )}
 
-          {/* Error Message (Exams section) */}
-          {activeSection === 'exams' && error && (
+          {error && (
             <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
               {error}
             </div>
           )}
 
-          {/* Exams Table */}
-          {activeSection === 'exams' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading exams...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading exams...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">LOGO</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CODE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">AUTHORITY</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CODE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {exams.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {exams.length < allExams.length ? 'No exams found matching your search' : 'No exams found'}
                         </td>
                       </tr>
                     ) : (
                       exams.map((exam) => (
-                        <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={exam.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
-                            <div className="h-12 w-12 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+                            <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
                               {exam.exam_logo ? (
                                 <Image
                                   src={exam.exam_logo}
@@ -923,15 +773,15 @@ export default function ExamsPage() {
                                   unoptimized
                                 />
                               ) : (
-                                <span className="text-xs text-gray-400">No logo</span>
+                                <span className="text-xs text-slate-400">No logo</span>
                               )}
                             </div>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm font-medium text-gray-900">{exam.name}</span>
+                            <span className="text-sm font-medium text-slate-900">{exam.name}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-gray-600 font-mono">{exam.code}</span>
+                            <span className="text-sm text-slate-600 font-mono">{exam.code}</span>
                           </td>
                           <td className="px-4 py-2">
                             {exam.exam_type && (
@@ -941,7 +791,7 @@ export default function ExamsPage() {
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-xs text-gray-600">{exam.conducting_authority || '-'}</span>
+                            <span className="text-xs text-slate-600">{exam.conducting_authority || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
                             <AdminTableActions
@@ -959,63 +809,6 @@ export default function ExamsPage() {
               </div>
             )}
           </div>
-          )}
-
-          {/* Generation prompts section: all exams from DB with prompt edit */}
-          {activeSection === 'prompts' && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Set an exam-specific prompt for mock question generation. When set, it is used instead of the generic prompt. Placeholders: {'{{exam_name}}'}, {'{{subject}}'}, {'{{difficulty}}'}, {'{{topic}}'}, {'{{section_name}}'}, {'{{section_type}}'}, {'{{question_type}}'}
-              </p>
-              {promptsSectionLoading ? (
-                <div className="py-8 text-center text-gray-500">Loading prompts for all exams...</div>
-              ) : (
-                <div className="space-y-4">
-                  {allExams.map((exam) => {
-                    const data = promptsByExamId[exam.id];
-                    const promptText = data?.prompt ?? '';
-                    const isSaving = savingPromptExamId === exam.id;
-                    return (
-                      <div
-                        key={exam.id}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                      >
-                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                          <div>
-                            <span className="font-medium text-gray-900">{exam.name}</span>
-                            <span className="ml-2 text-sm text-gray-500 font-mono">{exam.code}</span>
-                            {data?.hasCustomPrompt && (
-                              <span className="ml-2 text-xs text-green-600 font-medium">Custom prompt set</span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleSavePromptInSection(exam)}
-                            disabled={isSaving || data === undefined}
-                            className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isSaving ? 'Saving...' : 'Save prompt'}
-                          </button>
-                        </div>
-                        <div className="p-4">
-                          <textarea
-                            value={data === undefined ? '' : promptText}
-                            onChange={(e) => setPromptForExam(exam.id, e.target.value)}
-                            placeholder="Leave empty to use the generic prompt, or enter exam-specific instructions..."
-                            rows={8}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-y font-mono"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {allExams.length === 0 && (
-                    <p className="text-sm text-gray-500 py-4">No exams in the database. Add exams in the Exams tab first.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </main>
       </div>
 
@@ -1024,20 +817,20 @@ export default function ExamsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingExam ? 'Edit Exam' : 'Create Exam'}
               </h2>
               <button
                 onClick={handleModalClose}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200 px-4 flex gap-2 overflow-x-auto">
+            <div className="border-b border-slate-200 px-4 flex gap-2 overflow-x-auto">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -1046,8 +839,8 @@ export default function ExamsPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.id
-                        ? 'border-pink text-pink'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                        ? 'border-[#341050] text-[#341050]'
+                        : 'border-transparent text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -1064,8 +857,8 @@ export default function ExamsPage() {
                 {activeTab === 'basic' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Exam Name <span className="text-pink">*</span>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Exam Name <span className="text-[#341050]">*</span>
                       </label>
                       <input
                         type="text"
@@ -1073,13 +866,13 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
                         placeholder="e.g., JEE Main, NEET"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Code <span className="text-pink">*</span>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Code <span className="text-[#341050]">*</span>
                       </label>
                       <input
                         type="text"
@@ -1087,12 +880,12 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
                         required
                         placeholder="e.g., JEE_MAIN, NEET"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none font-mono"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Description
                       </label>
                       <textarea
@@ -1100,17 +893,17 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         placeholder="Enter exam description..."
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam Logo
                       </label>
                       <div className="space-y-2">
                         {logoPreview && (
-                          <div className="relative h-32 w-32 rounded-md overflow-hidden bg-gray-100 border border-gray-300">
+                          <div className="relative h-32 w-32 rounded-md overflow-hidden bg-slate-100 border border-slate-300">
                             <Image
                               src={logoPreview}
                               alt="Exam logo preview"
@@ -1120,7 +913,7 @@ export default function ExamsPage() {
                             />
                           </div>
                         )}
-                        <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                        <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer transition-colors">
                           <FiUpload className="h-4 w-4" />
                           <span>{logoPreview ? 'Change Logo' : 'Upload Logo'}</span>
                           <input
@@ -1131,12 +924,12 @@ export default function ExamsPage() {
                             disabled={uploading}
                           />
                         </label>
-                        {uploading && <p className="text-xs text-gray-500">Uploading...</p>}
+                        {uploading && <p className="text-xs text-slate-500">Uploading...</p>}
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam Type
                       </label>
                       <Dropdown
@@ -1153,7 +946,7 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Conducting Authority
                       </label>
                       <input
@@ -1161,12 +954,12 @@ export default function ExamsPage() {
                         value={formData.conducting_authority}
                         onChange={(e) => setFormData({ ...formData, conducting_authority: e.target.value })}
                         placeholder="e.g., NTA, CBSE"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Number of papers (mock tests)
                       </label>
                       <input
@@ -1176,13 +969,13 @@ export default function ExamsPage() {
                         value={formData.number_of_papers}
                         onChange={(e) => setFormData({ ...formData, number_of_papers: e.target.value })}
                         placeholder="1"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
+                      <p className="text-xs text-slate-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Format (JSON)
                       </label>
                       <textarea
@@ -1190,9 +983,9 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, format: e.target.value })}
                         placeholder='e.g. {"Physics": {"marks": 100}, "Chemistry": {"marks": 100}}'
                         rows={4}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Optional. JSON object describing exam format/structure. Same as in bulk template.</p>
+                      <p className="text-xs text-slate-500 mt-1">Optional. JSON object describing exam format/structure. Same as in bulk template.</p>
                     </div>
                   </>
                 )}
@@ -1201,7 +994,7 @@ export default function ExamsPage() {
                 {activeTab === 'examDetails' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Application Start Date
                       </label>
                       <input
@@ -1211,12 +1004,12 @@ export default function ExamsPage() {
                           ...formData,
                           examDates: { ...formData.examDates, application_start_date: e.target.value }
                         })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Application Close Date
                       </label>
                       <input
@@ -1226,12 +1019,12 @@ export default function ExamsPage() {
                           ...formData,
                           examDates: { ...formData.examDates, application_close_date: e.target.value }
                         })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam Date(s)
                       </label>
                       <input
@@ -1241,12 +1034,12 @@ export default function ExamsPage() {
                           ...formData,
                           examDates: { ...formData.examDates, exam_date: e.target.value }
                         })}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Mode (Online / Offline)
                       </label>
                       <Dropdown
@@ -1266,7 +1059,7 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Domicile
                       </label>
                       <input
@@ -1277,7 +1070,7 @@ export default function ExamsPage() {
                           eligibilityCriteria: { ...formData.eligibilityCriteria, domicile: e.target.value }
                         })}
                         placeholder="e.g., All India, Maharashtra, Delhi"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </>
@@ -1287,7 +1080,7 @@ export default function ExamsPage() {
                 {activeTab === 'criteria' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Required Streams
                       </label>
                       <MultiSelect
@@ -1305,7 +1098,7 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Required Subjects
                       </label>
                       <MultiSelect
@@ -1324,7 +1117,7 @@ export default function ExamsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
                           Minimum Age
                         </label>
                         <input
@@ -1335,12 +1128,12 @@ export default function ExamsPage() {
                             eligibilityCriteria: { ...formData.eligibilityCriteria, age_limit_min: e.target.value }
                           })}
                           placeholder="e.g., 17"
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
                           Maximum Age
                         </label>
                         <input
@@ -1351,13 +1144,13 @@ export default function ExamsPage() {
                             eligibilityCriteria: { ...formData.eligibilityCriteria, age_limit_max: e.target.value }
                           })}
                           placeholder="e.g., 25"
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Attempt Limit
                       </label>
                       <input
@@ -1368,12 +1161,12 @@ export default function ExamsPage() {
                           eligibilityCriteria: { ...formData.eligibilityCriteria, attempt_limit: e.target.value }
                         })}
                         placeholder="e.g., 3"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Programs
                       </label>
                       <MultiSelect
@@ -1391,7 +1184,7 @@ export default function ExamsPage() {
                 {activeTab === 'pattern' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Number of Questions
                       </label>
                       <input
@@ -1402,12 +1195,12 @@ export default function ExamsPage() {
                           examPattern: { ...formData.examPattern, number_of_questions: e.target.value }
                         })}
                         placeholder="e.g., 90"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Marking Scheme
                       </label>
                       <textarea
@@ -1418,12 +1211,12 @@ export default function ExamsPage() {
                         })}
                         placeholder="e.g., +4 for correct, -1 for incorrect"
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Duration (minutes)
                       </label>
                       <input
@@ -1434,7 +1227,7 @@ export default function ExamsPage() {
                           examPattern: { ...formData.examPattern, duration_minutes: e.target.value }
                         })}
                         placeholder="e.g., 180"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </>
@@ -1444,7 +1237,7 @@ export default function ExamsPage() {
                 {activeTab === 'cutoff' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Previous Year Cutoff
                       </label>
                       <textarea
@@ -1455,12 +1248,12 @@ export default function ExamsPage() {
                         })}
                         placeholder="Enter previous year cutoff details (JSON or text)"
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono text-xs"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Ranks/Percentiles
                       </label>
                       <textarea
@@ -1471,12 +1264,12 @@ export default function ExamsPage() {
                         })}
                         placeholder="Enter ranks and percentiles information (JSON or text)"
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono text-xs"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Category-wise Cutoff
                       </label>
                       <textarea
@@ -1487,13 +1280,13 @@ export default function ExamsPage() {
                         })}
                         placeholder='e.g. {"General": 95, "OBC": 90, "SC": 85, "ST": 80} (use double quotes in JSON)'
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono text-xs"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Enter as JSON object or plain text. Stored as text.</p>
+                      <p className="text-xs text-slate-500 mt-1">Enter as JSON object or plain text. Stored as text.</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Target Rank Range for Top Colleges
                       </label>
                       <textarea
@@ -1504,7 +1297,7 @@ export default function ExamsPage() {
                         })}
                         placeholder="Enter target rank range for top colleges (JSON or text)"
                         rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none resize-none font-mono text-xs"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
                       />
                     </div>
                   </>
@@ -1514,7 +1307,7 @@ export default function ExamsPage() {
                 {activeTab === 'contactDetails' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Website
                       </label>
                       <input
@@ -1522,7 +1315,7 @@ export default function ExamsPage() {
                         value={formData.website}
                         onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                         placeholder="e.g., https://jeemain.nta.nic.in"
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </>
@@ -1532,10 +1325,10 @@ export default function ExamsPage() {
                 {activeTab === 'careerGoals' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Related Interests
                       </label>
-                      <p className="text-xs text-gray-500 mb-2">
+                      <p className="text-xs text-slate-500 mb-2">
                         Select interests that are related to this exam
                       </p>
                       <MultiSelect
@@ -1561,11 +1354,11 @@ export default function ExamsPage() {
             </form>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
               <button
                 type="button"
                 onClick={handleModalClose}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
               >
                 Cancel
               </button>
@@ -1573,7 +1366,7 @@ export default function ExamsPage() {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={isSaving || uploading || !formData.name || !formData.code}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Saving...' : editingExam ? 'Update' : 'Create'}
               </button>
@@ -1586,12 +1379,12 @@ export default function ExamsPage() {
       {viewingExamData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Exam Details</h2>
               <button
                 type="button"
                 onClick={() => setViewingExamData(null)}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -1599,8 +1392,8 @@ export default function ExamsPage() {
             <div className="p-4 overflow-auto space-y-4">
               {viewingExamData.exam.exam_logo && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Logo</label>
-                  <div className="relative h-24 w-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Logo</label>
+                  <div className="relative h-24 w-24 rounded-md overflow-hidden bg-slate-100 border border-slate-200">
                     <Image
                       src={viewingExamData.exam.exam_logo}
                       alt={viewingExamData.exam.name}
@@ -1612,41 +1405,41 @@ export default function ExamsPage() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-                <p className="text-sm text-gray-900 font-medium">{viewingExamData.exam.name}</p>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+                <p className="text-sm text-slate-900 font-medium">{viewingExamData.exam.name}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
-                <p className="text-sm text-gray-900 font-mono">{viewingExamData.exam.code}</p>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Code</label>
+                <p className="text-sm text-slate-900 font-mono">{viewingExamData.exam.code}</p>
               </div>
               {viewingExamData.exam.description && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingExamData.exam.description}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
+                  <p className="text-sm text-slate-900 whitespace-pre-wrap">{viewingExamData.exam.description}</p>
                 </div>
               )}
               {viewingExamData.exam.exam_type && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Exam Type</label>
-                  <p className="text-sm text-gray-900">{viewingExamData.exam.exam_type}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Exam Type</label>
+                  <p className="text-sm text-slate-900">{viewingExamData.exam.exam_type}</p>
                 </div>
               )}
               {viewingExamData.exam.conducting_authority && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Conducting Authority</label>
-                  <p className="text-sm text-gray-900">{viewingExamData.exam.conducting_authority}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Conducting Authority</label>
+                  <p className="text-sm text-slate-900">{viewingExamData.exam.conducting_authority}</p>
                 </div>
               )}
               {viewingExamData.exam.number_of_papers != null && viewingExamData.exam.number_of_papers !== 1 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Number of papers (mock tests)</label>
-                  <p className="text-sm text-gray-900">{viewingExamData.exam.number_of_papers}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Number of papers (mock tests)</label>
+                  <p className="text-sm text-slate-900">{viewingExamData.exam.number_of_papers}</p>
                 </div>
               )}
               {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Exam Details</label>
-                  <div className="text-sm text-gray-900 space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Exam Details</label>
+                  <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.examDates.application_start_date && <p>Application start: {viewingExamData.examDates.application_start_date}</p>}
                     {viewingExamData.examDates.application_close_date && <p>Application close: {viewingExamData.examDates.application_close_date}</p>}
                     {viewingExamData.examDates.exam_date && <p>Exam date: {viewingExamData.examDates.exam_date}</p>}
@@ -1657,8 +1450,8 @@ export default function ExamsPage() {
               )}
               {viewingExamData.eligibilityCriteria && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Criteria</label>
-                  <div className="text-sm text-gray-900 space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Criteria</label>
+                  <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.eligibilityCriteria.stream_ids?.length > 0 && <p>Required Streams: {viewingExamData.eligibilityCriteria.stream_ids.map((id) => streams.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
                     {viewingExamData.eligibilityCriteria.subject_ids?.length > 0 && <p>Subject Requirements: {viewingExamData.eligibilityCriteria.subject_ids.map((id) => subjects.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
                     {(viewingExamData.eligibilityCriteria.age_limit_min != null || viewingExamData.eligibilityCriteria.age_limit_max != null) && (
@@ -1670,8 +1463,8 @@ export default function ExamsPage() {
               )}
               {viewingExamData.examPattern && (viewingExamData.examPattern.number_of_questions || viewingExamData.examPattern.duration_minutes || viewingExamData.examPattern.marking_scheme) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Pattern</label>
-                  <div className="text-sm text-gray-900 space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Pattern</label>
+                  <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.examPattern.number_of_questions != null && <p>Number of Questions: {viewingExamData.examPattern.number_of_questions}</p>}
                     {viewingExamData.examPattern.marking_scheme && <p className="whitespace-pre-wrap">Marking Scheme: {viewingExamData.examPattern.marking_scheme}</p>}
                     {viewingExamData.examPattern.duration_minutes != null && <p>Duration: {viewingExamData.examPattern.duration_minutes} min</p>}
@@ -1680,8 +1473,8 @@ export default function ExamsPage() {
               )}
               {viewingExamData.examCutoff && (viewingExamData.examCutoff.previous_year_cutoff || viewingExamData.examCutoff.ranks_percentiles || viewingExamData.examCutoff.category_wise_cutoff) && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Rank & Cutoff</label>
-                  <div className="text-sm text-gray-900 space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Rank & Cutoff</label>
+                  <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.examCutoff.previous_year_cutoff && <p className="whitespace-pre-wrap">Previous year: {viewingExamData.examCutoff.previous_year_cutoff}</p>}
                     {viewingExamData.examCutoff.ranks_percentiles && <p className="whitespace-pre-wrap">Ranks: {viewingExamData.examCutoff.ranks_percentiles}</p>}
                     {viewingExamData.examCutoff.category_wise_cutoff && <p className="whitespace-pre-wrap">Category: {viewingExamData.examCutoff.category_wise_cutoff}</p>}
@@ -1691,42 +1484,42 @@ export default function ExamsPage() {
               )}
               {viewingExamData.exam.website && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Contact Details</label>
-                  <div className="text-sm text-gray-900 space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Contact Details</label>
+                  <div className="text-sm text-slate-900 space-y-1">
                     <p>Website: <a href={viewingExamData.exam.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.website}</a></p>
                   </div>
                 </div>
               )}
               {viewingExamData.careerGoalIds?.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Interests</label>
-                  <p className="text-sm text-gray-900">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Interests</label>
+                  <p className="text-sm text-slate-900">
                     {viewingExamData.careerGoalIds.map((id) => careerGoals.find((cg) => cg.id === id)?.label ?? id).join(', ') || viewingExamData.careerGoalIds.join(', ')}
                   </p>
                 </div>
               )}
               {viewingExamData.programIds?.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Programs</label>
-                  <p className="text-sm text-gray-900">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Programs</label>
+                  <p className="text-sm text-slate-900">
                     {viewingExamData.programIds.map((id) => programs.find((p) => p.id === id)?.name ?? id).join(', ')}
                   </p>
                 </div>
               )}
               {viewingExamData.exam.format != null && typeof viewingExamData.exam.format === 'object' && Object.keys(viewingExamData.exam.format as object).length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Format</label>
-                  <pre className="text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-auto max-h-40">{JSON.stringify(viewingExamData.exam.format, null, 2)}</pre>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Format</label>
+                  <pre className="text-xs text-slate-900 bg-[#F6F8FA] p-2 rounded overflow-auto max-h-40">{JSON.stringify(viewingExamData.exam.format, null, 2)}</pre>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Created</label>
-                  <p className="text-sm text-gray-900">{new Date(viewingExamData.exam.created_at).toLocaleString()}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Created</label>
+                  <p className="text-sm text-slate-900">{new Date(viewingExamData.exam.created_at).toLocaleString()}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Updated</label>
-                  <p className="text-sm text-gray-900">{new Date(viewingExamData.exam.updated_at).toLocaleString()}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Updated</label>
+                  <p className="text-sm text-slate-900">{new Date(viewingExamData.exam.updated_at).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -1738,20 +1531,20 @@ export default function ExamsPage() {
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+                <div className="h-9 w-9 rounded-lg bg-highlight-100 flex items-center justify-center text-[#341050]">
                   <FiUpload className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">Bulk upload exams</h2>
-                  <p className="text-xs text-white/80">Excel + optional logos</p>
+                  <h2 className="text-lg font-bold text-slate-900">Bulk upload exams</h2>
+                  <p className="text-xs text-slate-500">Excel + optional logos</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80 transition-colors"
                 aria-label="Close"
               >
                 <FiX className="h-5 w-5" />
@@ -1760,18 +1553,18 @@ export default function ExamsPage() {
             <div className="p-5 overflow-auto space-y-5">
               {/* Step 1: Template */}
               {canDownloadExcel && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="h-10 w-10 rounded-lg bg-darkGradient flex items-center justify-center text-white shrink-0">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
+                  <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
                     <FiDownload className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900">Get the template</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Download the Excel file with all columns</p>
+                    <p className="text-sm font-medium text-slate-900">Get the template</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Download the Excel file with all columns</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleBulkTemplateDownload}
-                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity"
+                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
                   >
                     Download
                   </button>
@@ -1780,13 +1573,13 @@ export default function ExamsPage() {
 
               {/* Excel file */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-slate-900">
                   Excel file <span className="text-red-500">*</span>
                 </p>
                 <label className="block w-full">
-                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkExcelFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
-                    <FiFile className={`h-10 w-10 ${bulkExcelFile ? 'text-pink' : 'text-gray-400'}`} />
-                    <span className="text-sm font-medium text-gray-700">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkExcelFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}>
+                    <FiFile className={`h-10 w-10 ${bulkExcelFile ? 'text-[#341050]' : 'text-slate-400'}`} />
+                    <span className="text-sm font-medium text-slate-700">
                       {bulkExcelFile ? bulkExcelFile.name : 'Choose Excel file (.xlsx, .xls)'}
                     </span>
                     {bulkExcelFile ? (
@@ -1810,13 +1603,13 @@ export default function ExamsPage() {
 
               {/* Logos ZIP */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-900">
-                  Logos ZIP <span className="text-xs font-normal text-gray-500">(optional)</span>
+                <p className="text-sm font-medium text-slate-900">
+                  Logos ZIP <span className="text-xs font-normal text-slate-500">(optional)</span>
                 </p>
                 <label className="block w-full">
-                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-pink/50 bg-pink/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'}`}>
-                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-pink' : 'text-gray-400'}`} />
-                    <span className="text-sm font-medium text-gray-700">
+                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}>
+                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-[#341050]' : 'text-slate-400'}`} />
+                    <span className="text-sm font-medium text-slate-700">
                       {bulkLogosZipFile ? bulkLogosZipFile.name : 'Choose ZIP file'}
                     </span>
                     {bulkLogosZipFile && (
@@ -1850,13 +1643,13 @@ export default function ExamsPage() {
                 </div>
               )}
               {bulkResult && (
-                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm space-y-1">
-                  <p className="font-medium text-gray-900">Created: {bulkResult.created}</p>
+                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
+                  <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && (
                     <p className="text-amber-700">Errors: {bulkResult.errors}</p>
                   )}
                   {bulkResult.errorDetails?.length > 0 && (
-                    <ul className="mt-2 text-xs text-gray-600 list-disc list-inside max-h-32 overflow-y-auto">
+                    <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-32 overflow-y-auto">
                       {bulkResult.errorDetails.map((e, i) => (
                         <li key={i}>Row {e.row}: {e.message}</li>
                       ))}
@@ -1864,15 +1657,15 @@ export default function ExamsPage() {
                   )}
                 </div>
               )}
-              <p className="text-xs text-gray-500 pt-1">
+              <p className="text-xs text-slate-500 pt-1">
                 Note: Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
               </p>
             </div>
-            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50/50">
+            <div className="px-5 py-4 border-t border-slate-200 flex justify-end gap-3 bg-[#F6F8FA]/50">
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
               >
                 Close
               </button>
@@ -1880,7 +1673,7 @@ export default function ExamsPage() {
                 type="button"
                 onClick={handleBulkSubmit}
                 disabled={!bulkExcelFile || bulkUploading}
-                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {bulkUploading ? (
                   <>
@@ -1903,17 +1696,17 @@ export default function ExamsPage() {
       {showMissingLogosModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
-            <div className="bg-darkGradient text-white px-5 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-white/20">
+                <div className="p-1.5 rounded-lg bg-highlight-100 text-[#341050]">
                   <FiUpload className="h-5 w-5" />
                 </div>
-                <h2 className="text-lg font-semibold tracking-tight">Upload missing logos</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Upload missing logos</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMissingLogosModal(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80 transition-colors"
                 aria-label="Close"
               >
                 <FiX className="h-5 w-5" />
@@ -1927,7 +1720,7 @@ export default function ExamsPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-pink/50 hover:bg-pink/5 transition-all cursor-pointer group">
+                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 transition-all cursor-pointer group">
                   <input
                     type="file"
                     accept=".zip,application/zip,application/x-zip-compressed"
@@ -2010,7 +1803,7 @@ export default function ExamsPage() {
                 type="button"
                 onClick={handleMissingLogosSubmit}
                 disabled={!missingLogosZipFile || missingLogosUploading}
-                className="px-4 py-2 text-sm font-medium text-white bg-darkGradient rounded-xl hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-pink/20"
+                className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-xl hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-[#341050]/15"
               >
                 {missingLogosUploading ? 'Uploading…' : 'Upload'}
               </button>

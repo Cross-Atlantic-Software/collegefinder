@@ -152,7 +152,7 @@ export default function ModulesPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="min-h-screen bg-[#F6F8FA] flex">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
           <AdminHeader />
@@ -167,14 +167,14 @@ export default function ModulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Modules</h1>
-            <p className="text-sm text-gray-600">Manage admin panel modules for role-based access.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Modules</h1>
+            <p className="text-sm text-slate-600">Manage admin panel modules for role-based access.</p>
           </div>
           {error && (
             <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
@@ -183,13 +183,13 @@ export default function ModulesPage() {
           )}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="relative">
-              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by name or code"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64"
+                className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64"
               />
             </div>
             <button
@@ -197,37 +197,37 @@ export default function ModulesPage() {
                 resetForm();
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90"
             >
               <FiPlus className="h-4 w-4" />
               Add Module
             </button>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CODE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CODE</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {modules.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={3} className="px-4 py-4 text-center text-sm text-slate-500">
                           No modules found
                         </td>
                       </tr>
                     ) : (
                       modules.map((m) => (
-                        <tr key={m.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm font-medium text-gray-900">{m.name}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{m.code}</td>
+                        <tr key={m.id} className="hover:bg-[#F6F8FA]">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-900">{m.name}</td>
+                          <td className="px-4 py-2 text-sm text-slate-600">{m.code}</td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <button
@@ -260,37 +260,37 @@ export default function ModulesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between rounded-t-xl">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between rounded-t-xl">
               <h2 className="text-lg font-bold">{editingModule ? 'Edit Module' : 'Create Module'}</h2>
               <button
                 onClick={() => {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="text-white hover:text-gray-200"
+                className="text-slate-500 hover:text-slate-800"
               >
                 <FiX className="h-4 w-4" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Name *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Code (optional, auto from name)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Code (optional, auto from name)</label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="e.g. career_goals"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -300,14 +300,14 @@ export default function ModulesPage() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {isSaving ? 'Saving...' : editingModule ? 'Update' : 'Create'}
                 </button>

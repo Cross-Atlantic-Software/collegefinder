@@ -17,21 +17,21 @@ export default function SubjectMarksList({ subjects }: SubjectMarksListProps) {
       {subjects.map((subject, index) => (
         <div
           key={index}
-          className="flex items-center justify-between p-2.5 rounded-md bg-gray-50 border border-gray-200"
+          className="flex items-center justify-between p-2.5 rounded-md bg-[#F6F8FA] border border-slate-200"
         >
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">{subject.name}</p>
+            <p className="text-sm font-medium text-slate-900">{subject.name}</p>
             {subject.obtainedMarks !== undefined && subject.totalMarks !== undefined ? (
-              <p className="text-xs text-gray-600 mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5">
                 {subject.obtainedMarks} / {subject.totalMarks} marks
               </p>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{subject.percent}%</p>
+              <p className="text-sm font-semibold text-slate-900">{subject.percent}%</p>
               {subject.obtainedMarks !== undefined && subject.totalMarks !== undefined && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {((subject.obtainedMarks / subject.totalMarks) * 100).toFixed(1)}%
                 </p>
               )}

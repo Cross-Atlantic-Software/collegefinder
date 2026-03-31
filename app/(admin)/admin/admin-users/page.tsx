@@ -274,12 +274,12 @@ export default function AdminUsersPage() {
 
   if (error && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => router.replace('/admin/login')}
-            className="text-pink hover:underline"
+            className="text-[#341050] hover:underline"
           >
             Go to login
           </button>
@@ -290,7 +290,7 @@ export default function AdminUsersPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="min-h-screen bg-[#F6F8FA] flex">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
           <AdminHeader />
@@ -305,14 +305,14 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Admin Users</h1>
-            <p className="text-sm text-gray-600">Manage admin users and their access levels.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Admin Users</h1>
+            <p className="text-sm text-slate-600">Manage admin users and their access levels.</p>
           </div>
 
           {/* Error Message */}
@@ -325,7 +325,7 @@ export default function AdminUsersPage() {
           {/* Controls */}
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex min-w-[240px] rounded-lg border border-gray-300 overflow-hidden">
+              <div className="flex min-w-[240px] rounded-lg border border-slate-300 overflow-hidden">
                 {(['all', 'active', 'disabled'] as const).map((f) => (
                   <button
                     key={f}
@@ -333,31 +333,31 @@ export default function AdminUsersPage() {
                     onClick={() => setStatusFilter(f)}
                     className={`flex-1 min-w-[72px] px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                       statusFilter === f
-                        ? 'bg-pink text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? 'bg-brand-ink text-white'
+                        : 'bg-white text-slate-700 hover:bg-[#F6F8FA]'
                     }`}
                   >
                     {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Disabled'}
                   </button>
                 ))}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-slate-500">
                 {admins.length} of {allAdmins.length}
               </span>
               <div className="relative">
-                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search admins by email"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none w-64 transition-all duration-200"
+                  className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
                 />
               </div>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               <FiPlus className="h-4 w-4" />
               Add Admin
@@ -365,35 +365,35 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Admins Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading admin users...</div>
+              <div className="p-4 text-center text-sm text-slate-500">Loading admin users...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         EMAIL
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         TYPE
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STATUS
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         DATE ADDED
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         ACTIONS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {admins.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
                           No admin users found
                         </td>
                       </tr>
@@ -404,13 +404,13 @@ export default function AdminUsersPage() {
                         const isCurrentUser = admin.id === currentAdmin?.id;
 
                         return (
-                          <tr key={admin.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={admin.id} className="hover:bg-[#F6F8FA] transition-colors">
                             <td className="px-4 py-2">
                               <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-darkGradient flex items-center justify-center text-white text-sm font-semibold">
+                                <div className="h-8 w-8 rounded-full bg-highlight-100 flex items-center justify-center text-[#341050] text-sm font-semibold">
                                   {admin.email.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-sm font-medium text-gray-900">{admin.email}</span>
+                                <span className="text-sm font-medium text-slate-900">{admin.email}</span>
                               </div>
                             </td>
                             <td className="px-4 py-2">
@@ -434,7 +434,7 @@ export default function AdminUsersPage() {
                                         ? 'bg-blue-100 text-blue-800'
                                         : admin.type === 'counsellor'
                                           ? 'bg-teal-100 text-teal-800'
-                                          : 'bg-gray-100 text-gray-800'
+                                          : 'bg-slate-100 text-slate-800'
                                   }`}
                                 >
                                   {isSuperAdminType ? (
@@ -451,13 +451,13 @@ export default function AdminUsersPage() {
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                   admin.is_active
                                     ? 'bg-green-100 text-green-800'
-                                    : 'bg-gray-100 text-gray-800'
+                                    : 'bg-slate-100 text-slate-800'
                                 }`}
                               >
                                 {admin.is_active ? 'Active' : 'Disabled'}
                               </span>
                             </td>
-                            <td className="px-4 py-2 text-xs text-gray-600">
+                            <td className="px-4 py-2 text-xs text-slate-600">
                               {new Date(admin.created_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -469,7 +469,7 @@ export default function AdminUsersPage() {
                                 {isEditing ? (
                                   <button
                                     onClick={() => setEditingId(null)}
-                                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
                                     title="Cancel editing"
                                   >
                                     <FiX className="h-4 w-4" />
@@ -480,7 +480,7 @@ export default function AdminUsersPage() {
                                       <>
                                         <button
                                           disabled
-                                          className="p-2 text-gray-300 cursor-not-allowed"
+                                          className="p-2 text-slate-300 cursor-not-allowed"
                                           title="Super admin cannot be edited"
                                         >
                                           <FiEdit2 className="h-4 w-4" />
@@ -508,7 +508,7 @@ export default function AdminUsersPage() {
                                         )}
                                         <button
                                           disabled
-                                          className="p-2 text-gray-300 cursor-not-allowed"
+                                          className="p-2 text-slate-300 cursor-not-allowed"
                                           title="Super admin cannot be deleted"
                                         >
                                           <FiTrash2 className="h-4 w-4" />
@@ -547,7 +547,7 @@ export default function AdminUsersPage() {
                                         {isCurrentUser ? (
                                           <button
                                             disabled
-                                            className="p-2 text-gray-300 cursor-not-allowed"
+                                            className="p-2 text-slate-300 cursor-not-allowed"
                                             title="You cannot delete your own account"
                                           >
                                             <FiTrash2 className="h-4 w-4" />
@@ -584,7 +584,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Create Admin User</h2>
               <button
                 onClick={() => {
@@ -592,7 +592,7 @@ export default function AdminUsersPage() {
                   setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
                   setShowCreatePassword(false);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -602,21 +602,21 @@ export default function AdminUsersPage() {
             <form onSubmit={handleCreate} className="flex-1 overflow-auto p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Email <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Email <span className="text-[#341050]">*</span>
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Password <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Password <span className="text-[#341050]">*</span>
                   </label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -627,12 +627,12 @@ export default function AdminUsersPage() {
                         required
                         minLength={8}
                         placeholder="Min 8 chars, upper, lower, number, special char"
-                        className="w-full px-3 py-1.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 pr-10 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowCreatePassword((p) => !p)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                         title={showCreatePassword ? 'Hide password' : 'Show password'}
                       >
                         {showCreatePassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
@@ -645,7 +645,7 @@ export default function AdminUsersPage() {
                         setFormData({ ...formData, password: suggested });
                         showSuccess('Strong password generated');
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors whitespace-nowrap"
                       title="Generate a strong password"
                     >
                       <FiRefreshCw className="h-4 w-4" />
@@ -655,7 +655,7 @@ export default function AdminUsersPage() {
                   <PasswordStrengthIndicator password={formData.password} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
                   <Dropdown
                     value={formData.type}
                     onChange={(v) => setFormData({ ...formData, type: v })}
@@ -670,7 +670,7 @@ export default function AdminUsersPage() {
                 </div>
                 {(formData.type === 'data_entry' || formData.type === 'admin' || formData.type === 'counsellor') && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Modules (access)</label>
                     <MultiSelect
                       options={modules.map((m) => ({ value: m.id.toString(), label: m.name }))}
                       value={formData.module_ids.map((id) => id.toString())}
@@ -684,7 +684,7 @@ export default function AdminUsersPage() {
             </form>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -692,14 +692,14 @@ export default function AdminUsersPage() {
                   setFormData({ email: '', password: '', type: 'data_entry', module_ids: [] });
                   setShowCreatePassword(false);
                 }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 onClick={handleCreate}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 Create Admin
               </button>
@@ -713,7 +713,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Edit Admin User</h2>
               <button
                 onClick={() => {
@@ -722,7 +722,7 @@ export default function AdminUsersPage() {
                   setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
                   setShowEditPassword(false);
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
                 disabled={isUpdating}
               >
                 <FiX className="h-4 w-4" />
@@ -733,21 +733,21 @@ export default function AdminUsersPage() {
             <form onSubmit={handleEditSubmit} className="flex-1 overflow-auto p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Email <span className="text-pink">*</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Email <span className="text-[#341050]">*</span>
                   </label>
                   <input
                     type="email"
                     value={editFormData.email}
                     onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     disabled={isUpdating}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Password <span className="text-gray-500 text-xs">(leave empty to keep current)</span>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Password <span className="text-slate-500 text-xs">(leave empty to keep current)</span>
                   </label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -757,14 +757,14 @@ export default function AdminUsersPage() {
                         onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
                         minLength={8}
                         placeholder="Enter new password (min 8 chars, uppercase, lowercase, number, special char)"
-                        className="w-full px-3 py-1.5 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                        className="w-full px-3 py-1.5 pr-10 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                         disabled={isUpdating}
                       />
                       <button
                         type="button"
                         onClick={() => setShowEditPassword((p) => !p)}
                         disabled={isUpdating}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         title={showEditPassword ? 'Hide password' : 'Show password'}
                       >
                         {showEditPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
@@ -778,7 +778,7 @@ export default function AdminUsersPage() {
                         showSuccess('Strong password generated');
                       }}
                       disabled={isUpdating}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Generate a strong password"
                     >
                       <FiRefreshCw className="h-4 w-4" />
@@ -790,7 +790,7 @@ export default function AdminUsersPage() {
                 {editingAdmin.type !== 'super_admin' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
                       <Dropdown
                         value={editFormData.type}
                         onChange={(v) => setEditFormData({ ...editFormData, type: v })}
@@ -810,13 +810,13 @@ export default function AdminUsersPage() {
                           checked={editFormData.is_active}
                           onChange={(e) => setEditFormData({ ...editFormData, is_active: e.target.checked })}
                           disabled={isUpdating}
-                          className="rounded border-gray-300"
+                          className="rounded border-slate-300"
                         />
-                        <span className="text-sm font-medium text-gray-700">Active</span>
+                        <span className="text-sm font-medium text-slate-700">Active</span>
                       </label>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Modules (access)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Modules (access)</label>
                       <MultiSelect
                         options={modules.map((m) => ({ value: m.id.toString(), label: m.name }))}
                         value={editFormData.module_ids.map((id) => id.toString())}
@@ -832,7 +832,7 @@ export default function AdminUsersPage() {
             </form>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -841,7 +841,7 @@ export default function AdminUsersPage() {
                   setEditFormData({ email: '', password: '', type: 'data_entry', is_active: true, module_ids: [] });
                   setShowEditPassword(false);
                 }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
                 disabled={isUpdating}
               >
                 Cancel
@@ -850,7 +850,7 @@ export default function AdminUsersPage() {
                 type="submit"
                 onClick={handleEditSubmit}
                 disabled={isUpdating}
-                className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUpdating ? 'Updating...' : 'Update Admin'}
               </button>

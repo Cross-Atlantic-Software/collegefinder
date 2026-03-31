@@ -111,6 +111,7 @@ const Select: React.FC<SelectProps> = ({
       padding: "0.75rem 1rem",
       cursor: "pointer",
       borderRadius: "0.5rem",
+      borderRadius: "0.5rem",
       margin: "2px 0",
       fontWeight: state.isSelected ? "600" : "400",
       "&:active": {
@@ -123,7 +124,7 @@ const Select: React.FC<SelectProps> = ({
     }),
     dropdownIndicator: (provided, state) => ({
       ...provided,
-      color: "#6b7280",
+      color: "#94a3b8",
       padding: "0 12px",
       "&:hover": {
         color: "#FAD53C",
@@ -133,7 +134,7 @@ const Select: React.FC<SelectProps> = ({
     }),
     clearIndicator: (provided) => ({
       ...provided,
-      color: "#6b7280",
+      color: "#94a3b8",
       padding: "0 8px",
       "&:hover": {
         color: "#FAD53C",
@@ -141,7 +142,7 @@ const Select: React.FC<SelectProps> = ({
     }),
     loadingIndicator: (provided) => ({
       ...provided,
-      color: "#ec4899",
+      color: "#341050",
     }),
   };
 
@@ -165,21 +166,21 @@ const Select: React.FC<SelectProps> = ({
           ...theme,
           colors: {
             ...theme.colors,
-            primary: "#ec4899",
-            primary25: "rgba(236, 72, 153, 0.2)",
-            primary50: "rgba(236, 72, 153, 0.3)",
-            primary75: "rgba(236, 72, 153, 0.4)",
-            neutral0: "#1e293b",
-            neutral5: "#334155",
-            neutral10: "#475569",
-            neutral20: "#64748b",
-            neutral30: "#94a3b8",
-            neutral40: "#cbd5e1",
-            neutral50: "#e2e8f0",
-            neutral60: "#f1f5f9",
-            neutral70: "#f8fafc",
-            neutral80: "#ffffff",
-            neutral90: "#ffffff",
+            primary: "#341050",
+            primary25: "rgba(52,16,80,0.08)",
+            primary50: "rgba(52,16,80,0.14)",
+            primary75: "rgba(52,16,80,0.22)",
+            neutral0: "#ffffff",
+            neutral5: "#f8fafc",
+            neutral10: "#f1f5f9",
+            neutral20: "#e2e8f0",
+            neutral30: "#cbd5e1",
+            neutral40: "#94a3b8",
+            neutral50: "#64748b",
+            neutral60: "#475569",
+            neutral70: "#334155",
+            neutral80: "#1e293b",
+            neutral90: "#0f172a",
           },
         })}
       />

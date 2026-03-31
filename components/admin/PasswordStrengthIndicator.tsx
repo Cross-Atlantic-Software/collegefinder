@@ -25,7 +25,7 @@ export function PasswordStrengthIndicator({ password, className = '' }: Password
       {!hasInput ? (
         <ul className="space-y-1">
           {checks.map((check, i) => (
-            <li key={i} className="flex items-center gap-2 text-xs text-gray-400">
+            <li key={i} className="flex items-center gap-2 text-xs text-slate-400">
               <FiX className="h-3.5 w-3.5 shrink-0" />
               <span>{check.label}</span>
             </li>
@@ -38,7 +38,7 @@ export function PasswordStrengthIndicator({ password, className = '' }: Password
         </div>
       ) : (
         <>
-          <p className="text-xs font-medium text-gray-600">
+          <p className="text-xs font-medium text-slate-600">
             {checks.filter((c) => !c.met).length} more to go:
           </p>
           <ul className="space-y-1">
@@ -54,7 +54,7 @@ export function PasswordStrengthIndicator({ password, className = '' }: Password
                 ) : (
                   <FiX className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                 )}
-                <span className={check.met ? 'text-green-700' : 'text-gray-700 font-medium'}>
+                <span className={check.met ? 'text-green-700' : 'text-slate-700 font-medium'}>
                   {check.label}
                 </span>
               </li>

@@ -14,14 +14,14 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Dashboard</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Dashboard</h1>
+            <p className="text-sm text-slate-600">
               Use the sidebar to access the modules you have permission for.
             </p>
           </div>

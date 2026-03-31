@@ -101,6 +101,13 @@ export const API_ENDPOINTS = {
     RESULTS: '/strength/results',
   },
 
+  // Referral endpoints (user-facing)
+  REFERRAL: {
+    MY_CODE: '/referral/my-code',
+    SEND_INVITE: '/referral/send-invite',
+    MY_USES: '/referral/my-uses',
+  },
+
   // Public experts endpoint
   EXPERTS: '/experts',
 

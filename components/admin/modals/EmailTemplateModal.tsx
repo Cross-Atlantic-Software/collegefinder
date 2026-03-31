@@ -19,6 +19,11 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const effectiveType = (template?.type || type || '').toUpperCase();
+  const isReferralWhatsApp = effectiveType === 'REFERRAL_WHATSAPP';
+  const isReferralInvite = effectiveType === 'REFERRAL_INVITE';
+  const isReferralInstituteInvite = effectiveType === 'REFERRAL_INSTITUTE_INVITE';
+
   // Update form fields when template prop changes
   useEffect(() => {
     if (template) {
@@ -83,13 +88,13 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">
             {template ? 'Edit Email Template' : 'Create Email Template'}
           </h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors"
+            className="text-slate-500 hover:text-slate-800 transition-colors"
           >
             <FiX className="h-4 w-4" />
           </button>
@@ -101,8 +106,8 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
             {/* Type and Subject Row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Type <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Type <span className="text-[#341050]">*</span>
                 </label>
                 <input
                   type="text"
@@ -111,37 +116,65 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
                   disabled={!!template}
                   required
                   placeholder="OTP_VERIFICATION"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none disabled:bg-gray-100"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none disabled:bg-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Subject <span className="text-pink">*</span>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Subject <span className="text-[#341050]">*</span>
                 </label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   required
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
               </div>
             </div>
 
-            {/* Body HTML */}
+            {/* Body */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Body (HTML) <span className="text-pink">*</span>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                {isReferralWhatsApp ? (
+                  <>Message body (plain text) <span className="text-[#341050]">*</span></>
+                ) : (
+                  <>Body (HTML) <span className="text-[#341050]">*</span></>
+                )}
               </label>
-              
-              {/* HTML Editor */}
+              {(isReferralInvite || isReferralWhatsApp) && (
+                <p className="text-[11px] text-slate-500 mb-1.5 leading-relaxed">
+                  Placeholders:{" "}
+                  <code className="bg-slate-100 px-0.5 rounded">
+                    {`{{userName}} {{referralCode}} {{shareUrl}} {{signUpLink}} {{platformName}} {{year}}`}
+                  </code>
+                  {isReferralWhatsApp && (
+                    <span className="block mt-1">
+                      <code className="bg-slate-100 px-0.5 rounded">signUpLink</code> and{" "}
+                      <code className="bg-slate-100 px-0.5 rounded">shareUrl</code> are the same signup URL.
+                    </span>
+                  )}
+                </p>
+              )}
+              {isReferralInstituteInvite && (
+                <p className="text-[11px] text-slate-500 mb-1.5 leading-relaxed">
+                  Institute referral HTML. Placeholders:{" "}
+                  <code className="bg-slate-100 px-0.5 rounded">
+                    {`{{instituteName}} {{referralCode}} {{shareUrl}} {{signUpLink}} {{platformName}} {{year}}`}
+                  </code>
+                </p>
+              )}
               <textarea
                 value={bodyHtml}
                 onChange={(e) => setBodyHtml(e.target.value)}
                 required
-                rows={12}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-pink outline-none font-mono"
-                placeholder="Enter HTML template here..."
+                rows={isReferralWhatsApp ? 8 : 12}
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+                placeholder={
+                  isReferralWhatsApp
+                    ? "Plain text for WhatsApp share (line breaks allowed)…"
+                    : "Enter HTML template here..."
+                }
               />
             </div>
 
@@ -155,11 +188,11 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
         </form>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-4 py-3 flex justify-end">
+        <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors mr-2"
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
           >
             Cancel
           </button>
@@ -167,7 +200,7 @@ export default function EmailTemplateModal({ template, onClose }: EmailTemplateM
             type="submit"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-3 py-1.5 text-sm bg-darkGradient text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : template ? 'Update Template' : 'Create Template'}
           </button>

@@ -48,13 +48,7 @@ export default function StepThree() {
   }
 
   return (
-    <div
-      className="h-screen w-full flex flex-col"
-      style={{
-        background:
-          "linear-gradient(90deg, #140E27 0%, #240F3C 50%, #341050 100%)",
-      }}
-    >
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={100}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
           {/* Robot */}

@@ -99,7 +99,8 @@ const init = async () => {
       'automation_applications.sql', // Automation application queue (depends on automation_exams, users, admin_users, automation_sessions)
       'strength_payments.sql',       // Strength payment status (depends on users)
       'strength_results.sql',        // Strength analysis results (depends on users, admin_users)
-      'admission_experts.sql'        // Admission help experts (depends on admin_users)
+      'admission_experts.sql',        // Admission help experts (depends on admin_users)
+      'referral_codes.sql'            // Referral codes on users + institutes
     ];
 
     // Execute each schema file in order
@@ -159,7 +160,11 @@ const runMigrations = async () => {
     'add_expert_phone_email_description.sql',
     'add_website_to_exams.sql',
     'restructure_colleges_programs.sql',
-    'add_branch_id_to_college_programs.sql'
+    'add_branch_id_to_college_programs.sql',
+    'add_institute_referral_contact_email.sql',
+    'add_referral_uses_table.sql',
+    'add_institute_google_maps_link.sql',
+    'add_lecture_taxonomies_thumbnail_filename.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

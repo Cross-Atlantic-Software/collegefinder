@@ -171,17 +171,17 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[#F6F8FA]">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6 flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Categories</h1>
               <button
                 onClick={handleCreate}
-                className="flex items-center gap-2 px-4 py-2 bg-pink text-white rounded-lg hover:bg-pink/90 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 transition-colors"
               >
                 <FiPlus className="h-4 w-4" />
                 Create Category
@@ -197,50 +197,50 @@ export default function CategoriesPage() {
             {/* Search */}
             <div className="mb-4">
               <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Search categories..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050]"
                 />
               </div>
             </div>
 
             {/* Categories Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
               {isLoading ? (
-                <div className="p-4 text-center text-sm text-gray-500">Loading categories...</div>
+                <div className="p-4 text-center text-sm text-slate-500">Loading categories...</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-[#F6F8FA] border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ID</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">NAME</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">CREATED AT</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">ACTIONS</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CREATED AT</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-slate-200">
                       {categories.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-500">
+                          <td colSpan={4} className="px-4 py-4 text-center text-sm text-slate-500">
                             {categories.length < allCategories.length ? 'No categories found matching your search' : 'No categories found'}
                           </td>
                         </tr>
                       ) : (
                         categories.map((category) => (
-                          <tr key={category.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={category.id} className="hover:bg-[#F6F8FA] transition-colors">
                             <td className="px-4 py-2">
-                              <span className="text-sm text-gray-900">{category.id}</span>
+                              <span className="text-sm text-slate-900">{category.id}</span>
                             </td>
                             <td className="px-4 py-2">
-                              <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                              <span className="text-sm font-medium text-slate-900">{category.name}</span>
                             </td>
                             <td className="px-4 py-2">
-                              <span className="text-sm text-gray-700">
+                              <span className="text-sm text-slate-700">
                                 {new Date(category.created_at).toLocaleDateString()}
                               </span>
                             </td>
@@ -266,7 +266,7 @@ export default function CategoriesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="bg-darkGradient text-white px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingCategory ? 'Edit Category' : 'Create Category'}
               </h2>
@@ -275,7 +275,7 @@ export default function CategoriesPage() {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="text-white hover:text-gray-200 transition-colors"
+                className="text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <FiX className="h-4 w-4" />
               </button>
@@ -283,7 +283,7 @@ export default function CategoriesPage() {
 
             <form onSubmit={handleSubmit} className="p-6">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -291,7 +291,7 @@ export default function CategoriesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Enter category name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050]"
                   required
                 />
               </div>
@@ -303,13 +303,13 @@ export default function CategoriesPage() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-pink text-white rounded-lg hover:bg-pink/90 transition-colors"
+                  className="px-4 py-2 bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 transition-colors"
                 >
                   {editingCategory ? 'Update' : 'Create'}
                 </button>

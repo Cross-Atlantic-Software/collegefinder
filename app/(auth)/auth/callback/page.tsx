@@ -25,6 +25,9 @@ export default function AuthCallbackPage() {
     if (success === "true" && token) {
       // Store token first (so getCurrentUser can use it)
       setAuthToken(token);
+
+      // Clear pending referral ref — backend already recorded it via OAuth state
+      sessionStorage.removeItem("cf_pending_ref");
       
       // Get user data and then login
       getCurrentUser()
