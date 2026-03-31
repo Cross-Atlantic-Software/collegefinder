@@ -111,7 +111,6 @@ const Select: React.FC<SelectProps> = ({
       padding: "0.75rem 1rem",
       cursor: "pointer",
       borderRadius: "0.5rem",
-      borderRadius: "0.5rem",
       margin: "2px 0",
       fontWeight: state.isSelected ? "600" : "400",
       "&:active": {
