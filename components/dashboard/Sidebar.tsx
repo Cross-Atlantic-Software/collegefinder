@@ -218,7 +218,7 @@ export default function Sidebar({
           {isCollapsed && (
             <Image
               src="/svgs/logo-fav-unitracko.svg"
-              alt="Unitracko icon"
+              alt="UniTracko icon"
               width={40}
               height={40}
               className="h-10 w-10 rounded-xl"
@@ -229,7 +229,7 @@ export default function Sidebar({
             <div className="min-w-0">
               <Image
                 src="/svgs/logo-unitracko.svg"
-                alt="Unitracko logo"
+                alt="UniTracko logo"
                 width={168}
                 height={38}
                 className="h-auto w-[184px] -pb-8 dark:invert"

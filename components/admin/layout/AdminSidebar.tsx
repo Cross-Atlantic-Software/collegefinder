@@ -286,7 +286,7 @@ function AdminSidebarInner() {
             <Link href="/admin" className="flex shrink-0 justify-center" title="Admin home">
               <Image
                 src="/svgs/logo-fav-unitracko.svg"
-                alt="Unitracko"
+                alt="UniTracko"
                 width={40}
                 height={40}
                 className="h-10 w-10 rounded-xl"

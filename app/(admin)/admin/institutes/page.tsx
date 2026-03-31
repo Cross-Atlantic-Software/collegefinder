@@ -1276,7 +1276,7 @@ export default function InstitutesPage() {
                           instituteName: viewingData.institute.institute_name,
                           emailSubject:
                             p?.subject ||
-                            `${viewingData.institute.institute_name} — Join Unitracko with our referral code`,
+                            `${viewingData.institute.institute_name} — Join UniTracko with our referral code`,
                           initialRecipients: p?.defaultRecipients?.length ? p.defaultRecipients : [],
                         });
                       }}

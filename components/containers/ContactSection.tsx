@@ -98,7 +98,7 @@ export default function ContactSection() {
                             <div className="mt-6 space-y-5">
                                 <div>
                                     <label className="text-xs font-medium uppercase tracking-wide text-black/50">
-                                        First name
+                                        Name
                                     </label>
                                     <input
                                         type="text"

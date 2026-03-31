@@ -29,7 +29,7 @@ const featureCards: FeatureCard[] = [
         title: "All‑In\nTracking",
         highlightWord: "Tracking",
         description:
-            "Stay fully updated directly through Unitracko. Track exams, admits, and deadlines from one dashboard. No confusion, no overlap.",
+            "Stay fully updated directly through UniTracko. Track exams, admits, and deadlines from one dashboard. No confusion, no overlap.",
         image: "/landing-page/features-2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",

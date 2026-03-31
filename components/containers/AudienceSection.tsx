@@ -25,7 +25,7 @@ const audienceContent: Record<
             "Exam-specific personalized prep track",
         ],
         image: "/landing-page/how_it_works.png",
-        imageAlt: "Students using unitracko",
+        imageAlt: "Students using UniTracko",
     },
     parents: {
         points: [
@@ -238,7 +238,7 @@ export default function AudienceSection() {
                                 Most students realize the gaps only when it&apos;s too late.
                             </span>
                             <span className="block pt-3">
-                                Unitracko brings exams, applications, colleges, career clarity and
+                                UniTracko brings exams, applications, colleges, career clarity and
                                 financing into one structured system - so your future isn&apos;t left
                                 to memory, confusion, or last-minute stress.
                             </span>

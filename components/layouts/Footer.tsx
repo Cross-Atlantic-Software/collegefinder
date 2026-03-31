@@ -17,7 +17,7 @@ export default function Footer() {
                     <div>
                         <Image
                             src="/svgs/logo-unitracko.svg"
-                            alt="Unitracko logo"
+                            alt="UniTracko logo"
                             width={220}
                             height={48}
                             className="h-auto w-[180px]"
@@ -33,7 +33,7 @@ export default function Footer() {
                             Home
                         </Link>
                         <Link href="#" className="transition-colors hover:text-black">
-                            Unitracko
+                            UniTracko
                         </Link>
                         <Link href="#" className="transition-colors hover:text-black">
                             Our Process

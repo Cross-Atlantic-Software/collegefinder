@@ -60,7 +60,7 @@ export default function InfoSection() {
             </h2>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-black/60">
-              Unitracko puts your entire college admission journey into one
+              UniTracko puts your entire college admission journey into one
               powerful, structured system — so nothing slips, nothing gets
               missed, and nothing is left to chance.
             </p>
