@@ -270,70 +270,17 @@ function AdminSidebarInner() {
     'pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
   return (
-    <aside
-      className={`
-        relative flex h-full min-h-screen shrink-0 flex-col overflow-visible border-r border-slate-200/80 bg-white transition-[width] duration-300 ease-out dark:border-slate-800 dark:bg-slate-950
-        w-60
-        ${railMode ? 'md:w-16' : 'md:w-60'}
-      `}
-    >
-      {/* Logo + collapse — aligned with student dashboard sidebar; overflow-visible so the rail expand control isn’t clipped */}
-      <div className="relative flex items-center gap-2 overflow-visible border-b border-slate-200/80 px-3 py-4 dark:border-slate-800">
-        <div
-          className={`flex min-w-0 items-center ${railMode ? 'w-full justify-center' : 'flex-1 gap-2'}`}
-        >
-          {railMode ? (
-            <Link href="/admin" className="flex shrink-0 justify-center" title="Admin home">
-              <Image
-                src="/svgs/logo-fav-unitracko.svg"
-                alt="UniTracko"
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-xl"
-                priority
-              />
-            </Link>
-          ) : (
-            <Link href="/admin" className="min-w-0">
-              <Logo
-                mode="light"
-                lightSrc="/svgs/logo-unitracko.svg"
-                width={200}
-                height={45}
-                className="h-11 w-auto max-w-[200px] dark:hidden"
-              />
-              <Logo
-                mode="dark"
-                darkSrc="/svgs/logo-unitracko.svg"
-                width={200}
-                height={45}
-                className="hidden h-11 w-auto max-w-[200px] dark:block dark:invert"
-              />
-            </Link>
-          )}
-        </div>
-
-        {!railMode && (
-          <button
-            type="button"
-            onClick={toggleCollapse}
-            aria-label="Collapse sidebar"
-            className="hidden shrink-0 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:border-slate-700/50 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:inline-flex"
-          >
-            <BiChevronLeft className="h-4 w-4" />
-          </button>
-        )}
-
-        {railMode && (
-          <button
-            type="button"
-            onClick={toggleCollapse}
-            aria-label="Expand sidebar"
-            className="absolute right-0 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border-2 border-slate-300 bg-white text-slate-700 shadow-md transition-all hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/30 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800 md:inline-flex"
-          >
-            <BiChevronRight className="h-5 w-5 shrink-0" />
-          </button>
-        )}
+    <div className="w-64 bg-gradient-to-b from-[#140E27] to-[#341050] min-h-screen flex flex-col">
+      {/* Logo */}
+      <div className="p-4 border-b border-white/10">
+        <Link href="/admin" className="block">
+          <Logo
+            mode="dark"
+            darkSrc="/logo.svg"
+            width={160}
+            height={36}
+          />
+        </Link>
       </div>
 
       <div className="mx-2.5 h-px shrink-0 bg-slate-200/80 dark:bg-slate-800/70" />
@@ -518,7 +465,7 @@ function AdminSidebarInner() {
           )}
         </button>
       </div>
-    </aside>
+    </div>
   );
 }
 

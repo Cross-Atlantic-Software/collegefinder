@@ -45,21 +45,21 @@ const Select: React.FC<SelectProps> = ({
   const customStyles: StylesConfig<SelectOption, false> = {
     control: (provided, state) => ({
       ...provided,
-      backgroundColor: "#ffffff",
+      backgroundColor: state.isFocused ? "#ffffff" : "#f8fbff",
       borderColor: error
         ? "#ef4444"
         : state.isFocused
-        ? "#341050"
-        : "#e2e8f0",
+        ? "#FAD53C"
+        : "rgba(0, 0, 0, 0.15)",
       borderWidth: "1px",
       borderRadius: "0.75rem",
-      padding: "0.25rem 0",
-      minHeight: "48px",
+      padding: "0.15rem 0",
+      minHeight: "46px",
       boxShadow: state.isFocused
-        ? "0 0 0 3px rgba(52,16,80,0.10)"
-        : "0 1px 2px 0 rgba(0,0,0,0.04)",
+        ? "0 0 0 1px #FAD53C"
+        : "none",
       "&:hover": {
-        borderColor: error ? "#ef4444" : "#341050",
+        borderColor: error ? "#ef4444" : "#FAD53C",
       },
       cursor: disabled ? "not-allowed" : "pointer",
       opacity: disabled ? 0.5 : 1,
@@ -83,11 +83,12 @@ const Select: React.FC<SelectProps> = ({
           menu: (provided) => ({
             ...provided,
             backgroundColor: "#ffffff",
-            border: "1px solid #e2e8f0",
+            border: "1px solid #e5e7eb",
             borderRadius: "0.75rem",
-            boxShadow: "0 10px 24px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06)",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
             zIndex: 9999,
             marginTop: "4px",
+            overflow: "hidden",
           }),
     menuList: (provided) => ({
       ...provided,
@@ -97,14 +98,14 @@ const Select: React.FC<SelectProps> = ({
     option: (provided, state) => ({
       ...provided,
       backgroundColor: state.isSelected
-        ? "#341050"
+        ? "#FAD53C"
         : state.isFocused
-        ? "rgba(52,16,80,0.08)"
+        ? "rgba(250, 213, 60, 0.1)"
         : "transparent",
       color: state.isSelected
-        ? "#ffffff"
+        ? "#000000"
         : state.isFocused
-        ? "#341050"
+        ? "#000000"
         : "#111827",
       fontSize: "0.875rem",
       padding: "0.75rem 1rem",
@@ -113,8 +114,8 @@ const Select: React.FC<SelectProps> = ({
       margin: "2px 0",
       fontWeight: state.isSelected ? "600" : "400",
       "&:active": {
-        backgroundColor: "#341050",
-        color: "#ffffff",
+        backgroundColor: "#FAD53C",
+        color: "#000000",
       },
     }),
     indicatorSeparator: () => ({
@@ -125,7 +126,7 @@ const Select: React.FC<SelectProps> = ({
       color: "#94a3b8",
       padding: "0 12px",
       "&:hover": {
-        color: "#341050",
+        color: "#FAD53C",
       },
       transform: state.selectProps.menuIsOpen ? "rotate(180deg)" : "rotate(0deg)",
       transition: "transform 0.2s ease",
@@ -135,7 +136,7 @@ const Select: React.FC<SelectProps> = ({
       color: "#94a3b8",
       padding: "0 8px",
       "&:hover": {
-        color: "#341050",
+        color: "#FAD53C",
       },
     }),
     loadingIndicator: (provided) => ({

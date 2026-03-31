@@ -16,8 +16,8 @@ export default function Footer() {
                 <div className="grid gap-10 lg:grid-cols-[1fr_0.65fr_1fr]">
                     <div>
                         <Image
-                            src="/svgs/logo-unitracko.svg"
-                            alt="UniTracko logo"
+                            src="/landing-page/black-logo.svg"
+                            alt="Unitracko logo"
                             width={220}
                             height={48}
                             className="h-auto w-[180px]"

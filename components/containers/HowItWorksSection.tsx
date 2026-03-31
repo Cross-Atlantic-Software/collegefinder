@@ -17,7 +17,7 @@ const steps = [
 ];
 
 const OPEN_DURATION_MS = 4200;
-const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/UniTracko Video.mp4";
+const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/explainer.mp4";
 
 export default function HowItWorksSection() {
     const sectionRef = useRef<HTMLElement | null>(null);
@@ -314,7 +314,7 @@ export default function HowItWorksSection() {
                         <div className="absolute -left-5 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200" />
                         <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
 
-                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black shadow-[0_24px_60px_-28px_rgba(2,6,23,0.5)] ring-1 ring-black/5">
+                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black ring-1 ring-black/5">
                             <video
                                 ref={videoRef}
                                 className="h-full w-full object-cover"

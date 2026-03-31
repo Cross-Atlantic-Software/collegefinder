@@ -367,6 +367,15 @@ button {
   }
 }
 
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @keyframes tick-pop {
   0% {
     transform: scale(0.45) rotate(-28deg);
@@ -403,6 +412,17 @@ button {
 
 .animate-in {
   animation: slide-in-from-right 0.3s ease-out, fade-in 0.3s ease-out;
+}
+
+.shimmer-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.08) 0%,
+    rgba(15, 23, 42, 0.16) 50%,
+    rgba(15, 23, 42, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
 
 .animate-tick-pop {

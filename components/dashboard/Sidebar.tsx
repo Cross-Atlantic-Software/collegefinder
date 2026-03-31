@@ -217,8 +217,8 @@ export default function Sidebar({
         <div className={`flex min-w-0 items-center ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}>
           {isCollapsed && (
             <Image
-              src="/svgs/logo-fav-unitracko.svg"
-              alt="UniTracko icon"
+              src="/logo.svg"
+              alt="Unitracko icon"
               width={40}
               height={40}
               className="h-10 w-10 rounded-xl"
@@ -228,8 +228,8 @@ export default function Sidebar({
           {!isCollapsed && (
             <div className="min-w-0">
               <Image
-                src="/svgs/logo-unitracko.svg"
-                alt="UniTracko logo"
+                src="/logo.svg"
+                alt="Unitracko logo"
                 width={168}
                 height={38}
                 className="h-auto w-[184px] -pb-8 dark:invert"

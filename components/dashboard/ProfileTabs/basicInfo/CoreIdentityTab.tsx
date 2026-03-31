@@ -1,23 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
+import { useState } from "react";
 import { CiCircleInfo } from "react-icons/ci";
 import { FaUser, FaCopy } from "react-icons/fa6";
 
 import { Button, DateOfBirthPicker, PhoneInput, Select, Notification } from "../../../shared";
 import { useToast } from "../../../shared";
-import { updateBasicInfo, uploadProfilePhoto, deleteProfilePhoto } from "@/api";
+import { updateBasicInfo } from "@/api";
 import { EmailVerificationModal } from "../EmailVerificationModal";
-import { useAuth } from "@/contexts/AuthContext";
 import type { CoreIdentityFormData } from "./types";
 import { genderOptions, inputBase } from "./constants";
 
 interface CoreIdentityTabProps {
   formData: CoreIdentityFormData;
   setFormData: (data: CoreIdentityFormData | ((prev: CoreIdentityFormData) => CoreIdentityFormData)) => void;
-  profilePhotoPreview: string | null;
-  setProfilePhotoPreview: (preview: string | null) => void;
   email: string;
   emailVerified: boolean;
   validationErrors: Record<string, string>;
@@ -36,8 +33,6 @@ interface CoreIdentityTabProps {
 export default function CoreIdentityTab({
   formData,
   setFormData,
-  profilePhotoPreview,
-  setProfilePhotoPreview,
   email,
   emailVerified,
   validationErrors,
@@ -53,9 +48,16 @@ export default function CoreIdentityTab({
   automationPassword,
 }: CoreIdentityTabProps) {
   const { showSuccess, showError } = useToast();
-  const { refreshUser } = useAuth();
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+
+  const floatingLabelClass = (hasValue: boolean) =>
+    [
+      "pointer-events-none absolute left-3 z-10 bg-white px-1 font-medium transition-all duration-200 ease-out",
+      hasValue
+        ? "top-0 -translate-y-1/2 text-[10px] text-black"
+        : "top-1/2 -translate-y-1/2 text-xs text-black/45",
+      "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[10px] peer-focus:text-black",
+    ].join(" ");
 
   const copyPassword = async () => {
     if (automationPassword) {
@@ -148,7 +150,6 @@ export default function CoreIdentityTab({
         };
 
         setFormData(updatedFormData);
-        setProfilePhotoPreview(response.data.profile_photo || null);
 
         onSuccess();
         showSuccess("Core Identity updated successfully!");
@@ -172,391 +173,270 @@ export default function CoreIdentityTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+    <form onSubmit={handleSubmit} className="space-y-5 text-sm text-black">
       <div className="space-y-5">
-        <h2 className="text-lg font-bold text-black">Core Identity</h2>
+        <h2 className="text-base font-semibold text-black">Core Identity</h2>
 
         {error && (
-          <Notification
-            type="error"
-            message={error}
-            onClose={() => onError(null)}
-          />
+          <Notification type="error" message={error} onClose={() => onError(null)} />
         )}
-
         {success && (
-          <Notification
-            type="success"
-            message="Core Identity updated successfully!"
-            onClose={() => { }}
-            autoClose={true}
-            duration={3000}
-          />
+          <Notification type="success" message="Core Identity updated successfully!" onClose={() => {}} autoClose duration={3000} />
         )}
 
-        {/* Profile Photo */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Profile Photo
-          </label>
-          <div className="flex items-center gap-4">
-            <div className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-[#FAD53C] bg-[#eaf4ff] flex items-center justify-center">
-              {profilePhotoPreview ? (
-                <Image
-                  src={profilePhotoPreview}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#eaf4ff]">
-                  <FaUser className="h-8 w-8 text-black/50" />
-                </div>
-              )}
+        {/* Row 1: Name + DOB */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Full Name</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Enter full name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`${inputBase} ${validationErrors.name ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.name}</p>}
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      try {
-                        setUploadingPhoto(true);
-                        const response = await uploadProfilePhoto(file);
-                        if (response.success && response.data) {
-                          setProfilePhotoPreview(response.data.profile_photo);
-                          setFormData({ ...formData, profile_photo: response.data.profile_photo });
-                          await refreshUser();
-                          showSuccess("Profile photo uploaded successfully!");
-                        }
-                      } catch (err: any) {
-                        showError(err.message || "Failed to upload profile photo");
-                      } finally {
-                        setUploadingPhoto(false);
-                      }
-                    }
-                  }}
-                  disabled={uploadingPhoto}
-                />
-                <span className="inline-block rounded-full bg-black px-4 py-2 text-sm font-medium text-[#FAD53C] transition hover:bg-[#111]">
-                  {uploadingPhoto ? "Uploading..." : profilePhotoPreview ? "Change Photo" : "Upload Photo"}
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Date of Birth</label>
+            <div className="flex-1 min-w-0">
+              <DateOfBirthPicker
+                value={formData.date_of_birth}
+                onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
+                error={validationErrors.date_of_birth}
+                maxYear={new Date().getFullYear()}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: First Name + Last Name */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <p className="sm:col-span-2 text-[11px] text-black/45 italic">First Name and Last Name must be as per 10th marksheet</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">First Name *</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="First name"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                className={`${inputBase} ${validationErrors.first_name ? 'border-red-500' : ''}`}
+                required
+              />
+              {validationErrors.first_name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.first_name}</p>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Last Name</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Last name"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                className={`${inputBase} ${validationErrors.last_name ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.last_name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.last_name}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Email (full-width) */}
+        <div className="pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right flex-col flex items-end gap-0.5">
+              Email
+              {email && (
+                <span className={`text-[9px] font-bold uppercase rounded-full px-1.5 py-0.5 ${emailVerified ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                  {emailVerified ? "Verified" : "Unverified"}
                 </span>
-              </label>
-              {profilePhotoPreview && (
+              )}
+            </label>
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+              {email ? (
+                <>
+                  <input
+                    type="text"
+                    value={email}
+                    disabled
+                    className={`${inputBase} flex-1 cursor-not-allowed opacity-60`}
+                  />
+                  {!emailVerified && (
+                    <button
+                      type="button"
+                      onClick={onShowEmailModal}
+                      className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-[#FAD53C] transition hover:bg-[#111]"
+                    >
+                      Verify
+                    </button>
+                  )}
+                </>
+              ) : (
                 <button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      setUploadingPhoto(true);
-                      const response = await deleteProfilePhoto();
-                      if (response.success) {
-                        setProfilePhotoPreview(null);
-                        setFormData({ ...formData, profile_photo: "" });
-                        await refreshUser();
-                        showSuccess("Profile photo removed successfully!");
-                      }
-                    } catch (err: any) {
-                      showError(err.message || "Failed to remove profile photo");
-                    } finally {
-                      setUploadingPhoto(false);
-                    }
-                  }}
-                  disabled={uploadingPhoto}
-                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                  onClick={onShowEmailModal}
+                  className="flex items-center gap-2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-[#FAD53C] transition hover:bg-[#111]"
                 >
-                  {uploadingPhoto ? "Removing..." : "Remove Photo"}
+                  <CiCircleInfo /> Add Email Address
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Name */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Name
-          </label>
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className={`${inputBase} ${validationErrors.name ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.name && (
-            <p className="text-xs text-red-400">{validationErrors.name}</p>
-          )}
+        {/* Row 4: Phone + Alternate Phone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Phone</label>
+            <div className="flex-1 min-w-0">
+              <PhoneInput
+                value={formData.phone_number}
+                onChange={(phone) => setFormData({ ...formData, phone_number: phone || "" })}
+                error={validationErrors.phone_number}
+                placeholder="Phone number"
+                defaultCountryCode="+91"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Alt. Phone</label>
+            <div className="flex-1 min-w-0">
+              <PhoneInput
+                value={formData.alternate_mobile_number}
+                onChange={(phone) => setFormData({ ...formData, alternate_mobile_number: phone || "" })}
+                error={validationErrors.alternate_mobile_number}
+                placeholder="Alternate number"
+                defaultCountryCode="+91"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* First Name & Last Name */}
-        <p className="text-xs text-black/50 italic">First Name and Last Name must be as per 10th marksheet</p>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              First Name <span className="text-[#FAD53C] bg-black rounded-full px-1.5 text-xs">*</span>
+        {/* Row 5: Gender (full-width) */}
+        <div className="pt-4 border-t border-black/5">
+          <div className="flex items-start gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right pt-3">
+              Gender <FaUser className="inline text-black/30 ml-0.5" />
             </label>
-            <input
-              type="text"
-              placeholder="First name"
-              value={formData.first_name}
-              onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              className={`${inputBase} ${validationErrors.first_name ? 'border-red-500' : ''}`}
-              required
-            />
-            {validationErrors.first_name && (
-              <p className="text-xs text-red-400">{validationErrors.first_name}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-              Last Name
-            </label>
-            <input
-              type="text"
-              placeholder="Last name"
-              value={formData.last_name}
-              onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              className={`${inputBase} ${validationErrors.last_name ? 'border-red-500' : ''}`}
-            />
-            {validationErrors.last_name && (
-              <p className="text-xs text-red-400">{validationErrors.last_name}</p>
-            )}
+            <div className="flex-1 min-w-0">
+              <div className="grid gap-2 grid-cols-3">
+                {genderOptions.map((gender) => {
+                  const isActive = formData.gender === gender.label;
+                  return (
+                    <button
+                      key={gender.label}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, gender: gender.label })}
+                      className={`flex w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition ${isActive
+                          ? "border-[#FAD53C] bg-[#FAD53C] text-black shadow"
+                          : "border-[#dceeff] bg-[#eaf4ff] text-black/70 hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
+                        }`}
+                    >
+                      <Image src={gender.icon} width={32} height={32} alt={gender.label} className="h-8 w-8 rounded-full" />
+                      <span className="text-xs font-semibold truncate">{gender.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {validationErrors.gender && <p className="mt-0.5 text-xs text-red-400">{validationErrors.gender}</p>}
+            </div>
           </div>
         </div>
 
-        {/* Date of Birth */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            Date of Birth
-          </label>
-          <DateOfBirthPicker
-            value={formData.date_of_birth}
-            onChange={(date) => setFormData({ ...formData, date_of_birth: date || "" })}
-            error={validationErrors.date_of_birth}
-            maxYear={new Date().getFullYear()}
-          />
-        </div>
-
-        {/* Email */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-black/70">Email</p>
-            {email ? (
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${emailVerified
-                  ? "bg-emerald-100/20 text-emerald-300"
-                  : "bg-amber-100/20 text-amber-300"
-                }`}>
-                <CiCircleInfo className="text-xs" />
-                {emailVerified ? "Verified" : "Unverified"}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-[#eaf4ff] text-black/60">
-                <CiCircleInfo className="text-xs" />
-                Not Added
-              </span>
-            )}
+        {/* Row 6: Nationality + Marital Status */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Nationality</label>
+            <div className="flex-1 min-w-0">
+              <Select
+                options={[{ value: "Indian", label: "Indian" }, { value: "Foreigner", label: "Foreigner" }]}
+                value={formData.nationality}
+                onChange={(value) => setFormData({ ...formData, nationality: value || "" })}
+                placeholder="Select"
+                error={validationErrors.nationality}
+                isSearchable={false}
+                isClearable={true}
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {email ? (
-              <>
-                <input
-                  type="text"
-                  value={email}
-                  disabled
-                  className={`${inputBase} flex-1 cursor-not-allowed opacity-50`}
-                />
-                {!emailVerified && (
-                  <button
-                    type="button"
-                    onClick={onShowEmailModal}
-                    className="rounded-md bg-pink-600 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow transition hover:bg-pink-700"
-                  >
-                    Verify Now
-                  </button>
-                )}
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={onShowEmailModal}
-                className="rounded-md bg-pink px-6 py-3 text-sm font-semibold text-white shadow transition hover:bg-pink/90 flex items-center gap-2"
-              >
-                <CiCircleInfo className="text-lg" />
-                Add Email Address
-              </button>
-            )}
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Marital Status</label>
+            <div className="flex-1 min-w-0">
+              <Select
+                options={[
+                  { value: "Single", label: "Single" },
+                  { value: "Unmarried", label: "Unmarried" },
+                  { value: "Divorced", label: "Divorced" },
+                  { value: "Widowed", label: "Widowed" },
+                  { value: "Separated", label: "Separated" },
+                ]}
+                value={formData.marital_status}
+                onChange={(value) => setFormData({ ...formData, marital_status: value || "" })}
+                placeholder="Select"
+                error={validationErrors.marital_status}
+                isSearchable={false}
+                isClearable={true}
+              />
+            </div>
           </div>
-          {!email && (
-            <p className="text-xs text-black/50">
-              Add your email to receive important updates and recover your account
-            </p>
-          )}
         </div>
 
-        {/* Phone */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Phone Number
-          </label>
-          <PhoneInput
-            value={formData.phone_number}
-            onChange={(phone) => setFormData({ ...formData, phone_number: phone || "" })}
-            error={validationErrors.phone_number}
-            placeholder="Enter phone number"
-            defaultCountryCode="+91"
-          />
-        </div>
-
-        {/* Alternate Mobile Number */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Alternate Mobile Number
-          </label>
-          <PhoneInput
-            value={formData.alternate_mobile_number}
-            onChange={(phone) => setFormData({ ...formData, alternate_mobile_number: phone || "" })}
-            error={validationErrors.alternate_mobile_number}
-            placeholder="Enter alternate mobile number"
-            defaultCountryCode="+91"
-          />
-        </div>
-
-        {/* Gender */}
-        <div className="space-y-3">
-          <p className="flex items-center gap-2 text-sm font-medium text-black/70">
-            Gender <FaUser className="text-black/30" />
-          </p>
-          <div className="grid gap-3 md:grid-cols-3">
-            {genderOptions.map((gender) => {
-              const isActive = formData.gender === gender.label;
-
-              return (
-                <button
-                  key={gender.label}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, gender: gender.label })}
-                  className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition ${isActive
-                      ? "border-[#FAD53C] bg-[#FAD53C] text-black shadow"
-                      : "border-[#dceeff] bg-[#eaf4ff] text-black/70 hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
-                    }`}
-                >
-                  <Image
-                    src={gender.icon}
-                    width={42}
-                    height={42}
-                    alt={gender.label}
-                    className="h-10 w-10 rounded-full"
-                  />
-                  <span className="text-sm font-semibold">{gender.label}</span>
-                </button>
-              );
-            })}
+        {/* Row 7: Father + Mother + Guardian */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <p className="sm:col-span-2 text-[11px] text-black/40 italic">As per 10th marksheet</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Father&apos;s Name</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Father's full name"
+                value={formData.father_full_name}
+                onChange={(e) => setFormData({ ...formData, father_full_name: e.target.value })}
+                className={`${inputBase} ${validationErrors.father_full_name ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.father_full_name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.father_full_name}</p>}
+            </div>
           </div>
-          {validationErrors.gender && (
-            <p className="text-xs text-red-400">{validationErrors.gender}</p>
-          )}
-        </div>
 
-        {/* Nationality */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Nationality
-          </label>
-          <Select
-            options={[
-              { value: "Indian", label: "Indian" },
-              { value: "Foreigner", label: "Foreigner" },
-            ]}
-            value={formData.nationality}
-            onChange={(value) => setFormData({ ...formData, nationality: value || "" })}
-            placeholder="Select Nationality"
-            error={validationErrors.nationality}
-            isSearchable={false}
-            isClearable={true}
-          />
-        </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Mother&apos;s Name</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Mother's full name"
+                value={formData.mother_full_name}
+                onChange={(e) => setFormData({ ...formData, mother_full_name: e.target.value })}
+                className={`${inputBase} ${validationErrors.mother_full_name ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.mother_full_name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.mother_full_name}</p>}
+            </div>
+          </div>
 
-        {/* Marital Status */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Marital Status
-          </label>
-          <Select
-            options={[
-              { value: "Single", label: "Single" },
-              { value: "Unmarried", label: "Unmarried" },
-              { value: "Divorced", label: "Divorced" },
-              { value: "Widowed", label: "Widowed" },
-              { value: "Separated", label: "Separated" },
-            ]}
-            value={formData.marital_status}
-            onChange={(value) => setFormData({ ...formData, marital_status: value || "" })}
-            placeholder="Select Marital Status"
-            error={validationErrors.marital_status}
-            isSearchable={false}
-            isClearable={true}
-          />
-        </div>
-
-        {/* Father's Full Name */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Father&apos;s Full Name <span className="text-xs text-black/40 italic">(As per 10th marksheet)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter father's full name"
-            value={formData.father_full_name}
-            onChange={(e) => setFormData({ ...formData, father_full_name: e.target.value })}
-            className={`${inputBase} ${validationErrors.father_full_name ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.father_full_name && (
-            <p className="text-xs text-red-400">{validationErrors.father_full_name}</p>
-          )}
-        </div>
-
-        {/* Mother's Full Name */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Mother&apos;s Full Name <span className="text-xs text-black/40 italic">(As per 10th marksheet)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter mother's full name"
-            value={formData.mother_full_name}
-            onChange={(e) => setFormData({ ...formData, mother_full_name: e.target.value })}
-            className={`${inputBase} ${validationErrors.mother_full_name ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.mother_full_name && (
-            <p className="text-xs text-red-400">{validationErrors.mother_full_name}</p>
-          )}
-        </div>
-
-        {/* Guardian Name (Optional) */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Guardian Name <span className="text-xs text-black/50">(if applicable)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter guardian name (optional)"
-            value={formData.guardian_name}
-            onChange={(e) => setFormData({ ...formData, guardian_name: e.target.value })}
-            className={`${inputBase} ${validationErrors.guardian_name ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.guardian_name && (
-            <p className="text-xs text-red-400">{validationErrors.guardian_name}</p>
-          )}
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Guardian</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Guardian name (optional)"
+                value={formData.guardian_name}
+                onChange={(e) => setFormData({ ...formData, guardian_name: e.target.value })}
+                className={`${inputBase} ${validationErrors.guardian_name ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.guardian_name && <p className="mt-0.5 text-xs text-red-400">{validationErrors.guardian_name}</p>}
+            </div>
+          </div>
         </div>
 
         {/* Automation Password (Read-Only) */}
         {automationPassword && (
-          <div className="space-y-2 rounded-2xl border border-[#FAD53C]/30 bg-[#eaf4ff] p-4">
+          <div className="space-y-2 rounded-xl border border-[#FAD53C]/30 bg-[#eaf4ff] p-3.5">
             <label className="flex items-center gap-2 text-sm font-semibold text-black">
               <CiCircleInfo className="text-lg" />
               Automation Password
@@ -574,7 +454,7 @@ export default function CoreIdentityTab({
               <button
                 type="button"
                 onClick={copyPassword}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium transition ${
                     copiedPassword
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-[#FAD53C] text-black hover:bg-[#f0c935]"
@@ -589,12 +469,12 @@ export default function CoreIdentityTab({
       </div>
 
       {/* Save Button */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           type="submit"
-          variant="DarkGradient"
+          variant="primary"
           size="md"
-          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+          className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Core Identity"}

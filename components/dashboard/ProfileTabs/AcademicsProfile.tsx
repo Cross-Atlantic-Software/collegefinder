@@ -359,8 +359,15 @@ export default function AcademicsProfile() {
 
     if (loading || loadingStreams) {
         return (
-            <div className="py-16 flex items-center justify-center">
-                <div className="text-sm text-black/40">Loading academic data...</div>
+            <div className="space-y-4 py-4">
+                <div className="shimmer-skeleton h-6 w-52 rounded-md" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                    <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+                    <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+                    <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+                    <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+                </div>
+                <div className="shimmer-skeleton h-40 w-full rounded-xl" />
             </div>
         );
     }
@@ -386,10 +393,11 @@ export default function AcademicsProfile() {
                 <section className="border-t border-black/8 pt-6">
                     <h3 className="mb-4 text-lg font-semibold text-black">10th Standard (Matric) Details</h3>
                     
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                         {/* Matric Board */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">Board</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Board</label>
+                            <div className="flex-1 min-w-0">
                             <Select
                                 options={boardOptions}
                                 value={matricData.matric_board}
@@ -399,11 +407,13 @@ export default function AcademicsProfile() {
                                 isSearchable={false}
                                 isClearable={false}
                             />
+                            </div>
                         </div>
 
                         {/* Matric School Name */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">School Name</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">School Name</label>
+                            <div className="flex-1 min-w-0">
                             <input
                                 type="text"
                                 value={matricData.matric_school_name}
@@ -414,11 +424,13 @@ export default function AcademicsProfile() {
                             {validationErrors.matric_school_name && (
                                 <p className="mt-1 text-xs text-red-400">{validationErrors.matric_school_name}</p>
                             )}
+                            </div>
                         </div>
 
                         {/* Matric Passing Year */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">Passing Year</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Passing Year</label>
+                            <div className="flex-1 min-w-0">
                             <input
                                 type="number"
                                 min="1950"
@@ -431,11 +443,13 @@ export default function AcademicsProfile() {
                             {validationErrors.matric_passing_year && (
                                 <p className="mt-1 text-xs text-red-400">{validationErrors.matric_passing_year}</p>
                             )}
+                            </div>
                         </div>
 
                         {/* Matric Roll Number */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">Roll Number</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Roll Number</label>
+                            <div className="flex-1 min-w-0">
                             <input
                                 type="text"
                                 value={matricData.matric_roll_number}
@@ -446,11 +460,13 @@ export default function AcademicsProfile() {
                             {validationErrors.matric_roll_number && (
                                 <p className="mt-1 text-xs text-red-400">{validationErrors.matric_roll_number}</p>
                             )}
+                            </div>
                         </div>
 
                         {/* Matric State */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">State</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">State</label>
+                            <div className="flex-1 min-w-0">
                             <Select
                                 options={getAllStates().map((state) => ({
                                     value: state,
@@ -469,11 +485,13 @@ export default function AcademicsProfile() {
                                 isSearchable={true}
                                 isClearable={true}
                             />
+                            </div>
                         </div>
 
                         {/* Matric City */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">City</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">City</label>
+                            <div className="flex-1 min-w-0">
                             <Select
                                 options={
                                     matricData.matric_state
@@ -491,11 +509,13 @@ export default function AcademicsProfile() {
                                 isSearchable={true}
                                 isClearable={true}
                             />
+                            </div>
                         </div>
 
                         {/* Matric Marks Type */}
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">Marks Type</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Marks Type</label>
+                            <div className="flex-1 min-w-0">
                             <Select
                                 options={[
                                     { value: "Percentage", label: "Percentage" },
@@ -516,14 +536,16 @@ export default function AcademicsProfile() {
                                 isSearchable={false}
                                 isClearable={false}
                             />
+                            </div>
                         </div>
 
                         {/* Show Total Marks and Obtained Marks only for Percentage */}
                         {matricMarksType === "Percentage" && (
                             <>
                                 {/* Matric Total Marks */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Total Marks</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Total Marks</label>
+                                    <div className="flex-1 min-w-0">
                                     <input
                                         type="number"
                                         min="0"
@@ -536,11 +558,13 @@ export default function AcademicsProfile() {
                                     {validationErrors.matric_total_marks && (
                                         <p className="mt-1 text-xs text-red-400">{validationErrors.matric_total_marks}</p>
                                     )}
+                                    </div>
                                 </div>
 
                                 {/* Matric Obtained Marks */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Obtained Marks</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Obtained Marks</label>
+                                    <div className="flex-1 min-w-0">
                                     <input
                                         type="number"
                                         min="0"
@@ -553,6 +577,7 @@ export default function AcademicsProfile() {
                                     {validationErrors.matric_obtained_marks && (
                                         <p className="mt-1 text-xs text-red-400">{validationErrors.matric_obtained_marks}</p>
                                     )}
+                                    </div>
                                 </div>
 
                                 {/* Percentage Display */}
@@ -573,8 +598,9 @@ export default function AcademicsProfile() {
 
                         {/* Show CGPA only for CGPA type */}
                         {matricMarksType === "CGPA" && (
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-black/70">CGPA</label>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">CGPA</label>
+                                <div className="flex-1 min-w-0">
                                 <input
                                     type="number"
                                     min="0"
@@ -585,14 +611,16 @@ export default function AcademicsProfile() {
                                     className={inputBase}
                                     placeholder="e.g. 8.5"
                                 />
+                                </div>
                             </div>
                         )}
                     </div>
 
                     {/* Matric Result Status */}
                     <div className="mt-4">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-black/70">Result Status</label>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Result Status</label>
+                            <div className="flex-1 min-w-0">
                             <Select
                                 options={[
                                     { value: "passed", label: "Passed" },
@@ -604,6 +632,7 @@ export default function AcademicsProfile() {
                                 isSearchable={false}
                                 isClearable={false}
                             />
+                            </div>
                         </div>
                     </div>
 
@@ -707,10 +736,11 @@ export default function AcademicsProfile() {
 
                     {!isPursuing12th && (
                         <>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                                 {/* Post-Matric Board */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Board</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Board</label>
+                                    <div className="flex-1 min-w-0">
                                     <Select
                                         options={boardOptions}
                                         value={postmatricData.postmatric_board}
@@ -720,11 +750,13 @@ export default function AcademicsProfile() {
                                         isSearchable={false}
                                         isClearable={false}
                                     />
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric School Name */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">School Name</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">School Name</label>
+                                    <div className="flex-1 min-w-0">
                                     <input
                                         type="text"
                                         value={postmatricData.postmatric_school_name}
@@ -735,11 +767,13 @@ export default function AcademicsProfile() {
                                     {validationErrors.postmatric_school_name && (
                                         <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_school_name}</p>
                                     )}
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric Passing Year */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Passing Year</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Passing Year</label>
+                                    <div className="flex-1 min-w-0">
                                     <input
                                         type="number"
                                         min="1950"
@@ -752,11 +786,13 @@ export default function AcademicsProfile() {
                                     {validationErrors.postmatric_passing_year && (
                                         <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_passing_year}</p>
                                     )}
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric Roll Number */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Roll Number</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Roll Number</label>
+                                    <div className="flex-1 min-w-0">
                                     <input
                                         type="text"
                                         value={postmatricData.postmatric_roll_number}
@@ -767,11 +803,13 @@ export default function AcademicsProfile() {
                                     {validationErrors.postmatric_roll_number && (
                                         <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_roll_number}</p>
                                     )}
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric State */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">State</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">State</label>
+                                    <div className="flex-1 min-w-0">
                                     <Select
                                         options={getAllStates().map((state) => ({
                                             value: state,
@@ -790,11 +828,13 @@ export default function AcademicsProfile() {
                                         isSearchable={true}
                                         isClearable={true}
                                     />
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric City */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">City</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">City</label>
+                                    <div className="flex-1 min-w-0">
                                     <Select
                                         options={
                                             postmatricData.postmatric_state
@@ -812,11 +852,13 @@ export default function AcademicsProfile() {
                                         isSearchable={true}
                                         isClearable={true}
                                     />
+                                    </div>
                                 </div>
 
                                 {/* Post-Matric Marks Type */}
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Marks Type</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Marks Type</label>
+                                    <div className="flex-1 min-w-0">
                                     <Select
                                         options={[
                                             { value: "Percentage", label: "Percentage" },
@@ -837,14 +879,16 @@ export default function AcademicsProfile() {
                                         isSearchable={false}
                                         isClearable={false}
                                     />
+                                    </div>
                                 </div>
 
                                 {/* Show Total Marks and Obtained Marks only for Percentage */}
                                 {postmatricMarksType === "Percentage" && (
                                     <>
                                         {/* Post-Matric Total Marks */}
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-black/70">Total Marks</label>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Total Marks</label>
+                                            <div className="flex-1 min-w-0">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -857,11 +901,13 @@ export default function AcademicsProfile() {
                                             {validationErrors.postmatric_total_marks && (
                                                 <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_total_marks}</p>
                                             )}
+                                            </div>
                                         </div>
 
                                         {/* Post-Matric Obtained Marks */}
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-black/70">Obtained Marks</label>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Obtained Marks</label>
+                                            <div className="flex-1 min-w-0">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -874,6 +920,7 @@ export default function AcademicsProfile() {
                                             {validationErrors.postmatric_obtained_marks && (
                                                 <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_obtained_marks}</p>
                                             )}
+                                            </div>
                                         </div>
 
                                         {/* Percentage Display */}
@@ -894,8 +941,9 @@ export default function AcademicsProfile() {
 
                                 {/* Show CGPA only for CGPA type */}
                                 {postmatricMarksType === "CGPA" && (
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-black/70">CGPA</label>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">CGPA</label>
+                                        <div className="flex-1 min-w-0">
                                         <input
                                             type="number"
                                             min="0"
@@ -906,14 +954,16 @@ export default function AcademicsProfile() {
                                             className={inputBase}
                                             placeholder="e.g. 8.5"
                                         />
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
                             {/* Post-Matric Result Status */}
                             <div className="mt-4">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-black/70">Result Status</label>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Result Status</label>
+                                    <div className="flex-1 min-w-0">
                                     <Select
                                         options={[
                                             { value: "passed", label: "Passed" },
@@ -925,6 +975,7 @@ export default function AcademicsProfile() {
                                         isSearchable={false}
                                         isClearable={false}
                                     />
+                                    </div>
                                 </div>
                             </div>
                         </>
@@ -934,9 +985,7 @@ export default function AcademicsProfile() {
                     <div className="mt-4 relative z-10">
                         <label className="mb-1 block text-sm font-medium text-black/70">Stream</label>
                         {loadingStreams ? (
-                            <div className="w-full rounded-md border border-[#dceeff] bg-[#eaf4ff] px-3 py-3 text-sm text-black/40">
-                                Loading streams...
-                            </div>
+                            <div className="shimmer-skeleton h-11 w-full rounded-xl" />
                         ) : streamOptions.length === 0 ? (
                             <div className="w-full rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-3 text-sm text-yellow-400">
                                 No active streams found. Please add streams in the admin panel.
@@ -1067,8 +1116,9 @@ export default function AcademicsProfile() {
                         {previousAttempts.map((attempt, index) => (
                             <div key={index} className="rounded-2xl border border-[#dceeff] bg-[#eaf4ff] p-4 space-y-3">
                                 <div className="grid gap-3 sm:grid-cols-3">
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-black/70">Exam Name</label>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Exam Name</label>
+                                        <div className="flex-1 min-w-0">
                                         <Select
                                             options={examOptions}
                                             value={attempt.exam_id > 0 ? attempt.exam_id.toString() : null}
@@ -1077,9 +1127,11 @@ export default function AcademicsProfile() {
                                             isSearchable={true}
                                             isClearable={false}
                                         />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-black/70">Year</label>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Year</label>
+                                        <div className="flex-1 min-w-0">
                                         <input
                                             type="number"
                                             value={attempt.year || ''}
@@ -1089,9 +1141,11 @@ export default function AcademicsProfile() {
                                             max={new Date().getFullYear()}
                                             className={inputBase}
                                         />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium text-black/70">Rank (Optional)</label>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">Rank (Optional)</label>
+                                        <div className="flex-1 min-w-0">
                                         <input
                                             type="number"
                                             value={attempt.rank || ''}
@@ -1100,6 +1154,7 @@ export default function AcademicsProfile() {
                                             min="1"
                                             className={inputBase}
                                         />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex justify-end">
@@ -1130,9 +1185,9 @@ export default function AcademicsProfile() {
             <div className="pt-4 flex flex-col gap-4 sm:flex-row">
                 <Button
                     type="submit"
-                    variant="DarkGradient"
+                    variant="primary"
                     size="md"
-                    className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+                    className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
                     disabled={saving}
                 >
                     {saving ? "Updating..." : "Update Academics"}
@@ -1141,3 +1196,4 @@ export default function AcademicsProfile() {
         </form>
     );
 }
+

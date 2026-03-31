@@ -35,34 +35,43 @@ export default function ProfileTabs() {
     };
 
     return (
-        <div>
-            {/* Tab Bar — pill style, no surrounding card */}
-            <div className="mb-6 flex gap-1.5 overflow-x-auto scrollbar-hide">
-                {TABS.map((tab) => {
-                    const isActive = tab.id === activeTab;
-                    return (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setActiveTab(tab.id)}
-                            className={[
-                                "flex min-w-max items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-200",
-                                isActive
-                                    ? "bg-black text-[#FAD53C] shadow-sm"
-                                    : "bg-[#eaf4ff] text-black/60 hover:bg-[#dceeff] hover:text-black",
-                            ].join(" ")}
-                        >
-                            <span className="text-base">{tab.icon}</span>
-                            <span>{tab.label}</span>
-                        </button>
-                    );
-                })}
-            </div>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <header className="border-b border-slate-200 bg-white px-4 py-4 md:px-6">
+                <div className="flex flex-col gap-4">
+                    <div>
+                        <p className="text-lg font-semibold text-slate-900">Student Profile</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Manage your details, academics, interests, and preferences.</p>
+                    </div>
 
-            {/* Content — no wrapping card */}
-            <div>
-                {renderContent()}
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                        {TABS.map((tab) => {
+                            const isActive = tab.id === activeTab;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={[
+                                        "flex min-w-max items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200",
+                                        isActive
+                                            ? "border-slate-900 bg-slate-900 text-[#FAD53C]"
+                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                                    ].join(" ")}
+                                >
+                                    <span className="text-base">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </header>
+
+            <div className="bg-[#f8fbff] p-4 md:p-6">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                    {renderContent()}
+                </div>
             </div>
-        </div>
+        </section>
     );
 }

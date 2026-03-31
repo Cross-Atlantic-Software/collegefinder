@@ -46,6 +46,11 @@ export default function Hero() {
                 poster="/landing-page/hero-1.png"
                 aria-hidden="true"
             >
+                <source
+                    media="(max-width: 1023px)"
+                    src="/landing-page/Unitracko%20AI%20%28Vertical%29.mp4"
+                    type="video/mp4"
+                />
                 <source src="/landing-page/Unitracko%20AI%20.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-black/50" />

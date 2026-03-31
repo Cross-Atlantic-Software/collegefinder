@@ -136,8 +136,14 @@ export default function CareerGoalsTab() {
 
     if (loading) {
         return (
-            <div className="py-16 flex items-center justify-center">
-                <div className="text-sm text-black/40">Loading data...</div>
+            <div className="space-y-4 py-4">
+                <div className="shimmer-skeleton h-6 w-40 rounded-md" />
+                <div className="flex flex-col gap-4">
+                    <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+                    <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+                    <div className="shimmer-skeleton h-32 w-full rounded-xl" />
+                </div>
+                <div className="shimmer-skeleton h-12 w-full rounded-xl" />
             </div>
         );
     }
@@ -175,7 +181,7 @@ export default function CareerGoalsTab() {
 
                 {/* What excites you */}
                 <div className="mt-4 space-y-3">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                         {interestOptions.map((opt) => {
                             const active = selectedInterests.includes(opt.id);
                             return (
@@ -266,9 +272,9 @@ export default function CareerGoalsTab() {
             <div className="pt-2 flex flex-col gap-4 sm:flex-row">
                 <Button
                     type="submit"
-                    variant="DarkGradient"
+                    variant="primary"
                     size="md"
-                    className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+                    className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
                     disabled={saving}
                 >
                     {saving ? "Updating..." : "Update Interests"}
@@ -277,3 +283,4 @@ export default function CareerGoalsTab() {
         </form>
     );
 }
+
