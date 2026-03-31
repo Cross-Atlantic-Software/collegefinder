@@ -5,19 +5,19 @@ import { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from "react-icons/fi";
 
 const steps = [
-    { title: "Discover", description: "Find exams and colleges that fit your profile." },
+    { title: "Discover", description: "Find your fit." },
     {
         title: "Plan",
         description:
-            "Track submissions, payments and updates in real time. No missed steps. No last-minute scrambling.",
+            "Track everything, miss nothing.",
     },
-    { title: "One click apply", description: "Reuse verified details across forms instantly." },
-    { title: "Preparation", description: "Stay exam-ready with reminders and resources." },
-    { title: "Decide", description: "Compare outcomes and pick the right path." },
+    { title: "Apply", description: "One click form." },
+    { title: "Prepare", description: "Stay ready, always." },
+    { title: "Decide", description: "Compare, choose, move forward." },
 ];
 
 const OPEN_DURATION_MS = 4200;
-const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/UniTracko Video.mp4";
+const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/explainer.mp4";
 
 export default function HowItWorksSection() {
     const sectionRef = useRef<HTMLElement | null>(null);
@@ -146,16 +146,14 @@ export default function HowItWorksSection() {
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                            How It Works?
+                            How UniTracko Standout?
                         </h3>
                         <p
                             className={`mt-4 max-w-xl text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                            Explore how our university serves as a hub of excellence, bringing
-                            together top-tier education, cutting-edge research, and
-                            groundbreaking innovation to transform the world.
+                           Five steps. One platform. Your entire admission journey, handled.
                         </p>
 
                         <div className="relative mt-8">
@@ -314,7 +312,7 @@ export default function HowItWorksSection() {
                         <div className="absolute -left-5 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200" />
                         <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
 
-                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black shadow-[0_24px_60px_-28px_rgba(2,6,23,0.5)] ring-1 ring-black/5">
+                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black ring-1 ring-black/5">
                             <video
                                 ref={videoRef}
                                 className="h-full w-full object-cover"

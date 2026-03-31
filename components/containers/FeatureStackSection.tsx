@@ -20,7 +20,7 @@ const featureCards: FeatureCard[] = [
         title: "Navigate the\nRight Exam",
         highlightWord: "Right Exam",
         description:
-            "Search and filter 1,000+ entrance exams. View eligibility, dates, fees and syllabus — verified in real time. No exam ever slips through.",
+            "Filter 1,000+ exams. Every detail verified. No exam ever slips through.",
         image: "/landing-page/feature-1.png",
         imageAlt: "Exam discovery interface",
         bgClass: "bg-[#cfe0f1]",
@@ -29,7 +29,7 @@ const featureCards: FeatureCard[] = [
         title: "All‑In\nTracking",
         highlightWord: "Tracking",
         description:
-            "Stay fully updated directly through Unitracko. Track exams, admits, and deadlines from one dashboard. No confusion, no overlap.",
+            "Exams, admits, and deadlines - all tracked from one dashboard. No confusion, no overlap.",
         image: "/landing-page/features-2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",
@@ -38,7 +38,7 @@ const featureCards: FeatureCard[] = [
         title: "The Clarity\nEngine",
         highlightWord: "Clarity",
         description:
-            "Before 1,000 decisions, compare not one, but every option side-by-side. Explore fees, cutoff trends and fit clarity.",
+            "Compare every option - fees, cutoff trends, and college fit - before you decide.",
         image: "/landing-page/features-3.png",
         imageAlt: "Clarity engine comparison",
         bgClass: "bg-sky-100",
@@ -47,7 +47,7 @@ const featureCards: FeatureCard[] = [
         title: "One‑Click Form\nFilling",
         highlightWord: "One\u2011Click",
         description:
-            "Auto-fill almost all college forms accurately with your data and save hours. No repeated entries, less errors, total clarity.",
+            "Your data, entered once, filled everywhere. No repetition, no errors, no wasted hours.",
         image: "/landing-page/auto-fill.gif",
         imageAlt: "One click form filling",
         bgClass: "bg-amber-100",
@@ -56,16 +56,16 @@ const featureCards: FeatureCard[] = [
         title: "Psycho-Analytical\nProfiling",
         highlightWord: "Profiling",
         description:
-            "Go beyond basic quizzes. Analyze personality, cognitive style, and risk appetite to discover where you are most likely to succeed.",
+            "Not just a quiz - a deep profile of who you are and where you'll thrive.",
         image: "/landing-page/features-5.png",
         imageAlt: "Psycho analytical profiling insights",
         bgClass: "bg-[#cfe0f1]",
     },
     {
-        title: "Perfect Fit\nAlgorithm",
+        title: "Assessment-Based Aptitude Mapping",
         highlightWord: "Perfect Fit",
         description:
-            "Assessments-based aptitude mapping recommends exams, courses and careers aligned to your strengths. Clarity for students and peace of mind for parents.",
+            "Maps your strengths to the right exams and courses. Clarity for students, peace of mind for parents.",
         image: "/landing-page/features-6.png",
         imageAlt: "Perfect fit algorithm",
         bgClass: "bg-amber-100",
@@ -74,12 +74,9 @@ const featureCards: FeatureCard[] = [
 
 export default function FeatureStackSection() {
     const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-    const stickyHeaderRef = useRef<HTMLDivElement | null>(null);
     const stackSceneRef = useRef<HTMLDivElement | null>(null);
     const cardsStackRef = useRef<HTMLDivElement | null>(null);
-    const [stickyHeaderHeight, setStickyHeaderHeight] = useState(0);
     const [stickyHeaderTop, setStickyHeaderTop] = useState(76);
-    const [headerRailHeight, setHeaderRailHeight] = useState(0);
     const [headingVisible, setHeadingVisible] = useState(false);
     const [cardVisible, setCardVisible] = useState<boolean[]>(() => {
         if (
@@ -160,16 +157,6 @@ export default function FeatureStackSection() {
             const nextStickyHeaderTop = siteHeaderHeight + viewportGap;
 
             setStickyHeaderTop(nextStickyHeaderTop);
-
-            if (stickyHeaderRef.current) {
-                setStickyHeaderHeight(stickyHeaderRef.current.offsetHeight);
-            }
-
-            const cardsStackTop = cardsStackRef.current?.offsetTop ?? 0;
-            const lastCard = cardRefs.current[featureCards.length - 1];
-            const lastCardTop = lastCard?.offsetTop ?? 0;
-
-            setHeaderRailHeight(cardsStackTop + lastCardTop + 18);
         };
 
         updateStickyMetrics();
@@ -177,10 +164,6 @@ export default function FeatureStackSection() {
         const resizeObserver = new ResizeObserver(() => {
             updateStickyMetrics();
         });
-
-        if (stickyHeaderRef.current) {
-            resizeObserver.observe(stickyHeaderRef.current);
-        }
 
         if (cardsStackRef.current) {
             resizeObserver.observe(cardsStackRef.current);
@@ -221,7 +204,7 @@ export default function FeatureStackSection() {
         return () => observer.disconnect();
     }, []);
 
-    const stickyCardTop = stickyHeaderTop + Math.max(stickyHeaderHeight + 24, 0);
+    const stickyCardTop = stickyHeaderTop + 24;
 
     useEffect(() => {
         stickyCardTopRef.current = stickyCardTop;
@@ -233,7 +216,7 @@ export default function FeatureStackSection() {
             ref={(node) => {
                 cardRefs.current[index] = node;
             }}
-            className={`feature-stack-card group sticky overflow-hidden rounded-3xl ring-1 ring-black/[0.07] md:h-[420px] ${card.bgClass}`}
+            className={`feature-stack-card group sticky overflow-hidden rounded-3xl ring-1 ring-black/[0.07] md:h-[500px] ${card.bgClass}`}
             style={{ top: `${stickyCardTop}px`, zIndex: index + 1, transitionDelay: `${index * 0.05}s` }}
         >
             <div className="grid h-full items-stretch lg:grid-cols-[0.4fr_0.6fr]">
@@ -305,57 +288,44 @@ export default function FeatureStackSection() {
             <div className="appContainer">
                 <div ref={stackSceneRef} className="relative mx-auto max-w-6xl">
                     <div className="relative">
-                        <div
-                            className="pointer-events-none absolute inset-x-0 top-0 z-30"
-                            style={{ height: `${Math.max(headerRailHeight, stickyHeaderHeight + 24)}px` }}
-                        >
-                            <div
-                                ref={stickyHeaderRef}
-                                className="pointer-events-auto sticky bg-white pb-10 text-center md:pb-12"
-                                style={{ top: `${stickyHeaderTop}px` }}
-                            >
-                                <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                                    Unlock the{" "}
-                                    <RoughNotation
-                                        type="underline"
-                                        show={headingVisible}
-                                        color="#f0c544"
-                                        strokeWidth={4}
-                                        padding={4}
-                                        animationDelay={500}
-                                        animationDuration={1400}
-                                    >
-                                        Ultimate Command Centre
-                                    </RoughNotation>
-                                </h2>
-                                <p className="mt-4 text-sm text-black/50 md:text-base">
-                                    We&apos;ve built the unfair advantage you&apos;ve been looking for.
-                                </p>
+                        <div className="bg-white pb-10 text-center md:pb-12">
+                            <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
+                                Unlock the{" "}
+                                <RoughNotation
+                                    type="underline"
+                                    show={headingVisible}
+                                    color="#f0c544"
+                                    strokeWidth={4}
+                                    padding={4}
+                                    animationDelay={500}
+                                    animationDuration={1400}
+                                >
+                                    Ultimate Command Centre
+                                </RoughNotation>
+                            </h2>
+                            <p className="mt-4 text-sm text-black/50 md:text-base">
+                                We&apos;ve built the unfair advantage you&apos;ve been looking for.
+                            </p>
 
-                                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                                    <Link
-                                        href="/login"
-                                        className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
-                                    >
-                                        Get a demo
-                                        <FiChevronRight className="landing-icon-slide text-base" />
-                                    </Link>
-                                    <Link
-                                        href="/login"
-                                        className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
-                                    >
-                                        Get started free
-                                        <FiChevronRight className="landing-icon-slide text-base" />
-                                    </Link>
-                                </div>
+                            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                                <Link
+                                    href="/login"
+                                    className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
+                                >
+                                    Get a demo
+                                    <FiChevronRight className="landing-icon-slide text-base" />
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
+                                >
+                                    Get started free
+                                    <FiChevronRight className="landing-icon-slide text-base" />
+                                </Link>
                             </div>
                         </div>
 
-                        <div
-                            ref={cardsStackRef}
-                            className="relative space-y-10 md:space-y-12"
-                            style={{ paddingTop: `${stickyHeaderHeight + 24}px` }}
-                        >
+                        <div ref={cardsStackRef} className="relative space-y-10 md:space-y-12">
                             {featureCards.map((card, index) => renderFeatureCard(card, index))}
                         </div>
                     </div>

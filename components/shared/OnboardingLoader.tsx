@@ -23,7 +23,7 @@ export default function OnboardingLoader({ message = "Preparing your journey..."
       <div className="mb-10">
         <Image
           src="/svgs/logo-unitracko.svg"
-          alt="Unitracko"
+          alt="UniTracko"
           width={148}
           height={33}
           className="h-8 w-auto"

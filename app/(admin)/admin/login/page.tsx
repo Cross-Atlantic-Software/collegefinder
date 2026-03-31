@@ -70,10 +70,10 @@ export default function AdminLoginPage() {
         <div className="text-center">
           <div className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-5 shadow-sm">
             <Logo
-              mode="light"
-              width={240}
-              height={54}
-              className="h-[52px] w-auto max-w-[240px]"
+              mode="dark"
+              darkSrc="/svgs/logo-white.svg"
+              width={200}
+              height={45}
             />
           </div>
         </div>

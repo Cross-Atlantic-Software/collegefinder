@@ -6,17 +6,17 @@ import { RoughNotation } from "react-rough-notation";
 
 const faqItems = [
     {
-        question: "How is Unitracko different from Google or WhatsApp groups?",
+        question: "How is UniTracko different from Google or WhatsApp groups?",
         answer:
-            "Google gives information. Unitracko manages it. Instead of scattered tabs and missed reminders, you get one unified dashboard with automated tracking.",
+            "Google gives information. UniTracko manages it. Instead of scattered tabs and missed reminders, you get one unified dashboard with automated tracking.",
     },
     {
-        question: "Can Unitracko help me find exams I haven't heard of?",
+        question: "Can UniTracko help me find exams I haven't heard of?",
         answer:
             "Yes. It surfaces relevant exams and opportunities based on your profile, not just the most popular options.",
     },
     {
-        question: "How does Unitracko complete forms in seconds?",
+        question: "How does UniTracko complete forms in seconds?",
         answer:
             "Your profile is structured once, then reused across forms with one-click autofill to reduce repetitive manual entry.",
     },

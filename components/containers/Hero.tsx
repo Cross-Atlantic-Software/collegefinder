@@ -46,12 +46,17 @@ export default function Hero() {
                 poster="/landing-page/hero-1.png"
                 aria-hidden="true"
             >
+                <source
+                    media="(max-width: 1023px)"
+                    src="/landing-page/Unitracko%20AI%20%28Vertical%29.mp4"
+                    type="video/mp4"
+                />
                 <source src="/landing-page/Unitracko%20AI%20.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-black/50" />
-
+        
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
-                <div className="max-w-3xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)] md:pb-0">
+                <div className="max-w-3xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)]  md:pb-0">
                     <h1 className="text-[2rem] font-extrabold leading-[1.12] text-white sm:text-4xl md:text-6xl">
                         Your Entire Admission Journey
                         <span className="mt-1 block">

@@ -82,7 +82,6 @@ export default function BasicInfoForm() {
     permanent_address: "",
   });
 
-  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
   const [automationPassword, setAutomationPassword] = useState<string | null>(null);
@@ -126,7 +125,6 @@ export default function BasicInfoForm() {
           };
 
           setFormData(formDataToSet);
-          setProfilePhotoPreview(response.data.profile_photo || null);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
           setAutomationPassword(response.data.automation_password || null);
@@ -269,8 +267,16 @@ export default function BasicInfoForm() {
 
   if (loading) {
     return (
-      <div className="py-16 flex items-center justify-center">
-        <div className="text-sm text-black/40">Loading profile data...</div>
+      <div className="space-y-4 py-4">
+        <div className="shimmer-skeleton h-6 w-48 rounded-md" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+          <div className="shimmer-skeleton h-12 w-full rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -280,8 +286,6 @@ export default function BasicInfoForm() {
       <BasicInfoTabs
         formData={formData}
         setFormData={setFormData}
-        profilePhotoPreview={profilePhotoPreview}
-        setProfilePhotoPreview={setProfilePhotoPreview}
         email={email}
         emailVerified={emailVerified}
         getCurrentLocation={getCurrentLocation}

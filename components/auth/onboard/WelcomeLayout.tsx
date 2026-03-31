@@ -23,7 +23,7 @@ export function WelcomeLayout({ children, progress }: WelcomeLayoutProps) {
         <Link href="/" className="block">
           <Image
             src="/svgs/logo-unitracko.svg"
-            alt="Unitracko"
+            alt="UniTracko"
             width={148}
             height={33}
             className="h-8 w-auto"

@@ -16,7 +16,7 @@ export default function Footer() {
                 <div className="grid gap-10 lg:grid-cols-[1fr_0.65fr_1fr]">
                     <div>
                         <Image
-                            src="/svgs/logo-unitracko.svg"
+                            src="/landing-page/black-logo.svg"
                             alt="Unitracko logo"
                             width={220}
                             height={48}
@@ -33,7 +33,7 @@ export default function Footer() {
                             Home
                         </Link>
                         <Link href="#" className="transition-colors hover:text-black">
-                            Unitracko
+                            UniTracko
                         </Link>
                         <Link href="#" className="transition-colors hover:text-black">
                             Our Process

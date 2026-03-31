@@ -18,22 +18,19 @@ const audienceContent: Record<
 > = {
     students: {
         points: [
-            "Control over every deadline & application",
-            "1,000+ exams discovered — not just the big names",
-            "One-click form filling saves hours per cycle",
-            "Psycho-analytical profiling reveals your best-fit path",
-            "Exam-specific personalized prep track",
+            "1,000+ exams, not just the big names",
+            "One-click forms, hours saved",
+            "Best-fit path, psycho-analytically mapped",
+            "Personalised exam prep, built in",
         ],
         image: "/landing-page/how_it_works.png",
-        imageAlt: "Students using unitracko",
+        imageAlt: "Students using UniTracko",
     },
     parents: {
         points: [
-            "Single dashboard for your child’s entire journey",
-            "No missed forms, no surprise fees, no last-minute panic",
-            "Clear cost and scholarship visibility",
-            "Progress tracking with structured updates",
-            "Confidence in every decision point",
+            "No missed forms, no surprises Cost and scholarship clarity",
+            "Live progress tracking",
+            "Confidence at every step",
         ],
         image: "/landing-page/parent.png",
         imageAlt: "Parents confidence view",
@@ -138,9 +135,7 @@ export default function AudienceSection() {
                             </span>
                         </h3>
                         <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-black/60 md:text-base">
-                            Explore how our university serves as a hub of excellence, bringing
-                            together top-tier education, cutting-edge research, and
-                            groundbreaking innovation to transform the world.
+                        Every feature, designed for both sides of the journey. 
                         </p>
 
                         <div
@@ -228,19 +223,13 @@ export default function AudienceSection() {
                             <span className="hidden md:inline">
                                 <br />
                             </span>{" "}
-                            Can Change Everything.
+                            Derails Career. 
                         </h3>
 
                         <p className="mt-5 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
-                            From Class 11 onward, the admission race quietly begins. Multiple
-                            exams. Multiple portals. Endless deadlines. Decisions that shape an entire future.
+                        The admission race begins in Class 11 and most students don't realize how much they're missing until it's too late. 
                             <span className="block pt-3">
-                                Most students realize the gaps only when it&apos;s too late.
-                            </span>
-                            <span className="block pt-3">
-                                Unitracko brings exams, applications, colleges, career clarity and
-                                financing into one structured system - so your future isn&apos;t left
-                                to memory, confusion, or last-minute stress.
+                            UniTracko makes sure that never happens.
                             </span>
                         </p>
 

@@ -81,12 +81,12 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div
-              className="
-                flex flex-1 flex-col gap-4
-                px-4 py-4 md:px-6 md:py-4
-                lg:flex-row lg:items-start
-                overflow-y-auto
-              "
+              className={[
+                "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
+                activeSection === "profile"
+                  ? "px-0 py-0"
+                  : "gap-4 px-4 py-4 md:px-6 md:py-4",
+              ].join(" ")}
             >
               {/* MIDDLE BAR */}
               <main className="flex-1 min-w-0">

@@ -65,98 +65,90 @@ export default function GovernmentIdentificationTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
+    <form onSubmit={handleSubmit} className="space-y-5 text-sm text-black">
       <div className="space-y-5">
-        <h2 className="text-lg font-bold text-black">Government Identification</h2>
+        <h2 className="text-base font-semibold text-black">Government Identification</h2>
 
-        {error && (
-          <Notification
-            type="error"
-            message={error}
-            onClose={() => onError(null)}
-          />
-        )}
-
+        {error && <Notification type="error" message={error} onClose={() => onError(null)} />}
         {success && (
-          <Notification
-            type="success"
-            message="Government Identification updated successfully!"
-            onClose={() => {}}
-            autoClose={true}
-            duration={3000}
-          />
+          <Notification type="success" message="Government Identification updated successfully!" onClose={() => {}} autoClose duration={3000} />
         )}
 
-        {/* Aadhar Number */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Aadhar Number
-          </label>
-          <input
-            type="text"
-            placeholder="Enter 12-digit Aadhar number"
-            value={govIdData.aadhar_number}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 12);
-              setGovIdData({ ...govIdData, aadhar_number: value });
-            }}
-            maxLength={12}
-            className={`${inputBase} ${validationErrors.aadhar_number ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.aadhar_number && (
-            <p className="text-xs text-red-400">{validationErrors.aadhar_number}</p>
-          )}
-        </div>
-
-        {/* APAAR ID */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            APAAR ID <span className="ml-1 text-xs bg-[#FAD53C] text-black rounded-full px-1.5 font-bold">*</span>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowApaarInfo(!showApaarInfo)}
-                className="text-black/40 hover:text-black transition"
-                onMouseEnter={() => setShowApaarInfo(true)}
-                onMouseLeave={() => setShowApaarInfo(false)}
-              >
-                <CiCircleInfo className="h-4 w-4" />
-              </button>
-              {showApaarInfo && (
-                <div className="absolute left-0 top-6 z-10 w-64 rounded-xl bg-white border border-[#dceeff] p-3 text-xs text-black/70 shadow-lg">
-                  <p className="font-semibold text-black mb-1">APAAR ID</p>
-                  <p>
-                    APAAR ID (Automated Permanent Academic Account Registry) is a unique 12-digit student identifier used in India&apos;s education system.
-                  </p>
-                </div>
+        {/* 2-col grid: Aadhar + APAAR side by side */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          {/* Aadhar Number */}
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">
+              Aadhar No.
+            </label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="12-digit Aadhar"
+                value={govIdData.aadhar_number}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                  setGovIdData({ ...govIdData, aadhar_number: value });
+                }}
+                maxLength={12}
+                className={`${inputBase} ${validationErrors.aadhar_number ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.aadhar_number && (
+                <p className="mt-0.5 text-xs text-red-400">{validationErrors.aadhar_number}</p>
               )}
             </div>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter 12-digit APAAR ID"
-            value={govIdData.apaar_id}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 12);
-              setGovIdData({ ...govIdData, apaar_id: value });
-            }}
-            maxLength={12}
-            required
-            className={`${inputBase} ${validationErrors.apaar_id ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.apaar_id && (
-            <p className="text-xs text-red-400">{validationErrors.apaar_id}</p>
-          )}
+          </div>
+
+          {/* APAAR ID */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="shrink-0 w-[90px] flex items-center justify-end gap-1">
+              <label className="text-xs font-semibold text-black/55 text-right">APAAR ID *</label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onMouseEnter={() => setShowApaarInfo(true)}
+                  onMouseLeave={() => setShowApaarInfo(false)}
+                  onClick={() => setShowApaarInfo(!showApaarInfo)}
+                  className="text-black/40 hover:text-black transition"
+                >
+                  <CiCircleInfo className="h-3.5 w-3.5" />
+                </button>
+                {showApaarInfo && (
+                  <div className="absolute right-0 top-5 z-50 w-60 rounded-xl border border-[#dceeff] bg-white p-3 text-xs text-black/70 shadow-lg">
+                    <p className="mb-1 font-semibold text-black">APAAR ID</p>
+                    <p>APAAR (Automated Permanent Academic Account Registry) is a unique 12-digit student ID used in India&apos;s education system.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="12-digit APAAR ID"
+                value={govIdData.apaar_id}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                  setGovIdData({ ...govIdData, apaar_id: value });
+                }}
+                maxLength={12}
+                required
+                className={`${inputBase} ${validationErrors.apaar_id ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.apaar_id && (
+                <p className="mt-0.5 text-xs text-red-400">{validationErrors.apaar_id}</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Save Button */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           type="submit"
-          variant="DarkGradient"
+          variant="primary"
           size="md"
-          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+          className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Government Identification"}

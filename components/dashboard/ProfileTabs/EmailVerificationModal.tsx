@@ -198,11 +198,11 @@ export function EmailVerificationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md rounded-lg bg-white/10 p-6 shadow-xl backdrop-blur-md border border-white/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-slate-300 hover:text-white transition"
+          className="absolute right-4 top-4 text-slate-400 hover:text-black transition"
         >
           <FiX className="h-6 w-6" />
         </button>
@@ -212,10 +212,10 @@ export function EmailVerificationModal({
             // Step 1: Enter Email
             <>
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">
+                <h2 className="text-2xl font-bold text-black mb-2">
                   {initialEmail ? "Change Email" : "Add Email"}
                 </h2>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-slate-500">
                   {initialEmail 
                     ? "Enter your new email address to receive a verification code"
                     : "Add your email address to receive important updates and recover your account"
@@ -224,14 +224,14 @@ export function EmailVerificationModal({
               </div>
 
               {error && (
-                <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
+                <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
                     Email Address
                   </label>
                   <div className="relative">
@@ -241,7 +241,7 @@ export function EmailVerificationModal({
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-md border border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus:border-pink focus:bg-white/10 focus:outline-none transition"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-black/15 bg-[#f8fbff] text-black placeholder:text-slate-400 focus:border-[#FAD53C] focus:bg-white focus:outline-none transition"
                       required
                     />
                   </div>
@@ -251,7 +251,7 @@ export function EmailVerificationModal({
                   type="submit"
                   variant="DarkGradient"
                   size="md"
-                  className="w-full rounded-full"
+                  className="w-full rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
                   disabled={!newEmail || sendingOTP}
                 >
                   {sendingOTP ? "Sending OTP..." : "Send Verification Code"}
@@ -262,28 +262,28 @@ export function EmailVerificationModal({
             // Step 2: Verify OTP
             <>
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Verify Your Email</h2>
-                <p className="text-sm text-slate-300">
+                <h2 className="text-2xl font-bold text-black mb-2">Verify Your Email</h2>
+                <p className="text-sm text-slate-500">
                   We've sent a verification code to{" "}
-                  <span className="font-semibold text-pink">{newEmail}</span>
+                  <span className="font-semibold text-black">{newEmail}</span>
                 </p>
               </div>
 
               {error && (
-                <div className="rounded-md bg-red-500/20 border border-red-500/50 px-4 py-3 text-sm text-red-200">
+                <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
 
               {success && (
-                <div className="rounded-md bg-emerald-500/20 border border-emerald-500/50 px-4 py-3 text-sm text-emerald-200">
+                <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-600">
                   {submitting ? "Email verified successfully!" : "OTP sent successfully!"}
                 </div>
               )}
 
               <form onSubmit={handleOtpSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-3">
+                  <label className="block text-sm font-medium text-slate-600 mb-3">
                     Enter 6-digit code
                   </label>
                   <div className="flex gap-2 justify-center">
@@ -298,7 +298,7 @@ export function EmailVerificationModal({
                         onChange={(e) => handleChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         onPaste={handlePaste}
-                        className="w-12 h-14 text-center text-2xl font-bold rounded-md border border-white/20 bg-white/5 text-white focus:border-pink focus:bg-white/10 focus:outline-none transition"
+                        className="w-12 h-14 text-center text-2xl font-bold rounded-xl border border-black/15 bg-[#f8fbff] text-black focus:border-[#FAD53C] focus:bg-white focus:outline-none transition"
                       />
                     ))}
                   </div>
@@ -309,7 +309,7 @@ export function EmailVerificationModal({
                     type="submit"
                     variant="DarkGradient"
                     size="md"
-                    className="w-full rounded-full"
+                    className="w-full rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
                     disabled={!isComplete || submitting}
                   >
                     {submitting ? "Verifying..." : "Verify Email"}
@@ -320,7 +320,7 @@ export function EmailVerificationModal({
                       type="button"
                       onClick={handleResend}
                       disabled={resending}
-                      className="text-slate-300 hover:text-pink transition disabled:opacity-50"
+                      className="text-slate-500 hover:text-black transition disabled:opacity-50 font-medium"
                     >
                       {resending ? "Sending..." : "Resend Code"}
                     </button>
@@ -328,7 +328,7 @@ export function EmailVerificationModal({
                     <button
                       type="button"
                       onClick={handleChangeEmail}
-                      className="text-slate-300 hover:text-pink transition"
+                      className="text-slate-500 hover:text-black transition font-medium"
                     >
                       Change Email
                     </button>

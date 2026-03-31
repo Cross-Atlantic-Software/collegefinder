@@ -171,10 +171,10 @@ export default function Header() {
                         <Link
                             href="/"
                             className="inline-flex items-center"
-                            aria-label="Unitracko"
+                            aria-label="UniTracko"
                         >
                             <Image
-                                src="/UniTracko%20logo%202/logo-2.svg"
+                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
                                 alt="Unitracko logo"
                                 width={170}
                                 height={38}
@@ -245,7 +245,7 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src="/UniTracko%20logo%202/logo-2.svg"
+                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
                                 alt="Unitracko logo"
                                 width={150}
                                 height={34}

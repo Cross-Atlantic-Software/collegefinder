@@ -104,7 +104,7 @@ class EmailTemplate {
    * Shared variable map for referral invite email, WhatsApp text, and dashboard previews.
    */
   static buildReferralVariables(user, referralCode) {
-    const platformName = 'Unitracko';
+    const platformName = 'UniTracko';
     const baseUrl =
       process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const shareUrl = `${baseUrl}/login?ref=${encodeURIComponent(referralCode)}`;
@@ -131,7 +131,7 @@ class EmailTemplate {
    * institute row must include institute_name and referral_code.
    */
   static buildInstituteReferralVariables(institute) {
-    const platformName = 'Unitracko';
+    const platformName = 'UniTracko';
     const baseUrl =
       process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const referralCode = institute.referral_code || '';

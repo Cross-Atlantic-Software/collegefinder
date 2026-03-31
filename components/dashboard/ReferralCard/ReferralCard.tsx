@@ -9,7 +9,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { getMyReferralCode, sendReferralInvite, getMyReferralUses } from "@/api/referral";
 import type { ReferralUse } from "@/api/types";
 
-const PLATFORM = "Unitracko";
+const PLATFORM = "UniTracko";
 
 // ─── Email tag input ────────────────────────────────────────────────────────────
 

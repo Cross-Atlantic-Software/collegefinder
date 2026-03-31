@@ -19,6 +19,8 @@ interface CategoryAndReservationTabProps {
   onError: (error: string | null) => void;
 }
 
+const L = "shrink-0 text-xs font-semibold text-black/55 w-[105px] text-right";
+
 export default function CategoryAndReservationTab({
   catResData,
   setCatResData,
@@ -63,216 +65,147 @@ export default function CategoryAndReservationTab({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-sm text-black">
-      <div className="space-y-5 space-y-5">
-        <h2 className="text-lg font-bold text-black">
-          Category and Reservation
-        </h2>
+    <form onSubmit={handleSubmit} className="space-y-5 text-sm text-black">
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-black">Category and Reservation</h2>
 
-        {error && (
-          <Notification
-            type="error"
-            message={error}
-            onClose={() => onError(null)}
-          />
-        )}
-
+        {error && <Notification type="error" message={error} onClose={() => onError(null)} />}
         {success && (
-          <Notification
-            type="success"
-            message="Category and Reservation updated successfully!"
-            onClose={() => {}}
-            autoClose={true}
-            duration={3000}
-          />
+          <Notification type="success" message="Category and Reservation updated successfully!" onClose={() => {}} autoClose duration={3000} />
         )}
 
-        {/* Category */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Category
-          </label>
-          <Select
-            options={categories}
-            value={catResData.category_id}
-            onChange={(value) => setCatResData({ ...catResData, category_id: value || "" })}
-            placeholder="Select Category"
-            error={validationErrors.category_id}
-            isSearchable={true}
-            isClearable={true}
-          />
+        {/* Row 1: Category + Home State */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Category</label>
+            <div className="flex-1 min-w-0">
+              <Select
+                options={categories}
+                value={catResData.category_id}
+                onChange={(value) => setCatResData({ ...catResData, category_id: value || "" })}
+                placeholder="Select Category"
+                error={validationErrors.category_id}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Home State</label>
+            <div className="flex-1 min-w-0">
+              <Select
+                options={getAllStates().map((state) => ({ value: state, label: state }))}
+                value={catResData.home_state_for_quota}
+                onChange={(value) => setCatResData({ ...catResData, home_state_for_quota: value || "" })}
+                placeholder="Home State for Quota"
+                error={validationErrors.home_state_for_quota}
+                isSearchable={true}
+                isClearable={true}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <label className={L}>Minority Status</label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Minority status (if applicable)"
+                value={catResData.minority_status}
+                onChange={(e) => setCatResData({ ...catResData, minority_status: e.target.value })}
+                className={`${inputBase} ${validationErrors.minority_status ? 'border-red-500' : ''}`}
+              />
+              {validationErrors.minority_status && <p className="mt-0.5 text-xs text-red-400">{validationErrors.minority_status}</p>}
+            </div>
+          </div>
         </div>
 
-        {/* EWS Status */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            <input
-              type="checkbox"
-              checked={catResData.ews_status}
-              onChange={(e) => setCatResData({ ...catResData, ews_status: e.target.checked })}
-              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
-            />
-            EWS Status
-          </label>
+        {/* Row 2: Reservation checkboxes in a compact grid */}
+        <div className="pt-4 border-t border-black/5">
+          <div className="flex items-start gap-2 min-w-0">
+            <label className={`${L} pt-1`}>Quotas</label>
+            <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-4 gap-y-2">
+              {[
+                { label: "EWS Status", field: "ews_status" as const },
+                { label: "PwBD / PWD", field: "pwbd_status" as const },
+                { label: "Ex-Serviceman / Defence", field: "ex_serviceman_defence_quota" as const },
+                { label: "Kashmiri Migrant", field: "kashmiri_migrant_regional_quota" as const },
+                { label: "State Domicile", field: "state_domicile" as const },
+              ].map(({ label, field }) => (
+                <label key={field} className="flex items-center gap-2 cursor-pointer text-xs text-black/70">
+                  <input
+                    type="checkbox"
+                    checked={catResData[field]}
+                    onChange={(e) => setCatResData({ ...catResData, [field]: e.target.checked })}
+                    className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* PwBD/PWD Status */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            <input
-              type="checkbox"
-              checked={catResData.pwbd_status}
-              onChange={(e) => setCatResData({ ...catResData, pwbd_status: e.target.checked })}
-              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
-            />
-            PwBD/PWD Status
-          </label>
-        </div>
-
-        {/* Type of Disability (if applicable) */}
+        {/* Row 3: PwBD details (conditional) */}
         {catResData.pwbd_status && (
-          <>
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-                Type of Disability <span className="text-xs text-black/50">(if applicable)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Enter type of disability"
-                value={catResData.type_of_disability}
-                onChange={(e) => setCatResData({ ...catResData, type_of_disability: e.target.value })}
-                className={`${inputBase} ${validationErrors.type_of_disability ? 'border-red-500' : ''}`}
-              />
-              {validationErrors.type_of_disability && (
-                <p className="text-xs text-red-400">{validationErrors.type_of_disability}</p>
-              )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-[#FAD53C]/20 bg-[#fffdf0] rounded-xl p-3">
+            <p className="sm:col-span-2 text-xs font-semibold text-amber-700">PwBD Details</p>
+            <div className="flex items-center gap-2 min-w-0">
+              <label className={L}>Disability Type</label>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  placeholder="Type of disability"
+                  value={catResData.type_of_disability}
+                  onChange={(e) => setCatResData({ ...catResData, type_of_disability: e.target.value })}
+                  className={`${inputBase} ${validationErrors.type_of_disability ? 'border-red-500' : ''}`}
+                />
+                {validationErrors.type_of_disability && <p className="mt-0.5 text-xs text-red-400">{validationErrors.type_of_disability}</p>}
+              </div>
             </div>
 
-            {/* Disability Percentage */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-                Disability Percentage
-              </label>
-              <input
-                type="number"
-                placeholder="Enter disability percentage (0-100)"
-                min="0"
-                max="100"
-                step="0.01"
-                value={catResData.disability_percentage}
-                onChange={(e) => setCatResData({ ...catResData, disability_percentage: e.target.value })}
-                className={`${inputBase} ${validationErrors.disability_percentage ? 'border-red-500' : ''}`}
-              />
-              {validationErrors.disability_percentage && (
-                <p className="text-xs text-red-400">{validationErrors.disability_percentage}</p>
-              )}
+            <div className="flex items-center gap-2 min-w-0">
+              <label className={L}>Disability %</label>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={catResData.disability_percentage}
+                  onChange={(e) => setCatResData({ ...catResData, disability_percentage: e.target.value })}
+                  className={`${inputBase} ${validationErrors.disability_percentage ? 'border-red-500' : ''}`}
+                />
+                {validationErrors.disability_percentage && <p className="mt-0.5 text-xs text-red-400">{validationErrors.disability_percentage}</p>}
+              </div>
             </div>
 
-            {/* UDID Number (if applicable) */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-                UDID Number <span className="text-xs text-black/50">(if applicable)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Enter UDID number"
-                value={catResData.udid_number}
-                onChange={(e) => setCatResData({ ...catResData, udid_number: e.target.value })}
-                className={`${inputBase} ${validationErrors.udid_number ? 'border-red-500' : ''}`}
-              />
-              {validationErrors.udid_number && (
-                <p className="text-xs text-red-400">{validationErrors.udid_number}</p>
-              )}
+            <div className="flex items-center gap-2 min-w-0">
+              <label className={L}>UDID Number</label>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  placeholder="UDID number (if applicable)"
+                  value={catResData.udid_number}
+                  onChange={(e) => setCatResData({ ...catResData, udid_number: e.target.value })}
+                  className={`${inputBase} ${validationErrors.udid_number ? 'border-red-500' : ''}`}
+                />
+                {validationErrors.udid_number && <p className="mt-0.5 text-xs text-red-400">{validationErrors.udid_number}</p>}
+              </div>
             </div>
-          </>
+          </div>
         )}
-
-        {/* Minority Status */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Minority Status <span className="text-xs text-black/50">(where applicable)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Enter minority status"
-            value={catResData.minority_status}
-            onChange={(e) => setCatResData({ ...catResData, minority_status: e.target.value })}
-            className={`${inputBase} ${validationErrors.minority_status ? 'border-red-500' : ''}`}
-          />
-          {validationErrors.minority_status && (
-            <p className="text-xs text-red-400">{validationErrors.minority_status}</p>
-          )}
-        </div>
-
-        {/* Ex-serviceman/Defence-quota */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            <input
-              type="checkbox"
-              checked={catResData.ex_serviceman_defence_quota}
-              onChange={(e) => setCatResData({ ...catResData, ex_serviceman_defence_quota: e.target.checked })}
-              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
-            />
-            Ex-serviceman/Defence-quota
-          </label>
-        </div>
-
-        {/* Kashmiri-migrant/Regional-quota */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            <input
-              type="checkbox"
-              checked={catResData.kashmiri_migrant_regional_quota}
-              onChange={(e) => setCatResData({ ...catResData, kashmiri_migrant_regional_quota: e.target.checked })}
-              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
-            />
-            Kashmiri-migrant/Regional-quota
-          </label>
-        </div>
-
-        {/* State Domicile */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-black/70">
-            <input
-              type="checkbox"
-              checked={catResData.state_domicile}
-              onChange={(e) => setCatResData({ ...catResData, state_domicile: e.target.checked })}
-              className="h-4 w-4 rounded border-black/20 accent-[#FAD53C]"
-            />
-            State Domicile
-          </label>
-        </div>
-
-        {/* Home State for Quota */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-black/70">
-            Home State for Quota
-          </label>
-          <Select
-            options={getAllStates().map((state) => ({
-              value: state,
-              label: state,
-            }))}
-            value={catResData.home_state_for_quota}
-            onChange={(value) => setCatResData({ ...catResData, home_state_for_quota: value || "" })}
-            placeholder="Select Home State"
-            error={validationErrors.home_state_for_quota}
-            isSearchable={true}
-            isClearable={true}
-          />
-          {validationErrors.home_state_for_quota && (
-            <p className="text-xs text-red-400">{validationErrors.home_state_for_quota}</p>
-          )}
-        </div>
       </div>
 
       {/* Save Button */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           type="submit"
-          variant="DarkGradient"
+          variant="primary"
           size="md"
-          className="w-full flex-1 rounded-full border border-black bg-black text-[#FAD53C] hover:bg-[#111]"
+          className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Category and Reservation"}
@@ -281,4 +214,3 @@ export default function CategoryAndReservationTab({
     </form>
   );
 }
-
