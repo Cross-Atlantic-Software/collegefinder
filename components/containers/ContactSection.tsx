@@ -7,15 +7,15 @@ import { RoughNotation } from "react-rough-notation";
 const contactPoints = [
     {
         title: "Course & College Fit",
-        description: "Personalized recommendations based to your profile and goals.",
+        description: "Matched to your profile, not just popularity.",
     },
     {
         title: "Application Roadmap",
-        description: "Track deadlines, milestones, and submissions in one unified dashboard",
+        description: "Every deadline and milestone, in one place.",
     },
     {
         title: "Scholarships & Loan Clarity",
-        description: "Compare real costs, funding options, and financial impact",
+        description: "Know the real cost before you decide.",
     },
 ];
 
@@ -69,8 +69,7 @@ export default function ContactSection() {
                         </h3>
 
                         <p className="mt-4 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
-                            From exam discovery to final college decisions — everything in one
-                            structured system.
+                        Exam discovery to final decision, everything in one structured system.
                         </p>
 
                         <ul className="mt-8 space-y-6">
