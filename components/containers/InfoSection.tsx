@@ -74,7 +74,7 @@ export default function InfoSection() {
           <div className="mx-auto w-full max-w-[740px]">
             <div className="overflow-hidden rounded-[28px] bg-white p-2">
               <Image
-                src="/landing-page/problem1.png"
+                src="/landing-page/problem3.png"
                 alt="Unitracko dashboard preview"
                 width={1240}
                 height={920}
