@@ -3,47 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import type { LandingPageContent } from "@/types/landingPage";
 
-const faqItems = [
-    {
-        question: "How is UniTracko different from Google or WhatsApp groups?",
-        answer:
-            "Google gives information. UniTracko manages it. Instead of scattered tabs and missed reminders, you get one unified dashboard with automated tracking.",
-    },
-    {
-        question: "Can UniTracko help me find exams I haven't heard of?",
-        answer:
-            "Yes. It surfaces relevant exams and opportunities based on your profile, not just the most popular options.",
-    },
-    {
-        question: "How does UniTracko complete forms in seconds?",
-        answer:
-            "Your profile is structured once, then reused across forms with one-click autofill to reduce repetitive manual entry.",
-    },
-    {
-        question: "Is One-Click Form Filling secure?",
-        answer:
-            "Yes. Personal details are stored with strict access controls and used only for your verified application workflow.",
-    },
-    {
-        question: "Is this only for Engineering or Medical students?",
-        answer:
-            "No. It supports multiple streams and pathways, including commerce, humanities, design and more.",
-    },
-    {
-        question:
-            "What is Psycho-Analytical Profiling and how is it different from regular career quizzes?",
-        answer:
-            "It combines aptitude, behavior and preference signals to suggest deeper-fit paths instead of generic one-dimensional outcomes.",
-    },
-    {
-        question: "How accurate is the Psycho-Analytical Profiling assessment?",
-        answer:
-            "Accuracy improves with profile completeness and usage behavior, giving increasingly relevant recommendations over time.",
-    },
-];
-
-export default function FaqSection() {
+export default function FaqSection({ faq }: { faq: LandingPageContent["faq"] }) {
+    const faqItems = faq.items || [];
     const [openIndex, setOpenIndex] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
     const sectionRef = useRef<HTMLElement>(null);
@@ -70,7 +33,7 @@ export default function FaqSection() {
         >
             <div className="appContainer">
                 <h3 className="text-center text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                    Frequently Asked
+                    {faq.titleLine1}
                     <br />
                     <RoughNotation
                         type="underline"
@@ -81,7 +44,7 @@ export default function FaqSection() {
                         animationDelay={500}
                         animationDuration={1300}
                     >
-                        Questions
+                        {faq.titleLine2}
                     </RoughNotation>
                 </h3>
 
@@ -91,7 +54,7 @@ export default function FaqSection() {
 
                         return (
                             <div
-                                key={item.question}
+                                key={`faq-${index}`}
                                 className="rounded-none px-1 py-6 transition-colors duration-300 hover:bg-amber-100/70 md:px-2 md:py-7"
                             >
                                 <button

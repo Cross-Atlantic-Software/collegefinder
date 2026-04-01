@@ -35,6 +35,11 @@ export const API_ENDPOINTS = {
     PROFILE_DOCUMENT_VAULT_UPLOAD: '/auth/profile/document-vault/upload',
   },
 
+  /** Public site (no auth) */
+  SITE: {
+    LANDING_PAGE: '/site/landing-page',
+  },
+
   // Public endpoints
   PUBLIC: {
     SUBJECTS: '/subjects',
@@ -57,6 +62,7 @@ export const API_ENDPOINTS = {
     USERS_CAREER_GOALS: '/admin/users/career-goals',
     EMAIL_TEMPLATES: '/admin/email-templates',
     BLOGS: '/admin/blogs',
+    LANDING_PAGE: '/admin/landing-page',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
     MOCK_PROMPTS: '/admin/mock-prompts',

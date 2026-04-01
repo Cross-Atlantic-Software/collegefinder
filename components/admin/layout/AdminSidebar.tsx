@@ -38,6 +38,7 @@ import {
   FiEdit3,
   FiVideo,
   FiFile,
+  FiLayout,
 } from 'react-icons/fi';
 import { Logo } from '@/components/shared';
 
@@ -160,6 +161,7 @@ const navGroups: NavGroup[] = [
 const navItems: NavItem[] = [
   { label: 'Email Templates', href: '/admin/email-templates', icon: <FiMail className="h-4 w-4" />, moduleCode: 'email_templates' },
   { label: 'Blogs', href: '/admin/blogs', icon: <FiEdit3 className="h-4 w-4" />, moduleCode: 'blogs' },
+  { label: 'Landing page', href: '/admin/landing-page', icon: <FiLayout className="h-4 w-4" />, moduleCode: 'landing_page' },
   { label: 'Self study material', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
   // { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
