@@ -9,6 +9,7 @@ const generateOTP = (length = 6) => {
   for (let i = 0; i < length; i++) {
     otp += digits[Math.floor(Math.random() * digits.length)];
   }
+  console.log(`🔑 OTP Generated: ${otp} (length: ${length})`);
   return otp;
 };
 
@@ -20,6 +21,7 @@ const generateOTP = (length = 6) => {
 const getOTPExpiry = (minutes = 10) => {
   const expiry = new Date();
   expiry.setMinutes(expiry.getMinutes() + minutes);
+  console.log(`⏰ OTP Expiry set to: ${expiry.toLocaleTimeString()} (expires in ${minutes} minutes)`);
   return expiry;
 };
 

@@ -11,6 +11,8 @@
     "create-super-admin": "node scripts/createSuperAdmin.js",
     "clear-users": "node scripts/clearUsers.js",
     "clear-all-tables": "node scripts/clearAllTables.js",
+    "seed:sample": "node scripts/seedSampleDataForTesting.js",
+    "seed:sample:reset": "node scripts/seedSampleDataForTesting.js --reset",
     "seed:institutes": "node scripts/seedInstitutes.js",
     "seed:referral-templates": "node scripts/seedReferralEmailTemplates.js",
     "seed:institute-emails": "node scripts/seedInstituteReferralEmails.js",
@@ -38,6 +40,7 @@
     "p-limit": "^3.1.0",
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
+    "react-qr-code": "^2.0.18",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -28,9 +28,14 @@ class AuthController {
       const otpLength = parseInt(process.env.OTP_LENGTH) || 6;
       const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
 
+      console.log(`🔐 [OTP:sendOTP] Request received for email: ${email}`);
+      console.log(`🔐 [OTP:sendOTP] OTP Length: ${otpLength}, Expiry: ${otpExpiryMinutes} minutes`);
+
       // Check rate limiting (max 3 OTPs per 10 minutes)
       const recentOtpCount = await Otp.getRecentOtpCount(email, 10);
+      console.log(`🔐 [OTP:sendOTP] Recent OTP count for ${email}: ${recentOtpCount}/3`);
       if (recentOtpCount >= 3) {
+        console.warn(`⚠️  [OTP:sendOTP] Rate limit exceeded for ${email}`);
         return res.status(429).json({
           success: false,
           message: 'Too many OTP requests. Please wait before requesting again.'
@@ -40,7 +45,10 @@ class AuthController {
       // Find or create user
       let user = await User.findByEmail(email);
       if (!user) {
+        console.log(`🔐 [OTP:sendOTP] Creating new user for email: ${email}`);
         user = await User.create(email);
+      } else {
+        console.log(`🔐 [OTP:sendOTP] Found existing user (ID: ${user.id}) for email: ${email}`);
       }
 
       // Generate OTP
@@ -48,18 +56,24 @@ class AuthController {
       const expiresAt = getOTPExpiry(otpExpiryMinutes);
 
       // Invalidate previous unused OTPs
+      console.log(`🔐 [OTP:sendOTP] Invalidating previous unused OTPs for user ID: ${user.id}`);
       await Otp.invalidateUserOtps(user.id, email);
 
       // Create new OTP
+      console.log(`🔐 [OTP:sendOTP] Creating new OTP record in database`);
       await Otp.create(user.id, email, code, expiresAt);
 
       // Send OTP email (non-blocking in development)
       try {
+        console.log(`🔐 [OTP:sendOTP] Sending OTP email...`);
         await sendOTPEmail(email, code);
+        console.log(`✅ [OTP:sendOTP] OTP sent successfully to: ${email}`);
       } catch (emailError) {
+        console.error(`❌ [OTP:sendOTP] Failed to send OTP email:`, emailError.message);
         throw emailError;
       }
 
+      console.log(`🔐 [OTP:sendOTP] Response sent - OTP expires in ${otpExpiryMinutes} minutes`);
       res.json({
         success: true,
         message: 'OTP sent successfully',
@@ -69,7 +83,8 @@ class AuthController {
         }
       });
     } catch (error) {
-      console.error('Error sending OTP:', error);
+      console.error(`❌ [OTP:sendOTP] Error sending OTP:`, error.message);
+      console.error(`❌ [OTP:sendOTP] Stack:`, error.stack);
       res.status(500).json({
         success: false,
         message: 'Failed to send OTP. Please try again.'
@@ -94,49 +109,67 @@ class AuthController {
 
       const { email, code, ref: referralRef } = req.body;
 
+      console.log(`🔐 [OTP:verifyOTP] Verification request for email: ${email}, code: ${code}`);
+
       // Find valid OTP
       const otpRecord = await Otp.findByCodeAndEmail(code, email);
       if (!otpRecord) {
+        console.warn(`⚠️  [OTP:verifyOTP] Invalid or expired OTP code for email: ${email}`);
         return res.status(400).json({
           success: false,
           message: 'Invalid or expired OTP code'
         });
       }
 
+      console.log(`✅ [OTP:verifyOTP] Valid OTP found for email: ${email}`);
+
       // Get user
       const user = await User.findById(otpRecord.user_id);
       if (!user) {
+        console.error(`❌ [OTP:verifyOTP] User not found for user_id: ${otpRecord.user_id}`);
         return res.status(404).json({
           success: false,
           message: 'User not found'
         });
       }
 
+      console.log(`🔐 [OTP:verifyOTP] User found (ID: ${user.id}) for email: ${email}`);
+
       // Mark OTP as used
+      console.log(`🔐 [OTP:verifyOTP] Marking OTP as used (OTP ID: ${otpRecord.id})`);
       await Otp.markAsUsed(otpRecord.id);
 
       // Mark email as verified
+      console.log(`🔐 [OTP:verifyOTP] Marking email as verified for user ID: ${user.id}`);
       await User.markEmailAsVerified(user.id);
 
       // Auto-generate referral code if the user doesn't have one yet
       try {
         if (!user.referral_code) {
+          console.log(`🔐 [OTP:verifyOTP] Generating referral code for user ID: ${user.id}`);
           await Referral.generateAndSaveUserCode(user.id);
+        } else {
+          console.log(`🔐 [OTP:verifyOTP] User already has referral code: ${user.referral_code}`);
         }
       } catch (refErr) {
         console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
       }
 
       // Update last login
+      console.log(`🔐 [OTP:verifyOTP] Updating last login for user ID: ${user.id}`);
       await User.updateLastLogin(user.id);
 
       // Record referral code use (non-blocking)
       if (referralRef) {
         try {
+          console.log(`🔐 [OTP:verifyOTP] Recording referral code use: ${referralRef}`);
           await Referral.recordUse(referralRef.trim().toUpperCase(), user.id, user.email);
+          console.log(`🔐 [OTP:verifyOTP] Referral recorded successfully`);
         } catch (refErr) {
           console.error('⚠️ Non-blocking: failed to record referral use', refErr);
         }
+      } else {
+        console.log(`🔐 [OTP:verifyOTP] No referral code provided`);
       }
 
       // Get fresh user data first
