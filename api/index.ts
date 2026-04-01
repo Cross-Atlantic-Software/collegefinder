@@ -12,6 +12,9 @@ export * from './auth';
 // Export admin APIs
 export * from './admin';
 
+// Public site (landing copy)
+export { getLandingPageContent } from './site/landingPage';
+
 // Export career goals API (public) - use explicit exports to avoid conflicts
 export { getAllCareerGoals as getAllCareerGoalsPublic } from './career-goals';
 export type { CareerGoal as CareerGoalPublic } from './career-goals';

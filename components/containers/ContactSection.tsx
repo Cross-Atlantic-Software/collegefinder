@@ -3,23 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { FiCheck } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import type { LandingPageContent } from "@/types/landingPage";
 
-const contactPoints = [
-    {
-        title: "Course & College Fit",
-        description: "Matched to your profile, not just popularity.",
-    },
-    {
-        title: "Application Roadmap",
-        description: "Every deadline and milestone, in one place.",
-    },
-    {
-        title: "Scholarships & Loan Clarity",
-        description: "Know the real cost before you decide.",
-    },
-];
-
-export default function ContactSection() {
+export default function ContactSection({ contact }: { contact: LandingPageContent["contact"] }) {
+    const contactPoints = contact.points || [];
     const [isVisible, setIsVisible] = useState(false);
     const sectionRef = useRef<HTMLElement>(null);
 
@@ -47,13 +34,13 @@ export default function ContactSection() {
                 <div className="relative landing-grid-gap grid items-start lg:grid-cols-[0.46fr_0.54fr]">
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/60">
-                            CONTACT US
+                            {contact.label}
                         </p>
 
                         <h3 className="mt-4 text-4xl font-extrabold leading-[1.05] text-black md:text-5xl lg:text-[3.2rem]">
-                            Plan Your Admission
+                            {contact.titleBefore}
                             <br />
-                            Journey With{" "}
+                            {contact.titleBreak}{" "}
                             <RoughNotation
                                 type="underline"
                                 show={isVisible}
@@ -63,18 +50,18 @@ export default function ContactSection() {
                                 animationDelay={500}
                                 animationDuration={1300}
                             >
-                                Precision
+                                {contact.titleUnderline}
                             </RoughNotation>
                             .
                         </h3>
 
                         <p className="mt-4 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
-                        Exam discovery to final decision, everything in one structured system.
+                        {contact.subtitle}
                         </p>
 
                         <ul className="mt-8 space-y-6">
-                            {contactPoints.map((point) => (
-                                <li key={point.title} className="flex items-start gap-3">
+                            {contactPoints.map((point, idx) => (
+                                <li key={`${point.title}-${idx}`} className="flex items-start gap-3">
                                     <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-300 text-black">
                                         <FiCheck className="text-sm" />
                                     </span>
@@ -91,8 +78,8 @@ export default function ContactSection() {
 
                     <div className="relative mx-auto w-full max-w-[460px]">
                         <div className="landing-card-lift rounded-2xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
-                            <p className="text-2xl font-bold text-black">Personal data</p>
-                            <p className="mt-1 text-sm text-black/50">Specify details as in your passport</p>
+                            <p className="text-2xl font-bold text-black">{contact.formTitle}</p>
+                            <p className="mt-1 text-sm text-black/50">{contact.formSubtitle}</p>
 
                             <div className="mt-6 space-y-5">
                                 <div>
@@ -160,12 +147,11 @@ export default function ContactSection() {
                                     type="button"
                                     className="landing-cta mt-5 w-full rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
                                 >
-                                    Start My Admission Plan
+                                    {contact.formSubmit}
                                 </button>
 
                                 <p className="text-center text-xs font-semibold text-green-700">
-                                    Your Data stays private. No spam. No pressure. No promotional
-                                    calls
+                                    {contact.formPrivacy}
                                 </p>
                             </div>
                         </div>

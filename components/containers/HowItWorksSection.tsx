@@ -3,23 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from "react-icons/fi";
-
-const steps = [
-    { title: "Discover", description: "Find your fit." },
-    {
-        title: "Plan",
-        description:
-            "Track everything, miss nothing.",
-    },
-    { title: "Apply", description: "One click form." },
-    { title: "Prepare", description: "Stay ready, always." },
-    { title: "Decide", description: "Compare, choose, move forward." },
-];
+import type { LandingPageContent } from "@/types/landingPage";
 
 const OPEN_DURATION_MS = 4200;
 const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/explainer.mp4";
 
-export default function HowItWorksSection() {
+export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingPageContent["howItWorks"] }) {
+    const steps = howItWorks.steps || [];
     const sectionRef = useRef<HTMLElement | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [isInView, setIsInView] = useState(false);
@@ -58,6 +48,7 @@ export default function HowItWorksSection() {
     };
 
     useEffect(() => {
+        if (steps.length === 0) return;
         const timeoutId = window.setTimeout(() => {
             setOpenStep((prev) => (prev + 1) % steps.length);
         }, OPEN_DURATION_MS);
@@ -65,9 +56,13 @@ export default function HowItWorksSection() {
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [openStep]);
+    }, [openStep, steps.length]);
 
     useEffect(() => {
+        if (steps.length === 0) {
+            setTotalProgress(0);
+            return;
+        }
         const startTime = performance.now();
         const totalDuration = OPEN_DURATION_MS * steps.length;
         let frameId = 0;
@@ -84,7 +79,7 @@ export default function HowItWorksSection() {
         return () => {
             window.cancelAnimationFrame(frameId);
         };
-    }, []);
+    }, [steps.length]);
 
     useEffect(() => {
         const sectionNode = sectionRef.current;
@@ -130,7 +125,7 @@ export default function HowItWorksSection() {
         return () => {
             window.clearInterval(intervalId);
         };
-    }, [isInView]);
+    }, [isInView, steps.length]);
 
     return (
         <section
@@ -146,14 +141,14 @@ export default function HowItWorksSection() {
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                            How UniTracko Standout?
+                            {howItWorks.title}
                         </h3>
                         <p
                             className={`mt-4 max-w-xl text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                           Five steps. One platform. Your entire admission journey, handled.
+                           {howItWorks.subtitle}
                         </p>
 
                         <div className="relative mt-8">
@@ -262,14 +257,14 @@ export default function HowItWorksSection() {
                                 href="/login"
                                 className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-8 py-3 text-sm font-semibold text-white hover:bg-black/85 md:text-base"
                             >
-                                Get a demo
+                                {howItWorks.demoCta}
                                 <FiChevronRight className="landing-icon-slide text-base" />
                             </Link>
                             <Link
                                 href="/login"
                                 className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/20 bg-white px-8 py-3 text-sm font-semibold text-black/75 hover:text-black md:text-base"
                             >
-                                Get started free
+                                {howItWorks.getStartedCta}
                                 <FiChevronRight className="landing-icon-slide text-base" />
                             </Link>
                         </div>

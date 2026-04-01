@@ -23,6 +23,7 @@ const InstitutesController = require('../../controllers/admin/institutesControll
 const ScholarshipsController = require('../../controllers/admin/scholarshipsController');
 const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
+const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -115,6 +116,23 @@ router.post('/login', validateAdminLogin, AdminController.login);
  * @access  Private (Admin)
  */
 router.get('/me', authenticateAdmin, AdminController.getMe);
+
+/**
+ * Landing page (home) copy — CMS text for public site
+ */
+router.get(
+  '/landing-page',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  LandingPageAdminController.get
+);
+router.put(
+  '/landing-page',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanEdit,
+  LandingPageAdminController.put
+);
 
 /**
  * IMPORTANT: More specific routes must come BEFORE general routes

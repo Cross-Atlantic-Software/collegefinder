@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiArrowRight, FiChevronRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import type { LandingPageContent } from "@/types/landingPage";
 
 type FeatureCard = {
     title: string;
@@ -15,78 +16,66 @@ type FeatureCard = {
     bgClass: string;
 };
 
-const featureCards: FeatureCard[] = [
+/** Image paths and layout classes only (not editable in CMS). */
+const FEATURE_CARD_MEDIA: Pick<FeatureCard, "image" | "imageAlt" | "bgClass">[] = [
     {
-        title: "Navigate the\nRight Exam",
-        highlightWord: "Right Exam",
-        description:
-            "Filter 1,000+ exams. Every detail verified. No exam ever slips through.",
         image: "/landing-page/feature-1.png",
         imageAlt: "Exam discovery interface",
         bgClass: "bg-[#cfe0f1]",
     },
     {
-        title: "All‑In\nTracking",
-        highlightWord: "Tracking",
-        description:
-            "Exams, admits, and deadlines - all tracked from one dashboard. No confusion, no overlap.",
         image: "/landing-page/features-2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",
     },
     {
-        title: "The Clarity\nEngine",
-        highlightWord: "Clarity",
-        description:
-            "Compare every option - fees, cutoff trends, and college fit - before you decide.",
         image: "/landing-page/features-3.png",
         imageAlt: "Clarity engine comparison",
         bgClass: "bg-sky-100",
     },
     {
-        title: "One‑Click Form\nFilling",
-        highlightWord: "One\u2011Click",
-        description:
-            "Your data, entered once, filled everywhere. No repetition, no errors, no wasted hours.",
         image: "/landing-page/auto-fill.gif",
         imageAlt: "One click form filling",
         bgClass: "bg-amber-100",
     },
     {
-        title: "Psycho-Analytical\nProfiling",
-        highlightWord: "Profiling",
-        description:
-            "Not just a quiz - a deep profile of who you are and where you'll thrive.",
         image: "/landing-page/features-5.png",
         imageAlt: "Psycho analytical profiling insights",
         bgClass: "bg-[#cfe0f1]",
     },
     {
-        title: "Assessment-Based Aptitude Mapping",
-        highlightWord: "Perfect Fit",
-        description:
-            "Maps your strengths to the right exams and courses. Clarity for students, peace of mind for parents.",
         image: "/landing-page/features-6.png",
         imageAlt: "Perfect fit algorithm",
         bgClass: "bg-amber-100",
     },
 ];
 
-export default function FeatureStackSection() {
+export default function FeatureStackSection({ features }: { features: LandingPageContent["features"] }) {
     const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
     const stackSceneRef = useRef<HTMLDivElement | null>(null);
     const cardsStackRef = useRef<HTMLDivElement | null>(null);
     const [stickyHeaderTop, setStickyHeaderTop] = useState(76);
     const [headingVisible, setHeadingVisible] = useState(false);
-    const [cardVisible, setCardVisible] = useState<boolean[]>(() => {
-        if (
-            typeof window !== "undefined" &&
-            window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ) {
-            return Array(featureCards.length).fill(true);
-        }
+    const featureCards = useMemo((): FeatureCard[] => {
+        const cms = features.cards || [];
+        return cms.map((c, i) => {
+            const media = FEATURE_CARD_MEDIA[i] ?? FEATURE_CARD_MEDIA[0];
+            return {
+                title: c.title,
+                highlightWord: c.highlightWord,
+                description: c.description,
+                ...media,
+            };
+        });
+    }, [features.cards]);
 
-        return Array(featureCards.length).fill(false);
+    const [cardVisible, setCardVisible] = useState<boolean[]>(() => {
+        const n = (features.cards || []).length;
+        if (n === 0) return [];
+        const reduced =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        return Array.from({ length: n }, () => reduced);
     });
     // keep a ref so the scroll handler always sees the latest stickyCardTop
     const stickyCardTopRef = useRef(76);
@@ -145,7 +134,19 @@ export default function FeatureStackSection() {
             entranceObserver.disconnect();
             window.removeEventListener("scroll", handleScroll);
         };
-    }, []);
+    }, [featureCards.length]);
+
+    useEffect(() => {
+        const n = featureCards.length;
+        if (n === 0) {
+            setCardVisible([]);
+            return;
+        }
+        const reduced =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        setCardVisible(Array.from({ length: n }, () => reduced));
+    }, [featureCards.length]);
 
     useEffect(() => {
         const updateStickyMetrics = () => {
@@ -212,7 +213,7 @@ export default function FeatureStackSection() {
 
     const renderFeatureCard = (card: FeatureCard, index: number) => (
         <div
-            key={card.title}
+            key={`feature-card-${index}`}
             ref={(node) => {
                 cardRefs.current[index] = node;
             }}
@@ -260,7 +261,7 @@ export default function FeatureStackSection() {
                         href="/login"
                         className="landing-cta group mt-7 inline-flex w-fit items-center gap-2 rounded-full border border-black/30 px-4 py-2.5 text-sm font-semibold text-black hover:bg-black hover:text-white"
                     >
-                        Learn more
+                        {features.learnMoreLabel}
                         <FiArrowRight className="landing-icon-slide text-base" />
                     </Link>
                 </div>
@@ -290,7 +291,7 @@ export default function FeatureStackSection() {
                     <div className="relative">
                         <div className="bg-white pb-10 text-center md:pb-12">
                             <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                                Unlock the{" "}
+                                {features.sectionTitleBefore}{" "}
                                 <RoughNotation
                                     type="underline"
                                     show={headingVisible}
@@ -300,11 +301,11 @@ export default function FeatureStackSection() {
                                     animationDelay={500}
                                     animationDuration={1400}
                                 >
-                                    Ultimate Command Centre
+                                    {features.sectionTitleUnderline}
                                 </RoughNotation>
                             </h2>
                             <p className="mt-4 text-sm text-black/50 md:text-base">
-                                We&apos;ve built the unfair advantage you&apos;ve been looking for.
+                                {features.sectionSubtitle}
                             </p>
 
                             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -312,14 +313,14 @@ export default function FeatureStackSection() {
                                     href="/login"
                                     className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
                                 >
-                                    Get a demo
+                                    {features.primaryCta}
                                     <FiChevronRight className="landing-icon-slide text-base" />
                                 </Link>
                                 <Link
                                     href="/login"
                                     className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
                                 >
-                                    Get started free
+                                    {features.secondaryCta}
                                     <FiChevronRight className="landing-icon-slide text-base" />
                                 </Link>
                             </div>
