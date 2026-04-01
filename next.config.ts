@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // Avoid a separate webpack child process; on ~2GB RAM that pairing often gets OOM-killed (SIGKILL).
+    webpackBuildWorker: false,
+  },
   // Proxy /api to backend so browser requests to same-origin /api/* reach the Express server
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
