@@ -46,7 +46,7 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                 aria-hidden="true"
             >
                 <source
-                    media="(max-width: 1023px)"
+                    media="(max-width: 679px)"
                     src="/landing-page/Unitracko%20AI%20%28Vertical%29.mp4"
                     type="video/mp4"
                 />
