@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
+import LandingPageContentEditor from '@/components/admin/landing-page/LandingPageContentEditor';
 import { getAdminLandingPageContent, updateAdminLandingPageContent } from '@/api/admin/landingPage';
 import type { LandingPageContent } from '@/types/landingPage';
 import { useToast } from '@/components/shared';
@@ -13,10 +14,9 @@ export default function AdminLandingPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { canEdit } = useAdminPermissions();
-  const [jsonText, setJsonText] = useState('');
+  const [content, setContent] = useState<LandingPageContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -30,38 +30,31 @@ export default function AdminLandingPage() {
       try {
         const res = await getAdminLandingPageContent();
         if (res.success && res.data?.content) {
-          setJsonText(JSON.stringify(res.data.content, null, 2));
+          setContent(res.data.content);
         } else {
           showError(res.message || 'Failed to load landing page content');
         }
-      } catch (e) {
+      } catch {
         showError('Failed to load landing page content');
       } finally {
         setLoading(false);
       }
     })();
-  }, [router, showError]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   const handleSave = async () => {
-    setParseError(null);
-    let parsed: LandingPageContent;
-    try {
-      parsed = JSON.parse(jsonText) as LandingPageContent;
-    } catch {
-      setParseError('Invalid JSON. Fix syntax and try again.');
-      return;
-    }
-
+    if (!content) return;
     setSaving(true);
     try {
-      const res = await updateAdminLandingPageContent(parsed);
+      const res = await updateAdminLandingPageContent(content);
       if (res.success && res.data?.content) {
-        setJsonText(JSON.stringify(res.data.content, null, 2));
+        setContent(res.data.content);
         showSuccess('Landing page content saved');
       } else {
         showError(res.message || 'Save failed');
       }
-    } catch (e) {
+    } catch {
       showError('Save failed');
     } finally {
       setSaving(false);
@@ -69,41 +62,52 @@ export default function AdminLandingPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F6F8FA]">
+    <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <AdminHeader title="Landing page (home)" />
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <p className="text-sm text-slate-600 mb-4 max-w-3xl">
-            Edit all public home page text (hero, sections, FAQ). Images and video files stay in the codebase.
-            Save valid JSON matching the structure returned by GET (nested <code className="bg-slate-100 px-1 rounded">hero</code>,{' '}
-            <code className="bg-slate-100 px-1 rounded">info</code>, <code className="bg-slate-100 px-1 rounded">features</code>, etc.).
-          </p>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <AdminHeader
+          title="Landing page"
+          subtitle="Edit public home page copy by section. Images and video stay in the codebase."
+        />
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-6xl mx-auto w-full">
+            <p className="text-xs text-slate-600 leading-relaxed bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm max-w-2xl">
+              Use the sidebar links to jump to each block. Changes apply to the marketing home page for visitors who are not logged in.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleSave()}
+              disabled={!canEdit || saving || !content || loading}
+              className="shrink-0 inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg transition-opacity disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
 
           {loading ? (
-            <p className="text-slate-500">Loading…</p>
+            <div className="max-w-6xl mx-auto rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+              Loading…
+            </div>
+          ) : content ? (
+            <LandingPageContentEditor value={content} onChange={setContent} disabled={!canEdit} />
           ) : (
-            <>
-              <textarea
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-                spellCheck={false}
-                className="w-full min-h-[70vh] font-mono text-xs md:text-sm border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                disabled={!canEdit}
-              />
-              {parseError && <p className="mt-2 text-sm text-red-600">{parseError}</p>}
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSave()}
-                  disabled={!canEdit || saving}
-                  className="px-4 py-2 rounded-lg bg-[#341050] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </>
+            <div className="max-w-6xl mx-auto rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              Could not load content. Refresh the page or check your connection.
+            </div>
           )}
+
+          {!loading && content ? (
+            <div className="max-w-6xl mx-auto mt-6 pb-8 flex justify-end lg:pr-0">
+              <button
+                type="button"
+                onClick={() => handleSave()}
+                disabled={!canEdit || saving}
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg transition-opacity disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          ) : null}
         </main>
       </div>
     </div>
