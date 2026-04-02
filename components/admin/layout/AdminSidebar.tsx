@@ -272,13 +272,13 @@ function AdminSidebarInner() {
   return (
     <aside
       className={`
-        sticky top-0 z-10 flex h-screen max-h-[100dvh] min-h-0 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white
+        sticky top-0 z-30 flex h-screen max-h-[100dvh] min-h-0 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white
         dark:border-slate-800/60 dark:bg-slate-950
         ${railMode ? 'w-16' : 'w-64'}
       `}
     >
       {/* Header — aligned with dashboard Sidebar (light surface + logo) */}
-      <div className="relative flex items-center gap-2 border-b border-slate-200/80 px-3 py-4 dark:border-slate-800/70">
+      <div className="relative z-0 flex items-center gap-2 border-b border-slate-200/80 px-3 py-4 dark:border-slate-800/70">
         <div className={`flex min-w-0 items-center ${railMode ? 'w-full justify-center' : 'flex-1'}`}>
           <Link href="/admin" className="block min-w-0">
             {railMode ? (
@@ -317,7 +317,7 @@ function AdminSidebarInner() {
             type="button"
             onClick={toggleCollapse}
             aria-label="Expand sidebar"
-            className="absolute right-[-14px] top-4 z-20 hidden rounded-full border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-white transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-950 dark:hover:bg-slate-700 md:inline-flex"
+            className="absolute right-[-14px] top-4 z-50 hidden rounded-full border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-white transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-950 dark:hover:bg-slate-700 md:inline-flex"
           >
             <BiChevronRight className="h-4 w-4 stroke-[2.5]" />
           </button>
@@ -514,7 +514,7 @@ export default function AdminSidebar() {
   return (
     <Suspense
       fallback={
-        <aside className="sticky top-0 z-10 flex h-screen max-h-[100dvh] min-h-0 w-64 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white dark:border-slate-800/60 dark:bg-slate-950" />
+        <aside className="sticky top-0 z-30 flex h-screen max-h-[100dvh] min-h-0 w-64 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white dark:border-slate-800/60 dark:bg-slate-950" />
       }
     >
       <AdminSidebarInner />
