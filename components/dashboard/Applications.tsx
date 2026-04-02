@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   MdSchool,
   MdCheckCircle,
@@ -38,6 +39,8 @@ function ApplicationCard({
   onStartWorkflow: (app: Application) => void;
   onViewProgress: (app: Application) => void;
 }) {
+  const detailHref = `/dashboard/exams/${app.exam_id || app.exam_slug}?from=dashboard-applications`;
+
   const getStatusConfig = (status: ApplicationStatus) => {
     switch (status) {
       case "pending":
@@ -98,9 +101,9 @@ function ApplicationCard({
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-slate-50 mb-2">
+              <Link href={detailHref} className="text-sm font-semibold text-slate-50 mb-2 inline-block hover:text-pink transition-colors">
                 {app.exam_name}
-              </h3>
+              </Link>
               <p className="text-[11px] text-slate-300">
                 Exam Registration Automation
               </p>

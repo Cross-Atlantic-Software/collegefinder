@@ -14,6 +14,12 @@ const exams: Exam[] = [
     { name: "VITEEE", status: "ELIGIBLE" },
 ];
 
+const examSlugMap: Record<string, string> = {
+    "JEE Main": "jee-main",
+    "BITSAT": "bitsat",
+    "VITEEE": "viteee",
+};
+
 export default function EligibleExams() {
     return (
         <section className="w-full max-w-sm rounded-md bg-pink/5 px-5 pb-6 pt-6 dark:bg-slate-900">
@@ -37,7 +43,7 @@ export default function EligibleExams() {
             <div className="space-y-3 mb-6">
                 {exams.map((exam) => (
                     <Link
-                        href="/exams/eligible"
+                        href={`/dashboard/exams/${examSlugMap[exam.name] || encodeURIComponent(exam.name.toLowerCase().replace(/\s+/g, "-"))}?from=widget-eligible`}
                         key={exam.name}
                         className="flex items-center justify-between rounded-md bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm hover:bg-pink transition duration-500 hover:text-white group dark:bg-slate-950 dark:hover:bg-pink dark:text-white"
                     >
@@ -57,7 +63,7 @@ export default function EligibleExams() {
                     variant="DarkGradient"
                     size="md"
                     className="w-full justify-center rounded-full"
-                    href="/exams/eligible"
+                    href="/dashboard/exams?from=widget-eligible"
                 >
                     See Full List →
                 </Button>

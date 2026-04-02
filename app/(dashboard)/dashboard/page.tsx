@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -22,9 +23,17 @@ type SectionId =
   | "referral";
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
+
+  useEffect(() => {
+    const section = searchParams.get("section") as SectionId | null;
+    if (section) {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
 
   const toggleSidebar = () => setSidebarOpen((v) => !v);
   const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
@@ -83,7 +92,7 @@ export default function DashboardPage() {
             <div
               className={[
                 "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
-                activeSection === "profile"
+                activeSection === "profile" || activeSection === "exam-shortlist" || activeSection === "college-shortlist"
                   ? "px-0 py-0"
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}

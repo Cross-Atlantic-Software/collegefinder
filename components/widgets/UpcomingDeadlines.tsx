@@ -7,6 +7,7 @@ type Deadline = {
     date: string;
     title: string;
     subtitle: string;
+    examSlug: string;
 };
 
 const deadlines: Deadline[] = [
@@ -14,16 +15,19 @@ const deadlines: Deadline[] = [
         date: "Nov 15, 2025",
         title: "JEE (Main)",
         subtitle: "Registration opens",
+        examSlug: "jee-main",
     },
     {
         date: "Nov 15, 2025",
         title: "JEE (Main)",
         subtitle: "Registration opens",
+        examSlug: "jee-main",
     },
     {
         date: "Nov 15, 2025",
         title: "JEE (Main)",
         subtitle: "Registration opens",
+        examSlug: "jee-main",
     },
 ];
 
@@ -44,7 +48,7 @@ export default function UpcomingDeadlines() {
             <div className="space-y-4">
                 {deadlines.map((item, index) => (
                     <Link
-                        href="/exams/eligible"
+                        href={`/dashboard/exams/${item.examSlug}?from=widget-deadlines`}
                         key={`${item.title}-${index}`}
                         className="block rounded bg-white px-5 py-4 text-slate-900 shadow-sm transition dark:bg-slate-950 dark:text-slate-100"
                     >

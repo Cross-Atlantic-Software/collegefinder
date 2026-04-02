@@ -42,6 +42,18 @@ const createTransporter = () => {
 const sendOTPEmail = async (email, otp) => {
   const transporter = createTransporter();
 
+  const logDevOtpDetails = (status) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`📧 [DEV MODE] OTP Email ${status}`);
+      console.log(`${'='.repeat(60)}`);
+      console.log(`To: ${email}`);
+      console.log(`OTP Code: ${otp}`);
+      console.log(`Valid for 10 minutes`);
+      console.log(`${'='.repeat(60)}\n`);
+    }
+  };
+
   // Get email template
   let template = await EmailTemplate.findByType('OTP_Verification');
   
@@ -111,8 +123,7 @@ const sendOTPEmail = async (email, otp) => {
 
   // In development without email config, just log
   if (!transporter) {
-    console.log('📧 [DEV] OTP Email would be sent to:', email);
-    console.log('📧 [DEV] OTP Code:', otp);
+    logDevOtpDetails('Details');
     return true;
   }
 
@@ -127,14 +138,14 @@ const sendOTPEmail = async (email, otp) => {
   try {
     await transporter.sendMail(mailOptions);
     console.log(`✅ OTP email sent to ${email}`);
+    logDevOtpDetails('Sent');
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);
     // In development, don't fail the request if email sending fails
     // Just log the error and continue (OTP is still generated and stored)
     if (process.env.NODE_ENV === 'development') {
-      console.log('⚠️  Email sending failed, but continuing in development mode');
-      console.log(`📧 [DEV] OTP Code for ${email}: ${otp}`);
+      logDevOtpDetails('Sending failed, using console');
       return true;
     }
     // In production, throw error
