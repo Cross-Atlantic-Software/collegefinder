@@ -9,7 +9,9 @@ const generateOTP = (length = 6) => {
   for (let i = 0; i < length; i++) {
     otp += digits[Math.floor(Math.random() * digits.length)];
   }
-  console.log(`🔑 OTP Generated: ${otp} (length: ${length})`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔑 [DEV MODE] OTP Generated: ${otp} (length: ${length})`);
+  }
   return otp;
 };
 

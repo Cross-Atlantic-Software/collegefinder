@@ -2,6 +2,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, FileText } from "lucide-react";
 import { uploadProfilePhoto, deleteProfilePhoto } from "@/api";
@@ -135,18 +136,21 @@ export default function ProfileTabs() {
       track: "Engineering",
       priority: "High",
       reason: "Best match for your PCM + target college preferences.",
+      href: "/dashboard/exams/jee-main?from=profile-recommended",
     },
     {
       exam: "BITSAT 2026",
       track: "Engineering",
       priority: "Medium",
       reason: "Strong backup pathway with high shortlist overlap.",
+      href: "/dashboard/exams/bitsat?from=profile-recommended",
     },
     {
       exam: "VITEEE 2026",
       track: "Engineering",
       priority: "Medium",
       reason: "Improves admission safety across private institute options.",
+      href: "/dashboard/exams/viteee?from=profile-recommended",
     },
   ];
 
@@ -342,12 +346,12 @@ export default function ProfileTabs() {
                           </div>
                           <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{item.track}</p>
                           <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">{item.reason}</p>
-                          <button
-                            type="button"
+                          <Link
+                            href={item.href}
                             className="mt-2 inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-neutral-800"
                           >
                             View Exam <ChevronRight className="h-3 w-3" />
-                          </button>
+                          </Link>
                         </div>
                       ))}
                     </div>

@@ -83,7 +83,7 @@ export default function SelfStudyTab({
       {/* Content panel */}
       <div>
         {filteredSubjects.length === 0 ? (
-          <div className="flex min-h-[180px] items-center justify-center text-sm text-slate-400">
+          <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-white text-sm text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
             No topics found.
           </div>
         ) : (
@@ -97,14 +97,14 @@ export default function SelfStudyTab({
                 <section key={subject.id} className="space-y-3">
                   {/* Subject header + view more */}
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-slate-50">
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                       {subject.name}
                     </h3>
 
                     {hasMoreTopics && (
                       <button
                         onClick={() => toggleSubjectExpansion(subject.id)}
-                        className="flex items-center gap-2 text-xs font-semibold text-amber-300 hover:text-amber-200 transition"
+                        className="flex items-center gap-2 text-xs font-semibold text-[#b88900] transition hover:text-[#936d00]"
                       >
                         {isExpanded ? (
                           <>
@@ -127,9 +127,9 @@ export default function SelfStudyTab({
                       <div
                         key={topic.id}
                         onClick={() => handleTopicClick(topic.name)}
-                        className="w-full rounded-lg bg-black/20 p-3 shadow-sm cursor-pointer hover:bg-black/30 transition group"
+                        className="group w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
                       >
-                        <div className="h-[130px] w-full rounded-md bg-white/20 overflow-hidden relative">
+                        <div className="relative h-[130px] w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                           {topic.thumbnail ? (
                             <Image
                               src={topic.thumbnail}
@@ -139,14 +139,14 @@ export default function SelfStudyTab({
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-400">
+                            <div className="flex h-full w-full items-center justify-center text-slate-400">
                               No Image
                             </div>
                           )}
                         </div>
 
                         <div className="mt-3 space-y-1.5">
-                          <p className="text-xs font-medium text-slate-100 line-clamp-2">
+                          <p className="line-clamp-2 text-xs font-medium text-slate-900 dark:text-slate-100">
                             {topic.name}
                           </p>
                         </div>

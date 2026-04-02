@@ -75,19 +75,19 @@ export function ExamApplicationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl rounded-lg bg-white/10 p-6 shadow-xl backdrop-blur-md border border-white/20 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm dark:bg-black/60">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto dark:bg-slate-900">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-slate-300 hover:text-white transition"
+          className="absolute right-4 top-4 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
         >
-          <FiX className="h-6 w-6" />
+          <FiX className="h-5 w-5" />
         </button>
 
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-2">Apply for {examName}</h2>
-            <p className="text-sm text-slate-300">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Apply for {examName}</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Please provide your subject-wise scores for this exam
             </p>
           </div>
@@ -112,8 +112,8 @@ export function ExamApplicationModal({
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <h3 className="mb-3 text-base font-semibold text-slate-50">Subject Breakdown</h3>
-              <p className="mb-4 text-xs text-slate-400">
+              <h3 className="mb-1.5 text-base font-semibold text-slate-900 dark:text-slate-100">Subject Breakdown</h3>
+              <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
                 Enter your subject-wise scores for {examName}
               </p>
               
@@ -123,12 +123,12 @@ export function ExamApplicationModal({
               />
             </div>
 
-            <div className="flex gap-4 pt-4 border-t border-white/10">
+            <div className="flex gap-3 pt-5 border-t border-slate-100 dark:border-slate-800">
               <Button
                 type="button"
-                variant="themeButtonOutline"
+                variant="secondary"
                 size="md"
-                className="flex-1"
+                className="flex-1 !rounded-full"
                 onClick={onClose}
                 disabled={submitting}
               >
@@ -136,9 +136,9 @@ export function ExamApplicationModal({
               </Button>
               <Button
                 type="submit"
-                variant="DarkGradient"
+                variant="themeButton"
                 size="md"
-                className="flex-1"
+                className="flex-1 !rounded-full bg-black text-[#FAD53C] hover:bg-black/90 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                 disabled={submitting || subjects.length === 0}
               >
                 {submitting ? "Submitting..." : "Submit Application"}

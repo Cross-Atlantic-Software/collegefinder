@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -22,9 +23,17 @@ type SectionId =
   | "referral";
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
+
+  useEffect(() => {
+    const section = searchParams.get("section") as SectionId | null;
+    if (section) {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
 
   const toggleSidebar = () => setSidebarOpen((v) => !v);
   const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
@@ -36,6 +45,18 @@ export default function DashboardPage() {
     targetIntake: "2026",
     profileStrength: 85,
   };
+
+  const fullWidthSections: SectionId[] = [
+    "profile",
+    "exam-shortlist",
+    "college-shortlist",
+    "applications",
+    "exam-prep",
+    "test-module",
+    "know-your-strengths",
+    "admission-help",
+    "referral",
+  ];
 
   return (
     <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
@@ -83,7 +104,7 @@ export default function DashboardPage() {
             <div
               className={[
                 "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
-                activeSection === "profile"
+                fullWidthSections.includes(activeSection)
                   ? "px-0 py-0"
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}

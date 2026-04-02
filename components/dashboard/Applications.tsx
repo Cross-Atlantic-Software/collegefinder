@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   MdSchool,
   MdCheckCircle,
@@ -38,6 +39,8 @@ function ApplicationCard({
   onStartWorkflow: (app: Application) => void;
   onViewProgress: (app: Application) => void;
 }) {
+  const detailHref = `/dashboard/exams/${app.exam_id || app.exam_slug}?from=dashboard-applications`;
+
   const getStatusConfig = (status: ApplicationStatus) => {
     switch (status) {
       case "pending":
@@ -88,20 +91,20 @@ function ApplicationCard({
   const statusConfig = getStatusConfig(app.status);
 
   return (
-    <div className="rounded-md bg-white/5 p-4 text-xs text-slate-200 shadow-sm">
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
       {/* Top row */}
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg text-pink">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <MdSchool />
         </div>
 
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-slate-50 mb-2">
+              <Link href={detailHref} className="mb-2 inline-block text-sm font-semibold text-slate-900 transition-colors hover:text-black dark:text-slate-100 dark:hover:text-white">
                 {app.exam_name}
-              </h3>
-              <p className="text-[11px] text-slate-300">
+              </Link>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Exam Registration Automation
               </p>
             </div>
@@ -116,9 +119,9 @@ function ApplicationCard({
 
       {/* Meta row */}
       <div className="mt-4 grid gap-3 text-[11px] sm:grid-cols-2">
-        <div className="rounded-lg bg-white/5 p-2">
-          <p className="text-slate-400">Applied on</p>
-          <p className="mt-0.5 font-medium text-slate-100">
+        <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/70">
+          <p className="text-slate-500 dark:text-slate-400">Applied on</p>
+          <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
             {new Date(app.created_at).toLocaleDateString('en-IN', {
               day: 'numeric',
               month: 'short',
@@ -126,27 +129,27 @@ function ApplicationCard({
             })}
           </p>
         </div>
-        <div className="rounded-lg bg-white/5 p-2">
-          <p className="text-slate-400">Status</p>
-          <p className="mt-0.5 font-medium text-slate-100">
+        <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/70">
+          <p className="text-slate-500 dark:text-slate-400">Status</p>
+          <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
             {statusConfig.label}
           </p>
         </div>
       </div>
 
       {/* Footer actions */}
-      <div className="mt-4 flex flex-col gap-2 border-t border-white/5 pt-3 text-[11px] sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-slate-400">
+      <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 text-[11px] dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-slate-500 dark:text-slate-400">
           Application ID:&nbsp;
-          <span className="font-mono text-slate-200">{app.id}</span>
+          <span className="font-mono text-slate-700 dark:text-slate-200">{app.id}</span>
         </p>
 
         <div className="flex gap-2">
           {app.status === "approved" && (
             <Button
-              variant="DarkGradient"
+              variant="themeButton"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
               onClick={() => onStartWorkflow(app)}
             >
               <FiPlay className="h-3 w-3" />
@@ -158,7 +161,7 @@ function ApplicationCard({
             <Button
               variant="themeButton"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
               onClick={() => onViewProgress(app)}
             >
               <FiRefreshCw className="h-3 w-3 animate-spin" />
@@ -170,7 +173,7 @@ function ApplicationCard({
             <Button
               variant="themeButtonOutline"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               onClick={() => onStartWorkflow(app)}
             >
               <MdRefresh className="h-3 w-3" />
@@ -179,7 +182,7 @@ function ApplicationCard({
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -255,136 +258,146 @@ export default function ApplicationsPage() {
   };
 
   return (
-    <main className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">My Applications</h1>
-          <p className="text-sm text-slate-400">Manage your exam automation requests</p>
-        </div>
-        <Button
-          variant="DarkGradient"
-          size="md"
-          className="flex items-center gap-2"
-          onClick={() => setShowCreateModal(true)}
-        >
-          <MdAdd className="h-5 w-5" />
-          New Application
-        </Button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex w-full overflow-hidden rounded-md bg-white/10 text-sm font-medium text-slate-300">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`flex-1 py-3 text-center transition ${activeTab === "all"
-            ? "bg-pink text-white"
-            : "hover:bg-white/5"
-            }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setActiveTab("approved")}
-          className={`flex-1 py-3 text-center transition ${activeTab === "approved"
-            ? "bg-pink text-white"
-            : "hover:bg-white/5"
-            }`}
-        >
-          Ready
-        </button>
-        <button
-          onClick={() => setActiveTab("running")}
-          className={`flex-1 py-3 text-center transition ${activeTab === "running"
-            ? "bg-pink text-white"
-            : "hover:bg-white/5"
-            }`}
-        >
-          In Progress
-        </button>
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`flex-1 py-3 text-center transition ${activeTab === "completed"
-            ? "bg-pink text-white"
-            : "hover:bg-white/5"
-            }`}
-        >
-          Completed
-        </button>
-      </div>
-
-      {/* Refresh button */}
-      <div className="flex justify-end">
-        <button
-          onClick={fetchApplications}
-          disabled={isLoading}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition"
-        >
-          <MdRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Content */}
-      <section>
-        {isLoading ? (
-          <div className="flex min-h-[160px] items-center justify-center text-sm text-slate-400">
-            <FiRefreshCw className="h-5 w-5 animate-spin mr-2" />
-            Loading applications...
-          </div>
-        ) : filteredApplications.length === 0 ? (
-          <div className="flex flex-col min-h-[160px] items-center justify-center text-sm text-slate-400 gap-4">
-            <p>No applications found.</p>
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full bg-[#f5f9ff]">
+        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <div className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">My Applications</p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Manage your exam automation requests.
+              </p>
+            </div>
             <Button
-              variant="themeButtonOutline"
+              variant="themeButton"
               size="sm"
+              className="flex items-center gap-2 rounded-full !border-black !bg-black !px-4 !py-2 !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
               onClick={() => setShowCreateModal(true)}
             >
-              Create your first application
+              <MdAdd className="h-4 w-4" />
+              New Application
             </Button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            {filteredApplications.map((app) => (
-              <ApplicationCard
-                key={app.id}
-                app={app}
-                onStartWorkflow={handleStartWorkflow}
-                onViewProgress={handleViewProgress}
+        </header>
+
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+          <main className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
+                    activeTab === "all"
+                      ? "bg-black text-[#FAD53C]"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setActiveTab("approved")}
+                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
+                    activeTab === "approved"
+                      ? "bg-black text-[#FAD53C]"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  }`}
+                >
+                  Ready
+                </button>
+                <button
+                  onClick={() => setActiveTab("running")}
+                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
+                    activeTab === "running"
+                      ? "bg-black text-[#FAD53C]"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  }`}
+                >
+                  In Progress
+                </button>
+                <button
+                  onClick={() => setActiveTab("completed")}
+                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
+                    activeTab === "completed"
+                      ? "bg-black text-[#FAD53C]"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  }`}
+                >
+                  Completed
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={fetchApplications}
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-70 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              >
+                <MdRefresh className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+                {error}
+              </div>
+            )}
+
+            <section>
+              {isLoading ? (
+                <div className="flex min-h-[160px] items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                  <FiRefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                  Loading applications...
+                </div>
+              ) : filteredApplications.length === 0 ? (
+                <div className="flex min-h-[160px] flex-col items-center justify-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+                  <p>No applications found.</p>
+                  <Button
+                    variant="themeButtonOutline"
+                    size="sm"
+                    className="rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    Create your first application
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {filteredApplications.map((app) => (
+                    <ApplicationCard
+                      key={app.id}
+                      app={app}
+                      onStartWorkflow={handleStartWorkflow}
+                      onViewProgress={handleViewProgress}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <StudentExamCreateModal
+              isOpen={showCreateModal}
+              onClose={() => setShowCreateModal(false)}
+              onStartWorkflow={handleNewExamWorkflow}
+            />
+
+            {selectedExamId && (
+              <StudentWorkflowModal
+                isOpen={showWorkflowModal}
+                onClose={() => {
+                  setShowWorkflowModal(false);
+                  setSelectedExamId(null);
+                  setSelectedExamName("");
+                  fetchApplications();
+                }}
+                examId={selectedExamId}
+                examName={selectedExamName}
               />
-            ))}
-          </div>
-        )}
+            )}
+          </main>
+        </div>
       </section>
-
-      {/* Create Modal */}
-      <StudentExamCreateModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onStartWorkflow={handleNewExamWorkflow}
-      />
-
-      {/* Workflow Modal */}
-      {selectedExamId && (
-        <StudentWorkflowModal
-          isOpen={showWorkflowModal}
-          onClose={() => {
-            setShowWorkflowModal(false);
-            setSelectedExamId(null);
-            setSelectedExamName("");
-            fetchApplications(); // Refresh after closing workflow
-          }}
-          examId={selectedExamId}
-          examName={selectedExamName}
-        />
-      )}
-    </main>
+    </div>
   );
 }

@@ -50,7 +50,7 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-500/30 border-t-pink" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
       </div>
     );
   }
@@ -60,10 +60,10 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
   return (
     <div className="max-w-lg mx-auto">
       <div className="text-center mb-6">
-        <h2 className="text-sm font-bold text-slate-100">
+        <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
           Your Information
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Confirm your details below before proceeding.
         </p>
       </div>
@@ -72,13 +72,13 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
         <div className="mb-5 rounded-md bg-amber-500/10 border border-amber-500/30 p-4 flex items-start gap-3">
           <FaExclamationTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-slate-200 text-sm font-medium">Profile incomplete</p>
-            <p className="text-slate-400 text-xs mt-1">
+            <p className="text-sm font-medium text-amber-900">Profile incomplete</p>
+            <p className="mt-1 text-xs text-amber-700">
               Some required fields are missing. Please complete your profile first.
             </p>
             <button
               onClick={onGoToProfile}
-              className="mt-2 text-xs font-semibold text-pink underline hover:text-pink/80 transition-colors"
+              className="mt-2 text-xs font-semibold text-amber-800 underline transition-colors hover:text-amber-900"
             >
               Go to Profile
             </button>
@@ -86,7 +86,7 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
         </div>
       )}
 
-      <div className="rounded-md bg-white/5 border border-white/10 overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="p-5 space-y-4">
           <FormField label="Name" value={formData?.name} />
           <FormField label="Class" value={formData?.class_info} />
@@ -95,9 +95,9 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
           <FormField label="Email" value={formData?.email} />
           <FormField label="Phone" value={formData?.phone} />
         </div>
-        <div className="px-5 py-3 border-t border-white/10 bg-white/5 flex items-start gap-2">
-          <FaInfoCircle className="w-3.5 h-3.5 text-pink/80 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-400 leading-relaxed">
+        <div className="flex items-start gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-800/70">
+          <FaInfoCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#b88900]" />
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             This information will be shared with the Strength Masters team so they can prepare your personalised strength analysis and report.
           </p>
         </div>
@@ -113,11 +113,11 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
           size="sm"
           onClick={handlePay}
           disabled={missingFields}
-          className="!text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-pink disabled:hover:text-white"
+          className="!text-sm !rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Pay Now
         </Button>
-        <p className="text-[11px] text-slate-500 text-center max-w-sm px-2">
+        <p className="max-w-sm px-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
           You&apos;ll complete payment on Razorpay. After a successful payment you&apos;ll return here to Know Your Strengths and we&apos;ll email you a confirmation.
         </p>
       </div>
@@ -128,11 +128,11 @@ export default function StrengthForm({ onPaymentSuccess, onGoToProfile }: Streng
 function FormField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-      <label className="text-xs font-medium text-slate-400 w-24 flex-shrink-0">
+      <label className="w-24 flex-shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
         {label}
       </label>
-      <div className="flex-1 min-w-0 rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-slate-100">
-        {value || <span className="text-slate-500 italic">Not provided</span>}
+      <div className="min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        {value || <span className="italic text-slate-500 dark:text-slate-400">Not provided</span>}
       </div>
     </div>
   );

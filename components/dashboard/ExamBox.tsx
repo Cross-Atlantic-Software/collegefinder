@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import {
   MdFavoriteBorder,
   MdInfoOutline,
@@ -35,6 +36,7 @@ type ExamBoxProps = {
   onToggleShortlist?: () => void;
   onApply?: () => void;
   onInfo?: () => void;
+  detailHref?: string;
 };
 
 export default function ExamBox({
@@ -56,6 +58,7 @@ export default function ExamBox({
   onToggleShortlist,
   onApply,
   onInfo,
+  detailHref,
 }: ExamBoxProps) {
   const matchColor = useMemo(() => {
     if (matchPercent >= 90) return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
@@ -73,9 +76,18 @@ export default function ExamBox({
 
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              {title}
-            </h3>
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                className="text-lg font-bold text-slate-900 dark:text-slate-100 hover:text-action-700 dark:hover:text-action-400 transition-colors"
+              >
+                {title}
+              </Link>
+            ) : (
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {title}
+              </h3>
+            )}
 
             {isHot && (
               <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 px-2.5 py-0.5 text-xs font-semibold text-orange-700 dark:text-orange-400">
@@ -188,11 +200,23 @@ export default function ExamBox({
             
             <Button variant="secondary" size="sm" className="gap-2" onClick={onToggleShortlist} > {shortlisted ? ( <> <FaCheckCircle className="h-4 w-4" /> Shortlisted </> ) : ( <> <FaRegCheckCircle className="h-4 w-4" /> Shortlist </> )} </Button>
             <Button variant="primary" size="sm" className="gap-2" onClick={onApply} > <PiCursorClickFill className="h-4 w-4" /> Apply Now </Button>
-            <div className="relative flex items-center group">
-              <Button variant="ghost" size="sm" className="!px-2 !py-1.5" > <MdInfoOutline className="h-5 w-5" onClick={onInfo} /> </Button>
-              {/* Tooltip */}
-              <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 w-max scale-0 rounded-lg bg-slate-900 dark:bg-slate-100 px-3 py-1.5 text-xs text-white dark:text-slate-900 opacity-0 shadow-lg transition-all group-hover:scale-100 group-hover:opacity-100 whitespace-nowrap">This exam requires 12th PCM with 75%</div>
-            </div>
+            {detailHref ? (
+              <Button variant="ghost" size="sm" className="!px-2 !py-1.5" href={detailHref}>
+                <MdInfoOutline className="h-5 w-5" />
+              </Button>
+            ) : (
+              <div className="relative flex items-center group">
+                <Button variant="ghost" size="sm" className="!px-2 !py-1.5" > <MdInfoOutline className="h-5 w-5" onClick={onInfo} /> </Button>
+                {/* Tooltip */}
+                <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 w-max scale-0 rounded-lg bg-slate-900 dark:bg-slate-100 px-3 py-1.5 text-xs text-white dark:text-slate-900 opacity-0 shadow-lg transition-all group-hover:scale-100 group-hover:opacity-100 whitespace-nowrap">This exam requires 12th PCM with 75%</div>
+              </div>
+            )}
+
+            {detailHref && (
+              <Button variant="tertiary" size="sm" href={detailHref}>
+                View Details
+              </Button>
+            )}
             
         </div>
       </div>
