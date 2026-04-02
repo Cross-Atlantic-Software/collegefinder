@@ -1,0 +1,60 @@
+# Builds the Next app on GitHub-hosted Linux (enough RAM), then syncs `.next/` to EC2 and restarts PM2.
+# Required repo secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (private key PEM contents).
+# Optional: NEXT_PUBLIC_API_URL, NEXT_PUBLIC_APP_URL (if unset, app falls back to defaults in code).
+
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Rsync .next to server
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          switches: -avzr --delete
+          path: .next/
+          remote_path: /home/ubuntu/collegefinder/.next/
+          remote_host: ${{ secrets.DEPLOY_HOST }}
+          remote_user: ${{ secrets.DEPLOY_USER }}
+          remote_key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Align repo to this commit and restart PM2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            printf '' | crontab - 2>/dev/null || true
+            rm -rf /tmp/.XIN-unix 2>/dev/null || true
+            cd /home/ubuntu/collegefinder
+            git fetch origin main
+            git reset --hard ${{ github.sha }}
+            pm2 restart all
+            pm2 save
