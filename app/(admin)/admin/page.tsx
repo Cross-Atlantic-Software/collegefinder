@@ -3,6 +3,9 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAdminUser } from '@/lib/server/adminAuth';
 
+/** Uses cookies via getAdminUser — must not be statically generated at build time. */
+export const dynamic = 'force-dynamic';
+
 export default async function AdminPage() {
   const admin = await getAdminUser();
   if (!admin) {

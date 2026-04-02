@@ -50,7 +50,7 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                     src="/landing-page/Unitracko%20AI%20%28Vertical%29.mp4"
                     type="video/mp4"
                 />
-                <source src="/landing-page/Unitracko%20AI%20.mp4" type="video/mp4" />
+                <source src="/landing-page/Unitracko%20AI.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-black/50" />
         
