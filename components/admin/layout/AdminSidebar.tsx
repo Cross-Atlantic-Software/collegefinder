@@ -38,9 +38,8 @@ import {
   FiEdit3,
   FiVideo,
   FiFile,
+  FiLayout,
 } from 'react-icons/fi';
-import { Logo } from '@/components/shared';
-
 const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 
 /** Match nav hrefs that may include ?query= (same pathname, different search). */
@@ -160,6 +159,7 @@ const navGroups: NavGroup[] = [
 const navItems: NavItem[] = [
   { label: 'Email Templates', href: '/admin/email-templates', icon: <FiMail className="h-4 w-4" />, moduleCode: 'email_templates' },
   { label: 'Blogs', href: '/admin/blogs', icon: <FiEdit3 className="h-4 w-4" />, moduleCode: 'blogs' },
+  { label: 'Landing page', href: '/admin/landing-page', icon: <FiLayout className="h-4 w-4" />, moduleCode: 'landing_page' },
   { label: 'Self study material', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
   // { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
@@ -270,23 +270,64 @@ function AdminSidebarInner() {
     'pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
   return (
-    <div className="w-64 bg-gradient-to-b from-[#140E27] to-[#341050] min-h-screen flex flex-col">
-      {/* Logo */}
-      <div className="p-4 border-b border-white/10">
-        <Link href="/admin" className="block">
-          <Logo
-            mode="dark"
-            darkSrc="/logo.svg"
-            width={160}
-            height={36}
-          />
-        </Link>
+    <aside
+      className={`
+        sticky top-0 z-30 flex h-screen max-h-[100dvh] min-h-0 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white
+        dark:border-slate-800/60 dark:bg-slate-950
+        ${railMode ? 'w-16' : 'w-64'}
+      `}
+    >
+      {/* Header — aligned with dashboard Sidebar (light surface + logo) */}
+      <div className="relative z-0 flex items-center gap-2 border-b border-slate-200/80 px-3 py-4 dark:border-slate-800/70">
+        <div className={`flex min-w-0 items-center ${railMode ? 'w-full justify-center' : 'flex-1'}`}>
+          <Link href="/admin" className="block min-w-0">
+            {railMode ? (
+              <Image
+                src="/logo.svg"
+                alt="Unitracko"
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-xl dark:invert"
+                priority
+              />
+            ) : (
+              <Image
+                src="/logo.svg"
+                alt="Unitracko logo"
+                width={168}
+                height={38}
+                className="h-auto w-[160px] max-w-full dark:invert"
+                priority
+              />
+            )}
+          </Link>
+        </div>
+        {!railMode && (
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            aria-label="Collapse sidebar"
+            className="hidden shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-sm transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700 md:inline-flex"
+          >
+            <BiChevronLeft className="h-4 w-4 stroke-[2.5]" />
+          </button>
+        )}
+        {railMode && (
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            aria-label="Expand sidebar"
+            className="absolute right-[-14px] top-4 z-50 hidden rounded-full border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-white transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-950 dark:hover:bg-slate-700 md:inline-flex"
+          >
+            <BiChevronRight className="h-4 w-4 stroke-[2.5]" />
+          </button>
+        )}
       </div>
 
       <div className="mx-2.5 h-px shrink-0 bg-slate-200/80 dark:bg-slate-800/70" />
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2.5 text-[13px] scrollbar-hide">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2.5 py-4 text-[13px] scrollbar-hide">
         {filteredGroups.map((group) => {
           const isExpanded = isGroupExpanded(group.label);
           const hasActiveChild = group.children.some((child) =>
@@ -318,9 +359,9 @@ function AdminSidebarInner() {
                   <>
                     <span className="flex-1 text-left text-sm font-medium">{group.label}</span>
                     {isExpanded ? (
-                      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
                     ) : (
-                      <FiChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <FiChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
                     )}
                   </>
                 )}
@@ -360,7 +401,7 @@ function AdminSidebarInner() {
                           <>
                             <span className="text-sm font-medium">{child.label}</span>
                             {isActive && (
-                              <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500" />
+                              <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
                             )}
                           </>
                         )}
@@ -401,7 +442,7 @@ function AdminSidebarInner() {
                   <>
                     <span className="text-sm font-medium">{counsellorNavItem.label}</span>
                     {isActive && (
-                      <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
                     )}
                   </>
                 )}
@@ -436,7 +477,7 @@ function AdminSidebarInner() {
                 <>
                   <span className="text-sm font-medium">{item.label}</span>
                   {isActive && (
-                    <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    <FiChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
                   )}
                 </>
               )}
@@ -465,7 +506,7 @@ function AdminSidebarInner() {
           )}
         </button>
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -473,7 +514,7 @@ export default function AdminSidebar() {
   return (
     <Suspense
       fallback={
-        <aside className="flex h-full min-h-screen w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950" />
+        <aside className="sticky top-0 z-30 flex h-screen max-h-[100dvh] min-h-0 w-64 shrink-0 flex-col self-start border-r border-slate-200/80 bg-white dark:border-slate-800/60 dark:bg-slate-950" />
       }
     >
       <AdminSidebarInner />

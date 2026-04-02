@@ -221,3 +221,6 @@ export {
   updateExpert,
   deleteExpert,
 } from './experts';
+
+// Landing page (home) CMS copy
+export { getAdminLandingPageContent, updateAdminLandingPageContent } from './landingPage';

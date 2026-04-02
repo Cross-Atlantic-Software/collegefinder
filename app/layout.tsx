@@ -14,6 +14,11 @@ const Providers = dynamic(() => import("./Providers"), {
 export const metadata: Metadata = {
   title: "CollegeFinder",
   description: "Your college journey, simplified.",
+  // Use real SVG — public/favicon.ico was mislabeled (XML/SVG bytes), which browsers ignore as .ico
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -21,9 +26,6 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-      </head>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // Avoid a separate webpack child process; on ~2GB RAM that pairing often gets OOM-killed (SIGKILL).
+    webpackBuildWorker: false,
+    // Lowers peak memory during `next build` on small VPS instances.
+    serverMinification: false,
+  },
   // Proxy /api to backend so browser requests to same-origin /api/* reach the Express server
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
@@ -35,6 +40,11 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
+  },
+  // Serializes webpack module graph work — slower builds, much lower peak RSS on 2GB hosts.
+  webpack: (config) => {
+    config.parallelism = 1;
+    return config;
   },
 };
 
