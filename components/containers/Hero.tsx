@@ -46,17 +46,17 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                 aria-hidden="true"
             >
                 <source
-                    media="(max-width: 679px)"
-                    src="/landing-page/Unitracko%20AI%20%28Vertical%29.mp4"
+                    media="(max-width: 767px)"
+                    src="/landing-page/unitracko-ai-verticle.mp4"
                     type="video/mp4"
                 />
-                <source src="/landing-page/Unitracko%20AI.mp4" type="video/mp4" />
+                <source src="/landing-page/unitracko-ai.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-black/50" />
         
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
-                <div className="max-w-3xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)]  md:pb-0">
-                    <h1 className="text-[2rem] font-extrabold leading-[1.12] text-white sm:text-4xl md:text-6xl">
+                <div className="max-w-2xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)]  md:pb-0">
+                    <h1 className="text-[1.6rem] font-extrabold leading-[1.12] text-white sm:text-3xl md:text-5xl">
                         {hero.headingLine1}
                         <span className="mt-1 block">
                             <RoughNotation
@@ -73,7 +73,7 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                         </span>
                     </h1>
 
-                    <div className="mt-7 grid w-full gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-5 md:gap-8">
+                    {/* <div className="mt-7 grid w-full gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-5 md:gap-8">
                         {pains.map((label, i) => {
                             const Icon = painIcons[i] ?? painIcons[0];
                             return (
@@ -88,7 +88,7 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                             </div>
                             );
                         })}
-                    </div>
+                    </div> */}
 
                     <Link
                         href={hero.ctaHref || "/login"}
