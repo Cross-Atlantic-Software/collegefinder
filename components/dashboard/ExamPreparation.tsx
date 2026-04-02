@@ -29,14 +29,24 @@ type SubjectSection = {
   allTopics: Topic[];
 };
 
-export default function ExamPreparation() {
+type ExamPreparationProps = {
+  initialMode?: PrepMode;
+};
+
+export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<PrepMode>("self");
+  const [mode, setMode] = useState<PrepMode>(initialMode ?? "self");
   const [query, setQuery] = useState("");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
