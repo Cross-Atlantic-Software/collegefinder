@@ -211,16 +211,18 @@ export default function Sidebar({
           : undefined,
   }));
 
+  const closeOnMobile = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      onToggle();
+    }
+  };
+
   const handleSectionClick = (id: SectionId) => {
     if (id === "exam-prep") {
       setExamPrepExpanded((prev) => !prev);
     }
     onSectionChange(id);
-
-    // Auto-close only on mobile drawer layouts.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      onToggle();
-    }
+    closeOnMobile();
   };
 
   const handleSubSectionClick = (subId: string) => {
@@ -229,11 +231,7 @@ export default function Sidebar({
     if (onSubSectionChange) {
       onSubSectionChange(subId);
     }
-
-    // Auto-close only on mobile drawer layouts.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      onToggle();
-    }
+    closeOnMobile();
   };
 
   return (
