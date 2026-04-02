@@ -307,9 +307,9 @@ function AdminSidebarInner() {
             type="button"
             onClick={toggleCollapse}
             aria-label="Collapse sidebar"
-            className="hidden shrink-0 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:border-slate-700/50 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:inline-flex"
+            className="hidden shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-sm transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700 md:inline-flex"
           >
-            <BiChevronLeft className="h-4 w-4" />
+            <BiChevronLeft className="h-4 w-4 stroke-[2.5]" />
           </button>
         )}
         {railMode && (
@@ -317,9 +317,9 @@ function AdminSidebarInner() {
             type="button"
             onClick={toggleCollapse}
             aria-label="Expand sidebar"
-            className="absolute right-[-12px] top-4 z-20 hidden rounded-full border border-slate-200 bg-white p-1 text-slate-600 shadow-sm transition-all hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 md:inline-flex"
+            className="absolute right-[-14px] top-4 z-20 hidden rounded-full border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-white transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-950 dark:hover:bg-slate-700 md:inline-flex"
           >
-            <BiChevronRight className="h-3.5 w-3.5" />
+            <BiChevronRight className="h-4 w-4 stroke-[2.5]" />
           </button>
         )}
       </div>

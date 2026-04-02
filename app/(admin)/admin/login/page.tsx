@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
-import { Logo } from '@/components/shared';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -18,7 +18,6 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // Use same-origin /api so nginx (or Next rewrites) proxy to backend
       const apiBase = typeof window !== 'undefined' ? window.location.origin : '';
       const res = await fetch(`${apiBase}/api/admin/login`, {
         method: 'POST',
@@ -43,13 +42,10 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_authenticated', 'true');
         localStorage.setItem('admin_user', JSON.stringify(admin));
 
-        // Set cookie for server-side access (must be set before navigation)
-        const maxAge = 60 * 60 * 24 * 7; // 7 days
+        const maxAge = 60 * 60 * 24 * 7;
         document.cookie = `admin_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${maxAge}; SameSite=Lax`;
 
-        // Use full page navigation so the next request includes the new cookies.
-        // router.push() triggers client-side navigation and the server may receive the old (empty) cookie state, causing immediate redirect to login.
         const isSuperAdmin = (admin as { type?: string })?.type === 'super_admin';
         window.location.href = isSuperAdmin ? '/admin/site-users' : '/admin';
       } else {
@@ -64,31 +60,44 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F8FA] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8">
-        {/* Logo */}
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-5 shadow-sm">
-            <Logo
-              mode="dark"
-              darkSrc="/svgs/logo-white.svg"
-              width={200}
-              height={45}
-            />
+    <div className="flex min-h-screen flex-col bg-[#F6F8FA]">
+      <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-3.5">
+        <Link href="/" className="block">
+          <Image
+            src="/svgs/logo-unitracko.svg"
+            alt="UniTracko"
+            width={148}
+            height={33}
+            className="h-8 w-auto"
+            priority
+          />
+        </Link>
+        <span className="rounded-full border border-slate-200 bg-[#F6F8FA] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#341050]">
+          Admin
+        </span>
+      </header>
+
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[460px] space-y-2">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Admin login</h1>
+            <p className="mt-1 text-sm text-slate-600">Sign in with your CMS credentials.</p>
           </div>
-        </div>
 
-        {/* Login Form Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
-          {/* Title */}
-          <h2 className="text-xl font-bold text-slate-900 mb-6 text-center">Admin Login</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Field */}
-            <div>
+          <form
+            onSubmit={handleSubmit}
+            className="mt-6 space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="space-y-1.5">
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600"
+              >
+                Email
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiMail className="h-5 w-5 text-slate-400" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <FiMail className="h-[18px] w-[18px] text-slate-400" />
                 </div>
                 <input
                   id="email"
@@ -96,17 +105,23 @@ export default function AdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none transition-all text-base bg-[#F6F8FA] focus:bg-white text-slate-900"
-                  placeholder="Enter your email"
+                  autoComplete="email"
+                  className="block w-full rounded-2xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#341050] focus:ring-2 focus:ring-[#341050]/20"
+                  placeholder="you@example.com"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
-            <div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600"
+              >
+                Password
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiLock className="h-5 w-5 text-slate-400" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <FiLock className="h-[18px] w-[18px] text-slate-400" />
                 </div>
                 <input
                   id="password"
@@ -114,61 +129,54 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="block w-full pl-12 pr-12 py-3.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none transition-all text-base bg-[#F6F8FA] focus:bg-white text-slate-900"
+                  autoComplete="current-password"
+                  className="block w-full rounded-2xl border border-slate-300 bg-white py-3.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#341050] focus:ring-2 focus:ring-[#341050]/20"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center hover:opacity-70 transition-opacity"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 transition hover:text-slate-600"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? (
-                    <FiEyeOff className="h-5 w-5 text-slate-400" />
-                  ) : (
-                    <FiEye className="h-5 w-5 text-slate-400" />
-                  )}
+                  {showPassword ? <FiEyeOff className="h-[18px] w-[18px]" /> : <FiEye className="h-[18px] w-[18px]" />}
                 </button>
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 {error}
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#341050] hover:bg-[#2a0c40] text-white py-4 px-6 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-[#341050]/10 mt-8 text-base"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#341050] py-3.5 text-sm font-semibold text-white shadow-md shadow-[#341050]/15 transition hover:bg-[#2a0c40] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? (
-                <span>Signing in...</span>
+                'Signing in…'
               ) : (
                 <>
-                  <span>Sign In</span>
-                  <FiArrowRight className="h-5 w-5" />
+                  Sign in
+                  <FiArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
-          </form>
 
-          {/* Back Link */}
-          <div className="mt-10 text-center">
-            <Link
-              href="/"
-              className="text-[#341050] hover:text-[#2a0c40] inline-flex items-center gap-2 text-sm font-medium transition-colors"
-            >
-              <FiArrowLeft className="h-4 w-4" />
-              Go back to College Finder website
-            </Link>
-          </div>
+            <div className="pt-2 text-center">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#341050] transition hover:text-[#2a0c40]"
+              >
+                <FiArrowLeft className="h-4 w-4" />
+                Back to website
+              </Link>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   );
 }
-
