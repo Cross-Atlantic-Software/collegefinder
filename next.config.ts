@@ -41,6 +41,11 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn'],
     } : false,
   },
+  // Serializes webpack module graph work — slower builds, much lower peak RSS on 2GB hosts.
+  webpack: (config) => {
+    config.parallelism = 1;
+    return config;
+  },
 };
 
 export default nextConfig;
