@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
+import { PiCompassRoseBold } from "react-icons/pi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 
