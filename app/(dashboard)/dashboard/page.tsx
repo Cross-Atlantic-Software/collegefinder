@@ -46,6 +46,18 @@ export default function DashboardPage() {
     profileStrength: 85,
   };
 
+  const fullWidthSections: SectionId[] = [
+    "profile",
+    "exam-shortlist",
+    "college-shortlist",
+    "applications",
+    "exam-prep",
+    "test-module",
+    "know-your-strengths",
+    "admission-help",
+    "referral",
+  ];
+
   return (
     <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <Suspense fallback={null}>
@@ -92,7 +104,7 @@ export default function DashboardPage() {
             <div
               className={[
                 "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
-                activeSection === "profile" || activeSection === "exam-shortlist" || activeSection === "college-shortlist"
+                fullWidthSections.includes(activeSection)
                   ? "px-0 py-0"
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}

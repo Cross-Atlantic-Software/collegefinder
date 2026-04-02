@@ -34,24 +34,37 @@ export default function KnowYourStrengths({ onSectionChange }: KnowYourStrengths
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-500/30 border-t-pink" />
+      <div className="w-full min-h-screen bg-[#f5f9ff] p-4 dark:bg-slate-950 md:p-6">
+        <div className="flex items-center justify-center rounded-xl bg-white py-16 shadow-sm dark:bg-slate-900">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
+        </div>
       </div>
     );
   }
 
-  if (view === "results") {
-    return <StrengthResults />;
-  }
+  return (
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full bg-[#f5f9ff]">
+        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Know Your Strengths</p>
+            <p className="mt-0.5 pb-3 text-xs text-slate-500 dark:text-slate-400">
+              Discover your strengths and receive guided recommendations.
+            </p>
+          </div>
+        </header>
 
-  if (view === "form") {
-    return (
-      <StrengthForm
-        onPaymentSuccess={() => setView("results")}
-        onGoToProfile={() => onSectionChange("profile")}
-      />
-    );
-  }
-
-  return <StrengthLanding onTakeTest={() => setView("form")} />;
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+          {view === "results" && <StrengthResults />}
+          {view === "form" && (
+            <StrengthForm
+              onPaymentSuccess={() => setView("results")}
+              onGoToProfile={() => onSectionChange("profile")}
+            />
+          )}
+          {view === "landing" && <StrengthLanding onTakeTest={() => setView("form")} />}
+        </div>
+      </section>
+    </div>
+  );
 }

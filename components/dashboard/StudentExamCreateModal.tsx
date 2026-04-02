@@ -114,19 +114,19 @@ export function StudentExamCreateModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="relative w-full max-w-md rounded-lg bg-white/10 p-6 shadow-xl backdrop-blur-md border border-white/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm dark:bg-black/60">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
                 <button
                     onClick={onClose}
-                    className="absolute right-4 top-4 text-slate-300 hover:text-white transition"
+                    className="absolute right-4 top-4 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
-                    <FiX className="h-6 w-6" />
+                    <FiX className="h-5 w-5" />
                 </button>
 
                 <div className="space-y-6">
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Apply for Exam</h2>
-                        <p className="text-sm text-slate-300">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Apply for Exam</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
                             Select an exam to start the automated registration process
                         </p>
                     </div>
@@ -139,33 +139,33 @@ export function StudentExamCreateModal({
                         />
                     )}
 
-                    <div className="space-y-4">
-                        <label className="block text-sm font-medium text-slate-200">
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-slate-900 dark:text-slate-200">
                             Available Exams
                         </label>
 
                         {isLoading ? (
                             <div className="flex items-center justify-center py-8">
                                 <FiRefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-                                <span className="ml-2 text-slate-400">Loading exams...</span>
+                                <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">Loading exams...</span>
                             </div>
                         ) : exams.length === 0 ? (
-                            <div className="py-8 text-center text-slate-400">
+                            <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                                 No exams available for automation at this time.
                             </div>
                         ) : (
-                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                                 {exams.map((exam) => (
                                     <button
                                         key={exam.id}
                                         onClick={() => setSelectedExamId(exam.id)}
-                                        className={`w-full p-4 rounded-lg text-left transition ${selectedExamId === exam.id
-                                            ? 'bg-pink/20 border-2 border-pink'
-                                            : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                                        className={`w-full p-4 rounded-xl text-left transition-all ${selectedExamId === exam.id
+                                            ? 'border-2 border-slate-900 bg-slate-50 dark:border-[#FAD53C] dark:bg-[#FAD53C]/10'
+                                            : 'border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800'
                                             }`}
                                     >
-                                        <p className="font-medium text-white">{exam.name}</p>
-                                        <p className="text-xs text-slate-400 mt-1 truncate">
+                                        <p className={`font-medium ${selectedExamId === exam.id ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>{exam.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                                             {exam.url}
                                         </p>
                                     </button>
@@ -174,12 +174,12 @@ export function StudentExamCreateModal({
                         )}
                     </div>
 
-                    <div className="flex gap-4 pt-4 border-t border-white/10">
+                    <div className="flex gap-3 pt-5 border-t border-slate-100 dark:border-slate-800">
                         <Button
                             type="button"
-                            variant="themeButtonOutline"
+                            variant="secondary"
                             size="md"
-                            className="flex-1"
+                            className="flex-1 !rounded-full"
                             onClick={onClose}
                             disabled={isSubmitting}
                         >
@@ -187,9 +187,9 @@ export function StudentExamCreateModal({
                         </Button>
                         <Button
                             type="button"
-                            variant="DarkGradient"
+                            variant="themeButton"
                             size="md"
-                            className="flex-1 flex items-center justify-center gap-2"
+                            className="flex-1 flex items-center justify-center gap-2 !rounded-full bg-black text-[#FAD53C] hover:bg-black/90 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                             onClick={handleSubmit}
                             disabled={isSubmitting || !selectedExamId || isLoading}
                         >

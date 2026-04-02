@@ -3,13 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
-import { PiCompassRoseBold } from "react-icons/pi";
 import { RoughNotation } from "react-rough-notation";
 
 const painPoints = [
-    { label: "No scattered portals", Icon: PiCompassRoseBold },
-    { label: "No forgotten forms", Icon: FiFileText },
-    { label: "No last minute chaos", Icon: FiClock },
+    
 ];
 
 export default function Hero() {

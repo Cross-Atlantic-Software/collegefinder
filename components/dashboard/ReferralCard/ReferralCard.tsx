@@ -392,35 +392,39 @@ export default function ReferralCard() {
 
   if (loading) {
     return (
-      <article className="rounded-2xl bg-white dark:bg-slate-900 p-5 space-y-4 animate-pulse">
-        <div className="h-5 w-36 rounded-md bg-slate-200 dark:bg-slate-700" />
-        <div className="h-3 w-72 rounded-md bg-slate-100 dark:bg-slate-800" />
-        <div className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800" />
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-          <div className="space-y-3 rounded-xl border border-slate-100 dark:border-slate-800 p-4 lg:min-h-[320px]">
-            <div className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800" />
-            <div className="mx-auto h-48 w-48 rounded-xl bg-slate-100 dark:bg-slate-800" />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="h-9 rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-9 rounded-lg bg-slate-100 dark:bg-slate-800" />
+      <div className="w-full min-h-screen bg-[#f5f9ff] p-4 dark:bg-slate-950 md:p-6">
+        <article className="space-y-4 rounded-2xl bg-white p-5 shadow-sm dark:bg-slate-900 animate-pulse">
+          <div className="h-5 w-36 rounded-md bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-72 rounded-md bg-slate-100 dark:bg-slate-800" />
+          <div className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800" />
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+            <div className="space-y-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800 lg:min-h-[320px]">
+              <div className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800" />
+              <div className="mx-auto h-48 w-48 rounded-xl bg-slate-100 dark:bg-slate-800" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-9 rounded-lg bg-slate-100 dark:bg-slate-800" />
+                <div className="h-9 rounded-lg bg-slate-100 dark:bg-slate-800" />
+              </div>
             </div>
+            <div className="min-h-[280px] rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 lg:min-h-[320px]" />
           </div>
-          <div className="min-h-[280px] rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 lg:min-h-[320px]" />
-        </div>
-      </article>
+        </article>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <article className="rounded-2xl bg-white dark:bg-slate-900 p-5 text-sm text-slate-500 dark:text-slate-400">
-        {error}
-      </article>
+      <div className="w-full min-h-screen bg-[#f5f9ff] p-4 dark:bg-slate-950 md:p-6">
+        <article className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-400">
+          {error}
+        </article>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       {showModal && code && (
         <EmailModal
           referralCode={code}
@@ -429,7 +433,16 @@ export default function ReferralCard() {
         />
       )}
 
-      <article className="rounded-2xl bg-white dark:bg-slate-900 p-5">
+      <section className="w-full bg-[#f5f9ff]">
+        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Refer &amp; Earn</p>
+            <p className="mt-0.5 pb-3 text-xs text-slate-500 dark:text-slate-400">Invite friends and track sign-ups through your referral code.</p>
+          </div>
+        </header>
+
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+      <article className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm">
 
         {/* Title */}
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
@@ -562,6 +575,8 @@ export default function ReferralCard() {
         </div>
 
       </article>
-    </>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -485,7 +485,7 @@ export default function CollegeDetailPage() {
             </div>
           </section>
 
-          <div className="px-4 py-4 md:px-6">
+          <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
             <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
               <section className="space-y-5">
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

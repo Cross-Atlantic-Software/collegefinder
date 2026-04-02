@@ -75,7 +75,22 @@ export default function ExamPreparation() {
   }, []);
 
   return (
-    <div className="w-full space-y-5">
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full bg-[#f5f9ff]">
+        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <div>
+                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Exam Prep</p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Practice by subject or explore top coaching options.
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
       {/* PERFORMANCE RADAR STRIP */}
       {/* <div className="flex flex-col gap-3 rounded-md bg-amber-400/90 p-4 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -115,10 +130,10 @@ export default function ExamPreparation() {
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           onClick={() => setMode("self")}
-          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
+          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-95 ${
             mode === "self"
-              ? "bg-gradient-to-r from-slate-900 to-pink-600 text-white shadow"
-              : "bg-white/10 text-slate-200 hover:bg-white/15"
+              ? "bg-black text-[#FAD53C] shadow-sm"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
           }`}
         >
           <IoPlayCircleOutline className="text-lg" />
@@ -127,10 +142,10 @@ export default function ExamPreparation() {
 
         <button
           onClick={() => setMode("coaching")}
-          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
+          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-95 ${
             mode === "coaching"
-              ? "bg-gradient-to-r from-slate-900 to-pink-600 text-white shadow"
-              : "bg-white/10 text-slate-200 hover:bg-white/15"
+              ? "bg-black text-[#FAD53C] shadow-sm"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
           }`}
         >
           <MdSchool className="text-lg" />
@@ -152,9 +167,9 @@ export default function ExamPreparation() {
               </p>
               <Button
                 onClick={() => router.push('/dashboard?tab=academics')}
-                variant="DarkGradient"
+                variant="themeButton"
                 size="sm"
-                className="text-white"
+                className="rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90"
               >
                 Go to Academics Profile
               </Button>
@@ -166,7 +181,7 @@ export default function ExamPreparation() {
       {/* Loading State */}
       {loading && !requiresStreamSelection && (
         <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-slate-400">Loading subjects...</div>
+          <div className="text-sm text-slate-500 dark:text-slate-300">Loading subjects...</div>
         </div>
       )}
 
@@ -191,6 +206,8 @@ export default function ExamPreparation() {
           <CoachingCentersTab />
         )
       )}
+        </div>
+      </section>
     </div>
   );
 }

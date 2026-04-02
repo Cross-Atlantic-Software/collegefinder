@@ -14,8 +14,8 @@ export default function ExpertCard({ expert }: ExpertCardProps) {
   const hasContact = hasPhone || hasEmail || expert.contact?.trim();
 
   return (
-    <div className="flex-shrink-0 w-40 rounded-md bg-white/5 border border-white/10 p-3 text-center hover:bg-white/10 transition-colors">
-      <div className="relative w-14 h-14 mx-auto mb-2 rounded-full overflow-hidden bg-slate-700">
+    <div className="w-44 flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800/70">
+      <div className="relative mx-auto mb-2 h-14 w-14 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
         {expert.photo_url ? (
           <Image
             src={expert.photo_url}
@@ -28,12 +28,12 @@ export default function ExpertCard({ expert }: ExpertCardProps) {
           <FaUserCircle className="w-full h-full text-slate-500 p-2" />
         )}
       </div>
-      <p className="text-xs font-semibold text-slate-100 truncate">{expert.name}</p>
-      <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
+      <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{expert.name}</p>
+      <p className="mt-0.5 text-[10px] capitalize text-slate-500 dark:text-slate-400">
         {expert.type.replace(/_/g, " ")}
       </p>
       {expert.description && (
-        <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 text-left px-0.5">
+        <p className="mt-1 line-clamp-2 px-0.5 text-left text-[10px] text-slate-500 dark:text-slate-400">
           {expert.description}
         </p>
       )}
@@ -41,7 +41,7 @@ export default function ExpertCard({ expert }: ExpertCardProps) {
         {hasPhone && (
           <a
             href={`tel:${expert.phone!.trim()}`}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-pink/20 text-[10px] text-pink font-medium hover:bg-pink/30 transition-colors"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             <FaPhoneAlt className="w-2.5 h-2.5" />
             Phone
@@ -50,7 +50,7 @@ export default function ExpertCard({ expert }: ExpertCardProps) {
         {hasEmail && (
           <a
             href={`mailto:${expert.email!.trim()}`}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-pink/20 text-[10px] text-pink font-medium hover:bg-pink/30 transition-colors"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             <FaEnvelope className="w-2.5 h-2.5" />
             Email
@@ -59,7 +59,7 @@ export default function ExpertCard({ expert }: ExpertCardProps) {
         {!hasPhone && !hasEmail && hasContact && (
           <a
             href={expert.contact!.includes("@") ? `mailto:${expert.contact}` : `tel:${expert.contact}`}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-pink/20 text-[10px] text-pink font-medium hover:bg-pink/30 transition-colors"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             {expert.contact!.includes("@") ? <FaEnvelope className="w-2.5 h-2.5" /> : <FaPhoneAlt className="w-2.5 h-2.5" />}
             Contact

@@ -30,17 +30,17 @@ export default function StrengthResults() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-500/30 border-t-pink" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
       </div>
     );
   }
 
   if (!hasResults || !results) {
     return (
-      <div className="rounded-md bg-white/5 border border-white/10 p-8 text-center">
-        <FaHourglassHalf className="w-12 h-12 text-pink mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-slate-100 mb-2">Analysis In Progress</h3>
-        <p className="text-slate-400 text-sm max-w-md mx-auto">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <FaHourglassHalf className="mx-auto mb-4 h-12 w-12 text-[#b88900]" />
+        <h3 className="mb-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Analysis In Progress</h3>
+        <p className="mx-auto max-w-md text-sm text-slate-500 dark:text-slate-400">
           Your Strength Analysis is being prepared by our certified Gallup Strengths Coach.
           You will see your results here once the analysis is complete.
         </p>
@@ -53,47 +53,47 @@ export default function StrengthResults() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-100 text-center">Your Strength Analysis</h2>
+      <h2 className="text-center text-2xl font-bold text-slate-900 dark:text-slate-100">Your Strength Analysis</h2>
 
       {/* Top 5 Strengths */}
-      <div className="rounded-md bg-white/5 border border-white/10 p-6">
-        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-          <FaStar className="text-pink" />
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <FaStar className="text-[#b88900]" />
           Top 5 Strengths
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {strengths.map((strength, idx) => (
             <div
               key={idx}
-              className="rounded-md bg-white/5 border border-white/10 px-4 py-3 text-center"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800"
             >
-              <span className="text-xs text-slate-400 block mb-1">#{idx + 1}</span>
-              <span className="text-sm font-semibold text-slate-100">{strength}</span>
+              <span className="mb-1 block text-xs text-slate-500 dark:text-slate-400">#{idx + 1}</span>
+              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{strength}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Career Recommendations */}
-      <div className="rounded-md bg-white/5 border border-white/10 p-6">
-        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-          <FaBriefcase className="text-pink" />
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <FaBriefcase className="text-[#b88900]" />
           Career Recommendations
         </h3>
         <div className="space-y-3">
           {careers.map((rec, idx) => (
             <div
               key={idx}
-              className="rounded-md bg-white/5 border border-white/10 p-4 flex flex-col sm:flex-row gap-3"
+              className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row"
             >
               <div className="flex-shrink-0">
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink/20 text-pink text-sm font-bold">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#FAD53C]/35 text-sm font-bold text-[#8f6700]">
                   {idx + 1}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-100 text-sm">{rec.career}</p>
-                <p className="text-slate-400 text-xs mt-1 leading-relaxed">{rec.details}</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{rec.career}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{rec.details}</p>
               </div>
             </div>
           ))}
@@ -108,7 +108,7 @@ export default function StrengthResults() {
             download="strength-report.pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-pink text-white font-medium rounded-full text-sm border border-pink hover:bg-white hover:text-pink transition duration-500"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-black bg-black px-8 py-3 text-sm font-medium text-[#FAD53C] transition duration-200 hover:bg-black/90"
           >
             <FaDownload className="w-4 h-4" />
             Download Full Report

@@ -236,6 +236,7 @@ export default function ShortlistColleges() {
   const shortlistedColleges = useMemo(() => {
     return colleges.filter((college) => shortlistedIds.includes(college.id));
   }, [colleges, shortlistedIds]);
+  const shortlistedCount = shortlistedColleges.length;
 
   const visibleColleges = activeTab === "recommended"
     ? recommendedColleges
@@ -251,16 +252,23 @@ export default function ShortlistColleges() {
       : "dashboard-college-shortlist-all";
 
   return (
-    <div className="min-h-full w-full bg-[#f8fbff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-black dark:bg-slate-950 dark:text-slate-50">
       <section className="w-full bg-[#f5f9ff]">
         <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
-              <div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">College Shortlist</p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Manage recommendations, shortlist picks, and the full college list.
-                </p>
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">College Shortlist</p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Manage recommendations, shortlist picks, and the full college list.
+                  </p>
+                </div>
+                {shortlistedCount > 0 && (
+                  <span className="shrink-0 rounded-full bg-[#FAD53C] px-2.5 py-0.5 text-xs font-bold text-black">
+                    {shortlistedCount}
+                  </span>
+                )}
               </div>
 
               <div className="relative -mb-px mt-3 flex gap-1 overflow-x-auto scrollbar-hide">
@@ -301,84 +309,88 @@ export default function ShortlistColleges() {
           </div>
         </header>
 
-        <div className="bg-[#f8fbff] px-4 py-4 dark:bg-slate-950/40 md:px-5 md:py-5">
-          {isLoading ? (
-            <div className="mx-auto w-full rounded-xl bg-white px-4 py-12 text-center text-sm font-medium text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
-              Loading colleges...
-            </div>
-          ) : visibleColleges.length === 0 ? (
-            <div className="mx-auto w-full rounded-xl bg-white px-4 py-12 text-center text-sm font-medium text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-              No colleges available in this section.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-              {visibleColleges.map((college) => (
-                <article
-                  key={college.id}
-                  className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900"
-                >
-                  <div className="relative aspect-[23/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    <img
-                      src={college.college_logo}
-                      alt={college.college_name}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-                    <div className="absolute left-3 top-3 inline-flex rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
-                      {college.college_type}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-col gap-2 p-3">
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
-                            {college.college_name}
-                          </h3>
-                          <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{college.subtitle}</p>
-                        </div>
-
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {college.source}
-                        </span>
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6">
+          <div key={activeTab} style={{ animation: "fade-in 220ms ease-out" }}>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center text-sm font-medium text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
+                Loading colleges...
+              </div>
+            ) : visibleColleges.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center shadow-sm dark:bg-slate-900">
+                <MdSchool className="mb-3 h-10 w-10 text-slate-200 dark:text-slate-700" />
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-300">No colleges available in this section.</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Try switching tabs or update your profile preferences.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                {visibleColleges.map((college) => (
+                  <article
+                    key={college.id}
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900"
+                  >
+                    <div className="relative aspect-[23/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <img
+                        src={college.college_logo}
+                        alt={college.college_name}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                      <div className="absolute left-3 top-3 inline-flex rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+                        {college.college_type}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {college.college_location}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {college.college_type}
-                      </span>
-                    </div>
+                    <div className="flex flex-1 flex-col gap-2 p-3">
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
+                              {college.college_name}
+                            </h3>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{college.subtitle}</p>
+                          </div>
 
-                    <div className="mt-auto flex items-center gap-2 pt-1">
-                      <Button
-                        variant="themeButtonOutline"
-                        size="sm"
-                        href={college.detailHref.replace(/from=[^&]*/, `from=${viewFrom}`)}
-                        className="flex-1 justify-center !rounded-full border border-slate-300 bg-transparent text-slate-700 hover:border-brand-ink hover:bg-brand-ink hover:text-white dark:border-slate-700 dark:text-slate-200"
-                      >
-                        View
-                      </Button>
-                      <Button
-                        variant="themeButton"
-                        size="sm"
-                        href="/dashboard?section=applications"
-                        className="flex-1 justify-center !rounded-full"
-                      >
-                        Apply
-                      </Button>
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {college.source}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {college.college_location}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {college.college_type}
+                        </span>
+                      </div>
+
+                      <div className="mt-auto flex items-center gap-2 pt-1">
+                        <Button
+                          variant="themeButtonOutline"
+                          size="sm"
+                          href={college.detailHref.replace(/from=[^&]*/, `from=${viewFrom}`)}
+                          className="flex-1 justify-center !rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                        >
+                          View
+                        </Button>
+                        <Button
+                          variant="themeButton"
+                          size="sm"
+                          href="/dashboard?section=applications"
+                          className="flex-1 justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                        >
+                          Apply
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>

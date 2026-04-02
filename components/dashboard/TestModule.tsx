@@ -282,341 +282,331 @@ export default function TestModule() {
   }
 
   return (
-    <div className="w-full space-y-5">
-      {/* Tab Navigation */}
-      <div className="flex w-full rounded-lg bg-white/10 p-1 gap-0.5">
-        <button
-          onClick={() => setActiveTab("practice")}
-          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium text-center transition-all ${
-            activeTab === "practice"
-              ? "bg-pink-600 text-white shadow-md ring-2 ring-pink-400 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
-              : "text-slate-400 hover:text-slate-300 hover:bg-white/5 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
-          }`}
-        >
-          Practice Tests
-        </button>
-        <button
-          onClick={() => setActiveTab("history-analytics")}
-          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium text-center transition-all ${
-            activeTab === "history-analytics"
-              ? "bg-pink-600 text-white shadow-md ring-2 ring-pink-400 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
-              : "text-slate-400 hover:text-slate-300 hover:bg-white/5 outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-transparent"
-          }`}
-        >
-          History and Analytics
-        </button>
-      </div>
+    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full bg-[#f5f9ff]">
+        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Mock Test</p>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Practice tests and history analytics.</p>
 
-      {/* Content */}
-      {activeTab === "practice" && viewState === 'format-selection' && selectedExam && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white">Select Format</h2>
-              <p className="text-slate-300 text-sm">Choose a test format for {selectedExam.name}</p>
-            </div>
-            <Button
-              onClick={handleBackToExams}
-              variant="themeButtonOutline"
-              size="sm"
-            >
-              Back to Exams
-            </Button>
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {formatLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2].map((i) => (
-                <div key={i} className="bg-white/10 rounded-lg p-6 animate-pulse">
-                  <div className="h-6 bg-white/20 rounded mb-3"></div>
-                  <div className="h-4 bg-white/10 rounded mb-2"></div>
-                  <div className="h-4 bg-white/10 rounded mb-4"></div>
-                  <div className="h-10 bg-white/20 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(availableFormats).map(([formatId, format]) => (
-                <div key={formatId} className="bg-white/10 rounded-lg p-6 hover:bg-white/20 transition group">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition mb-2">
-                      {format.name}
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div className="text-center">
-                        <div className="text-pink-400 font-semibold">{format.duration_minutes}m</div>
-                        <div className="text-slate-400">Duration</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-pink-400 font-semibold">{format.total_marks}</div>
-                        <div className="text-slate-400">Marks</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-pink-400 font-semibold">{getFormatTotalQuestions(format)}</div>
-                        <div className="text-slate-400">Questions</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-pink-400 font-semibold">{Object.keys(format.sections || {}).length}</div>
-                        <div className="text-slate-400">Sections</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <div className="text-xs text-slate-400 mb-2">Sections:</div>
-                    <div className="flex flex-wrap gap-1">
-                      {Object.values(format.sections || {}).map((section: any, index) => (
-                        <span key={index} className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
-                          {section.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <Button
-                    onClick={() => handleFormatSelect({ ...format, format_id: formatId })}
-                    variant="themeButton"
-                    size="sm"
-                    className="w-full group-hover:scale-105 transition-transform"
-                    disabled={rulesLoading}
-                  >
-                    {rulesLoading ? 'Loading...' : 'Select Format'}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "practice" && viewState === 'exam-selection' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-white">Select an Exam</h2>
-              <p className="text-slate-300 text-sm">Choose an exam to start practicing with AI-generated questions</p>
-            </div>
-            {error && (
-              <Button
-                onClick={fetchExams}
-                variant="themeButtonOutline"
-                size="sm"
+            <div className="relative -mb-px mt-3 flex gap-1 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setActiveTab("practice")}
+                className={`flex min-w-max items-center border-b-2 border-transparent px-4 py-2.5 text-sm font-medium transition-colors duration-300 ${
+                  activeTab === "practice"
+                    ? "border-b-slate-900 text-slate-900 dark:border-b-slate-100 dark:text-slate-100"
+                    : "text-black/30 hover:text-black/60 dark:text-white/40 dark:hover:text-white/75"
+                }`}
               >
-                Retry
-              </Button>
-            )}
+                Practice Tests
+              </button>
+              <button
+                onClick={() => setActiveTab("history-analytics")}
+                className={`flex min-w-max items-center border-b-2 border-transparent px-4 py-2.5 text-sm font-medium transition-colors duration-300 ${
+                  activeTab === "history-analytics"
+                    ? "border-b-slate-900 text-slate-900 dark:border-b-slate-100 dark:text-slate-100"
+                    : "text-black/30 hover:text-black/60 dark:text-white/40 dark:hover:text-white/75"
+                }`}
+              >
+                History and Analytics
+              </button>
+            </div>
           </div>
+        </header>
 
-          {error && (
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white/10 rounded-lg p-4 animate-pulse">
-                  <div className="h-6 bg-white/20 rounded mb-2"></div>
-                  <div className="h-4 bg-white/10 rounded mb-3"></div>
-                  <div className="h-10 bg-white/20 rounded"></div>
+        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+          {activeTab === "practice" && viewState === 'format-selection' && selectedExam && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Select Format</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Choose a test format for {selectedExam.name}</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {exams.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="text-slate-400">
-                    <p className="text-lg font-medium mb-2">No exams available</p>
-                    <p className="text-sm">Please check back later or contact support.</p>
-                  </div>
+                <Button
+                  onClick={handleBackToExams}
+                  variant="themeButtonOutline"
+                  size="sm"
+                  className="rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  Back to Exams
+                </Button>
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              {formatLoading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="mb-3 h-6 rounded bg-slate-200 dark:bg-slate-700" />
+                      <div className="mb-2 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                      <div className="mb-4 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                      <div className="h-10 rounded bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                  ))}
                 </div>
               ) : (
-                exams.map((exam) => {
-                  const attemptedMocks = examAttemptStats.get(exam.id)?.totalMocks ?? 0;
-                  const nextMockNumber = nextMockByExam.get(exam.id) ?? attemptedMocks + 1;
-                  return (
-                    <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group">
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition">
-                          {exam.name}
-                        </h3>
-                        <span className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
-                          {exam.code}
-                        </span>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {Object.entries(availableFormats).map(([formatId, format]) => (
+                    <div key={formatId} className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+                      <div className="mb-4">
+                        <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{format.name}</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                          <div className="text-center">
+                            <div className="font-semibold text-[#b88900]">{format.duration_minutes}m</div>
+                            <div className="text-slate-500 dark:text-slate-400">Duration</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-[#b88900]">{format.total_marks}</div>
+                            <div className="text-slate-500 dark:text-slate-400">Marks</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-[#b88900]">{getFormatTotalQuestions(format)}</div>
+                            <div className="text-slate-500 dark:text-slate-400">Questions</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-[#b88900]">{Object.keys(format.sections || {}).length}</div>
+                            <div className="text-slate-500 dark:text-slate-400">Sections</div>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-slate-300 text-sm mb-4 line-clamp-2">
-                        {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
-                      </p>
-                      <div className="flex items-center justify-end">
-                        <Button
-                          onClick={() => handleExamSelect(exam)}
-                          variant="themeButton"
-                          size="sm"
-                          className="group-hover:scale-105 transition-transform"
-                          disabled={formatLoading}
-                        >
-                          {formatLoading && selectedExam?.id === exam.id
-                            ? 'Loading...'
-                            : `Start Mock ${nextMockNumber}`}
-                        </Button>
+
+                      <div className="mb-4">
+                        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">Sections:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {Object.values(format.sections || {}).map((section: any, index) => (
+                            <span key={index} className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              {section.name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
+
+                      <Button
+                        onClick={() => handleFormatSelect({ ...format, format_id: formatId })}
+                        variant="themeButton"
+                        size="sm"
+                        className="w-full rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                        disabled={rulesLoading}
+                      >
+                        {rulesLoading ? 'Loading...' : 'Select Format'}
+                      </Button>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
             </div>
           )}
-        </div>
-      )}
 
-      {activeTab === "history-analytics" && historyAnalyticsExam === null && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-white">Select an Exam</h2>
-              <p className="text-slate-300 text-sm">View history and analytics for an exam</p>
-            </div>
-            {error && (
-              <Button
-                onClick={fetchExams}
-                variant="themeButtonOutline"
-                size="sm"
-              >
-                Retry
-              </Button>
-            )}
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {loading || historyStatsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white/10 rounded-lg p-4 animate-pulse">
-                  <div className="h-6 bg-white/20 rounded mb-2"></div>
-                  <div className="h-4 bg-white/10 rounded mb-3"></div>
-                  <div className="h-10 bg-white/20 rounded"></div>
+          {activeTab === "practice" && viewState === 'exam-selection' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Select an Exam</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Choose an exam to start practicing with AI-generated questions.</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {exams.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="text-slate-400">
-                    <p className="text-lg font-medium mb-2">No exams available</p>
-                    <p className="text-sm">Please check back later or contact support.</p>
-                  </div>
+                {error && (
+                  <Button onClick={fetchExams} variant="themeButtonOutline" size="sm" className="rounded-full">
+                    Retry
+                  </Button>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              {loading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="mb-2 h-6 rounded bg-slate-200 dark:bg-slate-700" />
+                      <div className="mb-3 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                      <div className="h-10 rounded bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                  ))}
                 </div>
               ) : (
-                [...exams]
-                  .sort((a, b) => {
-                    const statsA = examAttemptStats.get(a.id);
-                    const statsB = examAttemptStats.get(b.id);
-                    const hasAnalyticsA = (statsA?.totalMocks ?? 0) > 0;
-                    const hasAnalyticsB = (statsB?.totalMocks ?? 0) > 0;
-                    if (hasAnalyticsA !== hasAnalyticsB) return hasAnalyticsB ? 1 : -1;
-                    const timeA = statsA?.lastAttemptedAt ? new Date(statsA.lastAttemptedAt).getTime() : 0;
-                    const timeB = statsB?.lastAttemptedAt ? new Date(statsB.lastAttemptedAt).getTime() : 0;
-                    return timeB - timeA;
-                  })
-                  .map((exam) => {
-                    const stats = examAttemptStats.get(exam.id);
-                    const lastAttempted = stats?.lastAttemptedAt
-                      ? new Date(stats.lastAttemptedAt).toLocaleString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : null;
-                    const totalMocks = stats?.totalMocks ?? 0;
-                    const hasAnalytics = totalMocks > 0 || !!lastAttempted;
-                    return (
-                      <div key={exam.id} className="bg-white/10 rounded-lg p-4 hover:bg-white/20 transition group flex flex-col h-full min-h-[200px]">
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="text-lg font-semibold text-white group-hover:text-pink-300 transition">
-                            {exam.name}
-                          </h3>
-                          <span className="text-xs bg-pink-600/20 text-pink-300 px-2 py-1 rounded">
-                            {exam.code}
-                          </span>
-                        </div>
-                        <p className="text-slate-300 text-sm mb-3 line-clamp-2">
-                          {exam.description || 'View your test history and performance analytics.'}
-                        </p>
-                        {(lastAttempted || totalMocks > 0) && (
-                          <div className="mb-3 space-y-2">
-                            {totalMocks > 0 && (
-                              <div className="inline-flex items-center gap-1.5 bg-pink-600/25 text-pink-200 px-2.5 py-1 rounded-lg text-sm font-medium">
-                                <span className="text-pink-300">Total mocks given:</span>
-                                <span className="font-semibold text-white">{totalMocks}</span>
-                              </div>
-                            )}
-                            {lastAttempted && (
-                              <p className="text-sm text-pink-200 font-medium bg-white/5 px-2.5 py-1.5 rounded-lg border border-pink-500/20">
-                                Last attempted: <span className="text-white font-semibold">{lastAttempted}</span>
-                              </p>
-                            )}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {exams.length === 0 ? (
+                    <div className="col-span-full rounded-xl bg-white py-8 text-center shadow-sm dark:bg-slate-900">
+                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No exams available</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500">Please check back later or contact support.</p>
+                    </div>
+                  ) : (
+                    exams.map((exam) => {
+                      const attemptedMocks = examAttemptStats.get(exam.id)?.totalMocks ?? 0;
+                      const nextMockNumber = nextMockByExam.get(exam.id) ?? attemptedMocks + 1;
+                      return (
+                        <div key={exam.id} className="group flex min-h-[200px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+                          <div className="mb-3 flex items-start justify-between">
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{exam.name}</h3>
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code}</span>
                           </div>
-                        )}
-                        <div className="flex items-center justify-end mt-auto pt-3">
-                          {hasAnalytics ? (
+                          <p className="mb-4 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
+                            {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
+                          </p>
+                          <div className="mt-auto flex items-center justify-end">
                             <Button
-                              onClick={() => setHistoryAnalyticsExam(exam)}
+                              onClick={() => handleExamSelect(exam)}
                               variant="themeButton"
                               size="sm"
-                              className="group-hover:scale-105 transition-transform"
+                              className="rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                              disabled={formatLoading}
                             >
-                              View
+                              {formatLoading && selectedExam?.id === exam.id ? 'Loading...' : `Start Mock ${nextMockNumber}`}
                             </Button>
-                          ) : (
-                            <p className="text-slate-400 text-sm italic text-center py-2 px-3 bg-white/5 rounded-lg border border-white/10">
-                              No analytics to view. First attempt a mock to view analytics.
-                            </p>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
+                  )}
+                </div>
               )}
             </div>
           )}
-        </div>
-      )}
 
-      {activeTab === "history-analytics" && historyAnalyticsExam && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-white">{historyAnalyticsExam.name} - History & Analytics</h2>
-              <p className="text-slate-300 text-sm">Your performance across mocks and attempts</p>
+          {activeTab === "history-analytics" && historyAnalyticsExam === null && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Select an Exam</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">View history and analytics for an exam.</p>
+                </div>
+                {error && (
+                  <Button onClick={fetchExams} variant="themeButtonOutline" size="sm" className="rounded-full">
+                    Retry
+                  </Button>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              {loading || historyStatsLoading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="mb-2 h-6 rounded bg-slate-200 dark:bg-slate-700" />
+                      <div className="mb-3 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                      <div className="h-10 rounded bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {exams.length === 0 ? (
+                    <div className="col-span-full rounded-xl bg-white py-8 text-center shadow-sm dark:bg-slate-900">
+                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No exams available</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500">Please check back later or contact support.</p>
+                    </div>
+                  ) : (
+                    [...exams]
+                      .sort((a, b) => {
+                        const statsA = examAttemptStats.get(a.id);
+                        const statsB = examAttemptStats.get(b.id);
+                        const hasAnalyticsA = (statsA?.totalMocks ?? 0) > 0;
+                        const hasAnalyticsB = (statsB?.totalMocks ?? 0) > 0;
+                        if (hasAnalyticsA !== hasAnalyticsB) return hasAnalyticsB ? 1 : -1;
+                        const timeA = statsA?.lastAttemptedAt ? new Date(statsA.lastAttemptedAt).getTime() : 0;
+                        const timeB = statsB?.lastAttemptedAt ? new Date(statsB.lastAttemptedAt).getTime() : 0;
+                        return timeB - timeA;
+                      })
+                      .map((exam) => {
+                        const stats = examAttemptStats.get(exam.id);
+                        const lastAttempted = stats?.lastAttemptedAt
+                          ? new Date(stats.lastAttemptedAt).toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : null;
+                        const totalMocks = stats?.totalMocks ?? 0;
+                        const hasAnalytics = totalMocks > 0 || !!lastAttempted;
+
+                        return (
+                          <div key={exam.id} className="group flex min-h-[200px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+                            <div className="mb-3 flex items-start justify-between">
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{exam.name}</h3>
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code}</span>
+                            </div>
+                            <p className="mb-3 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
+                              {exam.description || 'View your test history and performance analytics.'}
+                            </p>
+
+                            {(lastAttempted || totalMocks > 0) && (
+                              <div className="mb-3 space-y-2">
+                                {totalMocks > 0 && (
+                                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-[#FAD53C]/25 px-2.5 py-1 text-sm font-medium text-[#8a6700] dark:text-[#FAD53C]">
+                                    <span>Total mocks:</span>
+                                    <span className="font-semibold">{totalMocks}</span>
+                                  </div>
+                                )}
+                                {lastAttempted && (
+                                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                    Last attempted: <span className="font-semibold">{lastAttempted}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="mt-auto flex items-center justify-end pt-3">
+                              {hasAnalytics ? (
+                                <Button
+                                  onClick={() => setHistoryAnalyticsExam(exam)}
+                                  variant="themeButton"
+                                  size="sm"
+                                  className="rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                                >
+                                  View
+                                </Button>
+                              ) : (
+                                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm italic text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                                  No analytics to view yet.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              )}
             </div>
-            <Button
-              onClick={() => setHistoryAnalyticsExam(null)}
-              variant="themeButtonOutline"
-              size="sm"
-            >
-              Back to Exams
-            </Button>
-          </div>
-          <AnalyticsTab examId={historyAnalyticsExam.id} />
+          )}
+
+          {activeTab === "history-analytics" && historyAnalyticsExam && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{historyAnalyticsExam.name} - History & Analytics</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Your performance across mocks and attempts.</p>
+                </div>
+                <Button
+                  onClick={() => setHistoryAnalyticsExam(null)}
+                  variant="themeButtonOutline"
+                  size="sm"
+                  className="rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  Back to Exams
+                </Button>
+              </div>
+              <AnalyticsTab examId={historyAnalyticsExam.id} />
+            </div>
+          )}
         </div>
-      )}
+      </section>
     </div>
   );
 }

@@ -296,11 +296,18 @@ export default function ShortlistExams() {
                 <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 md:px-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="min-w-0 flex-1">
-                            <div>
-                                <p className="text-lg font-semibold text-slate-900">Exam Shortlist</p>
-                                <p className="mt-0.5 text-xs text-slate-500">
-                                    Manage recommendations, shortlist picks, and the full exam list.
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <div>
+                                    <p className="text-lg font-semibold text-slate-900">Exam Shortlist</p>
+                                    <p className="mt-0.5 text-xs text-slate-500">
+                                        Manage recommendations, shortlist picks, and the full exam list.
+                                    </p>
+                                </div>
+                                {shortlistedCount > 0 && (
+                                    <span className="shrink-0 rounded-full bg-[#FAD53C] px-2.5 py-0.5 text-xs font-bold text-black">
+                                        {shortlistedCount}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="relative -mb-px mt-3 flex gap-1 overflow-x-auto scrollbar-hide">
@@ -341,21 +348,23 @@ export default function ShortlistExams() {
                     </div>
                 </header>
 
-                <div className="bg-[#f8fbff] p-4 md:p-6 text-sm">
-                    <div className="overflow-hidden rounded-xl bg-white transition-all">
+                <div className="bg-[#f8fbff] p-4 md:p-6">
+                    <div className="overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-200">
                             {isLoading ? (
-                                <div className="px-4 py-16 text-center text-sm font-medium text-slate-500 md:px-6">
-                                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 mb-4"></div>
+                                <div className="flex flex-col items-center justify-center px-4 py-16 text-center text-sm font-medium text-slate-500 md:px-6">
+                                    <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
                                     Loading exams...
                                 </div>
                             ) : visibleRows.length === 0 ? (
-                                <div className="px-4 py-16 text-center text-sm font-medium text-slate-500 md:px-6">
-                                    No exams available in this section.
+                                <div className="flex flex-col items-center justify-center px-4 py-16 text-center md:px-6">
+                                    <MdSchool className="mb-3 h-10 w-10 text-slate-200" />
+                                    <p className="text-sm font-medium text-slate-500">No exams available in this section.</p>
+                                    <p className="mt-1 text-xs text-slate-400">Try switching tabs or check back after updating your profile.</p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto pb-2">
+                                <div className="overflow-x-auto">
                                     <table className="min-w-[1280px] w-full border-collapse text-left">
-                                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                        <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                                             <tr>
                                                 <th className="px-6 py-4">Name</th>
                                                 <th className="px-6 py-4">Date</th>
@@ -374,10 +383,10 @@ export default function ShortlistExams() {
                                                 const logoSrc = EXAM_LOGOS[row.rowKey] ?? EXAM_LOGOS[row.examId];
 
                                                 return (
-                                                    <tr key={row.rowKey} className={`group align-top transition-all duration-200 ${isShortlisted ? "bg-slate-50/40" : "bg-white"} hover:bg-slate-50`}>
+                                                    <tr key={row.rowKey} className={`group align-middle transition-all duration-200 ${isShortlisted ? "bg-[#FAD53C]/5" : "bg-white"} hover:bg-slate-50`}>
                                                         <td className="px-6 py-3.5">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-[#FAD53C]/20 group-hover:text-black">
+                                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors duration-200 group-hover:bg-[#FAD53C]/20 group-hover:text-black">
                                                                     {logoSrc ? (
                                                                         <Image
                                                                             src={logoSrc}
@@ -385,13 +394,15 @@ export default function ShortlistExams() {
                                                                             width={22}
                                                                             height={22}
                                                                             className="h-[22px] w-[22px] object-contain"
+                                                                            unoptimized
                                                                         />
                                                                     ) : (
-                                                                        <MdSchool className="h-5 w-5" />
+                                                                        <MdSchool className="h-4.5 w-4.5" />
                                                                     )}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="truncate text-[15px] font-semibold text-slate-900 group-hover:text-black transition-colors">{row.name}</p>
+                                                                    <p className="truncate text-[14px] font-semibold text-slate-900 transition-colors duration-200 group-hover:text-black">{row.name}</p>
+                                                                    <p className="truncate text-[11px] font-medium text-slate-400">{row.subtitle}</p>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -419,20 +430,23 @@ export default function ShortlistExams() {
                                                                     type="button"
                                                                     onClick={() => toggleShortlist(row)}
                                                                     className={[
-                                                                        "inline-flex min-w-[118px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-200",
+                                                                        "inline-flex min-w-[110px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200 active:scale-95",
                                                                         isShortlisted
-                                                                            ? "bg-[#FAD53C] text-black shadow-sm ring-1 ring-black/5 hover:brightness-95"
-                                                                            : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 shadow-sm",
+                                                                            ? "bg-[#FAD53C] text-black ring-1 ring-black/5 hover:brightness-95"
+                                                                            : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
                                                                     ].join(" ")}
                                                                 >
-                                                                    {isShortlisted ? <FaCheckCircle className="h-3.5 w-3.5" /> : <FaRegCheckCircle className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600" />}
+                                                                    {isShortlisted
+                                                                        ? <FaCheckCircle className="h-3.5 w-3.5" />
+                                                                        : <FaRegCheckCircle className="h-3.5 w-3.5 text-slate-400" />
+                                                                    }
                                                                     {isShortlisted ? "Shortlisted" : "Shortlist"}
                                                                 </button>
 
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => openApplication(row)}
-                                                                    className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-slate-800 hover:shadow"
+                                                                    className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-[13px] font-semibold text-[#FAD53C] shadow-sm transition-all duration-200 hover:bg-black/90 active:scale-95"
                                                                 >
                                                                     Apply Now
                                                                 </button>
@@ -440,7 +454,7 @@ export default function ShortlistExams() {
                                                                 <Link
                                                                     href={row.detailHref}
                                                                     aria-label={`View details for ${row.name}`}
-                                                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                                                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 active:scale-95"
                                                                 >
                                                                     <MdOutlineArrowOutward className="h-4 w-4" />
                                                                 </Link>
