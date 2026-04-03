@@ -59,10 +59,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
     }, [openStep, steps.length]);
 
     useEffect(() => {
-        if (steps.length === 0) {
-            setTotalProgress(0);
-            return;
-        }
+        if (steps.length === 0) return;
+
         const startTime = performance.now();
         const totalDuration = OPEN_DURATION_MS * steps.length;
         let frameId = 0;
@@ -80,6 +78,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
             window.cancelAnimationFrame(frameId);
         };
     }, [steps.length]);
+
+    const progressForBar = steps.length === 0 ? 0 : totalProgress;
 
     useEffect(() => {
         const sectionNode = sectionRef.current;
@@ -129,7 +129,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
 
     return (
         <section
-            id="how-it-works"
+            id="our-edge"
             ref={sectionRef}
             className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
         >
@@ -159,7 +159,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             <span
                                 aria-hidden="true"
                                 className="pointer-events-none absolute left-[18px] top-6 w-px -translate-x-1/2 rounded-full bg-yellow-400/90"
-                                style={{ height: `calc((100% - 3rem) * ${totalProgress / 100})` }}
+                                style={{ height: `calc((100% - 3rem) * ${progressForBar / 100})` }}
                             />
 
                             <ul>
@@ -258,13 +258,6 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                 className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-8 py-3 text-sm font-semibold text-white hover:bg-black/85 md:text-base"
                             >
                                 {howItWorks.demoCta}
-                                <FiChevronRight className="landing-icon-slide text-base" />
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/20 bg-white px-8 py-3 text-sm font-semibold text-black/75 hover:text-black md:text-base"
-                            >
-                                {howItWorks.getStartedCta}
                                 <FiChevronRight className="landing-icon-slide text-base" />
                             </Link>
                         </div>

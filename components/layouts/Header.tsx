@@ -10,23 +10,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
-
-const navLinks = [
-    { label: "Home", href: "/#home" },
-    { label: "The Problem", href: "/#problem" },
-    { label: "Features", href: "/#features" },
-    { label: "How It Works", href: "/#how-it-works" },
-    { label: "FAQ", href: "/#faq" },
-];
-
-const HEADER_SCROLL_OFFSET_PX = 12;
-const ANCHOR_SCROLL_DURATION_MS = 700;
-
-const easeInOutCubic = (value: number) => {
-    return value < 0.5
-        ? 4 * value * value * value
-        : 1 - Math.pow(-2 * value + 2, 3) / 2;
-};
+import {
+    handleLandingHashClick,
+    LANDING_PRIMARY_NAV,
+} from "@/lib/landingNav";
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -76,88 +63,13 @@ export default function Header() {
         ? "bg-black text-white hover:bg-black/85"
         : "bg-white text-black hover:bg-white/90";
 
-    const smoothScrollToY = (targetY: number) => {
-        const reducedMotionEnabled = window
-            .matchMedia("(prefers-reduced-motion: reduce)")
-            .matches;
-        const clampedTargetY = Math.max(0, targetY);
-
-        if (reducedMotionEnabled) {
-            window.scrollTo(0, clampedTargetY);
-            return;
-        }
-
-        const startY = window.scrollY;
-        const deltaY = clampedTargetY - startY;
-
-        if (Math.abs(deltaY) < 2) {
-            return;
-        }
-
-        let animationStartTime: number | null = null;
-
-        const animate = (currentTime: number) => {
-            if (animationStartTime === null) {
-                animationStartTime = currentTime;
-            }
-
-            const elapsed = currentTime - animationStartTime;
-            const progress = Math.min(elapsed / ANCHOR_SCROLL_DURATION_MS, 1);
-            const easedProgress = easeInOutCubic(progress);
-            window.scrollTo(0, startY + deltaY * easedProgress);
-
-            if (progress < 1) {
-                window.requestAnimationFrame(animate);
-            }
-        };
-
-        window.requestAnimationFrame(animate);
-    };
-
-    const scrollToSection = (sectionId: string) => {
-        const targetSection = document.getElementById(sectionId);
-        if (!targetSection) {
-            return;
-        }
-
-        const siteHeader = document.querySelector("header");
-        const fallbackHeaderHeight = window.innerWidth >= 1024 ? 72 : 64;
-        const siteHeaderHeight =
-            siteHeader instanceof HTMLElement ? siteHeader.offsetHeight : fallbackHeaderHeight;
-        const targetY =
-            targetSection.getBoundingClientRect().top +
-            window.scrollY -
-            siteHeaderHeight -
-            HEADER_SCROLL_OFFSET_PX;
-
-        smoothScrollToY(targetY);
-    };
-
     const handleNavLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-        setMobileOpen(false);
-
         if (!isHomePage) {
+            setMobileOpen(false);
             return;
         }
 
-        const hashIndex = href.indexOf("#");
-        if (hashIndex === -1) {
-            return;
-        }
-
-        const targetId = href.slice(hashIndex + 1);
-        if (!targetId) {
-            return;
-        }
-
-        const sectionExists = document.getElementById(targetId);
-        if (!sectionExists) {
-            return;
-        }
-
-        event.preventDefault();
-        window.history.replaceState(null, "", `/#${targetId}`);
-        scrollToSection(targetId);
+        handleLandingHashClick(event, href, { onAfterNavigate: () => setMobileOpen(false) });
     };
 
     return (
@@ -184,7 +96,7 @@ export default function Header() {
                         </Link>
 
                         <nav className="flex items-center gap-7 text-sm font-medium">
-                            {navLinks.map((item) => (
+                            {LANDING_PRIMARY_NAV.map((item) => (
                                 <Link
                                     key={item.href}
                                     href={item.href}
@@ -224,13 +136,13 @@ export default function Header() {
                                         href="/login"
                                         className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
-                                        Log in
+                                       My Dashboard
                                     </Link>
                                     <Link
                                         href="/login"
                                         className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${primaryActionClass}`}
                                     >
-                                        Start free trial
+                                        Start My Journey
                                     </Link>
                                 </>
                             )}
@@ -274,7 +186,7 @@ export default function Header() {
                     {mobileOpen && (
                         <div className="border-t border-black/10 py-4 lg:hidden">
                             <nav className="flex flex-col gap-3 text-sm font-medium text-black/80">
-                                {navLinks.map((link) => (
+                                {LANDING_PRIMARY_NAV.map((link) => (
                                     <Link
                                         key={link.href}
                                         href={link.href}
@@ -317,14 +229,14 @@ export default function Header() {
                                             className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
                                             onClick={() => setMobileOpen(false)}
                                         >
-                                            Log in
+                                             My Dashboard
                                         </Link>
                                         <Link
                                             href="/login"
                                             className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
                                             onClick={() => setMobileOpen(false)}
                                         >
-                                            Start free trial
+                                            Start My Journey
                                         </Link>
                                     </>
                                 )}

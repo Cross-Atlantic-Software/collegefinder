@@ -19,8 +19,6 @@ export type LandingPageContent = {
     sectionTitleBefore: string;
     sectionTitleUnderline: string;
     sectionSubtitle: string;
-    primaryCta: string;
-    secondaryCta: string;
     learnMoreLabel: string;
     cards: Array<{ title: string; highlightWord: string; description: string }>;
   };

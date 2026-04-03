@@ -11,39 +11,39 @@ const hintClass = 'text-[11px] text-slate-500 mt-1';
 
 const SECTIONS = [
   {
-    id: 'hero',
-    title: 'Hero',
-    blurb: 'Top of the home page — headline, pain points, main button',
+    id: 'home',
+    title: 'UniTracko (Home)',
+    blurb: 'Top of the home page — headline, main CTA, background video',
   },
   {
-    id: 'info',
-    title: 'Info / problem',
-    blurb: 'Stats line, question highlight, body copy, CTA',
+    id: 'reality',
+    title: 'The Reality',
+    blurb: 'The Problem — stats line, question highlight, body copy, CTA',
   },
   {
-    id: 'features',
-    title: 'Features',
-    blurb: 'Section titles and feature cards (text only; images stay in code)',
+    id: 'the-playbook',
+    title: 'The Playbook',
+    blurb: 'Command center — section titles and six feature cards (images stay in code)',
   },
   {
-    id: 'how-it-works',
-    title: 'How it works',
-    blurb: 'Title, subtitle, step list, button labels',
+    id: 'our-edge',
+    title: 'Our Edge',
+    blurb: 'How UniTracko stands out — title, subtitle, step list, demo CTA',
   },
   {
     id: 'audience',
     title: 'Audience',
-    blurb: 'Students & parents tabs, bullet lists, “why” block',
+    blurb: 'Students & parents tabs, bullet lists, “why” block (through Why UniTracko exists)',
   },
   {
     id: 'contact',
-    title: 'Contact',
-    blurb: 'Headings, bullet points, form labels',
+    title: 'Get in Touch',
+    blurb: 'Contact us — headings, bullet points, form labels',
   },
   {
     id: 'faq',
     title: 'FAQ',
-    blurb: 'Section title and question / answer pairs',
+    blurb: 'Questions and answers below contact',
   },
 ] as const;
 
@@ -229,7 +229,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
       </aside>
 
       <div className="flex-1 min-w-0 space-y-5">
-        <SectionShell id="hero" title="Hero" blurb={SECTIONS[0].blurb}>
+        <SectionShell id="home" title="UniTracko (Home)" blurb={SECTIONS[0].blurb}>
           <LabeledInput
             label="Heading — line 1"
             value={value.hero.headingLine1}
@@ -267,7 +267,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
           </div>
         </SectionShell>
 
-        <SectionShell id="info" title="Info / problem" blurb={SECTIONS[1].blurb}>
+        <SectionShell id="reality" title="The Reality" blurb={SECTIONS[1].blurb}>
           <LabeledInput
             label="Eyebrow label"
             value={value.info.label}
@@ -309,7 +309,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
           </div>
         </SectionShell>
 
-        <SectionShell id="features" title="Features" blurb={SECTIONS[2].blurb}>
+        <SectionShell id="the-playbook" title="The Playbook" blurb={SECTIONS[2].blurb}>
           <LabeledInput
             label="Section title (before highlight)"
             value={value.features.sectionTitleBefore}
@@ -336,18 +336,6 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
             disabled={disabled}
           />
           <div className="grid sm:grid-cols-3 gap-4">
-            <LabeledInput
-              label="Primary CTA"
-              value={value.features.primaryCta}
-              onChange={(primaryCta) => patch({ features: { ...value.features, primaryCta } })}
-              disabled={disabled}
-            />
-            <LabeledInput
-              label="Secondary CTA"
-              value={value.features.secondaryCta}
-              onChange={(secondaryCta) => patch({ features: { ...value.features, secondaryCta } })}
-              disabled={disabled}
-            />
             <LabeledInput
               label="Learn more label"
               value={value.features.learnMoreLabel}
@@ -440,7 +428,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
           </div>
         </SectionShell>
 
-        <SectionShell id="how-it-works" title="How it works" blurb={SECTIONS[3].blurb}>
+        <SectionShell id="our-edge" title="Our Edge" blurb={SECTIONS[3].blurb}>
           <LabeledInput
             label="Title"
             value={value.howItWorks.title}
@@ -455,20 +443,13 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
             disabled={disabled}
           />
           <div className="grid sm:grid-cols-2 gap-4">
-            <LabeledInput
+            {/* <LabeledInput
               label="Demo CTA label"
               value={value.howItWorks.demoCta}
               onChange={(demoCta) => patch({ howItWorks: { ...value.howItWorks, demoCta } })}
               disabled={disabled}
-            />
-            <LabeledInput
-              label="Get started CTA label"
-              value={value.howItWorks.getStartedCta}
-              onChange={(getStartedCta) =>
-                patch({ howItWorks: { ...value.howItWorks, getStartedCta } })
-              }
-              disabled={disabled}
-            />
+            /> */}
+
           </div>
           <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/80">
             <label className={labelClass}>Steps</label>
@@ -646,7 +627,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
           </div>
         </SectionShell>
 
-        <SectionShell id="contact" title="Contact" blurb={SECTIONS[5].blurb}>
+        <SectionShell id="contact" title="Get in Touch" blurb={SECTIONS[5].blurb}>
           <LabeledInput
             label="Eyebrow label"
             value={value.contact.label}

@@ -8,8 +8,12 @@ import {
 } from "react-icons/fa6";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
 
 export default function Footer() {
+    const pathname = usePathname();
+    const isHomePage = pathname === "/";
     return (
         <footer className="bg-amber-300 py-14 md:py-16">
             <div className="appContainer">
@@ -29,21 +33,65 @@ export default function Footer() {
                     </div>
 
                     <nav className="flex flex-col gap-3 text-sm font-semibold text-black/85">
-                        <Link href="/" className="transition-colors hover:text-black">
-                            Home
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            UniTracko
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Our Process
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Our Edge
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Resources
-                        </Link>
+                        {LANDING_PRIMARY_NAV.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className="transition-colors hover:text-black"
+                                onClick={(event) => {
+                                    if (!isHomePage) return;
+                                    handleLandingHashClick(event, item.href);
+                                }}
+                            >
+                                {item.label}
+                            </Link>
+                        ))}
+                        <div className="mt-1 border-t border-black/20 pt-3">
+                            <Link
+                                href="/legal"
+                                className="block transition-colors hover:text-black"
+                            >
+                                Legal
+                            </Link>
+                            <div className="mt-2 flex flex-col gap-1.5 font-medium text-black/70">
+                                <Link
+                                    href="/legal#privacy-policy"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Privacy Policy
+                                </Link>
+                                <Link
+                                    href="/legal#terms-of-use"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Terms of Use
+                                </Link>
+                                <Link
+                                    href="/legal#cookie-policy"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Cookie Policy
+                                </Link>
+                                <Link
+                                    href="/legal#disclaimer"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Disclaimer
+                                </Link>
+                                <Link
+                                    href="/legal#our-data-promise"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Our Data Promise
+                                </Link>
+                                <Link
+                                    href="/legal#refund-policy"
+                                    className="text-xs transition-colors hover:text-black"
+                                >
+                                    Refund Policy
+                                </Link>
+                            </div>
+                        </div>
                     </nav>
 
                     <div>
@@ -67,7 +115,14 @@ export default function Footer() {
                         </form>
 
                         <p className="mt-3 text-xs text-black/70">
-                            I confirm that I have read Privacy Policy and agree with it.
+                            I confirm that I have read{" "}
+                            <Link
+                                href="/legal#privacy-policy"
+                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                            >
+                                Privacy Policy
+                            </Link>{" "}
+                            and agree with it.
                         </p>
 
                         <div className="mt-4 flex items-center gap-3 text-black/70">

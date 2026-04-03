@@ -98,7 +98,7 @@ export function LoginStepOneForm() {
           <span>
             I agree to College Finder&apos;s{" "}
             <Link
-              href="/"
+              href="/legal#terms-of-use"
               className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
             >
               Terms of Service
