@@ -11,6 +11,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
 
+const LEGAL_BAR_LINKS: { href: string; label: string }[] = [
+    { href: "/legal", label: "Legal" },
+    { href: "/legal#privacy-policy", label: "Privacy Policy" },
+    { href: "/legal#terms-of-use", label: "Terms of Use" },
+    { href: "/legal#cookie-policy", label: "Cookie Policy" },
+    { href: "/legal#disclaimer", label: "Disclaimer" },
+    { href: "/legal#our-data-promise", label: "Our Data Promise" },
+    { href: "/legal#refund-policy", label: "Refund Policy" },
+];
+
 export default function Footer() {
     const pathname = usePathname();
     const isHomePage = pathname === "/";
@@ -46,52 +56,6 @@ export default function Footer() {
                                 {item.label}
                             </Link>
                         ))}
-                        <div className="mt-1 border-t border-black/20 pt-3">
-                            <Link
-                                href="/legal"
-                                className="block transition-colors hover:text-black"
-                            >
-                                Legal
-                            </Link>
-                            <div className="mt-2 flex flex-col gap-1.5 font-medium text-black/70">
-                                <Link
-                                    href="/legal#privacy-policy"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Privacy Policy
-                                </Link>
-                                <Link
-                                    href="/legal#terms-of-use"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Terms of Use
-                                </Link>
-                                <Link
-                                    href="/legal#cookie-policy"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Cookie Policy
-                                </Link>
-                                <Link
-                                    href="/legal#disclaimer"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Disclaimer
-                                </Link>
-                                <Link
-                                    href="/legal#our-data-promise"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Our Data Promise
-                                </Link>
-                                <Link
-                                    href="/legal#refund-policy"
-                                    className="text-xs transition-colors hover:text-black"
-                                >
-                                    Refund Policy
-                                </Link>
-                            </div>
-                        </div>
                     </nav>
 
                     <div>
@@ -142,8 +106,33 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="mt-10 border-t border-black/25 pt-4 text-center text-xs font-medium text-black/65">
-                    © 2026 UNITRACKO. All rights reserved
+                <div className="mt-10 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/25 pt-4">
+                    <nav
+                        aria-label="Legal and policies"
+                        className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-xs font-medium text-black/65"
+                    >
+                        {LEGAL_BAR_LINKS.map((link, index) => (
+                            <span key={link.href} className="inline-flex items-center">
+                                {index > 0 ? (
+                                    <span
+                                        className="mx-2 select-none text-black/35 sm:mx-2.5"
+                                        aria-hidden
+                                    >
+                                        ·
+                                    </span>
+                                ) : null}
+                                <Link
+                                    href={link.href}
+                                    className="whitespace-nowrap underline-offset-2 transition-colors hover:text-black hover:underline"
+                                >
+                                    {link.label}
+                                </Link>
+                            </span>
+                        ))}
+                    </nav>
+                    <p className="shrink-0 text-xs font-medium text-black/65 sm:text-right">
+                        © 2026 UNITRACKO. All rights reserved
+                    </p>
                 </div>
             </div>
         </footer>

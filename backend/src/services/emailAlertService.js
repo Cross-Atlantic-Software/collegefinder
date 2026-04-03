@@ -94,7 +94,7 @@ class EmailAlertService {
             </div>
 
             <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px;">
-              <p>CollegeFinder - Automated Question Type Monitoring System</p>
+              <p>UniTracko - Automated Question Type Monitoring System</p>
             </div>
           </div>
         `,

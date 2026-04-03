@@ -1,7 +1,7 @@
 """
 User API Endpoints
-Read-only access to collegefinder users table for automation.
-Users are managed by collegefinder backend - this just reads them.
+Read-only access to UniTracko users table for automation.
+Users are managed by UniTracko backend - this just reads them.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel

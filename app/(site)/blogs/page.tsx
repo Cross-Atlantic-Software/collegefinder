@@ -113,24 +113,12 @@ export default function BlogsPage() {
     return (
         <main className="min-h-screen bg-white pb-20">
             <div className="appContainer py-10 md:py-14">
-                <div className="max-w-3xl">
-                    <p className="text-sm font-semibold uppercase tracking-wide text-black/55">
-                        Resources
-                    </p>
-                    <h1 className="mt-2 text-[1rem] font-extrabold leading-tight text-black sm:text-2xl md:text-4xl">
-                        Blogs
-                    </h1>
-                    <p className="mt-3 max-w-xl text-base leading-relaxed text-black/70">
-                        Guides and updates from UniTracko to help you stay ahead in your admission journey.
-                    </p>
-                </div>
-
                 {error ? (
-                    <p className="mt-12 text-sm text-red-600">{error}</p>
+                    <p className="text-sm text-red-600">{error}</p>
                 ) : blogs.length === 0 ? (
-                    <p className="mt-12 text-sm text-black/50">No posts yet. Check back soon.</p>
+                    <p className="text-sm text-black/50">No posts yet. Check back soon.</p>
                 ) : (
-                    <ul className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+                    <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
                         {blogs.map((blog) => (
                             <li key={blog.id}>
                                 <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition-shadow hover:shadow-md">

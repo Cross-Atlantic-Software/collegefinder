@@ -18,7 +18,7 @@ const shouldReset = args.includes('--reset');
 
 const DEMO_USERS = [
   {
-    email: 'student.full.demo@collegefinder.test',
+    email: 'student.full.demo@unitracko.test',
     name: 'Aarav Verma',
     first_name: 'Aarav',
     last_name: 'Verma',
@@ -31,7 +31,7 @@ const DEMO_USERS = [
     type: 'full'
   },
   {
-    email: 'student.partial.demo@collegefinder.test',
+    email: 'student.partial.demo@unitracko.test',
     name: 'Riya Singh',
     first_name: 'Riya',
     last_name: 'Singh',
@@ -586,7 +586,7 @@ async function upsertPartialFlowUser(userId, refs) {
 
 async function printSummary() {
   const [users, streams, subjects, programs, goals, exams] = await Promise.all([
-    db.query(`SELECT COUNT(*)::int AS n FROM users WHERE email LIKE '%@collegefinder.test'`),
+    db.query(`SELECT COUNT(*)::int AS n FROM users WHERE email LIKE '%@unitracko.test'`),
     db.query(`SELECT COUNT(*)::int AS n FROM streams WHERE status = TRUE`),
     db.query(`SELECT COUNT(*)::int AS n FROM subjects WHERE status = TRUE`),
     db.query(`SELECT COUNT(*)::int AS n FROM programs WHERE status = TRUE`),

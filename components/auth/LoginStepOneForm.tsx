@@ -96,7 +96,7 @@ export function LoginStepOneForm() {
             onChange={(e) => setAgree(e.target.checked)}
           />
           <span>
-            I agree to College Finder&apos;s{" "}
+            I agree to UniTracko&apos;s{" "}
             <Link
               href="/legal#terms-of-use"
               className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
