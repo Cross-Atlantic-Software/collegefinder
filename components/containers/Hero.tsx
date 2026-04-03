@@ -6,7 +6,7 @@ import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 
 const painPoints = [
-    
+{ label: "Endless Spreadsheets", Icon: FiFileText },
 ];
 
 export default function Hero() {

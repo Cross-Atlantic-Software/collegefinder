@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import {
+    FiChevronDown,
     FiMenu,
     FiX,
 } from "react-icons/fi";
@@ -14,6 +15,14 @@ import { usePathname, useRouter } from "next/navigation";
 const navLinks = [
     { label: "Home", href: "/#home" },
     { label: "The Problem", href: "/#problem" },
+    {
+        label: "Exam Prep",
+        href: "/dashboard?section=exam-prep",
+        children: [
+            { label: "Self Study", href: "/dashboard?section=exam-prep&mode=self" },
+            { label: "Coaching Institutes", href: "/dashboard?section=exam-prep&mode=coaching" },
+        ],
+    },
     { label: "Features", href: "/#features" },
     { label: "How It Works", href: "/#how-it-works" },
     { label: "FAQ", href: "/#faq" },
@@ -185,14 +194,38 @@ export default function Header() {
 
                         <nav className="flex items-center gap-7 text-sm font-medium">
                             {navLinks.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={(event) => handleNavLinkClick(event, item.href)}
-                                    className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
-                                >
-                                    {item.label}
-                                </Link>
+                                item.children ? (
+                                    <div key={item.label} className="group relative">
+                                        <Link
+                                            href={item.href}
+                                            className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
+                                        >
+                                            {item.label}
+                                            <FiChevronDown className="text-xs transition-transform duration-200 group-hover:rotate-180" />
+                                        </Link>
+
+                                        <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-3 w-52 -translate-x-1/2 rounded-xl border border-black/10 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                                            {item.children.map((child) => (
+                                                <Link
+                                                    key={child.href}
+                                                    href={child.href}
+                                                    className="block rounded-lg px-3 py-2 text-sm text-black/80 transition-colors hover:bg-black/5 hover:text-black"
+                                                >
+                                                    {child.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={(event) => handleNavLinkClick(event, item.href)}
+                                        className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                )
                             ))}
                         </nav>
 
@@ -275,14 +308,38 @@ export default function Header() {
                         <div className="border-t border-black/10 py-4 lg:hidden">
                             <nav className="flex flex-col gap-3 text-sm font-medium text-black/80">
                                 {navLinks.map((link) => (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
-                                        onClick={(event) => handleNavLinkClick(event, link.href)}
-                                    >
-                                        {link.label}
-                                    </Link>
+                                    link.children ? (
+                                        <div key={link.label} className="flex flex-col gap-1">
+                                            <Link
+                                                href={link.href}
+                                                className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
+                                                onClick={() => setMobileOpen(false)}
+                                            >
+                                                {link.label}
+                                            </Link>
+                                            <div className="ml-3 flex flex-col gap-1 border-l border-black/10 pl-3">
+                                                {link.children.map((child) => (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className="inline-flex items-center justify-between py-1 text-black/70 transition-colors hover:text-black"
+                                                        onClick={() => setMobileOpen(false)}
+                                                    >
+                                                        {child.label}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Link
+                                            key={link.href}
+                                            href={link.href}
+                                            className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
+                                            onClick={(event) => handleNavLinkClick(event, link.href)}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    )
                                 ))}
                             </nav>
 

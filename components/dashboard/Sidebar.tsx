@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
+import { BiChevronDown, BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiActivity,
   FiBookOpen,
@@ -104,7 +105,7 @@ const baseNavItems: {
     sub: "Study time",
     icon: FiBookOpen,
     activeIcon: FaBookOpen,
-    getValue: () => "156h",
+    getValue: () => "",
   },
   {
     id: "test-module",
@@ -148,6 +149,8 @@ export default function Sidebar({
   activeSection,
   onSectionChange,
 }: SidebarProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
 
@@ -192,10 +195,21 @@ export default function Sidebar({
           : undefined,
   }));
 
+          const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
+
   const handleSectionClick = (id: SectionId) => {
     onSectionChange(id);
 
     // Auto-close only on mobile drawer layouts.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      onToggle();
+    }
+  };
+
+  const handlePrepSubmenuClick = (mode: "self" | "coaching") => {
+    onSectionChange("exam-prep");
+    router.push(`/dashboard?section=exam-prep&mode=${mode}`);
+
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
       onToggle();
     }
@@ -278,6 +292,8 @@ export default function Sidebar({
       >
         {navItems.map((item) => {
           const isActive = activeSection === item.id;
+          const isExamPrepItem = item.id === "exam-prep";
+          const isExamPrepExpanded = isExamPrepItem && activeSection === "exam-prep";
           const MenuIcon = isActive ? item.activeIcon : item.icon;
 
           return (
@@ -325,7 +341,13 @@ export default function Sidebar({
                       </span>
                     </div>
 
-                    {item.value && (
+                    {isExamPrepItem ? (
+                      <BiChevronDown
+                        className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 ease-in-out dark:text-slate-400 ${
+                          isExamPrepExpanded ? "rotate-180" : "rotate-0"
+                        }`}
+                      />
+                    ) : item.value ? (
                       <span
                         className={`
                           text-[11px] font-semibold transition-all duration-200 rounded-lg px-2 py-1 flex-shrink-0 ml-2
@@ -335,10 +357,57 @@ export default function Sidebar({
                       >
                         {item.value}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </button>
+
+              {!isCollapsed && item.id === "exam-prep" && (
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isExamPrepExpanded ? "mt-1 max-h-40 opacity-100" : "mt-0 max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="ml-5 border-l border-slate-200 pl-2.5 dark:border-slate-700/70">
+                  <button
+                    type="button"
+                    onClick={() => handlePrepSubmenuClick("self")}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors ${
+                      activePrepMode === "self"
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800/70 dark:text-slate-100"
+                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        activePrepMode === "self"
+                          ? "bg-slate-900 dark:bg-slate-100"
+                          : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                    />
+                    Self Study
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrepSubmenuClick("coaching")}
+                    className={`mt-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors ${
+                      activePrepMode === "coaching"
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800/70 dark:text-slate-100"
+                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        activePrepMode === "coaching"
+                          ? "bg-slate-900 dark:bg-slate-100"
+                          : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                    />
+                    Coaching Institutes
+                  </button>
+                </div>
+                </div>
+              )}
             </div>
           );
         })}
