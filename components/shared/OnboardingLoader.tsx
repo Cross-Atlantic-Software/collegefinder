@@ -7,6 +7,7 @@ interface OnboardingLoaderProps {
   message?: string;
 }
 
+
 export default function OnboardingLoader({ message = "Preparing your journey..." }: OnboardingLoaderProps) {
   const [dots, setDots] = useState("");
 

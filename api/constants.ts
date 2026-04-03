@@ -38,6 +38,7 @@ export const API_ENDPOINTS = {
   /** Public site (no auth) */
   SITE: {
     LANDING_PAGE: '/site/landing-page',
+    BLOGS: '/site/blogs',
   },
 
   // Public endpoints

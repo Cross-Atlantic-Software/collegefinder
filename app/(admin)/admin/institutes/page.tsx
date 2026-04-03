@@ -567,9 +567,9 @@ export default function InstitutesPage() {
         <AdminHeader />
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
-            <h1 className="text-xl font-bold text-slate-900 mb-1">Institutes (Coachings) Manager</h1>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Coaching Institutes Manager</h1>
             <p className="text-sm text-slate-600">
-              Manage institutes with details, exams, statistics, and courses. CRUD and bulk upload (Excel + logos).
+              Manage coaching institutes with details, exams, statistics, and courses. CRUD and bulk upload (Excel + logos).
             </p>
           </div>
 
@@ -579,7 +579,7 @@ export default function InstitutesPage() {
                 type="button"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
               >
-                <span className="text-xs font-medium text-slate-700">All institutes</span>
+                <span className="text-xs font-medium text-slate-700">All Coaching institutes</span>
                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                   {allInstitutes.length}
                 </span>
@@ -602,7 +602,7 @@ export default function InstitutesPage() {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90"
               >
                 <FiPlus className="h-4 w-4" />
-                Add Institute
+                Add Coaching Institute
               </button>
               <button
                 type="button"

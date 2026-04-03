@@ -60,7 +60,7 @@ const sendOTPEmail = async (email, otp) => {
   // Fallback to default template if not found
   if (!template) {
       template = {
-        subject: 'Verify your email address - College Finder',
+        subject: 'Verify your email address - UniTracko',
         body_html: `<!DOCTYPE html>
 <html>
 <head>
@@ -74,14 +74,14 @@ const sendOTPEmail = async (email, otp) => {
         <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff;">
           <tr>
             <td style="background-color: #232f3e; padding: 30px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">College Finder</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">UniTracko</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 50px 40px; background-color: #ffffff;">
               <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 28px; font-weight: bold; line-height: 1.2;">Verify your email address</h2>
               <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 40px 0;">
-                Thanks for starting the College Finder account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
+                Thanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
               </p>
               <p style="color: #232f3e; font-size: 16px; font-weight: bold; margin: 0 0 15px 0;">Verification code</p>
               <div style="margin: 0 0 15px 0;">
@@ -97,7 +97,7 @@ const sendOTPEmail = async (email, otp) => {
           <tr>
             <td style="padding: 30px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee;">
               <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">
-                © ${new Date().getFullYear()} College Finder. All rights reserved.
+                © ${new Date().getFullYear()} UniTracko. All rights reserved.
               </p>
               <p style="margin: 0; color: #666666; font-size: 12px;">
                 This is an automated email, please do not reply.
@@ -128,11 +128,11 @@ const sendOTPEmail = async (email, otp) => {
   }
 
   const mailOptions = {
-    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: subject,
     html: html,
-    text: `Verify your email address - College Finder\n\nThanks for starting the College Finder account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.\n\nVerification code: ${otp}\n\n(This code is valid for 10 minutes)`
+    text: `Verify your email address - UniTracko\n\nThanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.\n\nVerification code: ${otp}\n\n(This code is valid for 10 minutes)`
   };
 
   try {

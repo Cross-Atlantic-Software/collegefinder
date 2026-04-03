@@ -27,7 +27,7 @@ export default function InfoSection({ info }: { info: LandingPageContent["info"]
 
   return (
     <section
-      id="problem"
+      id="reality"
       ref={sectionRef}
       className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
     >

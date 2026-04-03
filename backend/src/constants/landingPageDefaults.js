@@ -7,23 +7,21 @@ const landingPageDefaults = {
     headingLine1: 'Your Entire Admission Journey',
     headingLine2: 'Finally Under Control',
     painPoints: ['No scattered portals', 'No forgotten forms', 'No last minute chaos'],
-    ctaLabel: 'Start your Journey',
+    ctaLabel: 'Find My Fit',
     ctaHref: '/login',
   },
   info: {
-    label: 'THE PROBLEM',
+    label: 'THE REALITY',
     statsLine: '1k+ Exams • 40k+ Colleges • 20M Students',
     highlightQuestion: 'Still tracking it all manually?',
     body: 'UniTracko brings it all into one place - nothing slips, nothing gets missed.\nNo scattered portals · No forgotten forms · No last-minute chaos',
-    ctaLabel: 'Start Your Journey',
+    ctaLabel: 'Let\'s Figure This Out',
     ctaHref: '/login',
   },
   features: {
     sectionTitleBefore: 'Unlock the',
     sectionTitleUnderline: 'Ultimate Command Centre',
     sectionSubtitle: "We've built the unfair advantage you've been looking for.",
-    primaryCta: 'Get a demo',
-    secondaryCta: 'Get started free',
     learnMoreLabel: 'Learn more',
     cards: [
       {
@@ -67,8 +65,7 @@ const landingPageDefaults = {
   howItWorks: {
     title: 'How UniTracko Standout?',
     subtitle: 'Five steps. One platform. Your entire admission journey, handled.',
-    demoCta: 'Get a demo',
-    getStartedCta: 'Get started free',
+    demoCta: 'Explore My Options',
     steps: [
       { title: 'Discover', description: 'Find your fit.' },
       { title: 'Plan', description: 'Track everything, miss nothing.' },
@@ -102,7 +99,7 @@ const landingPageDefaults = {
     whyBody:
       "The admission race begins in Class 11 and most students don't realize how much they're missing until it's too late.",
     whyBody2: 'UniTracko makes sure that never happens.',
-    whyCta: 'Get a demo',
+    whyCta: 'See What\'s Possible',
   },
   contact: {
     label: 'CONTACT US',
@@ -126,7 +123,7 @@ const landingPageDefaults = {
     ],
     formTitle: 'Personal data',
     formSubtitle: 'Specify details as in your passport',
-    formSubmit: 'Start My Admission Plan',
+    formSubmit: 'Map My Admission',
     formPrivacy:
       'Your Data stays private. No spam. No pressure. No promotional calls',
   },

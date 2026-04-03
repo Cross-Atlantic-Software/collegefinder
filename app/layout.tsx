@@ -12,11 +12,14 @@ const Providers = dynamic(() => import("./Providers"), {
 // --font-inter-sans + system fallbacks.
 
 export const metadata: Metadata = {
-  title: "CollegeFinder",
+  title: "UniTracko",
   description: "Your college journey, simplified.",
-  // Use real SVG — public/favicon.ico was mislabeled (XML/SVG bytes), which browsers ignore as .ico
+  // SVG for modern browsers; app/favicon.ico is the UniTracko mark (generated from final logo-16).
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
     apple: "/logo.svg",
   },
 };

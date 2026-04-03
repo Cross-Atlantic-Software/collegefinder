@@ -8,8 +8,22 @@ import {
 } from "react-icons/fa6";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
+
+const LEGAL_BAR_LINKS: { href: string; label: string }[] = [
+    { href: "/legal", label: "Legal" },
+    { href: "/legal#privacy-policy", label: "Privacy Policy" },
+    { href: "/legal#terms-of-use", label: "Terms of Use" },
+    { href: "/legal#cookie-policy", label: "Cookie Policy" },
+    { href: "/legal#disclaimer", label: "Disclaimer" },
+    { href: "/legal#our-data-promise", label: "Our Data Promise" },
+    { href: "/legal#refund-policy", label: "Refund Policy" },
+];
 
 export default function Footer() {
+    const pathname = usePathname();
+    const isHomePage = pathname === "/";
     return (
         <footer className="bg-amber-300 py-14 md:py-16">
             <div className="appContainer">
@@ -29,21 +43,19 @@ export default function Footer() {
                     </div>
 
                     <nav className="flex flex-col gap-3 text-sm font-semibold text-black/85">
-                        <Link href="/" className="transition-colors hover:text-black">
-                            Home
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            UniTracko
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Our Process
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Our Edge
-                        </Link>
-                        <Link href="#" className="transition-colors hover:text-black">
-                            Resources
-                        </Link>
+                        {LANDING_PRIMARY_NAV.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className="transition-colors hover:text-black"
+                                onClick={(event) => {
+                                    if (!isHomePage) return;
+                                    handleLandingHashClick(event, item.href);
+                                }}
+                            >
+                                {item.label}
+                            </Link>
+                        ))}
                     </nav>
 
                     <div>
@@ -67,7 +79,14 @@ export default function Footer() {
                         </form>
 
                         <p className="mt-3 text-xs text-black/70">
-                            I confirm that I have read Privacy Policy and agree with it.
+                            I confirm that I have read{" "}
+                            <Link
+                                href="/legal#privacy-policy"
+                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                            >
+                                Privacy Policy
+                            </Link>{" "}
+                            and agree with it.
                         </p>
 
                         <div className="mt-4 flex items-center gap-3 text-black/70">
@@ -87,8 +106,33 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="mt-10 border-t border-black/25 pt-4 text-center text-xs font-medium text-black/65">
-                    © 2026 UNITRACKO. All rights reserved
+                <div className="mt-10 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/25 pt-4">
+                    <nav
+                        aria-label="Legal and policies"
+                        className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-xs font-medium text-black/65"
+                    >
+                        {LEGAL_BAR_LINKS.map((link, index) => (
+                            <span key={link.href} className="inline-flex items-center">
+                                {index > 0 ? (
+                                    <span
+                                        className="mx-2 select-none text-black/35 sm:mx-2.5"
+                                        aria-hidden
+                                    >
+                                        ·
+                                    </span>
+                                ) : null}
+                                <Link
+                                    href={link.href}
+                                    className="whitespace-nowrap underline-offset-2 transition-colors hover:text-black hover:underline"
+                                >
+                                    {link.label}
+                                </Link>
+                            </span>
+                        ))}
+                    </nav>
+                    <p className="shrink-0 text-xs font-medium text-black/65 sm:text-right">
+                        © 2026 UNITRACKO. All rights reserved
+                    </p>
                 </div>
             </div>
         </footer>
