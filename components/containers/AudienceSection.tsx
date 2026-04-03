@@ -2,42 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import type { LandingPageContent } from "@/types/landingPage";
 
 type AudienceKey = "students" | "parents";
 
-const audienceContent: Record<
-    AudienceKey,
-    {
-        points: string[];
-        image: string;
-        imageAlt: string;
-    }
-> = {
-    students: {
-        points: [
-            "1,000+ exams, not just the big names",
-            "One-click forms, hours saved",
-            "Best-fit path, psycho-analytically mapped",
-            "Personalised exam prep, built in",
-        ],
-        image: "/landing-page/how_it_works.png",
-        imageAlt: "Students using UniTracko",
-    },
-    parents: {
-        points: [
-            "No missed forms, no surprises Cost and scholarship clarity",
-            "Live progress tracking",
-            "Confidence at every step",
-        ],
-        image: "/landing-page/parent.png",
-        imageAlt: "Parents confidence view",
-    },
-};
-
-export default function AudienceSection() {
+export default function AudienceSection({ audience }: { audience: LandingPageContent["audience"] }) {
     const [activeAudience, setActiveAudience] = useState<AudienceKey>("students");
     const [displayAudience, setDisplayAudience] = useState<AudienceKey>("students");
     const [isSwitching, setIsSwitching] = useState(false);
@@ -45,6 +17,30 @@ export default function AudienceSection() {
     const sectionRef = useRef<HTMLElement>(null);
     const switchTimeoutRef = useRef<number | null>(null);
     const contentPanelId = useId();
+
+    const audienceContent = useMemo(
+        (): Record<
+            AudienceKey,
+            {
+                points: string[];
+                image: string;
+                imageAlt: string;
+            }
+        > => ({
+            students: {
+                points: audience.studentPoints || [],
+                image: "/landing-page/how_it_works.png",
+                imageAlt: "Students using UniTracko",
+            },
+            parents: {
+                points: audience.parentPoints || [],
+                image: "/landing-page/parent.png",
+                imageAlt: "Parents confidence view",
+            },
+        }),
+        [audience.studentPoints, audience.parentPoints]
+    );
+
     const active = audienceContent[displayAudience];
 
     const handleAudienceChange = (nextAudience: AudienceKey) => {
@@ -108,7 +104,7 @@ export default function AudienceSection() {
                     <div className="text-center">
                         <h3 className="text-2xl font-extrabold leading-tight text-black sm:text-4xl md:text-5xl">
                             <span className="mx-auto inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
-                                <span>Built For</span>
+                                <span>{audience.headingBuiltFor}</span>
                                 <RoughNotation
                                     type="underline"
                                     show={headingVisible}
@@ -118,7 +114,7 @@ export default function AudienceSection() {
                                     animationDelay={500}
                                     animationDuration={1200}
                                 >
-                                    <span>Both</span>
+                                    <span>{audience.headingBoth}</span>
                                 </RoughNotation>
                                 <RoughNotation
                                     type="circle"
@@ -129,13 +125,13 @@ export default function AudienceSection() {
                                     animationDelay={900}
                                     animationDuration={1100}
                                 >
-                                    <span>Students</span>
+                                    <span>{audience.headingStudents}</span>
                                 </RoughNotation>
-                                <span>And Parents</span>
+                                <span>{audience.headingAndParents}</span>
                             </span>
                         </h3>
                         <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-black/60 md:text-base">
-                        Every feature, designed for both sides of the journey. 
+                        {audience.subtitle}
                         </p>
 
                         <div
@@ -154,7 +150,7 @@ export default function AudienceSection() {
                                         : "text-black/55 hover:text-black"
                                 }`}
                             >
-                                For Students
+                                {audience.tabStudents}
                             </button>
                             <button
                                 type="button"
@@ -167,7 +163,7 @@ export default function AudienceSection() {
                                         : "text-black/55 hover:text-black"
                                 }`}
                             >
-                                For Parents
+                                {audience.tabParents}
                             </button>
                         </div>
                     </div>
@@ -216,20 +212,20 @@ export default function AudienceSection() {
                 <div className="landing-grid-gap grid items-center lg:grid-cols-[0.44fr_0.56fr]">
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">
-                            WHY UNITRACKO EXISTS?
+                            {audience.whyLabel}
                         </p>
                         <h3 className="mt-4 text-3xl font-extrabold leading-tight text-black sm:text-4xl md:text-5xl">
-                            Because One Missed Step
+                            {audience.whyTitle}
                             <span className="hidden md:inline">
                                 <br />
                             </span>{" "}
-                            Derails Career. 
+                            {audience.whyTitleBreak}
                         </h3>
 
                         <p className="mt-5 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
-                        The admission race begins in Class 11 and most students don't realize how much they're missing until it's too late. 
+                        {audience.whyBody}
                             <span className="block pt-3">
-                            UniTracko makes sure that never happens.
+                            {audience.whyBody2}
                             </span>
                         </p>
 
@@ -237,7 +233,7 @@ export default function AudienceSection() {
                             href="/login"
                             className="landing-cta mt-6 inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85 sm:w-auto"
                         >
-                            Get a demo
+                            {audience.whyCta}
                         </Link>
                     </div>
 

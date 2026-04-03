@@ -5,8 +5,9 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import type { LandingPageContent } from "@/types/landingPage";
 
-export default function InfoSection() {
+export default function InfoSection({ info }: { info: LandingPageContent["info"] }) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -34,12 +35,12 @@ export default function InfoSection() {
         <div className="landing-grid-gap grid items-center lg:grid-cols-[1fr_0.95fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">
-              THE PROBLEM
+              {info.label}
             </p>
 
             <h2 className="mt-5 text-4xl font-extrabold leading-tight text-black md:text-5xl">
               <span className="text-black/45">
-                1k+ Exams • 40k+ Colleges • 20M Students
+                {info.statsLine}
               </span>
               <br />
               <RoughNotation
@@ -52,21 +53,19 @@ export default function InfoSection() {
                 animationDuration={1400}
                 multiline
               >
-                Still tracking it all manually?
+                {info.highlightQuestion}
               </RoughNotation>
             </h2>
 
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-black/60">
-            UniTracko brings it all into one place - nothing slips, nothing gets missed.
-            <br />
-            No scattered portals · No forgotten forms · No last-minute chaos
+            <p className="mt-6 max-w-2xl whitespace-pre-line text-base leading-relaxed text-black/60">
+              {info.body}
             </p>
 
             <Link
-              href="/login"
+              href={info.ctaHref || "/login"}
               className="landing-cta group mt-8 inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
             >
-              Start Your Journey
+              {info.ctaLabel}
               <FiArrowRight className="landing-icon-slide text-base" />
             </Link>
           </div>

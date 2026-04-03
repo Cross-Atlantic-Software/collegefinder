@@ -84,7 +84,11 @@ export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
 echo "next build..."
 npm run build
 
-pm2 restart all
+if pm2 jlist 2>/dev/null | grep -q collegefinder-frontend; then
+  pm2 restart all
+else
+  pm2 start ecosystem.config.js
+fi
 pm2 save
 
 sleep 6
