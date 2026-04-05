@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS college_finder_blogs (
   careers JSONB DEFAULT '[]'::jsonb, -- Array of career IDs
   url VARCHAR(500), -- Third-party site link
   source_name VARCHAR(255), -- Source name for the blog
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  published_date_custom DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,6 +42,8 @@ BEGIN
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS careers JSONB DEFAULT '[]'::jsonb;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS url VARCHAR(500);
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS source_name VARCHAR(255);
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS published_date_custom DATE;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE college_finder_blogs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
   END IF;
