@@ -144,7 +144,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             {howItWorks.title}
                         </h3>
                         <p
-                            className={`mt-4 max-w-xl text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
+                            className={`mt-4 max-w-xl whitespace-pre-line text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
@@ -236,7 +236,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                                 }`}
                                             >
                                                 <div className="overflow-hidden">
-                                                    <p className="pl-[52px] pr-7 text-sm leading-relaxed text-black/60 md:text-base">
+                                                    <p className="pl-[52px] pr-7 whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
                                                         {step.description}
                                                     </p>
                                                 </div>

@@ -22,6 +22,12 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
   const [firstPart, setFirstPart] = useState(blog?.first_part || '');
   const [secondPart, setSecondPart] = useState(blog?.second_part || '');
   const [isFeatured, setIsFeatured] = useState(blog?.is_featured || false);
+  const [isActive, setIsActive] = useState(blog?.is_active !== false);
+  const [publishedDateCustom, setPublishedDateCustom] = useState(
+    blog?.published_date_custom && String(blog.published_date_custom).length >= 10
+      ? String(blog.published_date_custom).slice(0, 10)
+      : ''
+  );
   const [selectedStreams, setSelectedStreams] = useState<string[]>(blog?.streams?.map(s => String(s)) || []);
   const [selectedCareers, setSelectedCareers] = useState<string[]>(blog?.careers?.map(c => String(c)) || []);
   const [streamOptions, setStreamOptions] = useState<MultiSelectOption[]>([]);
@@ -96,6 +102,12 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setFirstPart(blog.first_part || '');
       setSecondPart(blog.second_part || '');
       setIsFeatured(blog.is_featured || false);
+      setIsActive(blog.is_active !== false);
+      setPublishedDateCustom(
+        blog.published_date_custom && String(blog.published_date_custom).length >= 10
+          ? String(blog.published_date_custom).slice(0, 10)
+          : ''
+      );
       setBlogImagePreview(blog.blog_image || null);
       setUrl(blog.url || '');
       setSourceName(blog.source_name || '');
@@ -115,6 +127,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       setFirstPart('');
       setSecondPart('');
       setIsFeatured(false);
+      setIsActive(true);
+      setPublishedDateCustom('');
       setBlogImage(null);
       setBlogImagePreview(null);
       setVideoFile(null);
@@ -137,10 +151,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
-    if (!blog && !slug) {
-      // Auto-generate slug from title for new blogs
-      setSlug(generateSlug(value));
-    }
+    setSlug(generateSlug(value));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,9 +185,18 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
     e.preventDefault();
     setError(null);
 
-    // Validation
-    if (!slug || !title || !contentType) {
-      setError('Slug, title, and content type are required');
+    const resolvedSlug = (
+      slug.trim() ||
+      generateSlug(title) ||
+      (blog?.slug ?? '')
+    ).trim();
+    if (!resolvedSlug) {
+      setError('Title must include at least one letter or number so the post URL can be generated.');
+      return;
+    }
+
+    if (!title?.trim() || !contentType) {
+      setError('Title and content type are required');
       return;
     }
 
@@ -200,9 +220,16 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
         summary: summary || undefined,
         content_type: contentType,
         is_featured: isFeatured,
+        is_active: isActive,
         streams: selectedStreams.map(s => parseInt(s)),
         careers: selectedCareers.map(c => parseInt(c)),
       };
+
+      if (blog) {
+        blogData.published_date_custom = publishedDateCustom.trim();
+      } else if (publishedDateCustom.trim()) {
+        blogData.published_date_custom = publishedDateCustom.trim();
+      }
 
       if (contentType === 'TEXT') {
         blogData.first_part = firstPart;
@@ -273,42 +300,31 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
         {/* Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4">
           <div className="space-y-4">
-            {/* Slug and Title Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Slug <span className="text-[#341050]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  required
-                  placeholder="my-blog-post"
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Use lowercase letters, numbers, and hyphens only (e.g., my-blog-post)
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Title <span className="text-[#341050]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  required
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                />
-              </div>
+            {/* Title — URL slug is generated from title automatically */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Title <span className="text-[#341050]">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                required
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Public URL:{' '}
+                <span className="font-mono text-slate-700">
+                  /blogs/{slug || '…'}
+                </span>{' '}
+                (updates when you change the title; server adds -2, -3… if the slug is already taken)
+              </p>
             </div>
 
             {/* Teaser and Summary */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Teaser
+                Teaser <span className="font-normal text-slate-500">(optional)</span>
               </label>
               <textarea
                 value={teaser}
@@ -321,7 +337,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Summary
+                Summary <span className="font-normal text-slate-500">(optional)</span>
               </label>
               <textarea
                 value={summary}
@@ -348,7 +364,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   className="w-full"
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex flex-col justify-end gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -358,7 +374,31 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                   />
                   <span className="text-xs font-medium text-slate-700">Featured Blog</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
+                  />
+                  <span className="text-xs font-medium text-slate-700">Active (visible on site)</span>
+                </label>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Custom publish date <span className="font-normal text-slate-500">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={publishedDateCustom}
+                onChange={(e) => setPublishedDateCustom(e.target.value)}
+                className="w-full max-w-xs px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                If set, this date is shown on the public blog post. Leave empty to use the created date.
+              </p>
             </div>
 
             {/* Streams and Careers */}

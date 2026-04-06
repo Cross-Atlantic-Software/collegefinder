@@ -1,5 +1,35 @@
 const Blog = require('../../models/blog/Blog');
 
+Blog.ensureColumnsExist().catch((err) => {
+  console.error('Failed to ensure blog columns exist (site):', err);
+});
+
+/**
+ * DB DATE / JS Date / ISO string → 'YYYY-MM-DD' or null (for JSON + sorting)
+ */
+function normalizePublishedDateCustom(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'string') {
+    const t = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+    if (t.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10);
+  }
+  if (val instanceof Date && !Number.isNaN(val.getTime())) {
+    return val.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+/** Sort key: custom calendar date if set, else created_at (UTC ms, stable on any server TZ) */
+function effectivePublishMs(blog) {
+  const custom = normalizePublishedDateCustom(blog.published_date_custom);
+  if (custom) {
+    const [y, m, d] = custom.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  }
+  return new Date(blog.created_at).getTime();
+}
+
 function parseJsonbArray(field) {
   if (field === null || field === undefined) return [];
   if (Array.isArray(field)) {
@@ -35,6 +65,7 @@ function formatPublicBlog(blog) {
     careers: parseJsonbArray(blog.careers),
     url: blog.url || null,
     source_name: blog.source_name || null,
+    published_date_custom: normalizePublishedDateCustom(blog.published_date_custom),
   };
 }
 
@@ -43,13 +74,13 @@ function formatPublicBlog(blog) {
  */
 async function listPublic(req, res) {
   try {
-    const rows = await Blog.findAll();
+    const rows = await Blog.findAllActivePublic();
     const blogs = rows.map(formatPublicBlog);
     blogs.sort((a, b) => {
       if (Boolean(a.is_featured) !== Boolean(b.is_featured)) {
         return b.is_featured ? 1 : -1;
       }
-      return new Date(b.created_at) - new Date(a.created_at);
+      return effectivePublishMs(b) - effectivePublishMs(a);
     });
     res.json({
       success: true,
@@ -67,7 +98,7 @@ async function listPublic(req, res) {
 async function getBySlugPublic(req, res) {
   try {
     const { slug } = req.params;
-    const blog = await Blog.findBySlug(slug);
+    const blog = await Blog.findBySlugActivePublic(slug);
     if (!blog) {
       return res.status(404).json({ success: false, message: 'Blog not found' });
     }

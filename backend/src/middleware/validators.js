@@ -547,6 +547,22 @@ const validateCreateBlog = [
       return false;
     })
     .withMessage('is_featured must be a boolean'),
+  body('is_active')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      if (value === 'true' || value === true || value === '1') return true;
+      if (value === 'false' || value === false || value === '0') return true;
+      return false;
+    })
+    .withMessage('is_active must be a boolean'),
+  body('published_date_custom')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value).trim());
+    })
+    .withMessage('published_date_custom must be YYYY-MM-DD'),
   body('teaser')
     .optional({ checkFalsy: true })
     .trim()
@@ -594,6 +610,22 @@ const validateUpdateBlog = [
       return false;
     })
     .withMessage('is_featured must be a boolean'),
+  body('is_active')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      if (value === 'true' || value === true || value === '1') return true;
+      if (value === 'false' || value === false || value === '0') return true;
+      return false;
+    })
+    .withMessage('is_active must be a boolean'),
+  body('published_date_custom')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value).trim());
+    })
+    .withMessage('published_date_custom must be YYYY-MM-DD'),
   body('teaser')
     .optional({ checkFalsy: true })
     .trim()

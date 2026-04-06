@@ -87,7 +87,7 @@ export default function FaqSection({ faq }: { faq: LandingPageContent["faq"] }) 
                                             : "mt-0 grid-rows-[0fr] opacity-0"
                                     }`}
                                 >
-                                    <p className="max-w-4xl overflow-hidden text-sm leading-relaxed text-black/65 md:text-base">
+                                    <p className="max-w-4xl overflow-hidden whitespace-pre-line text-sm leading-relaxed text-black/65 md:text-base">
                                         {item.answer}
                                     </p>
                                 </div>

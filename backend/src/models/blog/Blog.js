@@ -2,13 +2,62 @@ const db = require('../../config/database');
 
 class Blog {
   /**
-   * Find all blogs
+   * Find all blogs (admin; optional filters)
+   * @param {{ is_active?: string|boolean, content_type?: string }} filters
    */
-  static async findAll() {
+  static async findAllForAdmin(filters = {}) {
+    const conditions = [];
+    const values = [];
+    let p = 1;
+
+    const rawActive = filters.is_active;
+    if (rawActive !== undefined && rawActive !== null && rawActive !== '' && rawActive !== 'all') {
+      const active =
+        rawActive === true ||
+        rawActive === 'true' ||
+        rawActive === '1';
+      const inactive =
+        rawActive === false ||
+        rawActive === 'false' ||
+        rawActive === '0';
+      if (active || inactive) {
+        conditions.push(`is_active = $${p++}`);
+        values.push(active);
+      }
+    }
+
+    if (
+      filters.content_type &&
+      filters.content_type !== 'all' &&
+      (filters.content_type === 'TEXT' || filters.content_type === 'VIDEO')
+    ) {
+      conditions.push(`content_type = $${p++}`);
+      values.push(filters.content_type);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await db.query(
-      'SELECT * FROM college_finder_blogs ORDER BY created_at DESC'
+      `SELECT * FROM college_finder_blogs ${where} ORDER BY created_at DESC`,
+      values
     );
     return result.rows;
+  }
+
+  /**
+   * Public site: active blogs only
+   */
+  static async findAllActivePublic() {
+    const result = await db.query(
+      `SELECT * FROM college_finder_blogs WHERE is_active = true ORDER BY created_at DESC`
+    );
+    return result.rows;
+  }
+
+  /**
+   * @deprecated use findAllForAdmin or findAllActivePublic
+   */
+  static async findAll() {
+    return this.findAllForAdmin({});
   }
 
   /**
@@ -31,6 +80,45 @@ class Blog {
       [slug]
     );
     return result.rows[0] || null;
+  }
+
+  /**
+   * Public site: active post only
+   */
+  static async findBySlugActivePublic(slug) {
+    const result = await db.query(
+      'SELECT * FROM college_finder_blogs WHERE slug = $1 AND is_active = true',
+      [slug]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Return a slug that does not collide with another row (append -2, -3, …).
+   * @param {string} baseSlug - preferred slug (lowercase kebab-case)
+   * @param {number|null} excludeBlogId - when updating, ignore this id as a collision
+   */
+  static async uniqueSlug(baseSlug, excludeBlogId = null) {
+    let base = (baseSlug && String(baseSlug).trim())
+      ? String(baseSlug).trim().toLowerCase()
+      : 'blog';
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(base)) {
+      base = base
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'blog';
+    }
+    let slug = base;
+    for (let counter = 0; counter < 10000; counter += 1) {
+      const existing = await this.findBySlug(slug);
+      if (
+        !existing ||
+        (excludeBlogId != null && Number(existing.id) === Number(excludeBlogId))
+      ) {
+        return slug;
+      }
+      slug = `${base}-${counter + 1}`;
+    }
+    return `${base}-${Date.now()}`;
   }
 
   /**
@@ -61,6 +149,7 @@ class Blog {
     const {
       slug,
       is_featured,
+      is_active,
       title,
       blog_image,
       teaser,
@@ -72,17 +161,19 @@ class Blog {
       streams,
       careers,
       url,
-      source_name
+      source_name,
+      published_date_custom
     } = data;
 
     const result = await db.query(
       `INSERT INTO college_finder_blogs 
-       (slug, is_featured, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file, streams, careers, url, source_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+       (slug, is_featured, is_active, title, blog_image, teaser, summary, content_type, first_part, second_part, video_file, streams, careers, url, source_name, published_date_custom)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
        RETURNING *`,
       [
         slug,
         is_featured || false,
+        is_active !== false && is_active !== 'false' && is_active !== '0',
         title,
         blog_image || null,
         teaser || null,
@@ -94,7 +185,8 @@ class Blog {
         streams ? JSON.stringify(streams) : '[]',
         careers ? JSON.stringify(careers) : '[]',
         url || null,
-        source_name || null
+        source_name || null,
+        published_date_custom || null
       ]
     );
     return result.rows[0];
@@ -107,6 +199,7 @@ class Blog {
     const {
       slug,
       is_featured,
+      is_active,
       title,
       blog_image,
       teaser,
@@ -118,7 +211,8 @@ class Blog {
       streams,
       careers,
       url,
-      source_name
+      source_name,
+      published_date_custom
     } = data;
 
     const updates = [];
@@ -132,6 +226,10 @@ class Blog {
     if (is_featured !== undefined) {
       updates.push(`is_featured = $${paramCount++}`);
       values.push(is_featured);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramCount++}`);
+      values.push(is_active);
     }
     if (title !== undefined) {
       updates.push(`title = $${paramCount++}`);
@@ -180,6 +278,10 @@ class Blog {
     if (source_name !== undefined) {
       updates.push(`source_name = $${paramCount++}`);
       values.push(source_name || null);
+    }
+    if (published_date_custom !== undefined) {
+      updates.push(`published_date_custom = $${paramCount++}`);
+      values.push(published_date_custom || null);
     }
 
     if (updates.length === 0) {
@@ -251,6 +353,32 @@ class Blog {
       if (sourceNameCheck.rows.length === 0) {
         await db.query('ALTER TABLE college_finder_blogs ADD COLUMN source_name VARCHAR(255)');
         console.log('✓ Added source_name column to college_finder_blogs table');
+      }
+
+      const activeCheck = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'college_finder_blogs' 
+        AND column_name = 'is_active'
+      `);
+      if (activeCheck.rows.length === 0) {
+        await db.query(
+          `ALTER TABLE college_finder_blogs ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE`
+        );
+        console.log('✓ Added is_active column to college_finder_blogs table');
+      }
+
+      const pubDateCheck = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'college_finder_blogs' 
+        AND column_name = 'published_date_custom'
+      `);
+      if (pubDateCheck.rows.length === 0) {
+        await db.query(
+          `ALTER TABLE college_finder_blogs ADD COLUMN published_date_custom DATE`
+        );
+        console.log('✓ Added published_date_custom column to college_finder_blogs table');
       }
     } catch (error) {
       console.error('Error ensuring blog columns exist:', error);

@@ -125,7 +125,13 @@ function LabeledTextarea({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
       />
-      {hint ? <p className={hintClass}>{hint}</p> : null}
+      {hint ? (
+        <p className={hintClass}>{hint}</p>
+      ) : (
+        <p className={hintClass}>
+          Press <kbd className="rounded border border-slate-300 bg-slate-100 px-1 py-0.5 font-mono text-[10px]">Enter</kbd> for a new line — the live site shows line breaks in these fields.
+        </p>
+      )}
     </div>
   );
 }
@@ -159,16 +165,19 @@ function StringListEditor({
     <div>
       <label className={labelClass}>{label}</label>
       {hint ? <p className={`${hintClass} mb-2`}>{hint}</p> : null}
+      <p className={`${hintClass} mb-2`}>
+        Press Enter inside a row for line breaks on the site (where that block is shown).
+      </p>
       <div className="space-y-2">
         {items.map((line, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <input
-              type="text"
-              className={inputClass}
+            <textarea
+              rows={2}
+              className={`${inputClass} resize-y min-h-[2.5rem]`}
               value={line}
               onChange={(e) => updateAt(i, e.target.value)}
               disabled={disabled}
-              placeholder={`Line ${i + 1}`}
+              placeholder={`Line ${i + 1} (Enter for line break)`}
             />
             <button
               type="button"
@@ -207,7 +216,12 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-4">
+      <p className="text-xs text-slate-600 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <span className="font-semibold text-slate-800">Line breaks: </span>
+        In multi-line fields and list rows, press Enter for a new line. Single-line fields keep one line — use separate heading lines or add another list row.
+      </p>
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
       <aside className="lg:w-52 shrink-0">
         <div className="lg:sticky lg:top-24 rounded-lg border border-slate-200 bg-white shadow-sm p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2 px-1">
@@ -274,11 +288,13 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
             onChange={(label) => patch({ info: { ...value.info, label } })}
             disabled={disabled}
           />
-          <LabeledInput
+          <LabeledTextarea
             label="Stats line"
+            rows={3}
             value={value.info.statsLine}
             onChange={(statsLine) => patch({ info: { ...value.info, statsLine } })}
             disabled={disabled}
+            hint="Press Enter for multiple lines before the yellow highlight question."
           />
           <LabeledInput
             label="Highlight question"
@@ -832,6 +848,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
             </div>
           </div>
         </SectionShell>
+      </div>
       </div>
     </div>
   );

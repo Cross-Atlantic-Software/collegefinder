@@ -241,7 +241,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                             );
                         })()}
                     </h3>
-                    <p className="mt-5 max-w-md text-sm leading-relaxed text-black/65 md:text-base">
+                    <p className="mt-5 max-w-md whitespace-pre-line text-sm leading-relaxed text-black/65 md:text-base">
                         {card.description}
                     </p>
 
@@ -292,7 +292,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                                     {features.sectionTitleUnderline}
                                 </RoughNotation>
                             </h2>
-                            <p className="mt-4 text-sm text-black/50 md:text-base">
+                            <p className="mt-4 whitespace-pre-line text-sm text-black/50 md:text-base">
                                 {features.sectionSubtitle}
                             </p>
 

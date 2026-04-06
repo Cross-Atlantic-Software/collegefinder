@@ -72,7 +72,7 @@ export default function AdminLandingPage() {
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-6xl mx-auto w-full">
             <p className="text-xs text-slate-600 leading-relaxed bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm max-w-2xl">
-              Use the sidebar links to jump to each block. Changes apply to the marketing home page for visitors who are not logged in.
+              Use the sidebar links to jump to each block. Changes apply to the marketing home page for visitors who are not logged in. In multi-line boxes and list rows, press Enter for line breaks on the live site.
             </p>
             <button
               type="button"
