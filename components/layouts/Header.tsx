@@ -71,7 +71,6 @@ export default function Header() {
     const headerSurfaceClass = isSolidHeader
         ? "border-b border-black/10 bg-white/95 shadow-sm backdrop-blur-md"
         : "border-b border-transparent bg-transparent";
-    const brandLogoClass = isSolidHeader ? "" : "invert";
     const navTextClass = isSolidHeader
         ? "text-black/70 hover:text-black"
         : "text-white/80 hover:text-white";
@@ -183,17 +182,17 @@ export default function Header() {
                             aria-label="UniTracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
+                                src={isSolidHeader ? "/landing-page/black-logo.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={170}
                                 height={38}
                                 priority
-                                className={`h-auto w-[150px] transition duration-300 md:w-[170px] ${brandLogoClass}`}
+                                className="h-auto w-[150px] transition duration-300 md:w-[170px]"
                             />
                         </Link>
 
                         <nav className="flex items-center gap-7 text-sm font-medium">
-                            {navLinks.map((item) => (
+                            {navLinks.map((item) =>
                                 item.children ? (
                                     <div key={item.label} className="group relative">
                                         <Link
@@ -226,7 +225,7 @@ export default function Header() {
                                         {item.label}
                                     </Link>
                                 )
-                            ))}
+                            )}
                         </nav>
 
                         <div className="flex items-center gap-4">
@@ -278,12 +277,12 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
+                                src={isSolidHeader ? "/landing-page/logos.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={150}
                                 height={34}
                                 priority
-                                className={`h-auto w-[140px] transition duration-300 ${brandLogoClass}`}
+                                className="h-auto w-[140px] transition duration-300"
                             />
                         </Link>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/shared";
 import { getSubjectsByStream } from "@/api/auth/profile";
+import { getStrengthResults } from "@/api/strength";
 import { FiAlertCircle } from "react-icons/fi";
 
 import SelfStudyTab from "./SelfStudyTab";
@@ -33,10 +34,13 @@ export default function ExamPreparation() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<PrepMode>("self");
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userStrengths, setUserStrengths] = useState<string[] | null>(null);
+  const [strengthsLoading, setStrengthsLoading] = useState(true);
 
   useEffect(() => {
     const requestedMode = searchParams.get("mode");
@@ -81,9 +85,29 @@ export default function ExamPreparation() {
     fetchSubjects();
   }, []);
 
+  useEffect(() => {
+    const fetchStrengths = async () => {
+      try {
+        const response = await getStrengthResults();
+        if (response.success && response.data?.has_results && response.data.results?.strengths) {
+          setUserStrengths(response.data.results.strengths);
+        } else {
+          setUserStrengths(null);
+        }
+      } catch (err) {
+        console.error("Error fetching strength results:", err);
+        setUserStrengths(null);
+      } finally {
+        setStrengthsLoading(false);
+      }
+    };
+
+    fetchStrengths();
+  }, []);
+
   return (
-    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-      <section className="w-full bg-[#f5f9ff]">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff]">
         <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
@@ -111,7 +135,7 @@ export default function ExamPreparation() {
           </div>
         </header>
 
-        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+        <div className="min-w-0 max-w-full overflow-x-hidden bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
       {/* Stream Selection Required Message */}
       {requiresStreamSelection && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
@@ -158,8 +182,10 @@ export default function ExamPreparation() {
             subjects={subjects}
             query={query}
             onQueryChange={setQuery}
-            sortBy="latest"
-            onToggleSort={() => {}}
+            sortBy={sortBy}
+            onToggleSort={() => setSortBy((prev) => (prev === "latest" ? "popular" : "latest"))}
+            userStrengths={userStrengths}
+            strengthsLoading={strengthsLoading}
           />
         ) : (
           <CoachingCentersTab />

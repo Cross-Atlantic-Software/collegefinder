@@ -231,11 +231,11 @@ export default function Sidebar({
         <div className={`flex min-w-0 items-center ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}>
           {isCollapsed && (
             <Image
-              src="/logo.svg"
+              src="/landing-page/collapse.svg"
               alt="Unitracko icon"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl"
+              width={20}
+              height={20}
+              className="h-7 w-7 "
               priority
             />
           )}

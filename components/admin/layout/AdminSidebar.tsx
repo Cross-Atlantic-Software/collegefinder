@@ -283,11 +283,11 @@ function AdminSidebarInner() {
           <Link href="/admin" className="block min-w-0">
             {railMode ? (
               <Image
-                src="/logo.svg"
+                src="/collapse.svg"
                 alt="Unitracko"
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-xl dark:invert"
+                className="h-10 w-10 rounded-xl"
                 priority
               />
             ) : (
