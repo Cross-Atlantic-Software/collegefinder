@@ -12,7 +12,7 @@ const landingPageDefaults = {
   },
   info: {
     label: 'THE REALITY',
-    statsLine: '1k+ Exams • 40k+ Colleges • 20M Students',
+    statsLine: '1K+ Exams • 40K+ Colleges • 20M Students',
     highlightQuestion: 'Still tracking it all manually?',
     body: 'UniTracko brings it all into one place - nothing slips, nothing gets missed.\nNo scattered portals · No forgotten forms · No last-minute chaos',
     ctaLabel: 'Let\'s Figure This Out',

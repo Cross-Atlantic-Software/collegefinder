@@ -69,8 +69,12 @@ function formatPublicBlog(blog) {
   };
 }
 
+const DEFAULT_PUBLIC_PAGE_SIZE = 9;
+const MAX_PUBLIC_PAGE_SIZE = 50;
+
 /**
  * GET /api/site/blogs — public list (newest first; featured pinned to top)
+ * Query: page (1-based), pageSize (default 9, max 50)
  */
 async function listPublic(req, res) {
   try {
@@ -82,9 +86,32 @@ async function listPublic(req, res) {
       }
       return effectivePublishMs(b) - effectivePublishMs(a);
     });
+
+    const pageSizeRaw = parseInt(String(req.query.pageSize ?? ''), 10);
+    const pageSize =
+      Number.isFinite(pageSizeRaw) && pageSizeRaw > 0
+        ? Math.min(pageSizeRaw, MAX_PUBLIC_PAGE_SIZE)
+        : DEFAULT_PUBLIC_PAGE_SIZE;
+
+    const total = blogs.length;
+    const totalPages = total === 0 ? 1 : Math.ceil(total / pageSize);
+
+    let page = parseInt(String(req.query.page ?? ''), 10);
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    const offset = (page - 1) * pageSize;
+    const paged = blogs.slice(offset, offset + pageSize);
+
     res.json({
       success: true,
-      data: { blogs, total: blogs.length },
+      data: {
+        blogs: paged,
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
     });
   } catch (error) {
     console.error('listPublic blogs:', error);

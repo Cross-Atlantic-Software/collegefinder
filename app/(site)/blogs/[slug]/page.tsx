@@ -9,6 +9,7 @@ import { FiArrowLeft } from "react-icons/fi";
 import { getPublicBlogBySlug } from "@/api";
 import type { Blog } from "@/api/admin/blogs";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { LandingCardFrame } from "@/components/containers/LandingCardFrame";
 import { siteSocialLinks } from "@/lib/siteSocial";
 
 /** Extract YYYY-MM-DD from API (plain date or ISO string from DB/JSON). */
@@ -120,31 +121,37 @@ export default function BlogPostPage() {
 
                 {blog.blog_image ? (
                     <>
-                        <div className="relative mx-auto mt-6 aspect-[16/7] max-w-3xl overflow-hidden border border-black/10 bg-black/5 shadow-sm">
-                            <Image
-                                src={blog.blog_image}
-                                alt=""
-                                fill
-                                className="object-contain"
-                                sizes="(max-width: 1024px) 100vw, 896px"
-                                priority
-                                unoptimized
-                            />
-                            <div
-                                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 via-40% to-transparent"
-                                aria-hidden
-                            />
-                            <div className="absolute inset-x-0 bottom-0 flex flex-col items-start px-4 pb-6 pt-16 text-center md:px-8 md:pb-8 md:pt-20">
-                                {blog.is_featured ? (
-                                    <span className="mb-3 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white ring-1 ring-white/35 backdrop-blur-sm">
-                                        Featured
-                                    </span>
-                                ) : null}
-                                <h1 className="text-balance text-2xl font-semibold leading-tight text-white drop-shadow-md sm:text-4xl md:text-5xl">
-                                    {blog.title}
-                                </h1>
-                            </div>
+                        <header className="mx-auto mt-6 max-w-3xl">
+                            {blog.is_featured ? (
+                                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+                                    Featured
+                                </span>
+                            ) : null}
+                            <h1
+                                className={`text-center text-2xl font-semibold leading-tight text-black sm:text-4xl md:text-5xl ${
+                                    blog.is_featured ? "mt-3" : "mt-0"
+                                }`}
+                            >
+                                {blog.title}
+                            </h1>
+                        </header>
+
+                        <div className="mx-auto mt-5 max-w-3xl overflow-visible pb-6 pl-2 pt-3 sm:pl-3 sm:pt-4">
+                            <LandingCardFrame showSquiggles squiggleVariant="lg">
+                                <div className="relative aspect-video w-full overflow-hidden rounded-[30px] border border-black/15 bg-[#f5f2eb] ring-1 ring-black/5">
+                                    <Image
+                                        src={blog.blog_image}
+                                        alt=""
+                                        fill
+                                        className="object-contain object-center"
+                                        sizes="(max-width: 1024px) 100vw, 1024px"
+                                        priority
+                                        unoptimized
+                                    />
+                                </div>
+                            </LandingCardFrame>
                         </div>
+
                         {visibleRichText(blog.teaser) || visibleRichText(blog.summary) ? (
                             <div className="mx-auto mt-6 max-w-3xl text-center">
                                 {visibleRichText(blog.teaser) ? (
