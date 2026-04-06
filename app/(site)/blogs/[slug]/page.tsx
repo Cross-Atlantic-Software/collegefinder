@@ -125,7 +125,7 @@ export default function BlogPostPage() {
                                 src={blog.blog_image}
                                 alt=""
                                 fill
-                                className="object-cover"
+                                className="object-contain"
                                 sizes="(max-width: 1024px) 100vw, 896px"
                                 priority
                                 unoptimized

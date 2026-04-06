@@ -46,7 +46,7 @@ export default function BlogsPage() {
                 ) : blogs.length === 0 ? (
                     <p className="text-sm text-black/50">No posts yet. Check back soon.</p>
                 ) : (
-                    <ul className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-5">
+                    <ul className="grid gap-6 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
                         {blogs.map((blog) => (
                             <li key={blog.id}>
                                 <article className="group relative overflow-hidden">
