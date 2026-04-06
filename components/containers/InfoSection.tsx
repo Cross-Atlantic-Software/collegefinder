@@ -38,8 +38,8 @@ export default function InfoSection({ info }: { info: LandingPageContent["info"]
               {info.label}
             </p>
 
-            <h2 className="mt-5 text-4xl font-extrabold leading-tight text-black md:text-5xl">
-              <span className="text-black/45">
+            <h2 className="mt-5 text-4xl font-extrabold leading-tight text-black md:text-5xl ">
+              <span className="block whitespace-pre-line text-black/45">
                 {info.statsLine}
               </span>
               <br />
