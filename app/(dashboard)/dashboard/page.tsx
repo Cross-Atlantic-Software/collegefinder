@@ -27,11 +27,16 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
+  const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
 
   useEffect(() => {
     const section = searchParams.get("section") as SectionId | null;
     if (section) {
       setActiveSection(section);
+    }
+    const mode = searchParams.get("mode") as "self" | "coaching" | null;
+    if (mode === "self" || mode === "coaching") {
+      setExamPrepMode(mode);
     }
   }, [searchParams]);
 
@@ -73,6 +78,8 @@ export default function DashboardPage() {
         onToggleCollapse={toggleSidebarCollapse}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        activeSubSection={examPrepMode}
+        onSubSectionChange={(id) => setExamPrepMode(id as "self" | "coaching")}
       />
 
       {/* MAIN AREA */}
@@ -126,7 +133,7 @@ export default function DashboardPage() {
                 )}
 
                 {activeSection === "exam-prep" && (
-                  <ExamPreparation />
+                  <ExamPreparation initialMode={examPrepMode} />
                 )}
 
                 {activeSection === "test-module" && (

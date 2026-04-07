@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   FiActivity,
   FiBookOpen,
+  FiChevronDown,
   FiClipboard,
   FiFileText,
   FiHome,
@@ -27,6 +28,8 @@ import {
   FaBrain,
   FaHandsHelping,
 } from "react-icons/fa";
+import { IoPlayCircleOutline } from "react-icons/io5";
+import { MdSchool } from "react-icons/md";
 import { getProfileCompletion, getAllExams } from "@/api";
 
 type SectionId =
@@ -48,6 +51,8 @@ type SidebarProps = {
   onToggleCollapse: () => void;
   activeSection: SectionId;
   onSectionChange: (id: SectionId) => void;
+  activeSubSection?: string;
+  onSubSectionChange?: (id: string) => void;
 };
 
 const baseNavItems: {
@@ -140,6 +145,11 @@ const baseNavItems: {
   },
 ];
 
+const EXAM_PREP_SUB_ITEMS = [
+  { id: "self", label: "Self Study", icon: IoPlayCircleOutline },
+  { id: "coaching", label: "Coaching Institutes", icon: MdSchool },
+];
+
 export default function Sidebar({
   sidebarOpen,
   onToggle,
@@ -147,9 +157,18 @@ export default function Sidebar({
   onToggleCollapse,
   activeSection,
   onSectionChange,
+  activeSubSection,
+  onSubSectionChange,
 }: SidebarProps) {
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
+  const [examPrepExpanded, setExamPrepExpanded] = useState(false);
+
+  useEffect(() => {
+    if (activeSection === "exam-prep") {
+      setExamPrepExpanded(true);
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     const fetchCompletion = async () => {
@@ -192,13 +211,27 @@ export default function Sidebar({
           : undefined,
   }));
 
-  const handleSectionClick = (id: SectionId) => {
-    onSectionChange(id);
-
-    // Auto-close only on mobile drawer layouts.
+  const closeOnMobile = () => {
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
       onToggle();
     }
+  };
+
+  const handleSectionClick = (id: SectionId) => {
+    if (id === "exam-prep") {
+      setExamPrepExpanded((prev) => !prev);
+    }
+    onSectionChange(id);
+    closeOnMobile();
+  };
+
+  const handleSubSectionClick = (subId: string) => {
+    onSectionChange("exam-prep");
+    setExamPrepExpanded(true);
+    if (onSubSectionChange) {
+      onSubSectionChange(subId);
+    }
+    closeOnMobile();
   };
 
   return (
@@ -279,6 +312,7 @@ export default function Sidebar({
         {navItems.map((item) => {
           const isActive = activeSection === item.id;
           const MenuIcon = isActive ? item.activeIcon : item.icon;
+          const isExamPrep = item.id === "exam-prep";
 
           return (
             <div key={item.id}>
@@ -325,7 +359,11 @@ export default function Sidebar({
                       </span>
                     </div>
 
-                    {item.value && (
+                    {isExamPrep ? (
+                      <FiChevronDown
+                        className={`h-3.5 w-3.5 shrink-0 ml-2 transition-transform duration-200 ${examPrepExpanded ? "rotate-180" : ""} ${isActive ? "text-brand-ink dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}`}
+                      />
+                    ) : item.value ? (
                       <span
                         className={`
                           text-[11px] font-semibold transition-all duration-200 rounded-lg px-2 py-1 flex-shrink-0 ml-2
@@ -335,10 +373,35 @@ export default function Sidebar({
                       >
                         {item.value}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </button>
+
+              {/* Exam Prep Submenu */}
+              {isExamPrep && !isCollapsed && examPrepExpanded && (
+                <div className={`${sidebarOpen ? "flex" : "hidden md:flex"} flex-col pl-4 mt-0.5 mb-1 space-y-0.5`}>
+                  {EXAM_PREP_SUB_ITEMS.map((sub) => {
+                    const isSubActive = activeSection === "exam-prep" && activeSubSection === sub.id;
+                    const SubIcon = sub.icon;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => handleSubSectionClick(sub.id)}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300
+                          ${isSubActive
+                            ? "bg-highlight-200/60 text-brand-ink font-semibold dark:bg-highlight-300/10 dark:text-slate-100"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
+                          }`}
+                      >
+                        <SubIcon className={`h-4 w-4 shrink-0 ${isSubActive ? "text-brand-ink dark:text-highlight-300" : "text-slate-400 dark:text-slate-500"}`} />
+                        <span className="truncate">{sub.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
