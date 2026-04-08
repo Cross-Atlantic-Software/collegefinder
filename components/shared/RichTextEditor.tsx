@@ -9,6 +9,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
 import { useCallback, useEffect } from 'react';
+import { getApiBaseUrl } from '@/api/client';
 
 interface RichTextEditorProps {
   value: string;
@@ -46,10 +47,9 @@ export default function RichTextEditor({
       const formData = new FormData();
       formData.append(imageFormFieldName, file);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
       const adminToken = localStorage.getItem('admin_token');
 
-      const response = await fetch(`${apiUrl}${imageUploadEndpoint}`, {
+      const response = await fetch(`${getApiBaseUrl()}${imageUploadEndpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,

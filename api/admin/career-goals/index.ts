@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -78,10 +78,7 @@ export async function uploadCareerGoalLogo(file: File): Promise<ApiResponse<{
     throw new Error('Admin token not found');
   }
 
-  // Use the same API_BASE_URL pattern as apiRequest in client.ts
-  // This ensures consistency and prevents double /api/api
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const apiUrl = `${API_BASE_URL}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/upload-image`;
+  const apiUrl = `${getApiBaseUrl()}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/upload-image`;
   
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -142,7 +139,7 @@ export async function deleteCareerGoal(id: number): Promise<ApiResponse<null>> {
  */
 export async function downloadAllDataExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -175,7 +172,7 @@ export async function uploadMissingLogosCareerGoals(logosZipFile: File): Promise
   formData.append('logos_zip', logosZipFile);
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/upload-missing-logos`;
   const res = await fetch(url, {
     method: 'POST',

@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -82,7 +82,7 @@ export async function deleteCareer(id: number): Promise<ApiResponse<null>> {
  */
 export async function downloadAllCareersExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.CAREERS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -102,7 +102,7 @@ export async function downloadAllCareersExcel(): Promise<void> {
  */
 export async function downloadCareersBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.CAREERS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -134,8 +134,7 @@ export async function bulkUploadCareers(file: File): Promise<ApiResponse<{
     throw new Error('Admin token not found');
   }
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const apiUrl = `${API_BASE_URL}${API_ENDPOINTS.ADMIN.CAREERS}/bulk-upload`;
+  const apiUrl = `${getApiBaseUrl()}${API_ENDPOINTS.ADMIN.CAREERS}/bulk-upload`;
 
   const response = await fetch(apiUrl, {
     method: 'POST',

@@ -2,7 +2,7 @@
  * Authentication API - User Profile endpoints
  */
 
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import type {
   ApiResponse,
   User,
@@ -334,8 +334,7 @@ export async function uploadProfilePhoto(
   const formData = new FormData();
   formData.append('photo', file);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}/auth/profile/upload-photo`;
+  const url = `${getApiBaseUrl()}${API_ENDPOINTS.AUTH.PROFILE_UPLOAD_PHOTO}`;
 
   const token = localStorage.getItem('auth_token');
   if (!token) {
@@ -690,8 +689,7 @@ export async function uploadDocument(
   formData.append('document', file);
   formData.append('fieldName', fieldName);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT_UPLOAD}`;
+  const url = `${getApiBaseUrl()}${API_ENDPOINTS.AUTH.PROFILE_DOCUMENT_VAULT_UPLOAD}`;
 
   const token = localStorage.getItem('auth_token');
   if (!token) {

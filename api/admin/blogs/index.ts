@@ -2,7 +2,7 @@
  * Admin API - Blogs Management endpoints
  */
 
-import { apiRequest } from '../../client';
+import { apiRequest, type ApiRequestConfig } from '../../client';
 import type { ApiResponse } from '../../types';
 import { API_ENDPOINTS } from '../../constants';
 
@@ -134,29 +134,12 @@ export async function createBlog(data: {
     formData.append('source_name', data.source_name || '');
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}${API_ENDPOINTS.ADMIN.BLOGS}`;
-  
-  const token = localStorage.getItem('admin_token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to create blog');
-  }
-
-  return result;
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
+  return apiRequest<{ blog: Blog }>(
+    API_ENDPOINTS.ADMIN.BLOGS,
+    { method: 'POST', body: formData },
+    multipartConfig
+  );
 }
 
 /**
@@ -232,29 +215,12 @@ export async function updateBlog(
     formData.append('source_name', data.source_name || '');
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}${API_ENDPOINTS.ADMIN.BLOGS}/${id}`;
-  
-  const token = localStorage.getItem('admin_token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to update blog');
-  }
-
-  return result;
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
+  return apiRequest<{ blog: Blog }>(
+    `${API_ENDPOINTS.ADMIN.BLOGS}/${id}`,
+    { method: 'PUT', body: formData },
+    multipartConfig
+  );
 }
 
 /**

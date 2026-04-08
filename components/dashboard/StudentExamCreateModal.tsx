@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { FiX, FiPlay, FiRefreshCw } from "react-icons/fi";
 import { Button, Notification } from "@/components/shared";
+import { getApiBaseUrl } from "@/api/client";
 
 interface AutomationExam {
     id: number;
@@ -17,8 +18,6 @@ interface StudentExamCreateModalProps {
     onClose: () => void;
     onStartWorkflow: (examId: number, examName: string) => void;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 export function StudentExamCreateModal({
     isOpen,
@@ -43,7 +42,7 @@ export function StudentExamCreateModal({
 
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_URL}/user/automation-exams`, {
+            const response = await fetch(`${getApiBaseUrl()}/user/automation-exams`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -83,7 +82,7 @@ export function StudentExamCreateModal({
             const token = localStorage.getItem('auth_token');
 
             // Create application (auto-approved)
-            const response = await fetch(`${API_URL}/user/automation-applications`, {
+            const response = await fetch(`${getApiBaseUrl()}/user/automation-applications`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
