@@ -8,9 +8,19 @@ import type { LandingPageContent } from "@/types/landingPage";
 
 export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
     const sectionRef = useRef<HTMLElement>(null);
-    const mobileVideoRef = useRef<HTMLVideoElement>(null);
-    const desktopVideoRef = useRef<HTMLVideoElement>(null);
+    const [isMobile, setIsMobile] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const check = () => {
+          setIsMobile(window.innerWidth <= 767);
+        };
+      
+        check();
+        window.addEventListener("resize", check);
+      
+        return () => window.removeEventListener("resize", check);
+      }, []);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -26,61 +36,31 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         return () => observer.disconnect();
     }, []);
 
-    useEffect(() => {
-        const mobileVideo = mobileVideoRef.current;
-        const desktopVideo = desktopVideoRef.current;
-
-        const tryPlay = (video: HTMLVideoElement | null) => {
-            if (!video) return;
-            // iOS Safari sometimes needs an explicit play() after mount even with autoplay+muted.
-            video.muted = true;
-            video.defaultMuted = true;
-            const playPromise = video.play();
-            if (playPromise && typeof playPromise.catch === "function") {
-                playPromise.catch(() => {
-                    // Ignore autoplay rejections; poster stays visible if playback is blocked.
-                });
-            }
-        };
-
-        tryPlay(mobileVideo);
-        tryPlay(desktopVideo);
-    }, []);
-
     return (
         <section
             id="home"
             ref={sectionRef}
             className="relative isolate min-h-[100svh] overflow-hidden scroll-mt-20 md:scroll-mt-24"
         >
-            {/* Mobile Video */}
-<video
-  ref={mobileVideoRef}
-  className="absolute inset-0 h-full w-full object-cover object-center block md:hidden"
+         <video
+         key={isMobile ? "mobile" : "desktop"}
+  className="absolute inset-0 h-full w-full object-cover object-center"
   autoPlay
   loop
   muted
   playsInline
-  preload="auto"
+  preload="metadata"
   poster="/landing-page/hero-1.png"
   aria-hidden="true"
 >
-  <source src="/landing-page/unitracko-ai-verticle.mp4" type="video/mp4" />
-</video>
-
-{/* Desktop Video */}
-<video
-  ref={desktopVideoRef}
-  className="absolute inset-0 h-full w-full object-cover object-center hidden md:block"
-  autoPlay
-  loop
-  muted
-  playsInline
-  preload="auto"
-  poster="/landing-page/hero-1.png"
-  aria-hidden="true"
->
-  <source src="/landing-page/unitracko-ai.mp4" type="video/mp4" />
+  <source
+    src={
+      isMobile
+        ? "/landing-page/unitracko-ai-verticle.mp4"
+        : "/landing-page/unitracko-ai.mp4"
+    }
+    type="video/mp4"
+  />
 </video>
             <div className="absolute inset-0 bg-black/50" />
         
