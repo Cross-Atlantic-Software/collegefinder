@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import type { ApiResponse } from '../../types';
 import { API_ENDPOINTS } from '../../constants';
 import type { AdmissionExpert } from '../../experts';
@@ -30,7 +30,7 @@ export async function deleteExpert(id: number): Promise<ApiResponse<{ expert: Ad
 /** Download bulk upload template (Excel) */
 export async function downloadExpertsBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXPERTS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -48,7 +48,7 @@ export async function downloadExpertsBulkTemplate(): Promise<void> {
 /** Download all experts as Excel */
 export async function downloadAllExpertsExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXPERTS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',

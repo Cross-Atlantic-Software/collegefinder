@@ -2,7 +2,7 @@
  * Authentication API - Login & OTP endpoints
  */
 
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import type {
   ApiResponse,
   SendOTPResponse,
@@ -49,7 +49,7 @@ export async function resendOTP(email: string): Promise<ApiResponse<SendOTPRespo
  * Initiate Google OAuth (redirects to Google)
  */
 export function initiateGoogleAuth(ref?: string) {
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const backendUrl = getApiBaseUrl();
   const url = new URL(`${backendUrl}${API_ENDPOINTS.AUTH.GOOGLE_AUTH}`);
   if (ref) url.searchParams.set('ref', ref);
   window.location.href = url.toString();
@@ -59,7 +59,7 @@ export function initiateGoogleAuth(ref?: string) {
  * Initiate Facebook OAuth (redirects to Facebook)
  */
 export function initiateFacebookAuth(ref?: string) {
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const backendUrl = getApiBaseUrl();
   const url = new URL(`${backendUrl}${API_ENDPOINTS.AUTH.FACEBOOK_AUTH}`);
   if (ref) url.searchParams.set('ref', ref);
   window.location.href = url.toString();

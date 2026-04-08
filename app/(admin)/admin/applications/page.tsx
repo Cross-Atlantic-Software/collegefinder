@@ -6,8 +6,7 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { WorkflowModal } from '@/components/admin/WorkflowModal';
 import { Dropdown } from '@/components/shared';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+import { getApiBaseUrl } from '@/api/client';
 
 // Application type
 interface Application {
@@ -67,7 +66,7 @@ export default function ApplicationsPage() {
             const adminToken = localStorage.getItem('admin_token') || '';
 
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
-            const response = await fetch(`${API_URL}/admin/automation-applications${statusParam}`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/automation-applications${statusParam}`, {
                 headers: {
                     'Authorization': `Bearer ${adminToken}`,
                     'Content-Type': 'application/json'
@@ -97,7 +96,7 @@ export default function ApplicationsPage() {
     const fetchAutomationExams = async () => {
         try {
             const adminToken = localStorage.getItem('admin_token') || '';
-            const response = await fetch(`${API_URL}/admin/automation-exams`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/automation-exams`, {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             if (response.ok) {
@@ -113,7 +112,7 @@ export default function ApplicationsPage() {
     const searchUsers = async (search: string) => {
         try {
             const adminToken = localStorage.getItem('admin_token') || '';
-            const response = await fetch(`${API_URL}/admin/users-for-automation?search=${encodeURIComponent(search)}`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/users-for-automation?search=${encodeURIComponent(search)}`, {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             if (response.ok) {
@@ -129,7 +128,7 @@ export default function ApplicationsPage() {
     const handleApprove = async (appId: number) => {
         try {
             const adminToken = localStorage.getItem('admin_token') || '';
-            const response = await fetch(`${API_URL}/admin/automation-applications/${appId}/approve`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/automation-applications/${appId}/approve`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
@@ -149,7 +148,7 @@ export default function ApplicationsPage() {
         try {
             // Update application status to running
             const adminToken = localStorage.getItem('admin_token') || '';
-            await fetch(`${API_URL}/admin/automation-applications/${app.id}`, {
+            await fetch(`${getApiBaseUrl()}/admin/automation-applications/${app.id}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${adminToken}`,
@@ -182,7 +181,7 @@ export default function ApplicationsPage() {
         setIsCreating(true);
         try {
             const adminToken = localStorage.getItem('admin_token') || '';
-            const response = await fetch(`${API_URL}/admin/automation-applications`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/automation-applications`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${adminToken}`,
@@ -220,7 +219,7 @@ export default function ApplicationsPage() {
         setDeletingAppId(appId);
         try {
             const adminToken = localStorage.getItem('admin_token') || '';
-            const response = await fetch(`${API_URL}/admin/automation-applications/${appId}`, {
+            const response = await fetch(`${getApiBaseUrl()}/admin/automation-applications/${appId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
