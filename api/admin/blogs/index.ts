@@ -134,7 +134,7 @@ export async function createBlog(data: {
     formData.append('source_name', data.source_name || '');
   }
 
-  const multipartConfig: ApiRequestConfig = { timeoutMs: 120000 };
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
   return apiRequest<{ blog: Blog }>(
     API_ENDPOINTS.ADMIN.BLOGS,
     { method: 'POST', body: formData },
@@ -215,7 +215,7 @@ export async function updateBlog(
     formData.append('source_name', data.source_name || '');
   }
 
-  const multipartConfig: ApiRequestConfig = { timeoutMs: 120000 };
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
   return apiRequest<{ blog: Blog }>(
     `${API_ENDPOINTS.ADMIN.BLOGS}/${id}`,
     { method: 'PUT', body: formData },
