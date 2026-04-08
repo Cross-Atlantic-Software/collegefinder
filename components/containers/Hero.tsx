@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
-import { PiCompassRoseBold } from "react-icons/pi";
+import { FiArrowUpRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 
-const painIcons = [PiCompassRoseBold, FiFileText, FiClock];
-
 export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
     const sectionRef = useRef<HTMLElement>(null);
+    const mobileVideoRef = useRef<HTMLVideoElement>(null);
+    const desktopVideoRef = useRef<HTMLVideoElement>(null);
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -27,7 +26,26 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         return () => observer.disconnect();
     }, []);
 
-    const pains = hero.painPoints || [];
+    useEffect(() => {
+        const mobileVideo = mobileVideoRef.current;
+        const desktopVideo = desktopVideoRef.current;
+
+        const tryPlay = (video: HTMLVideoElement | null) => {
+            if (!video) return;
+            // iOS Safari sometimes needs an explicit play() after mount even with autoplay+muted.
+            video.muted = true;
+            video.defaultMuted = true;
+            const playPromise = video.play();
+            if (playPromise && typeof playPromise.catch === "function") {
+                playPromise.catch(() => {
+                    // Ignore autoplay rejections; poster stays visible if playback is blocked.
+                });
+            }
+        };
+
+        tryPlay(mobileVideo);
+        tryPlay(desktopVideo);
+    }, []);
 
     return (
         <section
@@ -35,23 +53,35 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
             ref={sectionRef}
             className="relative isolate min-h-[100svh] overflow-hidden scroll-mt-20 md:scroll-mt-24"
         >
-            <video
-                className="absolute inset-0 h-full w-full object-cover object-center"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                poster="/landing-page/hero-1.png"
-                aria-hidden="true"
-            >
-                <source
-                    media="(max-width: 767px)"
-                    src="/landing-page/unitracko-ai-verticle.mp4"
-                    type="video/mp4"
-                />
-                <source src="/landing-page/unitracko-ai.mp4" type="video/mp4" />
-            </video>
+            {/* Mobile Video */}
+<video
+  ref={mobileVideoRef}
+  className="absolute inset-0 h-full w-full object-cover object-center block md:hidden"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="auto"
+  poster="/landing-page/hero-1.png"
+  aria-hidden="true"
+>
+  <source src="/landing-page/unitracko-ai-verticle.mp4" type="video/mp4" />
+</video>
+
+{/* Desktop Video */}
+<video
+  ref={desktopVideoRef}
+  className="absolute inset-0 h-full w-full object-cover object-center hidden md:block"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="auto"
+  poster="/landing-page/hero-1.png"
+  aria-hidden="true"
+>
+  <source src="/landing-page/unitracko-ai.mp4" type="video/mp4" />
+</video>
             <div className="absolute inset-0 bg-black/50" />
         
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
