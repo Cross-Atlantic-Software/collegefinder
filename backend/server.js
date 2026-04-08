@@ -8,7 +8,17 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    const allowed = [
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ];
+    // Allow Chrome extension requests (origin is chrome-extension://...)
+    if (!origin || allowed.includes(origin) || /^chrome-extension:\/\//.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // permissive in dev; tighten for prod
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -46,6 +56,7 @@ app.use('/api/tests', require('./src/routes/test/testRoutes'));
 app.use('/api/mock-tests', require('./src/routes/test/mockTestRoutes'));
 app.use('/api/referral', require('./src/routes/referral/referralRoutes'));
 app.use('/api/site', require('./src/routes/site/siteRoutes'));
+app.use('/api/extension', require('./src/routes/extension/extensionRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

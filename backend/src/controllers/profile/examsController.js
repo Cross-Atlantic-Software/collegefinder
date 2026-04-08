@@ -26,7 +26,7 @@ class ExamsTaxonomyController {
    */
   static async getAll(req, res) {
     try {
-      const exams = await Exam.findAll();
+      const exams = await Exam.findAllWithListDetails();
       res.json({
         success: true,
         data: { exams }
@@ -46,7 +46,7 @@ class ExamsTaxonomyController {
    */
   static async getAllAdmin(req, res) {
     try {
-      const exams = await Exam.findAll();
+      const exams = await Exam.findAllWithListDetails();
       res.json({
         success: true,
         data: { exams }

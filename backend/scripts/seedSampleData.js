@@ -97,6 +97,23 @@ const EXAMS = [
       },
     },
   },
+  {
+    name: 'NATA',
+    code: 'NATA',
+    description: 'National Aptitude Test in Architecture',
+    exam_type: 'National',
+    conducting_authority: 'Council of Architecture (COA)',
+    number_of_papers: 1,
+    website: 'https://www.nata.in/',
+    format: {
+      default: {
+        name: 'NATA',
+        duration_minutes: 180,
+        total_questions: 50,
+        total_marks: 200,
+      },
+    },
+  },
 ];
 
 const SUBJECTS = [

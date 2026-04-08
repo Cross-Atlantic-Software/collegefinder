@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExamFill</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ─── Header ─── -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="brand-icon">EF</div>
+        <span class="brand-name">ExamFill</span>
+      </div>
+      <div class="header-actions">
+        <div id="examBadge" class="exam-badge" style="display:none;"></div>
+        <button id="logoutBtn" class="icon-btn" title="Sign out" style="display:none;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── State: Not on exam portal ─── -->
+    <section id="stateNoPortal" class="view" style="display:none;">
+      <div class="view-hero">
+        <div class="hero-icon">🎯</div>
+        <h2>Open an Exam Portal</h2>
+        <p>Navigate to a supported exam site and ExamFill will activate automatically.</p>
+      </div>
+      <div class="section-label">Supported Exams</div>
+      <div id="supportedExamsList" class="tag-grid"></div>
+    </section>
+
+    <!-- ─── State: ExamFill login ─── -->
+    <section id="stateLogin" class="view" style="display:none;">
+
+      <!-- Step A: Enter email -->
+      <div id="loginStepEmail">
+        <div class="view-hero compact">
+          <div class="hero-icon small">✉️</div>
+          <h2>Sign In to ExamFill</h2>
+          <p>We'll send a one-time code to your CollegeFinder email.</p>
+        </div>
+        <form id="emailForm" class="login-form">
+          <div class="field-group">
+            <label>Email address</label>
+            <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required>
+          </div>
+          <div id="emailError" class="alert alert-error" style="display:none;"></div>
+          <button type="submit" class="btn-primary full" id="sendOtpBtn">
+            <span id="sendOtpBtnText">Send OTP</span>
+            <div id="sendOtpSpinner" class="btn-spinner" style="display:none;"></div>
+          </button>
+        </form>
+      </div>
+
+      <!-- Step B: Enter OTP -->
+      <div id="loginStepOtp" style="display:none;">
+        <div class="view-hero compact">
+          <div class="hero-icon small">🔢</div>
+          <h2>Enter Your OTP</h2>
+          <p id="otpSentTo">Code sent to your email.</p>
+        </div>
+        <form id="otpForm" class="login-form">
+          <div class="otp-input-row">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          </div>
+          <div id="otpTimer" class="otp-timer"></div>
+          <div id="otpError" class="alert alert-error" style="display:none;"></div>
+          <button type="submit" class="btn-primary full" id="verifyOtpBtn">
+            <span id="verifyOtpBtnText">Verify &amp; Sign In</span>
+            <div id="verifyOtpSpinner" class="btn-spinner" style="display:none;"></div>
+          </button>
+          <button type="button" class="btn-link" id="changeEmailBtn">← Use a different email</button>
+        </form>
+      </div>
+
+    </section>
+
+    <!-- ─── State: Loading ─── -->
+    <section id="stateLoading" class="view center" style="display:none;">
+      <div class="pulse-ring"></div>
+      <p class="loading-text">Loading your profile…</p>
+    </section>
+
+    <!-- ─── State: Portal login page (user must log in to exam portal first) ─── -->
+    <section id="statePortalLogin" class="view" style="display:none;">
+      <div class="portal-detected-banner">
+        <div class="detected-dot"></div>
+        <span id="portalDetectedName">Exam detected</span>
+      </div>
+      <!-- Auto-fill email on portal login page -->
+      <div id="portalLoginFillCard" class="portal-fill-card" style="display:none;">
+        <div class="portal-fill-label">Fill your registered email</div>
+        <div class="portal-fill-email" id="portalFillEmailDisplay">—</div>
+        <button class="btn-primary full" id="fillPortalEmailBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Fill Email on Portal
+        </button>
+        <div id="portalFillResult" class="portal-fill-result" style="display:none;"></div>
+      </div>
+
+      <div class="steps-guide">
+        <div class="step step-done">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">ExamFill Ready ✓</div>
+            <div class="step-desc">Your profile is loaded.</div>
+          </div>
+        </div>
+        <div class="step step-active">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Log in to the portal</div>
+            <div class="step-desc">Enter your email (we filled it ↑), password &amp; CAPTCHA, then click Sign In.</div>
+          </div>
+        </div>
+        <div class="step step-pending">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">We fill the form</div>
+            <div class="step-desc">After you land on the registration page, click Fill here.</div>
+          </div>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Password &amp; CAPTCHA must be filled manually — by design.
+      </div>
+    </section>
+
+    <!-- ─── State: Ready to fill ─── -->
+    <section id="stateReady" class="view" style="display:none;">
+      <!-- Profile strip -->
+      <div class="profile-strip">
+        <div class="avatar" id="profileAvatar">?</div>
+        <div class="profile-details">
+          <div class="profile-name" id="profileName">—</div>
+          <div class="profile-meta" id="profileMeta">—</div>
+        </div>
+        <div class="profile-completion" id="profileCompletion" title="Profile completeness"></div>
+      </div>
+
+      <!-- Fill all -->
+      <button class="btn-fill-all" id="fillAllBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Fill All Sections
+        <span class="time-badge">~30 sec</span>
+      </button>
+
+      <!-- Sections -->
+      <div class="section-label">Sections</div>
+      <div id="sectionsList" class="sections-list"></div>
+
+      <!-- Profile data preview -->
+      <div class="data-preview" id="dataPreview"></div>
+    </section>
+
+    <!-- ─── State: Filling in progress ─── -->
+    <section id="stateFilling" class="view center" style="display:none;">
+      <div class="fill-progress-ring">
+        <svg viewBox="0 0 60 60">
+          <circle class="ring-bg" cx="30" cy="30" r="26"/>
+          <circle class="ring-fill" id="ringFill" cx="30" cy="30" r="26" stroke-dasharray="163" stroke-dashoffset="163"/>
+        </svg>
+        <div class="ring-inner">
+          <span id="fillCount">0</span>
+          <small>filled</small>
+        </div>
+      </div>
+      <div class="fill-section-name" id="fillingSectionName"></div>
+      <div id="fillLiveList" class="fill-live-list"></div>
+    </section>
+
+    <!-- ─── State: Fill complete ─── -->
+    <section id="stateComplete" class="view" style="display:none;">
+      <div class="complete-header" id="completeHeader"></div>
+      <div id="summaryStrip" class="summary-strip"></div>
+      <div class="section-label">Field Results</div>
+      <div id="fillReport" class="fill-report"></div>
+      <div class="complete-actions">
+        <button class="btn-secondary" id="backToSections">← Back to Sections</button>
+        <button class="btn-ghost" id="fillNextBtn" style="display:none;">Fill Next →</button>
+      </div>
+    </section>
+
+    <!-- ─── State: Error ─── -->
+    <section id="stateError" class="view center" style="display:none;">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">Something went wrong</div>
+      <div class="error-msg" id="errorMessage"></div>
+      <button class="btn-primary" id="retryBtn">Try Again</button>
+    </section>
+
+  </div>
+  <script src="sidebar.js"></script>
+</body>
+</html>

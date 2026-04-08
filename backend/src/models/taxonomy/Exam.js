@@ -12,6 +12,34 @@ class Exam {
   }
 
   /**
+   * Exams with joined list fields for public directory / shortlist (dates, pattern, college count).
+   * shortlist_meta JSONB holds optional display strings (fee, difficulty, etc.).
+   */
+  static async findAllWithListDetails() {
+    const result = await db.query(`
+      SELECT
+        e.*,
+        d.application_start_date AS dates_application_start,
+        d.application_close_date AS dates_application_close,
+        d.exam_date AS dates_exam_date,
+        p.mode AS pattern_mode,
+        p.duration_minutes AS pattern_duration_minutes,
+        p.number_of_questions AS pattern_number_of_questions,
+        COALESCE(cc.college_count, 0)::int AS participating_colleges_count
+      FROM exams_taxonomies e
+      LEFT JOIN exam_dates d ON d.exam_id = e.id
+      LEFT JOIN exam_pattern p ON p.exam_id = e.id
+      LEFT JOIN (
+        SELECT exam_id, COUNT(*)::int AS college_count
+        FROM college_recommended_exams
+        GROUP BY exam_id
+      ) cc ON cc.exam_id = e.id
+      ORDER BY e.name ASC
+    `);
+    return result.rows;
+  }
+
+  /**
    * Find exam taxonomy by ID
    */
   static async findById(id) {

@@ -1,6 +1,16 @@
 import { apiRequest } from '../client';
 import { ApiResponse } from '../types';
 
+export interface ExamShortlistMeta {
+  subtitle?: string;
+  fee_inr?: number;
+  difficulty?: string;
+  applicants_label?: string;
+  colleges_label?: string;
+  eligibility_label?: string;
+  mode?: string;
+}
+
 export interface Exam {
   id: number;
   name: string;
@@ -9,6 +19,18 @@ export interface Exam {
   number_of_papers?: number;
   created_at: string;
   updated_at: string;
+  exam_type?: string | null;
+  conducting_authority?: string | null;
+  exam_logo?: string | null;
+  website?: string | null;
+  shortlist_meta?: ExamShortlistMeta | null;
+  dates_application_start?: string | null;
+  dates_application_close?: string | null;
+  dates_exam_date?: string | null;
+  pattern_mode?: string | null;
+  pattern_duration_minutes?: number | null;
+  pattern_number_of_questions?: number | null;
+  participating_colleges_count?: number;
 }
 
 export interface PreviousExamAttempt {

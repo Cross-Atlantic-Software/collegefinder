@@ -1,0 +1,426 @@
+{
+  "exam_id": "nata",
+  "exam_name": "NATA 2026",
+  "portal_url_pattern": "nata-app.org",
+  "version": 5,
+
+  "sections": [
+    {
+      "section_id": "basic_information",
+      "section_name": "Basic Information",
+      "page_indicator": { "type": "url_contains", "value": "register" },
+      "fields": [
+        {
+          "field_id": "name_as_per_marksheet",
+          "label": "Name as per Marksheet",
+          "source": "student.full_name",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Name on Marksheet", "Name as per Marksheet", "Candidate Name"],
+            "by_label":       ["Name as per Marksheet", "Name as per 10th Marksheet"],
+            "by_id":          ["nameAsPerMarksheet", "candidateName", "fullName"],
+            "by_name":        ["nameAsPerMarksheet"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "first_name",
+          "label": "First Name",
+          "source": "student.first_name",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["First Name"],
+            "by_label":       ["First Name"],
+            "by_id":          ["firstName", "first_name"],
+            "by_name":        ["firstName", "first_name"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "last_name",
+          "label": "Last Name",
+          "source": "student.last_name",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Last Name", "Surname"],
+            "by_label":       ["Last Name", "Surname"],
+            "by_id":          ["lastName", "last_name", "surname"],
+            "by_name":        ["lastName", "last_name"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "father_name",
+          "label": "Father's Name",
+          "source": "student.father_name",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Father Name", "Father's Name"],
+            "by_label":       ["Father's Name", "Father Name"],
+            "by_id":          ["fatherName", "father_name", "fathersName"],
+            "by_name":        ["fatherName", "father_name"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "mother_name",
+          "label": "Mother's Name",
+          "source": "student.mother_name",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Mother Name", "Mother's Name"],
+            "by_label":       ["Mother's Name", "Mother Name"],
+            "by_id":          ["motherName", "mother_name", "mothersName"],
+            "by_name":        ["motherName", "mother_name"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "gender",
+          "label": "Gender",
+          "source": "student.gender",
+          "type": "select",
+          "selectors": {
+            "by_label": ["Gender"],
+            "by_placeholder": ["Select Gender"],
+            "by_id":   ["gender", "genderId"],
+            "by_name": ["gender"]
+          },
+          "value_map": {
+            "Male":   ["Male", "M", "MALE", "male", "1"],
+            "Female": ["Female", "F", "FEMALE", "female", "2"],
+            "Other":  ["Other", "O", "OTHER", "3", "Transgender", "Non-Binary"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "dob",
+          "label": "Date of Birth",
+          "source": "student.dob",
+          "type": "date",
+          "date_config": { "variant": "native", "format": "YYYY-MM-DD" },
+          "selectors": {
+            "by_placeholder": ["Select Date of Birth", "Date of Birth", "DD/MM/YYYY", "MM/DD/YYYY"],
+            "by_label":       ["Date of Birth", "DOB", "Birth Date"],
+            "by_id":          ["dob", "dateOfBirth", "date_of_birth", "birthDate"],
+            "by_name":        ["dob", "dateOfBirth"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "place_of_residence",
+          "label": "Place of Residence",
+          "source": "address.state",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select Residence", "Place of Residence"],
+            "by_label":       ["Place of Residence", "State of Residence", "Residence"],
+            "by_id":          ["placeOfResidence", "residence", "stateOfResidence"],
+            "by_name":        ["placeOfResidence", "residence"]
+          },
+          "value_map": {
+            "Delhi":          ["Delhi", "NCT of Delhi", "New Delhi"],
+            "Uttar Pradesh":  ["Uttar Pradesh", "UP"],
+            "Maharashtra":    ["Maharashtra", "MH"],
+            "Karnataka":      ["Karnataka", "KA"],
+            "Tamil Nadu":     ["Tamil Nadu", "TN"],
+            "West Bengal":    ["West Bengal", "WB"],
+            "Rajasthan":      ["Rajasthan", "RJ"],
+            "Gujarat":        ["Gujarat", "GJ"],
+            "Madhya Pradesh": ["Madhya Pradesh", "MP"],
+            "Kerala":         ["Kerala", "KL"],
+            "Punjab":         ["Punjab", "PB"],
+            "Haryana":        ["Haryana", "HR"],
+            "Bihar":          ["Bihar", "BR"],
+            "Telangana":      ["Telangana", "TS"],
+            "Andhra Pradesh": ["Andhra Pradesh", "AP"],
+            "Odisha":         ["Odisha", "Orissa", "OD"],
+            "Jharkhand":      ["Jharkhand", "JH"],
+            "Assam":          ["Assam", "AS"],
+            "Himachal Pradesh": ["Himachal Pradesh", "HP"],
+            "Uttarakhand":    ["Uttarakhand", "UK"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "country",
+          "label": "Country",
+          "source": "address.country",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select Country"],
+            "by_label":       ["Country"],
+            "by_id":          ["country", "countryId"],
+            "by_name":        ["country"]
+          },
+          "value_map": {
+            "India": ["India", "INDIA", "IN", "Bharat"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "state",
+          "label": "State",
+          "source": "address.state",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select State"],
+            "by_label":       ["State"],
+            "by_id":          ["state", "stateId"],
+            "by_name":        ["state"]
+          },
+          "cascade_dependency": "country",
+          "cascade_wait_ms": 1500,
+          "value_map": {
+            "Delhi":          ["Delhi", "NCT of Delhi", "New Delhi"],
+            "Uttar Pradesh":  ["Uttar Pradesh", "UP"],
+            "Maharashtra":    ["Maharashtra", "MH"],
+            "Karnataka":      ["Karnataka", "KA"],
+            "Tamil Nadu":     ["Tamil Nadu", "TN"],
+            "West Bengal":    ["West Bengal", "WB"],
+            "Rajasthan":      ["Rajasthan", "RJ"],
+            "Gujarat":        ["Gujarat", "GJ"],
+            "Madhya Pradesh": ["Madhya Pradesh", "MP"],
+            "Kerala":         ["Kerala", "KL"],
+            "Punjab":         ["Punjab", "PB"],
+            "Haryana":        ["Haryana", "HR"],
+            "Bihar":          ["Bihar", "BR"],
+            "Telangana":      ["Telangana", "TS"],
+            "Andhra Pradesh": ["Andhra Pradesh", "AP"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "city",
+          "label": "City",
+          "source": "address.city",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["City"],
+            "by_label":       ["City", "Town / City"],
+            "by_id":          ["city", "cityName", "town"],
+            "by_name":        ["city"]
+          },
+          "cascade_dependency": "state",
+          "cascade_wait_ms": 800,
+          "required": true
+        },
+        {
+          "field_id": "pincode",
+          "label": "Pincode",
+          "source": "address.pincode",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Pincode", "PIN Code"],
+            "by_label":       ["Pincode", "PIN Code", "Postal Code"],
+            "by_id":          ["pincode", "pin", "postalCode", "zipCode"],
+            "by_name":        ["pincode", "pin"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "address",
+          "label": "Address",
+          "source": "address.line1",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Address"],
+            "by_label":       ["Address", "Permanent Address"],
+            "by_id":          ["address", "address1", "addressLine1", "permanentAddress"],
+            "by_name":        ["address", "address1"]
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "section_id": "documents",
+      "section_name": "Documents",
+      "page_indicator": { "type": "step_number", "value": 2 },
+      "fields": [
+        {
+          "field_id": "category",
+          "label": "Category",
+          "source": "student.category",
+          "type": "select",
+          "selectors": {
+            "by_label":       ["Category", "Caste Category", "Social Category"],
+            "by_placeholder": ["Select Category"],
+            "by_id":          ["category", "categoryId", "caste", "casteCategory"],
+            "by_name":        ["category", "categoryId"]
+          },
+          "value_map": {
+            "General": ["General", "GEN", "UR", "Unreserved", "GENERAL"],
+            "OBC-NCL": ["OBC-NCL", "OBC", "Other Backward Class", "OBC (Non-Creamy Layer)"],
+            "SC":      ["SC", "Scheduled Caste"],
+            "ST":      ["ST", "Scheduled Tribe"],
+            "EWS":     ["EWS", "Economically Weaker Section"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "id_document_type",
+          "label": "ID Document Type",
+          "source": "student.id_document_type",
+          "type": "select",
+          "selectors": {
+            "by_label":       ["ID Document Type", "Identity Document Type", "ID Type", "Select Identity type"],
+            "by_placeholder": ["Select Identity type", "Select ID Type", "ID Document Type"],
+            "by_id":          ["idDocumentType", "identityType", "docType", "idType"],
+            "by_name":        ["idDocumentType", "identityType", "docType"]
+          },
+          "value_map": {
+            "Aadhaar Card": ["Aadhaar Card", "Aadhaar card", "Aadhar Card", "Aadhar", "Aadhaar", "1", "Aadhaar Card (12-digit)"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "id_document_number",
+          "label": "ID Document Number",
+          "source": "student.aadhar_no",
+          "type": "text",
+          "format": "digits_only",
+          "selectors": {
+            "by_label":       ["ID Document Number", "Identity Document Number", "Aadhaar Number", "Document Number"],
+            "by_placeholder": ["ID Document Number", "Aadhaar Number", "Enter Document Number"],
+            "by_id":          ["idDocumentNumber", "aadharNumber", "aadhaarNumber", "documentNumber", "idNumber"],
+            "by_name":        ["idDocumentNumber", "aadharNumber", "aadhaarNumber", "documentNumber"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "disability",
+          "label": "Disability",
+          "source": "student.disability",
+          "type": "radio",
+          "selectors": {
+            "by_label":  ["Disability", "PwD", "Physically Handicapped", "Person with Disability"],
+            "by_name":   ["disability", "pwd", "isDisabled", "physicallyChallenged"]
+          },
+          "value_map": {
+            "No":  ["No", "NO", "no", "false", "0"],
+            "Yes": ["Yes", "YES", "yes", "true", "1"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "upload_id_document",
+          "label": "Upload ID Document",
+          "source": "documents.id_proof",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
+          "selectors": {
+            "by_label": ["Upload ID Document", "ID Document", "Identity Document", "Upload ID Proof"],
+            "by_id":    ["idDocument", "uploadIdDocument", "idProof", "identityDocument"],
+            "by_name":  ["idDocument", "uploadIdDocument", "idProof"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "upload_aadhar",
+          "label": "Upload Aadhaar Card",
+          "source": "documents.aadhar_card",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
+          "selectors": {
+            "by_label": ["Upload Aadhaar Card", "Aadhaar Card", "Aadhar Card", "Upload Aadhar"],
+            "by_id":    ["aadhaarCard", "aadharCard", "uploadAadhar", "uploadAadhaar"],
+            "by_name":  ["aadhaarCard", "aadharCard", "uploadAadhar"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "passport_photo",
+          "label": "Passport Size Photo",
+          "source": "documents.photo",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png"],
+          "selectors": {
+            "by_label": ["Passport Size Photo", "Passport Photo", "Photograph", "Student Photo"],
+            "by_id":    ["passportPhoto", "photograph", "studentPhoto", "passportSizePhoto"],
+            "by_name":  ["passportPhoto", "photograph", "passportSizePhoto"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "signature",
+          "label": "Signature Photo",
+          "source": "documents.signature",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png"],
+          "selectors": {
+            "by_label": ["Signature Photo", "Signature", "Upload Signature"],
+            "by_id":    ["signature", "signaturePhoto", "uploadSignature", "signImage"],
+            "by_name":  ["signature", "signaturePhoto", "uploadSignature"]
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "section_id": "education_details",
+      "section_name": "Education Details",
+      "page_indicator": { "type": "step_number", "value": 3 },
+      "fields": [
+        {
+          "field_id": "qualifying_exam_board",
+          "label": "Qualifying Exam Board",
+          "source": "education.class_12.board",
+          "type": "select",
+          "selectors": {
+            "by_label": ["Qualifying Examination", "Board", "Exam Board", "12th Board"],
+            "by_id":    ["qualifyingExam", "board", "examBoard"],
+            "by_name":  ["qualifyingExam", "board"]
+          },
+          "value_map": {
+            "CBSE":         ["CBSE", "Central Board of Secondary Education"],
+            "ICSE":         ["ICSE", "ISC", "CISCE"],
+            "UP Board":     ["UPMSP", "UP Board", "Uttar Pradesh Madhyamik Shiksha Parishad"],
+            "Maharashtra":  ["Maharashtra State Board", "MSBSHSE"],
+            "Karnataka":    ["Karnataka Secondary Education Examination Board", "KSEEB"],
+            "Tamil Nadu":   ["Tamil Nadu State Board", "TNBSE"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "passing_year",
+          "label": "Year of Passing",
+          "source": "education.class_12.passing_year",
+          "type": "select_or_text",
+          "selectors": {
+            "by_label": ["Year of Passing", "Passing Year", "Year"],
+            "by_id":    ["passingYear", "yearOfPassing", "passYear"],
+            "by_name":  ["passingYear", "yearOfPassing"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "percentage",
+          "label": "Aggregate Percentage",
+          "source": "education.class_12.percentage",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Percentage", "Aggregate Percentage"],
+            "by_label":       ["Aggregate Percentage", "Percentage", "Total Percentage"],
+            "by_id":          ["percentage", "aggPercentage", "totalPercentage"],
+            "by_name":        ["percentage", "aggPercentage"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "school_name",
+          "label": "School Name",
+          "source": "education.class_12.school",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["School Name", "Institution Name"],
+            "by_label":       ["School Name", "Institution Name"],
+            "by_id":          ["schoolName", "institutionName"],
+            "by_name":        ["schoolName", "institution"]
+          },
+          "required": false
+        }
+      ]
+    }
+  ]
+}

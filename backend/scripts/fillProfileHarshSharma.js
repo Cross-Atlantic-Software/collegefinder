@@ -13,6 +13,8 @@ const UserAddress = require('../src/models/user/UserAddress');
 const UserCareerGoals = require('../src/models/user/UserCareerGoals');
 const UserOtherInfo = require('../src/models/user/UserOtherInfo');
 const Stream = require('../src/models/taxonomy/Stream');
+const CategoryAndReservation = require('../src/models/user/CategoryAndReservation');
+const GovernmentIdentification = require('../src/models/user/GovernmentIdentification');
 
 const EMAIL = 'sharmaharsh634@gmail.com';
 
@@ -21,12 +23,14 @@ const PROFILE = {
   name: 'Harsh Sharma',
   first_name: 'Harsh',
   last_name: 'Sharma',
-  date_of_birth: '2005-06-15',
+  date_of_birth: '2004-08-07',
   gender: 'Male',
   phone_number: '+91 6374589527',
   state: 'Delhi',
   district: 'Central Delhi',
   nationality: 'Indian',
+  father_full_name: 'Rajesh Sharma',
+  mother_full_name: 'Sunita Sharma',
   // Academics
   matric_school_name: 'Delhi Public School',
   matric_passing_year: 2021,
@@ -43,6 +47,11 @@ const PROFILE = {
   // Other
   medium: 'English',
   language: 'English',
+  // Category & reservation (category_id 1 = General)
+  category_id: 1,
+  pwbd_status: false,
+  // Government ID
+  aadhar_number: '1234 5678 9012',
 };
 
 async function main() {
@@ -61,8 +70,9 @@ async function main() {
       `UPDATE users SET
         name = $1, first_name = $2, last_name = $3, date_of_birth = $4::DATE,
         gender = $5, phone_number = $6, state = $7, district = $8,
-        nationality = $9, onboarding_completed = TRUE, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $10`,
+        nationality = $9, father_full_name = $10, mother_full_name = $11,
+        onboarding_completed = TRUE, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12`,
       [
         PROFILE.name,
         PROFILE.first_name,
@@ -73,6 +83,8 @@ async function main() {
         PROFILE.state,
         PROFILE.district,
         PROFILE.nationality,
+        PROFILE.father_full_name,
+        PROFILE.mother_full_name,
         userId,
       ]
     );
@@ -116,6 +128,20 @@ async function main() {
     // 5. Career goals - ensure record exists (empty interests is valid)
     await UserCareerGoals.upsert(userId, { interests: [] });
     console.log('Upserted user_career_goals');
+
+    // 6. Category & reservation
+    await CategoryAndReservation.upsert(userId, {
+      category_id: PROFILE.category_id,
+      pwbd_status: PROFILE.pwbd_status,
+      ews_status: false,
+    });
+    console.log('Upserted category_and_reservation');
+
+    // 7. Government identification (Aadhar)
+    await GovernmentIdentification.upsert(userId, {
+      aadhar_number: PROFILE.aadhar_number,
+    });
+    console.log('Upserted government_identification');
 
     console.log('\nProfile fill complete for', EMAIL);
   } catch (err) {

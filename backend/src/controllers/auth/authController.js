@@ -31,17 +31,6 @@ class AuthController {
       console.log(`🔐 [OTP:sendOTP] Request received for email: ${email}`);
       console.log(`🔐 [OTP:sendOTP] OTP Length: ${otpLength}, Expiry: ${otpExpiryMinutes} minutes`);
 
-      // Check rate limiting (max 3 OTPs per 10 minutes)
-      const recentOtpCount = await Otp.getRecentOtpCount(email, 10);
-      console.log(`🔐 [OTP:sendOTP] Recent OTP count for ${email}: ${recentOtpCount}/3`);
-      if (recentOtpCount >= 3) {
-        console.warn(`⚠️  [OTP:sendOTP] Rate limit exceeded for ${email}`);
-        return res.status(429).json({
-          success: false,
-          message: 'Too many OTP requests. Please wait before requesting again.'
-        });
-      }
-
       // Find or create user
       let user = await User.findByEmail(email);
       if (!user) {

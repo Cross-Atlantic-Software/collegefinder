@@ -355,15 +355,6 @@ class BasicInfoController {
       const otpLength = parseInt(process.env.OTP_LENGTH) || 6;
       const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
 
-      // Check rate limiting (max 3 OTPs per 10 minutes)
-      const recentOtpCount = await Otp.getRecentOtpCount(email, 10);
-      if (recentOtpCount >= 3) {
-        return res.status(429).json({
-          success: false,
-          message: 'Too many OTP requests. Please wait before requesting again.'
-        });
-      }
-
       // Generate OTP
       const code = generateOTP(otpLength);
       const expiresAt = getOTPExpiry(otpExpiryMinutes);
