@@ -268,41 +268,29 @@
     const pct = Math.round((filled / fields.length) * 100);
     $('profileCompletion').textContent = `${pct}% complete`;
 
-    // Data preview
-    renderDataPreview();
-
     // Sections
     renderSections();
   }
 
-  function renderDataPreview() {
-    const container = $('dataPreview');
-    container.innerHTML = '';
+  /**
+   * Returns true if the current tab URL / page title matches this section's
+   * page_indicator. Supports: url_contains, step_number, page_text_contains.
+   */
+  function sectionMatchesCurrentPage(section) {
+    const pi = section.page_indicator;
+    if (!pi) return false;
 
-    const previewFields = [
-      { key: 'Name',       val: profile?.student?.full_name },
-      { key: 'DOB',        val: profile?.student?.dob },
-      { key: 'Gender',     val: profile?.student?.gender },
-      { key: 'Mobile',     val: profile?.student?.mobile },
-      { key: 'State',      val: profile?.address?.state },
-      { key: '12th Board', val: profile?.education?.class_12?.board },
-      { key: 'Percentage', val: profile?.education?.class_12?.percentage ? profile.education.class_12.percentage + '%' : null },
-    ];
-
-    const hasData = previewFields.some(f => f.val);
-    if (!hasData) return;
-
-    const label = document.createElement('div');
-    label.className = 'section-label';
-    label.textContent = 'Your Data';
-    container.appendChild(label);
-
-    previewFields.forEach(({ key, val }) => {
-      const row = document.createElement('div');
-      row.className = 'preview-row';
-      row.innerHTML = `<span class="preview-key">${key}</span><span class="preview-val ${val ? '' : 'preview-empty'}">${val || '—  not set'}</span>`;
-      container.appendChild(row);
-    });
+    if (pi.type === 'url_contains') {
+      return currentTabUrl.includes(pi.value);
+    }
+    if (pi.type === 'page_text_contains') {
+      // We can't read the live DOM here (sidebar is a separate page),
+      // so we embed the page title in the URL query param sent by the content script.
+      // Fallback: always return true so the section is shown as potentially active.
+      return true;
+    }
+    // step_number: not directly resolvable from the sidebar without querying the tab
+    return false;
   }
 
   function renderSections() {
@@ -313,7 +301,6 @@
     adapter.sections.forEach((section, idx) => {
       const state = sectionStates[section.section_id] || {};
       const card = document.createElement('div');
-      card.className = `section-card ${state.status || ''}`;
 
       const icons = { done: '✅', check: '⚠️', failed: '❌' };
       const icon = icons[state.status] || '📝';
@@ -329,6 +316,7 @@
       if (state.status === 'done')  btnLabel = 'Re-fill';
       if (state.status === 'check') btnLabel = 'Re-fill';
 
+      card.className = `section-card ${state.status || ''}`;
       card.innerHTML = `
         <div class="section-icon">${icon}</div>
         <div class="section-body">
@@ -358,14 +346,20 @@
 
     try {
       const result = await msg('FILL_SECTION', {
-        section: section.section_id,
-        fields:  section.fields,
-        userData: profile
+        section:       section.section_id,
+        fields:        section.fields,
+        userData:      profile,
+        page_indicator: section.page_indicator || null
       });
 
       if (!result.success) { showError(result.error || 'Fill failed'); return; }
 
       const report = result.report;
+
+      if (report?.page_mismatch) {
+        showError(report.page_mismatch_note || 'Wrong page for this section — please navigate to the right step first.');
+        return;
+      }
 
       // Animate the live list
       let doneCount = 0;
@@ -400,57 +394,6 @@
     }
   }
 
-  // ─── Fill: all sections ───
-
-  async function fillAllSections() {
-    if (!adapter?.sections) return;
-
-    for (let i = 0; i < adapter.sections.length; i++) {
-      const section = adapter.sections[i];
-      showView('filling');
-      $('fillingSectionName').textContent = section.section_name;
-      $('fillCount').textContent = '0';
-      $('fillLiveList').innerHTML = '';
-      setRingProgress(0, 0);
-
-      try {
-        const result = await msg('FILL_SECTION', {
-          section:  section.section_id,
-          fields:   section.fields,
-          userData: profile
-        });
-
-        if (result.success && result.report) {
-          const report = result.report;
-          let sectionStatus = 'done';
-          if (report.summary.failed > 0 || report.summary.not_found > 0) sectionStatus = 'failed';
-          else if (report.summary.check > 0) sectionStatus = 'check';
-
-          sectionStates[section.section_id] = { status: sectionStatus, report };
-
-          let done = 0;
-          for (const r of report.results) {
-            done++;
-            addLiveRow(r);
-            $('fillCount').textContent = done;
-            setRingProgress(done, report.results.length);
-            await sleep(50);
-          }
-
-          msg('SEND_FILL_REPORT', {
-            exam_id: examId, section: section.section_id,
-            adapter_version: adapter.version || 1,
-            results: report.results
-          }).catch(() => {});
-
-          await sleep(400);
-        }
-      } catch (_) { /* continue with next section */ }
-    }
-
-    showReadyState();
-  }
-
   // ─── Progress ring ───
 
   function setRingProgress(done, total) {
@@ -465,7 +408,8 @@
     const icons = { filling: '…', filled: '✓', check: '!', failed: '✗', not_found: '✗' };
     const row = document.createElement('div');
     row.className = `live-row ${result.status === 'filled' ? 'done' : result.status}`;
-    row.textContent = `${icons[result.status] || '?'}  ${result.label}${result.value ? ' → ' + result.value : ''}`;
+    const displayVal = formatReportValue(result.value);
+    row.textContent = `${icons[result.status] || '?'}  ${result.label}${displayVal ? ' → ' + displayVal : ''}`;
     $('fillLiveList').appendChild(row);
     $('fillLiveList').scrollTop = $('fillLiveList').scrollHeight;
   }
@@ -509,7 +453,7 @@
         <span class="report-icon">${iconMap[r.status] || '❓'}</span>
         <div class="report-content">
           <div class="report-label">${escHtml(r.label)}</div>
-          ${r.value    ? `<div class="report-value">→ ${escHtml(r.value)}</div>` : ''}
+          ${r.value    ? `<div class="report-value">→ ${escHtml(formatReportValue(r.value))}</div>` : ''}
           ${r.note && (r.status === 'check')  ? `<div class="report-note">${escHtml(r.note)}</div>` : ''}
           ${r.note && (r.status === 'failed' || r.status === 'not_found') ? `<div class="report-note error">${escHtml(r.note)}</div>` : ''}
         </div>
@@ -698,9 +642,6 @@
       await detectAndLoad();
     });
 
-    // Fill all
-    $('fillAllBtn').addEventListener('click', () => fillAllSections());
-
     // Back to sections
     $('backToSections').addEventListener('click', () => showReadyState());
 
@@ -732,6 +673,14 @@
 
   function msg(type, payload) {
     return chrome.runtime.sendMessage({ type, payload });
+  }
+
+  /** Replace long document / S3 URLs with a short label in the sidebar */
+  function formatReportValue(val) {
+    if (val == null || val === '') return '';
+    const s = String(val).trim();
+    if (/^https?:\/\//i.test(s)) return 'uploaded';
+    return s;
   }
 
   function escHtml(str) {

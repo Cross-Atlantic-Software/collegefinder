@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS user_academics (
   matric_percentage DECIMAL(5, 2),
   matric_state VARCHAR(100),
   matric_city VARCHAR(100),
+  matric_school_pincode VARCHAR(10),
   -- Post-Matric (12th) fields
   postmatric_board VARCHAR(100),
   postmatric_school_name VARCHAR(255),
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS user_academics (
   postmatric_percentage DECIMAL(5, 2),
   postmatric_state VARCHAR(100),
   postmatric_city VARCHAR(100),
+  postmatric_school_pincode VARCHAR(10),
   matric_marks_type VARCHAR(20), -- 'Percentage' or 'CGPA' for matric
   matric_cgpa DECIMAL(5, 2), -- CGPA value for matric (when matric_marks_type is 'CGPA')
   matric_result_status VARCHAR(20), -- 'passed' or 'failed' for matric
@@ -51,6 +53,7 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_obtained_marks DECIMA
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_percentage DECIMAL(5, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_state VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_city VARCHAR(100);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_school_pincode VARCHAR(10);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_board VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_school_name VARCHAR(255);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_passing_year INTEGER;
@@ -60,6 +63,7 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_obtained_marks DE
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_percentage DECIMAL(5, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_state VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_city VARCHAR(100);
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_school_pincode VARCHAR(10);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_marks_type VARCHAR(20);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_cgpa DECIMAL(5, 2);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_result_status VARCHAR(20);
@@ -82,6 +86,7 @@ COMMENT ON COLUMN user_academics.matric_obtained_marks IS '10th standard obtaine
 COMMENT ON COLUMN user_academics.matric_percentage IS '10th standard percentage';
 COMMENT ON COLUMN user_academics.matric_state IS '10th standard state';
 COMMENT ON COLUMN user_academics.matric_city IS '10th standard city';
+COMMENT ON COLUMN user_academics.matric_school_pincode IS '10th school PIN code (India)';
 COMMENT ON COLUMN user_academics.postmatric_board IS '12th standard board name';
 COMMENT ON COLUMN user_academics.postmatric_school_name IS '12th standard school name';
 COMMENT ON COLUMN user_academics.postmatric_passing_year IS '12th standard passing year';
@@ -91,6 +96,7 @@ COMMENT ON COLUMN user_academics.postmatric_obtained_marks IS '12th standard obt
 COMMENT ON COLUMN user_academics.postmatric_percentage IS '12th standard percentage';
 COMMENT ON COLUMN user_academics.postmatric_state IS '12th standard state';
 COMMENT ON COLUMN user_academics.postmatric_city IS '12th standard city';
+COMMENT ON COLUMN user_academics.postmatric_school_pincode IS '12th school PIN code (India)';
 COMMENT ON COLUMN user_academics.matric_marks_type IS 'Marks type for matric: Percentage or CGPA';
 COMMENT ON COLUMN user_academics.matric_cgpa IS 'CGPA value for matric (when matric_marks_type is CGPA)';
 COMMENT ON COLUMN user_academics.matric_result_status IS 'Result status for matric: passed or failed';

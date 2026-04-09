@@ -33,6 +33,7 @@ interface UserDetails {
     matric_percentage: number | null;
     matric_state: string | null;
     matric_city: string | null;
+    matric_school_pincode: string | null;
     matric_marks_type: string | null;
     matric_cgpa: number | null;
     matric_result_status: string | null;
@@ -46,6 +47,7 @@ interface UserDetails {
     postmatric_percentage: number | null;
     postmatric_state: string | null;
     postmatric_city: string | null;
+    postmatric_school_pincode: string | null;
     postmatric_marks_type: string | null;
     postmatric_cgpa: number | null;
     postmatric_result_status: string | null;
@@ -459,6 +461,10 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           <p className="text-sm text-slate-900">{details.academics.matric_city || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-slate-500">School PIN:</span>
+                          <p className="text-sm text-slate-900">{details.academics.matric_school_pincode || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-slate-500">Marks Type:</span>
                           <p className="text-sm text-slate-900">{details.academics.matric_marks_type || '-'}</p>
                         </div>
@@ -555,6 +561,10 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                           <p className="text-sm text-slate-900">{details.academics.postmatric_city || '-'}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-slate-500">School PIN:</span>
+                          <p className="text-sm text-slate-900">{details.academics.postmatric_school_pincode || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-slate-500">Marks Type:</span>
                           <p className="text-sm text-slate-900">{details.academics.postmatric_marks_type || '-'}</p>
                         </div>
@@ -629,10 +639,10 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                         { key: 'obc_ncl_certificate', label: 'OBC-NCL Certificate', section: 'Category and Reservation Documents' },
                         { key: 'ews_certificate', label: 'EWS Certificate', section: 'Category and Reservation Documents' },
                         { key: 'pwbd_disability_certificate', label: 'PwBD/Disability Certificate', section: 'Category and Reservation Documents' },
-                        { key: 'udid_card', label: 'UDID Card', section: 'Category and Reservation Documents' },
-                        { key: 'domicile_certificate', label: 'Domicile Certificate', section: 'Category and Reservation Documents' },
                         { key: 'citizenship_certificate', label: 'Citizenship Certificate (OCI/PIO)', section: 'Additional Uploads' },
                         { key: 'migration_certificate', label: 'Migration Certificate', section: 'Additional Uploads' },
+                        { key: 'udid_card', label: 'UDID Card', section: 'Additional Uploads' },
+                        { key: 'domicile_certificate', label: 'Domicile Certificate', section: 'Additional Uploads' },
                       ];
 
                       const groupedFields = documentFields.reduce((acc, field) => {

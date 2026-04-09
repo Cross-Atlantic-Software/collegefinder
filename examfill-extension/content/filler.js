@@ -62,6 +62,25 @@ const Filler = {
       return this._fillMasked(el, strVal, fieldConfig);
     }
 
+    el.focus();
+
+    // Strategy 1: Call React's onChange prop directly via the fiber tree.
+    // This updates React's own state, so the value survives reconciliation.
+    if (this._callReactOnChange(el, strVal)) {
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
+      return { status: 'filled', note: null };
+    }
+
+    // Strategy 2: execCommand — goes through browser's native editing pipeline
+    // which React also intercepts (isTrusted=true events).
+    el.select();
+    const execOk = document.execCommand('insertText', false, strVal);
+    if (execOk && el.value === strVal) {
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
+      return { status: 'filled', note: null };
+    }
+
+    // Strategy 3: native setter + tracker + events (last resort)
     this._setNativeValue(el, strVal);
     this._dispatchEvents(el);
 
@@ -75,6 +94,7 @@ const Filler = {
     const variant = dateConfig.variant || 'text';
 
     if (variant === 'native' || el.type === 'date') {
+      el.focus();
       this._setNativeValue(el, value);
       this._dispatchEvents(el);
       return { status: 'filled', note: null };
@@ -84,8 +104,16 @@ const Filler = {
       const format = dateConfig.format || 'DD/MM/YYYY';
       const Formatter = window.ExamFillFormatter;
       const formatted = Formatter ? Formatter.formatDate(value, format) : value;
-      this._setNativeValue(el, formatted);
-      this._dispatchEvents(el);
+      el.focus();
+      if (!this._callReactOnChange(el, formatted)) {
+        el.select();
+        const ok = document.execCommand('insertText', false, formatted);
+        if (!ok || el.value !== formatted) {
+          this._setNativeValue(el, formatted);
+          this._dispatchEvents(el);
+        }
+      }
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
       return { status: 'filled', note: null };
     }
 
@@ -118,56 +146,146 @@ const Filler = {
     }
 
     const Waiter = window.ExamFillWaiter;
-    if (Waiter && el.options.length <= 1) {
-      await Waiter.waitForSelectOptions(el, 1, fieldConfig.cascade_wait_ms || 3000);
-    }
-
     const strVal = String(value ?? '').trim();
     const valueMap = fieldConfig.value_map || {};
     const allVariants = this._getValueVariants(strVal, valueMap);
 
-    // Match 1: exact text match (case-insensitive)
+    // Wait for options to load if still empty
+    if (Waiter && el.options.length <= 1) {
+      await Waiter.waitForSelectOptions(el, 1, fieldConfig.cascade_wait_ms || 3000);
+    }
+
+    // Find the matching option value
+    const matchedOptValue = this._matchSelectOption(el, allVariants);
+    if (matchedOptValue === null) {
+      // Native options didn't match — try click-based custom dropdown (react-select etc.)
+      const cs = window.getComputedStyle(el);
+      const isHidden = cs.display === 'none' || cs.visibility === 'hidden' ||
+                       el.getAttribute('aria-hidden') === 'true' ||
+                       parseFloat(cs.opacity) < 0.05;
+      const customResult = await this._fillCustomDropdown(el, allVariants, strVal, isHidden);
+      return customResult;
+    }
+
+    // Matched a native option — use React fiber call to update React state directly
+    el.focus();
+    if (!this._callReactOnChange(el, matchedOptValue)) {
+      // Fiber not found — fall back to native setter + events
+      this._setNativeValue(el, matchedOptValue);
+      this._dispatchEvents(el);
+    }
+
+    return { status: 'filled', note: null };
+  },
+
+  /**
+   * Find the value attribute of the best matching <option>.
+   * Returns the option.value string, or null if nothing matched.
+   */
+  _matchSelectOption(el, allVariants) {
+    // Pass 1: exact text match
     for (const opt of el.options) {
       const optText = opt.textContent.trim().toLowerCase();
       for (const v of allVariants) {
-        if (optText === v.toLowerCase()) {
-          el.value = opt.value;
-          this._dispatchEvents(el);
-          return { status: 'filled', note: null };
-        }
+        if (optText === v.toLowerCase()) return opt.value;
       }
     }
-
-    // Match 2: option value attribute match
+    // Pass 2: option value match
     for (const opt of el.options) {
       const optVal = opt.value.trim().toLowerCase();
       for (const v of allVariants) {
-        if (optVal === v.toLowerCase()) {
-          el.value = opt.value;
-          this._dispatchEvents(el);
-          return { status: 'filled', note: null };
-        }
+        if (optVal === v.toLowerCase()) return opt.value;
       }
     }
-
-    // Match 3: partial text match (last resort)
+    // Pass 3: partial match
     for (const opt of el.options) {
       const optText = opt.textContent.trim().toLowerCase();
+      if (optText.length <= 1) continue;
       for (const v of allVariants) {
         if (optText.includes(v.toLowerCase()) || v.toLowerCase().includes(optText)) {
-          if (optText.length > 1) {
-            el.value = opt.value;
-            this._dispatchEvents(el);
-            return {
-              status: 'check',
-              note: `Matched "${opt.textContent.trim()}" for "${strVal}" — please verify`
-            };
-          }
+          return opt.value;
         }
       }
     }
+    return null;
+  },
 
-    return { status: 'failed', note: `No option matched for "${strVal}"` };
+  /**
+   * Fill a custom dropdown component (react-select, Ant Design, MUI, etc.)
+   * by clicking the trigger and then clicking the matching option.
+   * @param {HTMLSelectElement} hiddenSelect - The underlying hidden native <select>
+   * @param {string[]} allVariants - All value variants to match against
+   * @param {string} strVal - Original string value for fallback notes
+   */
+  async _fillCustomDropdown(el, allVariants, strVal, isHiddenEl = false) {
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+
+    // For a visible <select>, click it directly to open the native picker.
+    // Some frameworks style a <select> but keep it functional (NATA does this).
+    if (!isHiddenEl && el.tagName === 'SELECT') {
+      // Try clicking the select itself — browser opens native picker but React
+      // also attaches to it via fiber. We match via fiber onChange instead.
+      // Use the option list that was already confirmed empty — just report.
+      return { status: 'failed', note: `No option matched for "${strVal}" in native select` };
+    }
+
+    // Walk up to find a visible custom trigger (react-select, Ant Design, MUI, etc.)
+    const TRIGGER_SEL =
+      '[role="combobox"], [class*="control"]:not(select), [class*="select__control"], ' +
+      '[class*="select-trigger"], [class*="SelectTrigger"], ' +
+      'button[aria-haspopup], [aria-expanded], [class*="dropdown-toggle"]';
+
+    let wrapper = isHiddenEl ? el.parentElement : el;
+    for (let i = 0; i < 6 && wrapper; i++) {
+      const trigger = wrapper.matches?.(TRIGGER_SEL)
+        ? wrapper
+        : wrapper.querySelector(TRIGGER_SEL);
+
+      if (trigger && trigger !== el) {
+        // Open the dropdown
+        trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+        trigger.click();
+        await delay(400);
+
+        // Options may be portaled to document.body — search the whole document
+        const OPTION_SELS = [
+          '[role="option"]',
+          '[role="listbox"] li',
+          '[class*="select__option"]',
+          '[class*="option"]:not(select):not(input)',
+          '[class*="Option"]:not(select)',
+          '[class*="menu-item"]',
+          '[class*="dropdown-item"]',
+        ];
+
+        for (const sel of OPTION_SELS) {
+          const opts = Array.from(document.querySelectorAll(sel)).filter(o => {
+            const s = window.getComputedStyle(o);
+            return s.display !== 'none' && s.visibility !== 'hidden' && o.offsetParent !== null;
+          });
+          if (opts.length === 0) continue;
+
+          for (const opt of opts) {
+            const optText = opt.textContent.trim().toLowerCase();
+            for (const v of allVariants) {
+              if (optText === v.toLowerCase() || optText.includes(v.toLowerCase())) {
+                opt.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                opt.click();
+                await delay(200);
+                return { status: 'filled', note: `Custom dropdown: "${opt.textContent.trim()}"` };
+              }
+            }
+          }
+        }
+
+        // Close dropdown and report
+        trigger.click();
+        return { status: 'failed', note: `Custom dropdown opened but no option matched "${strVal}"` };
+      }
+      wrapper = wrapper.parentElement;
+    }
+
+    return { status: 'failed', note: `No custom dropdown trigger found for "${strVal}"` };
   },
 
   // ─── Radio ───
@@ -251,28 +369,120 @@ const Filler = {
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
     const mimeType = result.mimeType || 'application/octet-stream';
-    const blob = new Blob([bytes], { type: mimeType });
+    let blob = new Blob([bytes], { type: mimeType });
 
-    // Derive filename from URL, fallback to fieldConfig or generic name
     const rawName = url.split('/').pop().split('?')[0] || '';
-    const ext = mimeType.includes('pdf') ? '.pdf'
-              : mimeType.includes('png') ? '.png'
-              : mimeType.includes('jpeg') || mimeType.includes('jpg') ? '.jpg'
+
+    // Compress images that exceed the portal's 500 KB limit
+    const MAX_BYTES = 490 * 1024; // 490 KB — safe margin under 500 KB
+    if (blob.size > MAX_BYTES && mimeType.startsWith('image/')) {
+      blob = await this._compressImage(blob, MAX_BYTES);
+    }
+
+    const finalMime = blob.type || mimeType;
+    const ext = finalMime.includes('pdf') ? '.pdf'
+              : finalMime.includes('png') ? '.png'
+              : (finalMime.includes('jpeg') || finalMime.includes('jpg')) ? '.jpg'
               : '';
-    const filename = rawName || `${fieldConfig.field_id || 'document'}${ext}`;
+    const filename = (rawName || `${fieldConfig.field_id || 'document'}`) + (rawName.includes('.') ? '' : ext);
 
-    const file = new File([blob], filename, { type: mimeType, lastModified: Date.now() });
+    const file = new File([blob], filename, { type: finalMime, lastModified: Date.now() });
 
-    // Inject via DataTransfer (the only way to programmatically set input.files)
+    // Inject via DataTransfer
     const dt = new DataTransfer();
     dt.items.add(file);
-    el.files = dt.files;
 
-    // Fire change + input events so React / Angular picks up the new file
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-    el.dispatchEvent(new Event('input',  { bubbles: true }));
+    // Some frameworks override the files setter — try native descriptor first
+    const nativeFilesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'files')?.set;
+    if (nativeFilesSetter) {
+      nativeFilesSetter.call(el, dt.files);
+    } else {
+      el.files = dt.files;
+    }
 
-    return { status: 'filled', note: `Uploaded ${filename} (${Math.round(bytes.length / 1024)} KB)` };
+    // Verify the files actually stuck
+    if (!el.files || el.files.length === 0) {
+      return { status: 'failed', note: 'DataTransfer injection failed — browser may have blocked it' };
+    }
+
+    // Dispatch events in the order browsers do natively after user picks a file:
+    // 1. input event (React 17+ uses this)
+    // 2. change event (classic handler)
+    // Both need bubbles:true so delegation-based frameworks see them.
+    el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: false }));
+    el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
+
+    // Some React portals wrap file inputs and listen on a parent — also trigger on parent
+    if (el.parentElement) {
+      el.parentElement.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // Final verify: re-check files after event handlers may have cleared them
+    const finalCount = el.files?.length || 0;
+    if (finalCount === 0) {
+      return { status: 'failed', note: 'File was set but portal cleared it during event handling' };
+    }
+
+    const kb = Math.round(blob.size / 1024);
+    return { status: 'filled', note: `${filename} (${kb} KB)` };
+  },
+
+  // ─── Image Compressor ───
+
+  /**
+   * Compress an image Blob using Canvas until it fits within maxBytes.
+   * Falls back to progressively lower JPEG quality, then smaller dimensions.
+   * Returns the compressed Blob (always image/jpeg for maximum compression).
+   */
+  _compressImage(blob, maxBytes) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(blob);
+
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+
+        const canvas = document.createElement('canvas');
+        let { naturalWidth: w, naturalHeight: h } = img;
+
+        // Scale down large dimensions first — keeps quality higher at target size
+        const MAX_DIM = 1600;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        canvas.width  = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        let quality = 0.85;
+
+        const tryNext = () => {
+          canvas.toBlob((compressed) => {
+            if (!compressed) { resolve(blob); return; }
+
+            if (compressed.size <= maxBytes || quality <= 0.2) {
+              resolve(compressed);
+            } else {
+              quality = parseFloat((quality - 0.1).toFixed(1));
+              tryNext();
+            }
+          }, 'image/jpeg', quality);
+        };
+
+        tryNext();
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve(blob); // fallback: use original
+      };
+
+      img.src = blobUrl;
+    });
   },
 
   // ─── Masked input (char-by-char) ───
@@ -301,12 +511,95 @@ const Filler = {
     return { status: 'filled', note: null };
   },
 
+  // ─── React Fiber Direct Updater ───
+
+  /**
+   * Directly invoke the React onChange/onInput prop on an element
+   * by walking its fiber tree. This updates React's internal state so
+   * the value survives reconciliation — unlike synthetic events which
+   * React may ignore depending on version / event delegation setup.
+   *
+   * Sets el.value via native setter first so e.target.value is correct
+   * when the handler reads it.
+   *
+   * @returns {boolean} true if an onChange/onInput handler was found and called
+   */
+  _callReactOnChange(el, value) {
+    // 1. Set native value so e.target.value is correct when handler reads it
+    const tag = el.tagName;
+    const proto = tag === 'TEXTAREA' ? HTMLTextAreaElement.prototype
+               : tag === 'SELECT'   ? HTMLSelectElement.prototype
+               :                       HTMLInputElement.prototype;
+    const tracker = el._valueTracker;
+    if (tracker) tracker.setValue(el.value ?? '');
+    const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (nativeSetter?.set) nativeSetter.set.call(el, value);
+    else el.value = value;
+
+    // Build the synthetic event once — reused for all handler attempts
+    const nativeEvt = new Event('change', { bubbles: true });
+    Object.defineProperty(nativeEvt, 'target', { writable: false, value: el });
+    const syntheticEvent = {
+      target:               el,
+      currentTarget:        el,
+      type:                 'change',
+      bubbles:              true,
+      cancelable:           true,
+      defaultPrevented:     false,
+      nativeEvent:          nativeEvt,
+      preventDefault:       () => {},
+      stopPropagation:      () => {},
+      persist:              () => {},
+      isPropagationStopped: () => false,
+      isDefaultPrevented:   () => false,
+    };
+
+    const callHandler = (handler) => {
+      try { handler(syntheticEvent); return true; } catch (_) { return false; }
+    };
+
+    // 2. React 16: handlers stored on __reactEventHandlers* key directly on the DOM node
+    const eventHandlerKey = Object.keys(el).find(k => k.startsWith('__reactEventHandlers'));
+    if (eventHandlerKey) {
+      const handlers = el[eventHandlerKey];
+      const h = handlers?.onChange || handlers?.onInput;
+      if (typeof h === 'function' && callHandler(h)) return true;
+    }
+
+    // 3. React 17+: walk up the fiber tree looking for onChange / onInput prop
+    const fiberKey = Object.keys(el).find(k =>
+      k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    );
+    if (!fiberKey) return false;
+
+    let fiber = el[fiberKey];
+    let depth = 0;
+    while (fiber && depth < 40) {
+      const props = fiber.memoizedProps || fiber.pendingProps;
+      const h = props?.onChange || props?.onInput;
+      if (typeof h === 'function' && callHandler(h)) return true;
+      fiber = fiber.return;
+      depth++;
+    }
+
+    return false;
+  },
+
   // ─── Shared Helpers ───
 
   _setNativeValue(el, value) {
-    const proto = el.tagName === 'TEXTAREA'
-      ? HTMLTextAreaElement.prototype
-      : HTMLInputElement.prototype;
+    const tag = el.tagName;
+    const proto = tag === 'TEXTAREA' ? HTMLTextAreaElement.prototype
+               : tag === 'SELECT'   ? HTMLSelectElement.prototype
+               :                       HTMLInputElement.prototype;
+
+    // CRITICAL: save current value to tracker BEFORE changing it.
+    // React's onChange fires only when el.value !== tracker.getValue().
+    // Setting tracker to the old value ensures React sees the diff.
+    const tracker = el._valueTracker;
+    if (tracker) {
+      tracker.setValue(el.value ?? '');
+    }
 
     const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value');
     if (nativeSetter && nativeSetter.set) {
@@ -316,10 +609,18 @@ const Filler = {
     }
   },
 
+  _setSelectValue(el, optionValue) {
+    el.focus();
+    if (!this._callReactOnChange(el, optionValue)) {
+      this._setNativeValue(el, optionValue);
+      this._dispatchEvents(el);
+    }
+  },
+
   _dispatchEvents(el) {
-    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('input',  { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
-    el.dispatchEvent(new Event('blur', { bubbles: true }));
+    el.dispatchEvent(new Event('blur',   { bubbles: true }));
   },
 
   _hasMask(el) {

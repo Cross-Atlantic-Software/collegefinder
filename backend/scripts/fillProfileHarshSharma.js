@@ -31,11 +31,28 @@ const PROFILE = {
   nationality: 'Indian',
   father_full_name: 'Rajesh Sharma',
   mother_full_name: 'Sunita Sharma',
-  // Academics
-  matric_school_name: 'Delhi Public School',
+  // Academics — 10th
+  matric_board: 'CBSE',
+  matric_school_name: 'Delhi Public School, New Delhi',
+  matric_school_pincode: '110022',
   matric_passing_year: 2021,
-  postmatric_school_name: 'Delhi Public School',
+  matric_roll_number: '1234567',
+  matric_total_marks: 500,
+  matric_obtained_marks: 450,
+  matric_percentage: 90.0,
+  matric_marks_type: 'Percentage',
+  matric_result_status: 'passed',
+  // Academics — 12th
+  postmatric_board: 'CBSE',
+  postmatric_school_name: 'Delhi Public School, New Delhi',
+  postmatric_school_pincode: '110022',
   postmatric_passing_year: 2023,
+  postmatric_roll_number: '7654321',
+  postmatric_total_marks: 500,
+  postmatric_obtained_marks: 465,
+  postmatric_percentage: 93.0,
+  postmatric_marks_type: 'Percentage',
+  postmatric_result_status: 'passed',
   is_pursuing_12th: false,
   stream_name: 'Science (PCM)',
   // Address
@@ -47,9 +64,9 @@ const PROFILE = {
   // Other
   medium: 'English',
   language: 'English',
-  // Category & reservation (category_id 1 = General)
-  category_id: 1,
-  pwbd_status: false,
+  // Category & reservation (category_id 4 = ST)
+  category_id: 4,
+  pwbd_status: true,
   // Government ID
   aadhar_number: '1234 5678 9012',
 };
@@ -96,12 +113,30 @@ async function main() {
     if (stream) streamId = stream.id;
 
     await UserAcademics.upsert(userId, {
-      matric_school_name: PROFILE.matric_school_name,
-      matric_passing_year: PROFILE.matric_passing_year,
-      postmatric_school_name: PROFILE.postmatric_school_name,
-      postmatric_passing_year: PROFILE.postmatric_passing_year,
+      // 10th
+      matric_board:          PROFILE.matric_board,
+      matric_school_name:    PROFILE.matric_school_name,
+      matric_school_pincode: PROFILE.matric_school_pincode,
+      matric_passing_year:   PROFILE.matric_passing_year,
+      matric_roll_number:    PROFILE.matric_roll_number,
+      matric_total_marks:    PROFILE.matric_total_marks,
+      matric_obtained_marks: PROFILE.matric_obtained_marks,
+      matric_percentage:     PROFILE.matric_percentage,
+      matric_marks_type:     PROFILE.matric_marks_type,
+      matric_result_status:  PROFILE.matric_result_status,
+      // 12th
+      postmatric_board:          PROFILE.postmatric_board,
+      postmatric_school_name:    PROFILE.postmatric_school_name,
+      postmatric_school_pincode: PROFILE.postmatric_school_pincode,
+      postmatric_passing_year:   PROFILE.postmatric_passing_year,
+      postmatric_roll_number:    PROFILE.postmatric_roll_number,
+      postmatric_total_marks:    PROFILE.postmatric_total_marks,
+      postmatric_obtained_marks: PROFILE.postmatric_obtained_marks,
+      postmatric_percentage:     PROFILE.postmatric_percentage,
+      postmatric_marks_type:     PROFILE.postmatric_marks_type,
+      postmatric_result_status:  PROFILE.postmatric_result_status,
       is_pursuing_12th: PROFILE.is_pursuing_12th,
-      stream: PROFILE.stream_name,
+      stream:    PROFILE.stream_name,
       stream_id: streamId,
     });
     console.log('Upserted user_academics');

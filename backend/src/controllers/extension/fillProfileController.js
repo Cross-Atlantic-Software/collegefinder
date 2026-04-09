@@ -86,29 +86,37 @@ class FillProfileController {
             school: academics?.postmatric_school_name || '',
             passing_year: academics?.postmatric_passing_year ? String(academics.postmatric_passing_year) : '',
             roll_no: academics?.postmatric_roll_number || '',
-            total_marks: academics?.postmatric_total_marks || '',
-            obtained_marks: academics?.postmatric_obtained_marks || '',
-            percentage: academics?.postmatric_percentage ? String(academics.postmatric_percentage) : '',
+            total_marks: cleanNum(academics?.postmatric_total_marks),
+            obtained_marks: cleanNum(academics?.postmatric_obtained_marks),
+            percentage: cleanNum(academics?.postmatric_percentage),
             state: academics?.postmatric_state || '',
             city: academics?.postmatric_city || '',
+            school_pincode: academics?.postmatric_school_pincode || '',
             stream: academics?.stream || '',
             subjects: academics?.subjects || [],
             is_appearing: academics?.is_pursuing_12th || false,
             marks_type: academics?.postmatric_marks_type || '',
             cgpa: academics?.postmatric_cgpa || '',
-            result_status: academics?.postmatric_result_status || ''
+            result_status: academics?.postmatric_result_status || '',
+            pass_status: academics?.postmatric_result_status === 'passed' ? 'Pass'
+                        : academics?.postmatric_result_status === 'appeared' ? 'Appeared'
+                        : academics?.postmatric_result_status || '',
+            education_type: '12th Standard'
           },
           class_10: {
             board: academics?.matric_board || '',
             school: academics?.matric_school_name || '',
             passing_year: academics?.matric_passing_year ? String(academics.matric_passing_year) : '',
             roll_no: academics?.matric_roll_number || '',
-            total_marks: academics?.matric_total_marks || '',
-            obtained_marks: academics?.matric_obtained_marks || '',
-            percentage: academics?.matric_percentage ? String(academics.matric_percentage) : '',
+            total_marks: cleanNum(academics?.matric_total_marks),
+            obtained_marks: cleanNum(academics?.matric_obtained_marks),
+            percentage: cleanNum(academics?.matric_percentage),
             state: academics?.matric_state || '',
             city: academics?.matric_city || '',
-            subjects: academics?.matric_subjects || []
+            school_pincode: academics?.matric_school_pincode || '',
+            subjects: academics?.matric_subjects || [],
+            marks_type: academics?.matric_marks_type || '',
+            result_status: academics?.matric_result_status || ''
           }
         },
         documents: {
@@ -136,6 +144,12 @@ class FillProfileController {
       res.status(500).json({ success: false, message: 'Failed to build fill profile' });
     }
   }
+}
+
+function cleanNum(v) {
+  if (v == null || v === '') return '';
+  const s = String(v);
+  return s.replace(/\.0+$/, '');
 }
 
 function formatDate(dateValue) {

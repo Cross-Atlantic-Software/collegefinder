@@ -118,6 +118,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_percentage: number | null;
   matric_state: string | null;
   matric_city: string | null;
+  matric_school_pincode: string | null;
   matric_marks_type: string | null;
   matric_cgpa: number | null;
   matric_result_status: string | null;
@@ -132,6 +133,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_percentage: number | null;
   postmatric_state: string | null;
   postmatric_city: string | null;
+  postmatric_school_pincode: string | null;
   postmatric_marks_type: string | null;
   postmatric_cgpa: number | null;
   postmatric_result_status: string | null;
@@ -224,6 +226,9 @@ export async function updateAcademics(data: {
   matric_total_marks?: number;
   matric_obtained_marks?: number;
   matric_percentage?: number;
+  matric_state?: string;
+  matric_city?: string;
+  matric_school_pincode?: string | null;
   // Post-Matric (12th) fields
   postmatric_board?: string;
   postmatric_school_name?: string;
@@ -232,6 +237,9 @@ export async function updateAcademics(data: {
   postmatric_total_marks?: number;
   postmatric_obtained_marks?: number;
   postmatric_percentage?: number;
+  postmatric_state?: string;
+  postmatric_city?: string;
+  postmatric_school_pincode?: string | null;
   stream?: string;
   stream_id?: number;
   subjects?: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
@@ -246,6 +254,9 @@ export async function updateAcademics(data: {
   matric_total_marks: number | null;
   matric_obtained_marks: number | null;
   matric_percentage: number | null;
+  matric_state: string | null;
+  matric_city: string | null;
+  matric_school_pincode: string | null;
   // Post-Matric (12th) fields
   postmatric_board: string | null;
   postmatric_school_name: string | null;
@@ -254,6 +265,9 @@ export async function updateAcademics(data: {
   postmatric_total_marks: number | null;
   postmatric_obtained_marks: number | null;
   postmatric_percentage: number | null;
+  postmatric_state: string | null;
+  postmatric_city: string | null;
+  postmatric_school_pincode: string | null;
   stream: string | null;
   subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   matric_subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;

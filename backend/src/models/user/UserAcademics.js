@@ -37,6 +37,7 @@ class UserAcademics {
       matric_percentage,
       matric_state,
       matric_city,
+      matric_school_pincode,
       // Post-Matric (12th) fields
       postmatric_board,
       postmatric_school_name,
@@ -47,6 +48,7 @@ class UserAcademics {
       postmatric_percentage,
       postmatric_state,
       postmatric_city,
+      postmatric_school_pincode,
       matric_marks_type,
       matric_cgpa,
       matric_result_status,
@@ -160,6 +162,7 @@ class UserAcademics {
         addUpdate('matric_percentage', matric_percentage);
         addUpdate('matric_state', matric_state);
         addUpdate('matric_city', matric_city);
+        addUpdate('matric_school_pincode', matric_school_pincode);
         addUpdate('matric_marks_type', matric_marks_type);
         addUpdate('matric_cgpa', matric_cgpa);
         addUpdate('matric_result_status', matric_result_status);
@@ -174,6 +177,7 @@ class UserAcademics {
         addUpdate('postmatric_percentage', postmatric_percentage);
         addUpdate('postmatric_state', postmatric_state);
         addUpdate('postmatric_city', postmatric_city);
+        addUpdate('postmatric_school_pincode', postmatric_school_pincode);
         addUpdate('postmatric_marks_type', postmatric_marks_type);
         addUpdate('postmatric_cgpa', postmatric_cgpa);
         addUpdate('postmatric_result_status', postmatric_result_status);
@@ -210,14 +214,14 @@ class UserAcademics {
           `INSERT INTO user_academics (
             user_id, 
             matric_board, matric_school_name, matric_passing_year, matric_roll_number,
-            matric_total_marks, matric_obtained_marks, matric_percentage, matric_state, matric_city,
+            matric_total_marks, matric_obtained_marks, matric_percentage, matric_state, matric_city, matric_school_pincode,
             postmatric_board, postmatric_school_name, postmatric_passing_year, postmatric_roll_number,
-            postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage, postmatric_state, postmatric_city,
+            postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage, postmatric_state, postmatric_city, postmatric_school_pincode,
             matric_marks_type, matric_cgpa, matric_result_status,
             postmatric_marks_type, postmatric_cgpa, postmatric_result_status,
             stream, stream_id, subjects, matric_subjects, is_pursuing_12th
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28::jsonb, $29::jsonb, $30)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30::jsonb, $31::jsonb, $32)
           RETURNING *`,
           [
             userIdNum,
@@ -230,6 +234,7 @@ class UserAcademics {
             matric_percentage || null,
             matric_state || null,
             matric_city || null,
+            matric_school_pincode || null,
             postmatric_board || null,
             postmatric_school_name || null,
             postmatric_passing_year || null,
@@ -239,6 +244,7 @@ class UserAcademics {
             postmatric_percentage || null,
             postmatric_state || null,
             postmatric_city || null,
+            postmatric_school_pincode || null,
             matric_marks_type || null,
             matric_cgpa || null,
             matric_result_status || null,

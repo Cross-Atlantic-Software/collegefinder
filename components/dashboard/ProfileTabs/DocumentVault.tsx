@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { FiUpload, FiX, FiEye, FiTrash2, FiFile } from "react-icons/fi";
 import { getDocumentVault, uploadDocument, deleteDocument } from "@/api/auth/profile";
-import { Button, useToast } from "../../shared";
+import { getAllCategories } from "@/api/public/categories";
+import type { Category } from "@/api/public/categories";
+import { useToast } from "../../shared";
 
 interface DocumentVaultData {
   id?: number;
@@ -48,14 +50,28 @@ const documentFields: DocumentField[] = [
   { key: 'st_certificate', label: 'ST Certificate', section: 'Category and Reservation Documents (if applicable)' },
   { key: 'obc_ncl_certificate', label: 'OBC-NCL Certificate', section: 'Category and Reservation Documents (if applicable)' },
   { key: 'ews_certificate', label: 'EWS Certificate', section: 'Category and Reservation Documents (if applicable)' },
-  { key: 'pwbd_disability_certificate', label: 'PwBD/Disability Certificate', section: 'Category and Reservation Documents (if applicable)' },
-  { key: 'udid_card', label: 'UDID Card', section: 'Category and Reservation Documents (if applicable)' },
-  { key: 'domicile_certificate', label: 'Domicile Certificate (State Quota Exams)', section: 'Category and Reservation Documents (if applicable)' },
+
+  // PwBD / Disability certificate (gated: Yes/No then upload)
+  { key: 'pwbd_disability_certificate', label: 'PwBD/Disability Certificate', section: 'PwBD / Disability certificate (if applicable)' },
   
   // Additional Uploads
   { key: 'citizenship_certificate', label: 'Citizenship Certificate (OCI/PIO, if applicable)', section: 'Additional Uploads (exam dependent)' },
   { key: 'migration_certificate', label: 'Migration Certificate', section: 'Additional Uploads (exam dependent)' },
+  { key: 'udid_card', label: 'UDID Card', section: 'Additional Uploads (exam dependent)' },
+  { key: 'domicile_certificate', label: 'Domicile Certificate (State Quota Exams)', section: 'Additional Uploads (exam dependent)' },
 ];
+
+const CATEGORY_CERT_MAP: Record<string, (keyof DocumentVaultData)[]> = {
+  sc: ['sc_certificate'],
+  st: ['st_certificate'],
+  obc: ['obc_ncl_certificate'],
+  'obc-ncl': ['obc_ncl_certificate'],
+  ews: ['ews_certificate'],
+};
+
+function getCategorySlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
 
 export default function DocumentVault() {
   const { showSuccess, showError } = useToast();
@@ -64,10 +80,32 @@ export default function DocumentVault() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [documentVault, setDocumentVault] = useState<DocumentVaultData | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{ url: string; label: string } | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  /** Default No unless user has an uploaded certificate */
+  const [pwbdCertAnswer, setPwbdCertAnswer] = useState<'yes' | 'no'>('no');
 
   useEffect(() => {
     fetchDocumentVault();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (documentVault?.pwbd_disability_certificate) {
+      setPwbdCertAnswer('yes');
+    }
+  }, [documentVault?.pwbd_disability_certificate]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getAllCategories();
+      if (response.success && response.data) {
+        setCategories(response.data.categories);
+      }
+    } catch {
+      // non-critical, silently ignore
+    }
+  };
 
   const fetchDocumentVault = async () => {
     try {
@@ -116,8 +154,11 @@ export default function DocumentVault() {
     }
   };
 
-  const handleFileDelete = async (fieldName: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
+  const handleFileDelete = async (
+    fieldName: string,
+    options?: { skipConfirm?: boolean; pwbdAnswerAfterDelete?: 'no' }
+  ) => {
+    if (!options?.skipConfirm && !confirm('Are you sure you want to delete this document?')) {
       return;
     }
 
@@ -127,6 +168,9 @@ export default function DocumentVault() {
       if (response.success) {
         showSuccess('Document deleted successfully');
         await fetchDocumentVault();
+        if (fieldName === 'pwbd_disability_certificate') {
+          setPwbdCertAnswer(options?.pwbdAnswerAfterDelete ?? 'no');
+        }
       }
     } catch (error: unknown) {
       console.error('Error deleting document:', error);
@@ -134,6 +178,18 @@ export default function DocumentVault() {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handlePwbdCertNo = () => {
+    const url = documentVault?.pwbd_disability_certificate;
+    if (typeof url === 'string' && url) {
+      if (!confirm('This will remove your uploaded PwBD/Disability certificate. Continue?')) {
+        return;
+      }
+      void handleFileDelete('pwbd_disability_certificate', { skipConfirm: true, pwbdAnswerAfterDelete: 'no' });
+      return;
+    }
+    setPwbdCertAnswer('no');
   };
 
   const handleFileChange = (fieldName: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,6 +322,13 @@ export default function DocumentVault() {
     );
   };
 
+  const getVisibleReservationKeys = (): (keyof DocumentVaultData)[] => {
+    const selectedCategory = categories.find((c) => String(c.id) === selectedCategoryId);
+    const slug = selectedCategory ? getCategorySlug(selectedCategory.name) : null;
+    const categoryCerts = slug ? (CATEGORY_CERT_MAP[slug] ?? []) : [];
+    return categoryCerts;
+  };
+
   const groupedFields = documentFields.reduce((acc, field) => {
     if (!acc[field.section]) {
       acc[field.section] = [];
@@ -291,23 +354,89 @@ export default function DocumentVault() {
   return (
     <>
       <div className="space-y-8">
-        {Object.entries(groupedFields).map(([section, fields], idx) => (
-          <div key={section} className={idx > 0 ? "border-t border-black/8 pt-6" : ""}>
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-black">{section}</h3>
-              <p className="text-xs text-black/50 mt-0.5">
-                {section === 'Mandatory Uploads' && 'These documents are required for all users.'}
-                {section === 'Identity & Academic Proof' && 'Upload your academic and identity documents.'}
-                {section === 'Category and Reservation Documents (if applicable)' && 'Upload category and reservation documents if applicable to you.'}
-                {section === 'Additional Uploads (exam dependent)' && 'Upload additional documents as required by specific exams.'}
-              </p>
-            </div>
+        {Object.entries(groupedFields).map(([section, fields], idx) => {
+          const isCategorySection = section === 'Category and Reservation Documents (if applicable)';
+          const isPwbdSection = section === 'PwBD / Disability certificate (if applicable)';
+          const visibleKeys = isCategorySection ? getVisibleReservationKeys() : null;
+          const visibleFields = visibleKeys ? fields.filter((f) => visibleKeys.includes(f.key)) : fields;
+          const showPwbdUpload = isPwbdSection && pwbdCertAnswer === 'yes';
+          const showSectionGrid =
+            (!isCategorySection || selectedCategoryId !== "") &&
+            (!isPwbdSection || showPwbdUpload);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fields.map(renderDocumentField)}
+          return (
+            <div key={section} className={idx > 0 ? "border-t border-black/8 pt-6" : ""}>
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-black">{section}</h3>
+                <p className="text-xs text-black/50 mt-0.5">
+                  {section === 'Mandatory Uploads' && 'These documents are required for all users.'}
+                  {section === 'Identity & Academic Proof' && 'Upload your academic and identity documents.'}
+                  {isCategorySection && 'Select your category to see the relevant certificate uploads.'}
+                  {isPwbdSection && 'Answer below if you need to upload this certificate.'}
+                  {section === 'Additional Uploads (exam dependent)' && 'Upload additional documents as required by specific exams.'}
+                </p>
+              </div>
+
+              {isCategorySection && (
+                <div className="mb-5">
+                  <label className="block text-xs font-semibold text-black/60 mb-1.5">Your Category</label>
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    className="w-full sm:max-w-xs rounded-xl border border-black/10 bg-[#f5f9ff] px-3 py-2.5 text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#FAD53C] focus:border-transparent transition"
+                  >
+                    <option value="">Select your category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={String(cat.id)}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCategoryId === "" && (
+                    <p className="mt-2 text-xs text-black/40">Please select a category to see applicable certificate uploads.</p>
+                  )}
+                </div>
+              )}
+
+              {isPwbdSection && (
+                <div className="mb-5 rounded-xl border border-black/8 bg-[#f5f9ff] p-4">
+                  <p className="text-sm font-medium text-black/80 mb-3">Do you have a PwBD/Disability certificate to upload?</p>
+                  <div className="flex flex-wrap gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm text-black/70">
+                      <input
+                        type="radio"
+                        name="pwbd-cert-upload"
+                        checked={pwbdCertAnswer === 'yes'}
+                        onChange={() => setPwbdCertAnswer('yes')}
+                        className="h-4 w-4 accent-[#FAD53C]"
+                      />
+                      Yes
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm text-black/70">
+                      <input
+                        type="radio"
+                        name="pwbd-cert-upload"
+                        checked={pwbdCertAnswer === 'no'}
+                        onChange={handlePwbdCertNo}
+                        className="h-4 w-4 accent-[#FAD53C]"
+                      />
+                      No
+                    </label>
+                  </div>
+                  {pwbdCertAnswer === 'no' && (
+                    <p className="mt-3 text-xs text-black/40">Select Yes only if you need to upload this certificate.</p>
+                  )}
+                </div>
+              )}
+
+              {showSectionGrid && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {visibleFields.map(renderDocumentField)}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Document Viewer Modal */}

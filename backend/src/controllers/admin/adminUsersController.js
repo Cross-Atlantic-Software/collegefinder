@@ -93,6 +93,7 @@ class AdminUsersController {
             matric_total_marks: academics.matric_total_marks,
             matric_obtained_marks: academics.matric_obtained_marks,
             matric_percentage: academics.matric_percentage,
+            matric_school_pincode: academics.matric_school_pincode,
             // Post-Matric (12th) fields
             postmatric_board: academics.postmatric_board,
             postmatric_school_name: academics.postmatric_school_name,
@@ -101,6 +102,7 @@ class AdminUsersController {
             postmatric_total_marks: academics.postmatric_total_marks,
             postmatric_obtained_marks: academics.postmatric_obtained_marks,
             postmatric_percentage: academics.postmatric_percentage,
+            postmatric_school_pincode: academics.postmatric_school_pincode,
             stream: academics.stream,
             subjects: subjects
           } : null
@@ -454,6 +456,7 @@ class AdminUsersController {
             matric_percentage: academics.matric_percentage,
             matric_state: academics.matric_state,
             matric_city: academics.matric_city,
+            matric_school_pincode: academics.matric_school_pincode,
             matric_marks_type: academics.matric_marks_type,
             matric_cgpa: academics.matric_cgpa,
             matric_result_status: academics.matric_result_status,
@@ -467,6 +470,7 @@ class AdminUsersController {
             postmatric_percentage: academics.postmatric_percentage,
             postmatric_state: academics.postmatric_state,
             postmatric_city: academics.postmatric_city,
+            postmatric_school_pincode: academics.postmatric_school_pincode,
             postmatric_marks_type: academics.postmatric_marks_type,
             postmatric_cgpa: academics.postmatric_cgpa,
             postmatric_result_status: academics.postmatric_result_status,

@@ -13,8 +13,6 @@ import {
     updateExamPreferences,
     type Exam,
 } from "@/api/exams";
-import { ExamApplicationModal } from "./ExamApplicationModal";
-
 type TabId = "recommended" | "shortlisted" | "all";
 
 type ExamRow = {
@@ -32,6 +30,7 @@ type ExamRow = {
     eligibility: string;
     examLogo: string | null | undefined;
     detailFrom: string;
+    registrationUrl: string | null;
 };
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
@@ -90,13 +89,12 @@ function buildRowFromExam(exam: Exam, detailFrom: string): ExamRow {
         eligibility: meta.eligibility_label || EM_DASH,
         examLogo: exam.exam_logo,
         detailFrom,
+        registrationUrl: exam.website ?? null,
     };
 }
 
 export default function ShortlistExams() {
     const [activeTab, setActiveTab] = useState<TabId>("recommended");
-    const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [allExams, setAllExams] = useState<Exam[]>([]);
     const [recommendedIds, setRecommendedIds] = useState<Set<string>>(new Set());
     const [shortlistedCodes, setShortlistedCodes] = useState<Set<string>>(new Set());
@@ -207,9 +205,10 @@ export default function ShortlistExams() {
         }
     };
 
-    const openApplication = (row: ExamRow) => {
-        setSelectedExam({ name: row.name, id: row.examId });
-        setIsModalOpen(true);
+    const handleApplyNow = (row: ExamRow) => {
+        if (row.registrationUrl) {
+            window.open(row.registrationUrl, "_blank", "noopener,noreferrer");
+        }
     };
 
     const shortlistedCount = shortlistedRows.length;
@@ -405,10 +404,20 @@ export default function ShortlistExams() {
 
                                                             <button
                                                                 type="button"
-                                                                onClick={() => openApplication(row)}
-                                                                className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-[13px] font-semibold text-[#FAD53C] shadow-sm transition-all duration-200 hover:bg-black/90 active:scale-95"
+                                                                onClick={() => handleApplyNow(row)}
+                                                                disabled={!row.registrationUrl}
+                                                                title={row.registrationUrl ? `Apply for ${row.name}` : "Registration link not available yet"}
+                                                                className={[
+                                                                    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold shadow-sm transition-all duration-200",
+                                                                    row.registrationUrl
+                                                                        ? "bg-black text-[#FAD53C] hover:bg-black/90 active:scale-95 cursor-pointer"
+                                                                        : "bg-slate-200 text-slate-400 cursor-not-allowed",
+                                                                ].join(" ")}
                                                             >
                                                                 Apply Now
+                                                                {row.registrationUrl && (
+                                                                    <MdOutlineArrowOutward className="h-3.5 w-3.5" />
+                                                                )}
                                                             </button>
 
                                                             <Link
@@ -431,20 +440,6 @@ export default function ShortlistExams() {
                 </div>
             </section>
 
-            {selectedExam && (
-                <ExamApplicationModal
-                    isOpen={isModalOpen}
-                    onClose={() => {
-                        setIsModalOpen(false);
-                        setSelectedExam(null);
-                    }}
-                    examName={selectedExam.name}
-                    examId={selectedExam.id}
-                    onSubmit={async () => {
-                        // TODO: Implement API call to save exam application with subject breakdown.
-                    }}
-                />
-            )}
         </div>
     );
 }

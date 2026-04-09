@@ -445,6 +445,15 @@ const validateUpdateAcademics = [
     .optional()
     .isFloat({ min: 0, max: 100 })
     .withMessage('Matric percentage must be between 0 and 100'),
+  body('matric_school_pincode')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === undefined || value === '') return true;
+      const s = String(value).trim();
+      if (s === '') return true;
+      return /^[1-9][0-9]{5}$/.test(s);
+    })
+    .withMessage('10th school pincode must be a valid 6-digit Indian PIN code'),
   // Post-Matric (12th) fields
   body('postmatric_board')
     .optional()
@@ -477,6 +486,15 @@ const validateUpdateAcademics = [
     .optional()
     .isFloat({ min: 0, max: 100 })
     .withMessage('Post-matric percentage must be between 0 and 100'),
+  body('postmatric_school_pincode')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === undefined || value === '') return true;
+      const s = String(value).trim();
+      if (s === '') return true;
+      return /^[1-9][0-9]{5}$/.test(s);
+    })
+    .withMessage('12th school pincode must be a valid 6-digit Indian PIN code'),
   body('stream')
     .optional()
     .trim()

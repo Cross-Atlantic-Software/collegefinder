@@ -2,7 +2,7 @@
   "exam_id": "nata",
   "exam_name": "NATA 2026",
   "portal_url_pattern": "nata-app.org",
-  "version": 5,
+  "version": 8,
 
   "sections": [
     {
@@ -310,9 +310,10 @@
           "type": "file",
           "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
           "selectors": {
-            "by_label": ["Upload ID Document", "ID Document", "Identity Document", "Upload ID Proof"],
-            "by_id":    ["idDocument", "uploadIdDocument", "idProof", "identityDocument"],
-            "by_name":  ["idDocument", "uploadIdDocument", "idProof"]
+            "by_label": ["Upload ID Document", "ID Document", "Identity Document", "Upload ID Proof", "Upload Id Document"],
+            "by_id":    ["idDocument", "uploadIdDocument", "idProof", "identityDocument", "upload_id_document"],
+            "by_name":  ["idDocument", "uploadIdDocument", "idProof", "upload_id_document"],
+            "by_index":  0
           },
           "required": true
         },
@@ -323,9 +324,10 @@
           "type": "file",
           "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
           "selectors": {
-            "by_label": ["Upload Aadhaar Card", "Aadhaar Card", "Aadhar Card", "Upload Aadhar"],
-            "by_id":    ["aadhaarCard", "aadharCard", "uploadAadhar", "uploadAadhaar"],
-            "by_name":  ["aadhaarCard", "aadharCard", "uploadAadhar"]
+            "by_label": ["Upload Aadhaar Card", "Aadhaar Card", "Aadhar Card", "Upload Aadhar", "Upload Aadhaar"],
+            "by_id":    ["aadhaarCard", "aadharCard", "uploadAadhar", "uploadAadhaar", "upload_aadhaar"],
+            "by_name":  ["aadhaarCard", "aadharCard", "uploadAadhar", "upload_aadhaar"],
+            "by_index":  1
           },
           "required": true
         },
@@ -336,9 +338,10 @@
           "type": "file",
           "accepted_types": ["image/jpeg", "image/png"],
           "selectors": {
-            "by_label": ["Passport Size Photo", "Passport Photo", "Photograph", "Student Photo"],
-            "by_id":    ["passportPhoto", "photograph", "studentPhoto", "passportSizePhoto"],
-            "by_name":  ["passportPhoto", "photograph", "passportSizePhoto"]
+            "by_label": ["Passport Size Photo", "Passport Photo", "Photograph", "Student Photo", "Photo"],
+            "by_id":    ["passportPhoto", "photograph", "studentPhoto", "passportSizePhoto", "upload_photo"],
+            "by_name":  ["passportPhoto", "photograph", "passportSizePhoto", "upload_photo"],
+            "by_index":  2
           },
           "required": true
         },
@@ -349,9 +352,10 @@
           "type": "file",
           "accepted_types": ["image/jpeg", "image/png"],
           "selectors": {
-            "by_label": ["Signature Photo", "Signature", "Upload Signature"],
-            "by_id":    ["signature", "signaturePhoto", "uploadSignature", "signImage"],
-            "by_name":  ["signature", "signaturePhoto", "uploadSignature"]
+            "by_label": ["Signature Photo", "Signature", "Upload Signature", "Signature Image"],
+            "by_id":    ["signature", "signaturePhoto", "uploadSignature", "signImage", "upload_signature"],
+            "by_name":  ["signature", "signaturePhoto", "uploadSignature", "upload_signature"],
+            "by_index":  3
           },
           "required": true
         }
@@ -362,64 +366,304 @@
       "section_name": "Education Details",
       "page_indicator": { "type": "step_number", "value": 3 },
       "fields": [
+
         {
-          "field_id": "qualifying_exam_board",
-          "label": "Qualifying Exam Board",
+          "field_id": "matric_seat_number",
+          "label": "10th Seat Number",
+          "source": "education.class_10.roll_no",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Seat Number", "10th Seat Number"],
+            "by_label":       ["10th Seat Number", "Seat Number"],
+            "by_id":          ["seatNumber", "matricSeatNo", "tenthSeatNumber"],
+            "by_name":        ["seatNumber", "matricSeatNo"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_total_marks",
+          "label": "Total Exam Marks (10th)",
+          "source": "education.class_10.total_marks",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Total Marks"],
+            "by_label":       ["Total Exam Marks"],
+            "by_index":        0
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_obtained_marks",
+          "label": "Marks Obtained (10th)",
+          "source": "education.class_10.obtained_marks",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Marks Obtained"],
+            "by_label":       ["Marks Obtained"],
+            "by_index":        0
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_percentage",
+          "label": "10th Percentage",
+          "source": "education.class_10.percentage",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Percentage"],
+            "by_label":       ["Percentage", "10th Percentage"],
+            "by_index":        0
+          },
+          "required": false
+        },
+        {
+          "field_id": "matric_year",
+          "label": "Year of Passing (10th)",
+          "source": "education.class_10.passing_year",
+          "type": "select_or_text",
+          "selectors": {
+            "by_placeholder": ["Select Year", "Select Year of Passing"],
+            "by_label":       ["Year of Passing"],
+            "by_index":        0
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_board",
+          "label": "10th Board",
+          "source": "education.class_10.board",
+          "type": "select",
+          "selectors": {
+            "by_label": ["10th Board", "10th Class Board"],
+            "by_id":    ["matricBoard", "tenthBoard", "board10"],
+            "by_name":  ["matricBoard", "tenthBoard"]
+          },
+          "value_map": {
+            "CBSE": ["CBSE", "Central Board of Secondary Education", "CBSE Board"],
+            "ICSE": ["ICSE", "ISC", "CISCE", "Indian Certificate of Secondary Education"],
+            "State Board": ["State Board", "State", "Other"],
+            "UP Board": ["UPMSP", "UP Board"],
+            "Maharashtra": ["Maharashtra State Board", "MSBSHSE"],
+            "Karnataka": ["Karnataka", "KSEEB"],
+            "Tamil Nadu": ["Tamil Nadu", "TNBSE"],
+            "Rajasthan": ["RBSE", "Rajasthan Board"],
+            "Gujarat": ["GSEB", "Gujarat Board"],
+            "Madhya Pradesh": ["MPBSE", "MP Board"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_school",
+          "label": "Institute Name and Address (10th)",
+          "source": "education.class_10.school",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Institute Name and Address"],
+            "by_label":       ["Institute Name and Address"],
+            "by_index":        0
+          },
+          "required": true
+        },
+        {
+          "field_id": "matric_school_pincode",
+          "label": "Institute Pincode (10th)",
+          "source": "education.class_10.school_pincode",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Institute Pincode"],
+            "by_label":       ["Institute Pincode", "School Pincode", "Pincode"],
+            "by_index":        0
+          },
+          "required": false
+        },
+        {
+          "field_id": "matric_marksheet",
+          "label": "10th Marksheet Photo",
+          "source": "documents.matric_marksheet",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
+          "selectors": {
+            "by_label": ["10th Marksheet Photo", "10th Marksheet", "Matric Marksheet"],
+            "by_index":  0
+          },
+          "required": false
+        },
+
+        {
+          "field_id": "postmatric_education_type",
+          "label": "Education",
+          "source": "education.class_12.education_type",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select Education"],
+            "by_label":       ["Education"],
+            "by_id":          ["education", "educationType", "qualifyingEducation"],
+            "by_name":        ["education", "educationType"]
+          },
+          "value_map": {
+            "12th Standard": [
+              "12th Standard", "12th", "Class XII", "Senior Secondary", "HSC",
+              "Intermediate", "10+2", "Class 12", "XII Standard", "12 th"
+            ]
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_pass_status",
+          "label": "Pass Status",
+          "source": "education.class_12.pass_status",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select Pass Status"],
+            "by_label":       ["Pass Status"],
+            "by_id":          ["passStatus", "resultStatus", "examStatus"],
+            "by_name":        ["passStatus", "resultStatus"]
+          },
+          "value_map": {
+            "Pass": ["Pass", "Passed", "PASS", "Cleared", "pass"],
+            "Appeared": ["Appeared", "Appearing", "APPEARED", "Awaited"]
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_stream",
+          "label": "Stream Name",
+          "source": "education.class_12.stream",
+          "type": "select",
+          "selectors": {
+            "by_placeholder": ["Select Stream Name", "Stream Name"],
+            "by_label":       ["Stream Name", "Stream"],
+            "by_id":          ["streamName", "stream", "streamId"],
+            "by_name":        ["streamName", "stream"]
+          },
+          "value_map": {
+            "Science (PCM)": [
+              "Science (PCM)", "PCM", "Mathematics", "Science", "PCM (Physics Chemistry Maths)",
+              "Physics Chemistry Mathematics", "Science - PCM", "Mathematics Stream"
+            ]
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_board",
+          "label": "12th Board",
           "source": "education.class_12.board",
           "type": "select",
           "selectors": {
-            "by_label": ["Qualifying Examination", "Board", "Exam Board", "12th Board"],
-            "by_id":    ["qualifyingExam", "board", "examBoard"],
-            "by_name":  ["qualifyingExam", "board"]
+            "by_label": ["Board"],
+            "by_index":  1
           },
           "value_map": {
-            "CBSE":         ["CBSE", "Central Board of Secondary Education"],
-            "ICSE":         ["ICSE", "ISC", "CISCE"],
-            "UP Board":     ["UPMSP", "UP Board", "Uttar Pradesh Madhyamik Shiksha Parishad"],
-            "Maharashtra":  ["Maharashtra State Board", "MSBSHSE"],
-            "Karnataka":    ["Karnataka Secondary Education Examination Board", "KSEEB"],
-            "Tamil Nadu":   ["Tamil Nadu State Board", "TNBSE"]
+            "CBSE": ["CBSE", "Central Board of Secondary Education", "CBSE Board"],
+            "ICSE": ["ICSE", "ISC", "CISCE"],
+            "State Board": ["State Board", "State", "Other"],
+            "UP Board": ["UPMSP", "UP Board"],
+            "Maharashtra": ["Maharashtra State Board", "MSBSHSE"],
+            "Karnataka": ["Karnataka", "KSEEB"],
+            "Tamil Nadu": ["Tamil Nadu", "TNBSE"],
+            "Rajasthan": ["RBSE", "Rajasthan Board"],
+            "Gujarat": ["GSEB", "Gujarat Board"],
+            "Madhya Pradesh": ["MPBSE", "MP Board"]
           },
           "required": true
         },
         {
-          "field_id": "passing_year",
-          "label": "Year of Passing",
-          "source": "education.class_12.passing_year",
-          "type": "select_or_text",
-          "selectors": {
-            "by_label": ["Year of Passing", "Passing Year", "Year"],
-            "by_id":    ["passingYear", "yearOfPassing", "passYear"],
-            "by_name":  ["passingYear", "yearOfPassing"]
-          },
-          "required": true
-        },
-        {
-          "field_id": "percentage",
-          "label": "Aggregate Percentage",
-          "source": "education.class_12.percentage",
-          "type": "text",
-          "selectors": {
-            "by_placeholder": ["Percentage", "Aggregate Percentage"],
-            "by_label":       ["Aggregate Percentage", "Percentage", "Total Percentage"],
-            "by_id":          ["percentage", "aggPercentage", "totalPercentage"],
-            "by_name":        ["percentage", "aggPercentage"]
-          },
-          "required": true
-        },
-        {
-          "field_id": "school_name",
-          "label": "School Name",
+          "field_id": "postmatric_school",
+          "label": "Institute Name and Address (12th)",
           "source": "education.class_12.school",
           "type": "text",
           "selectors": {
-            "by_placeholder": ["School Name", "Institution Name"],
-            "by_label":       ["School Name", "Institution Name"],
-            "by_id":          ["schoolName", "institutionName"],
-            "by_name":        ["schoolName", "institution"]
+            "by_placeholder": ["Institute Name and Address"],
+            "by_label":       ["Institute Name and Address"],
+            "by_index":        1
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_school_pincode",
+          "label": "Institute Pincode (12th)",
+          "source": "education.class_12.school_pincode",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Institute Pincode"],
+            "by_label":       ["Institute Pincode", "School Pincode", "Pincode"],
+            "by_index":        1
+          },
+          "required": false
+        },
+        {
+          "field_id": "postmatric_roll_number",
+          "label": "Roll Number (12th)",
+          "source": "education.class_12.roll_no",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Roll Number"],
+            "by_label":       ["Roll Number"],
+            "by_index":        1
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_total_marks",
+          "label": "Total Exam Marks (12th)",
+          "source": "education.class_12.total_marks",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Total Marks"],
+            "by_label":       ["Total Exam Marks"],
+            "by_index":        1
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_obtained_marks",
+          "label": "Marks Obtained (12th)",
+          "source": "education.class_12.obtained_marks",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Marks Obtained"],
+            "by_label":       ["Marks Obtained"],
+            "by_index":        1
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_percentage",
+          "label": "12th Percentage",
+          "source": "education.class_12.percentage",
+          "type": "text",
+          "selectors": {
+            "by_placeholder": ["Percentage"],
+            "by_label":       ["Percentage"],
+            "by_index":        1
+          },
+          "required": false
+        },
+        {
+          "field_id": "postmatric_year",
+          "label": "Year of Passing (12th)",
+          "source": "education.class_12.passing_year",
+          "type": "select_or_text",
+          "selectors": {
+            "by_placeholder": ["Select Year"],
+            "by_label":       ["Year of Passing"],
+            "by_index":        1
+          },
+          "required": true
+        },
+        {
+          "field_id": "postmatric_marksheet",
+          "label": "Post Marksheet Photo",
+          "source": "documents.postmatric_marksheet",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
+          "selectors": {
+            "by_label": ["Post Marksheet Photo", "12th Marksheet", "Postmatric Marksheet"],
+            "by_index":  1
           },
           "required": false
         }
+
       ]
     }
   ]

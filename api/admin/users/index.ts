@@ -47,6 +47,7 @@ export async function getAllUsersAcademics(): Promise<ApiResponse<{
       matric_total_marks: number | null;
       matric_obtained_marks: number | null;
       matric_percentage: number | null;
+      matric_school_pincode: string | null;
       // Post-Matric (12th) fields
       postmatric_board: string | null;
       postmatric_school_name: string | null;
@@ -55,6 +56,7 @@ export async function getAllUsersAcademics(): Promise<ApiResponse<{
       postmatric_total_marks: number | null;
       postmatric_obtained_marks: number | null;
       postmatric_percentage: number | null;
+      postmatric_school_pincode: string | null;
       stream: string | null;
       subjects: Array<{ name: string; percent: number }>;
     } | null;
@@ -102,6 +104,7 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     matric_percentage: number | null;
     matric_state: string | null;
     matric_city: string | null;
+    matric_school_pincode: string | null;
     matric_marks_type: string | null;
     matric_cgpa: number | null;
     matric_result_status: string | null;
@@ -115,6 +118,7 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     postmatric_percentage: number | null;
     postmatric_state: string | null;
     postmatric_city: string | null;
+    postmatric_school_pincode: string | null;
     postmatric_marks_type: string | null;
     postmatric_cgpa: number | null;
     postmatric_result_status: string | null;

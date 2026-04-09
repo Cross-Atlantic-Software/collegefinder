@@ -442,33 +442,6 @@ body {
   white-space: nowrap;
 }
 
-/* ── FILL ALL BTN ────────────────── */
-
-.btn-fill-all {
-  width: 100%;
-  padding: 10px 14px;
-  background: var(--ink);
-  color: #fff; border: none;
-  border-radius: 8px;
-  font-size: 13px; font-weight: 700;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: background .15s, transform .1s;
-  margin-bottom: 4px;
-}
-.btn-fill-all:hover  { background: #1e293b; }
-.btn-fill-all:active { transform: scale(.99); }
-
-.time-badge {
-  font-size: 10px; font-weight: 600;
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.2);
-  padding: 1px 6px;
-  border-radius: 20px;
-  margin-left: auto;
-  color: rgba(255,255,255,.8);
-}
-
 /* ── SECTIONS LIST ───────────────── */
 
 .sections-list { display: flex; flex-direction: column; gap: 6px; }
@@ -521,26 +494,6 @@ body {
 .btn-fill:disabled { background: #a5b4fc; cursor: not-allowed; }
 .btn-fill.done     { background: var(--green); }
 .btn-fill.check    { background: var(--yellow); color: #fff; }
-
-/* ── DATA PREVIEW ────────────────── */
-
-.data-preview {
-  margin-top: 14px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-
-.preview-row {
-  display: flex; gap: 6px;
-  font-size: 11px;
-  padding: 5px 8px;
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.preview-key   { color: var(--ink3); min-width: 70px; flex-shrink: 0; }
-.preview-val   { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.preview-empty { color: #fca5a5; }
 
 /* ── FILL PROGRESS ───────────────── */
 

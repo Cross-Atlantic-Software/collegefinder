@@ -23,22 +23,59 @@ const Verifier = {
       return { ...fillResult, actualValue: null };
     }
 
-    // File inputs: can't meaningfully read-back a URL from el.value — trust the fill result
+    // File inputs: verify by checking el.files.length
     if (fieldConfig.type === 'file') {
-      return { status: fillResult.status, note: fillResult.note, actualValue: null };
+      const singleEl = (el instanceof NodeList || Array.isArray(el)) ? el[0] : el;
+      const hasFile = singleEl?.files?.length > 0;
+      if (fillResult.status === 'filled' && hasFile) {
+        return { status: 'filled', note: fillResult.note, actualValue: singleEl.files[0]?.name || '' };
+      }
+      if (fillResult.status === 'filled' && !hasFile) {
+        return { status: 'failed', note: 'File injection succeeded but portal did not accept it', actualValue: null };
+      }
+      return { ...fillResult, actualValue: null };
     }
 
-    const tag = el.tagName.toLowerCase();
+    // Custom dropdown fills are verified by the filler itself (click confirmed).
+    // The underlying hidden <select> value may not match, so trust the filler.
+    if (fillResult.note && fillResult.note.startsWith('Custom dropdown:')) {
+      return { status: 'filled', note: fillResult.note, actualValue: fillResult.note.replace('Custom dropdown: ', '') };
+    }
+
     const type = fieldConfig.type || 'text';
+    const tag  = (el instanceof Element) ? (el.tagName || '').toLowerCase() : '';
     let actual;
 
+    // Radio groups pass a NodeList (not a single Element) — handle before accessing tagName
     if (type === 'radio') {
       actual = this._readRadio(el, fieldConfig);
     } else if (type === 'checkbox') {
       actual = el.checked ? 'true' : 'false';
     } else if (tag === 'select') {
-      const selectedOpt = el.options[el.selectedIndex];
-      actual = selectedOpt ? selectedOpt.textContent.trim() : '';
+      // For hidden selects (custom dropdown), read back the visible overlay text if available
+      const cs = window.getComputedStyle(el);
+      const isHidden = cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05;
+      if (isHidden) {
+        // Try to read visible overlay text near the hidden select
+        let overlayText = '';
+        let wrapper = el.parentElement;
+        for (let i = 0; i < 5 && wrapper; i++) {
+          const valueEl = wrapper.querySelector(
+            '[class*="single-value"], [class*="selected-value"], ' +
+            '[class*="SelectValue"], [role="combobox"] span, ' +
+            '[class*="value-container"] span'
+          );
+          if (valueEl && valueEl.textContent.trim()) {
+            overlayText = valueEl.textContent.trim();
+            break;
+          }
+          wrapper = wrapper.parentElement;
+        }
+        actual = overlayText || (el.options[el.selectedIndex]?.textContent.trim() ?? '');
+      } else {
+        const selectedOpt = el.options[el.selectedIndex];
+        actual = selectedOpt ? selectedOpt.textContent.trim() : '';
+      }
     } else {
       actual = el.value || '';
     }
@@ -121,8 +158,8 @@ const Verifier = {
   },
 
   _fuzzyMatch(a, b) {
-    return a.toLowerCase().replace(/[\s\-_.]/g, '') ===
-           b.toLowerCase().replace(/[\s\-_.]/g, '');
+    const normalize = s => s.toLowerCase().replace(/[\s\-_.]/g, '').replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+    return normalize(a) === normalize(b);
   }
 };
 
