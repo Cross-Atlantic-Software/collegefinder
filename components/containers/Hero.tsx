@@ -2,16 +2,25 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
-import { PiCompassRoseBold } from "react-icons/pi";
+import { FiArrowUpRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 
-const painIcons = [PiCompassRoseBold, FiFileText, FiClock];
-
 export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
     const sectionRef = useRef<HTMLElement>(null);
+    const [isMobile, setIsMobile] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const check = () => {
+          setIsMobile(window.innerWidth <= 767);
+        };
+      
+        check();
+        window.addEventListener("resize", check);
+      
+        return () => window.removeEventListener("resize", check);
+      }, []);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -27,31 +36,32 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         return () => observer.disconnect();
     }, []);
 
-    const pains = hero.painPoints || [];
-
     return (
         <section
             id="home"
             ref={sectionRef}
             className="relative isolate min-h-[100svh] overflow-hidden scroll-mt-20 md:scroll-mt-24"
         >
-            <video
-                className="absolute inset-0 h-full w-full object-cover object-center"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                poster="/landing-page/hero-1.png"
-                aria-hidden="true"
-            >
-                <source
-                    media="(max-width: 767px)"
-                    src="/landing-page/unitracko-ai-verticle.mp4"
-                    type="video/mp4"
-                />
-                <source src="/landing-page/unitracko-ai.mp4" type="video/mp4" />
-            </video>
+         <video
+         key={isMobile ? "mobile" : "desktop"}
+  className="absolute inset-0 h-full w-full object-cover object-center"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="metadata"
+  poster="/landing-page/hero-1.png"
+  aria-hidden="true"
+>
+  <source
+    src={
+      isMobile
+        ? "/landing-page/unitracko-ai-verticle.mp4"
+        : "/landing-page/unitracko-ai.mp4"
+    }
+    type="video/mp4"
+  />
+</video>
             <div className="absolute inset-0 bg-black/50" />
         
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">

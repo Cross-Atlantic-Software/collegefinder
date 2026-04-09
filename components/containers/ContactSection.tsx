@@ -55,7 +55,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                             .
                         </h3>
 
-                        <p className="mt-4 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
+                        <p className="mt-4 max-w-lg whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
                         {contact.subtitle}
                         </p>
 
@@ -69,7 +69,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                         <p className="text-base font-semibold text-black">
                                             <span className="landing-scribble-hover">{point.title}</span>
                                         </p>
-                                        <p className="mt-1 text-sm text-black/60">{point.description}</p>
+                                        <p className="mt-1 whitespace-pre-line text-sm text-black/60">{point.description}</p>
                                     </div>
                                 </li>
                             ))}

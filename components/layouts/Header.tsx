@@ -84,88 +84,13 @@ export default function Header() {
         ? "bg-black text-white hover:bg-black/85"
         : "bg-white text-black hover:bg-white/90";
 
-    const smoothScrollToY = (targetY: number) => {
-        const reducedMotionEnabled = window
-            .matchMedia("(prefers-reduced-motion: reduce)")
-            .matches;
-        const clampedTargetY = Math.max(0, targetY);
-
-        if (reducedMotionEnabled) {
-            window.scrollTo(0, clampedTargetY);
-            return;
-        }
-
-        const startY = window.scrollY;
-        const deltaY = clampedTargetY - startY;
-
-        if (Math.abs(deltaY) < 2) {
-            return;
-        }
-
-        let animationStartTime: number | null = null;
-
-        const animate = (currentTime: number) => {
-            if (animationStartTime === null) {
-                animationStartTime = currentTime;
-            }
-
-            const elapsed = currentTime - animationStartTime;
-            const progress = Math.min(elapsed / ANCHOR_SCROLL_DURATION_MS, 1);
-            const easedProgress = easeInOutCubic(progress);
-            window.scrollTo(0, startY + deltaY * easedProgress);
-
-            if (progress < 1) {
-                window.requestAnimationFrame(animate);
-            }
-        };
-
-        window.requestAnimationFrame(animate);
-    };
-
-    const scrollToSection = (sectionId: string) => {
-        const targetSection = document.getElementById(sectionId);
-        if (!targetSection) {
-            return;
-        }
-
-        const siteHeader = document.querySelector("header");
-        const fallbackHeaderHeight = window.innerWidth >= 1024 ? 72 : 64;
-        const siteHeaderHeight =
-            siteHeader instanceof HTMLElement ? siteHeader.offsetHeight : fallbackHeaderHeight;
-        const targetY =
-            targetSection.getBoundingClientRect().top +
-            window.scrollY -
-            siteHeaderHeight -
-            HEADER_SCROLL_OFFSET_PX;
-
-        smoothScrollToY(targetY);
-    };
-
     const handleNavLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-        setMobileOpen(false);
-
         if (!isHomePage) {
+            setMobileOpen(false);
             return;
         }
 
-        const hashIndex = href.indexOf("#");
-        if (hashIndex === -1) {
-            return;
-        }
-
-        const targetId = href.slice(hashIndex + 1);
-        if (!targetId) {
-            return;
-        }
-
-        const sectionExists = document.getElementById(targetId);
-        if (!sectionExists) {
-            return;
-        }
-
-        event.preventDefault();
-        window.history.replaceState(null, "", `/#${targetId}`);
-        scrollToSection(targetId);
+        handleLandingHashClick(event, href, { onAfterNavigate: () => setMobileOpen(false) });
     };
 
     return (
@@ -256,13 +181,13 @@ export default function Header() {
                                         href="/login"
                                         className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
-                                        Log in
+                                       My Dashboard
                                     </Link>
                                     <Link
                                         href="/login"
                                         className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${primaryActionClass}`}
                                     >
-                                        Start free trial
+                                        Start My Journey
                                     </Link>
                                 </>
                             )}
@@ -373,14 +298,14 @@ export default function Header() {
                                             className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
                                             onClick={() => setMobileOpen(false)}
                                         >
-                                            Log in
+                                             My Dashboard
                                         </Link>
                                         <Link
                                             href="/login"
                                             className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
                                             onClick={() => setMobileOpen(false)}
                                         >
-                                            Start free trial
+                                            Start My Journey
                                         </Link>
                                     </>
                                 )}

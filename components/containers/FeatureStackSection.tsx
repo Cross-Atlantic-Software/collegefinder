@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiArrowRight, FiChevronRight } from "react-icons/fi";
+import { FiArrowRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 
@@ -137,18 +137,6 @@ export default function FeatureStackSection({ features }: { features: LandingPag
     }, [featureCards.length]);
 
     useEffect(() => {
-        const n = featureCards.length;
-        if (n === 0) {
-            setCardVisible([]);
-            return;
-        }
-        const reduced =
-            typeof window !== "undefined" &&
-            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        setCardVisible(Array.from({ length: n }, () => reduced));
-    }, [featureCards.length]);
-
-    useEffect(() => {
         const updateStickyMetrics = () => {
             const siteHeader = document.querySelector("header");
             const fallbackHeaderHeight = window.innerWidth >= 1024 ? 72 : 64;
@@ -239,7 +227,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                                     {before}
                                     <RoughNotation
                                         type="circle"
-                                        show={cardVisible[index]}
+                                        show={cardVisible[index] ?? false}
                                         color="#f0c544"
                                         strokeWidth={3}
                                         padding={6}
@@ -253,7 +241,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                             );
                         })()}
                     </h3>
-                    <p className="mt-5 max-w-md text-sm leading-relaxed text-black/65 md:text-base">
+                    <p className="mt-5 max-w-md whitespace-pre-line text-sm leading-relaxed text-black/65 md:text-base">
                         {card.description}
                     </p>
 
@@ -285,7 +273,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
     );
 
     return (
-        <section id="features" className="landing-section scroll-mt-20 bg-white md:scroll-mt-24">
+        <section id="the-playbook" className="landing-section scroll-mt-20 bg-white md:scroll-mt-24">
             <div className="appContainer">
                 <div ref={stackSceneRef} className="relative mx-auto max-w-6xl">
                     <div className="relative">
@@ -304,26 +292,10 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                                     {features.sectionTitleUnderline}
                                 </RoughNotation>
                             </h2>
-                            <p className="mt-4 text-sm text-black/50 md:text-base">
+                            <p className="mt-4 whitespace-pre-line text-sm text-black/50 md:text-base">
                                 {features.sectionSubtitle}
                             </p>
 
-                            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                                <Link
-                                    href="/login"
-                                    className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
-                                >
-                                    {features.primaryCta}
-                                    <FiChevronRight className="landing-icon-slide text-base" />
-                                </Link>
-                                <Link
-                                    href="/login"
-                                    className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 hover:text-black"
-                                >
-                                    {features.secondaryCta}
-                                    <FiChevronRight className="landing-icon-slide text-base" />
-                                </Link>
-                            </div>
                         </div>
 
                         <div ref={cardsStackRef} className="relative space-y-10 md:space-y-12">

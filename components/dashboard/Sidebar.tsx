@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiActivity,
   FiBookOpen,
+  FiChevronDown,
   FiClipboard,
   FiFileText,
   FiHome,
@@ -28,6 +29,8 @@ import {
   FaBrain,
   FaHandsHelping,
 } from "react-icons/fa";
+import { IoPlayCircleOutline } from "react-icons/io5";
+import { MdSchool } from "react-icons/md";
 import { getProfileCompletion, getAllExams } from "@/api";
 
 type SectionId =
@@ -49,6 +52,8 @@ type SidebarProps = {
   onToggleCollapse: () => void;
   activeSection: SectionId;
   onSectionChange: (id: SectionId) => void;
+  activeSubSection?: string;
+  onSubSectionChange?: (id: string) => void;
 };
 
 const baseNavItems: {
@@ -141,6 +146,11 @@ const baseNavItems: {
   },
 ];
 
+const EXAM_PREP_SUB_ITEMS = [
+  { id: "self", label: "Self Study", icon: IoPlayCircleOutline },
+  { id: "coaching", label: "Coaching Institutes", icon: MdSchool },
+];
+
 export default function Sidebar({
   sidebarOpen,
   onToggle,
@@ -148,11 +158,20 @@ export default function Sidebar({
   onToggleCollapse,
   activeSection,
   onSectionChange,
+  activeSubSection,
+  onSubSectionChange,
 }: SidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
+  const [examPrepExpanded, setExamPrepExpanded] = useState(false);
+
+  useEffect(() => {
+    if (activeSection === "exam-prep") {
+      setExamPrepExpanded(true);
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     const fetchCompletion = async () => {
@@ -295,6 +314,7 @@ export default function Sidebar({
           const isExamPrepItem = item.id === "exam-prep";
           const isExamPrepExpanded = isExamPrepItem && activeSection === "exam-prep";
           const MenuIcon = isActive ? item.activeIcon : item.icon;
+          const isExamPrep = item.id === "exam-prep";
 
           return (
             <div key={item.id}>
@@ -357,6 +377,7 @@ export default function Sidebar({
                       >
                         {item.value}
                       </span>
+                    ) : null}
                     ) : null}
                   </div>
                 )}

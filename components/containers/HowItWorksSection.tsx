@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from "react-icons/fi";
 import type { LandingPageContent } from "@/types/landingPage";
+import { LandingCardFrame } from "./LandingCardFrame";
 
 const OPEN_DURATION_MS = 4200;
 const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/explainer.mp4";
@@ -59,10 +60,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
     }, [openStep, steps.length]);
 
     useEffect(() => {
-        if (steps.length === 0) {
-            setTotalProgress(0);
-            return;
-        }
+        if (steps.length === 0) return;
+
         const startTime = performance.now();
         const totalDuration = OPEN_DURATION_MS * steps.length;
         let frameId = 0;
@@ -80,6 +79,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
             window.cancelAnimationFrame(frameId);
         };
     }, [steps.length]);
+
+    const progressForBar = steps.length === 0 ? 0 : totalProgress;
 
     useEffect(() => {
         const sectionNode = sectionRef.current;
@@ -129,7 +130,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
 
     return (
         <section
-            id="how-it-works"
+            id="our-edge"
             ref={sectionRef}
             className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
         >
@@ -144,7 +145,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             {howItWorks.title}
                         </h3>
                         <p
-                            className={`mt-4 max-w-xl text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
+                            className={`mt-4 max-w-xl whitespace-pre-line text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
@@ -159,7 +160,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             <span
                                 aria-hidden="true"
                                 className="pointer-events-none absolute left-[18px] top-6 w-px -translate-x-1/2 rounded-full bg-yellow-400/90"
-                                style={{ height: `calc((100% - 3rem) * ${totalProgress / 100})` }}
+                                style={{ height: `calc((100% - 3rem) * ${progressForBar / 100})` }}
                             />
 
                             <ul>
@@ -236,7 +237,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                                 }`}
                                             >
                                                 <div className="overflow-hidden">
-                                                    <p className="pl-[52px] pr-7 text-sm leading-relaxed text-black/60 md:text-base">
+                                                    <p className="pl-[52px] pr-7 whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
                                                         {step.description}
                                                     </p>
                                                 </div>
@@ -260,54 +261,17 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                 {howItWorks.demoCta}
                                 <FiChevronRight className="landing-icon-slide text-base" />
                             </Link>
-                            <Link
-                                href="/login"
-                                className="landing-cta group inline-flex items-center gap-2 rounded-full border border-black/20 bg-white px-8 py-3 text-sm font-semibold text-black/75 hover:text-black md:text-base"
-                            >
-                                {howItWorks.getStartedCta}
-                                <FiChevronRight className="landing-icon-slide text-base" />
-                            </Link>
                         </div>
                     </div>
 
                     <div
-                        className={`relative mx-auto w-full max-w-[760px] pt-10 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:self-center lg:pt-0 ${
+                        className={`mx-auto w-full max-w-[760px] pt-10 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:self-center lg:pt-0 ${
                             isInView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                         }`}
                         style={{ transitionDelay: "560ms" }}
                     >
-                        <svg
-                            viewBox="0 0 220 120"
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -left-10 -top-2 z-30 h-20 w-44 text-black"
-                        >
-                            <path
-                                d="M18 88 C44 70, 63 67, 85 66"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                            />
-                            <path
-                                d="M72 45 C88 58, 102 65, 118 74"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                            />
-                            <path
-                                d="M136 10 C126 38, 124 60, 123 84"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                            />
-                        </svg>
-
-                        <div className="absolute -left-5 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200" />
-                        <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
-
-                        <div className="group relative z-10 aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black ring-1 ring-black/5">
+                        <LandingCardFrame showSquiggles squiggleVariant="lg">
+                            <div className="group relative aspect-[751/512] overflow-hidden rounded-[30px] border border-black/15 bg-black ring-1 ring-black/5">
                             <video
                                 ref={videoRef}
                                 className="h-full w-full object-cover"
@@ -348,7 +312,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </LandingCardFrame>
                     </div>
                 </div>
             </div>

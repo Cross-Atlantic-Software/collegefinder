@@ -2,7 +2,7 @@
  * Admin API - Blogs Management endpoints
  */
 
-import { apiRequest } from '../../client';
+import { apiRequest, type ApiRequestConfig } from '../../client';
 import type { ApiResponse } from '../../types';
 import { API_ENDPOINTS } from '../../constants';
 
@@ -10,6 +10,8 @@ export interface Blog {
   id: number;
   slug: string;
   is_featured: boolean;
+  /** When false, hidden from the public site (default true if omitted from API) */
+  is_active?: boolean;
   title: string;
   blog_image: string | null;
   teaser: string | null;
@@ -22,9 +24,16 @@ export interface Blog {
   careers: number[] | null;
   url: string | null;
   source_name: string | null;
+  /** YYYY-MM-DD; shown on site instead of created_at when set */
+  published_date_custom?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type BlogAdminListFilters = {
+  is_active?: 'true' | 'false';
+  content_type?: 'TEXT' | 'VIDEO';
+};
 
 export interface GetAllBlogsResponse {
   blogs: Blog[];
@@ -32,10 +41,17 @@ export interface GetAllBlogsResponse {
 }
 
 /**
- * Get all blogs
+ * Get all blogs (admin; optional server-side filters)
  */
-export async function getAllBlogs(): Promise<ApiResponse<GetAllBlogsResponse>> {
-  return apiRequest<GetAllBlogsResponse>(API_ENDPOINTS.ADMIN.BLOGS, {
+export async function getAllBlogs(
+  filters?: BlogAdminListFilters
+): Promise<ApiResponse<GetAllBlogsResponse>> {
+  const params = new URLSearchParams();
+  if (filters?.is_active) params.set('is_active', filters.is_active);
+  if (filters?.content_type) params.set('content_type', filters.content_type);
+  const qs = params.toString();
+  const path = `${API_ENDPOINTS.ADMIN.BLOGS}${qs ? `?${qs}` : ''}`;
+  return apiRequest<GetAllBlogsResponse>(path, {
     method: 'GET',
   });
 }
@@ -53,8 +69,10 @@ export async function getBlogById(id: number): Promise<ApiResponse<{ blog: Blog 
  * Create blog
  */
 export async function createBlog(data: {
+  /** Derived from title on client; server ensures uniqueness. */
   slug: string;
   is_featured?: boolean;
+  is_active?: boolean;
   title: string;
   blog_image?: File;
   teaser?: string;
@@ -67,6 +85,8 @@ export async function createBlog(data: {
   careers?: number[];
   url?: string;
   source_name?: string;
+  /** YYYY-MM-DD */
+  published_date_custom?: string;
 }): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
   
@@ -77,10 +97,16 @@ export async function createBlog(data: {
   if (data.is_featured !== undefined) {
     formData.append('is_featured', String(data.is_featured));
   }
-  if (data.teaser) {
+  if (data.is_active !== undefined) {
+    formData.append('is_active', String(data.is_active));
+  }
+  if (data.published_date_custom?.trim()) {
+    formData.append('published_date_custom', data.published_date_custom.trim());
+  }
+  if (data.teaser != null && data.teaser !== '') {
     formData.append('teaser', data.teaser);
   }
-  if (data.summary) {
+  if (data.summary != null && data.summary !== '') {
     formData.append('summary', data.summary);
   }
   if (data.first_part) {
@@ -108,29 +134,12 @@ export async function createBlog(data: {
     formData.append('source_name', data.source_name || '');
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}${API_ENDPOINTS.ADMIN.BLOGS}`;
-  
-  const token = localStorage.getItem('admin_token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to create blog');
-  }
-
-  return result;
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
+  return apiRequest<{ blog: Blog }>(
+    API_ENDPOINTS.ADMIN.BLOGS,
+    { method: 'POST', body: formData },
+    multipartConfig
+  );
 }
 
 /**
@@ -141,6 +150,7 @@ export async function updateBlog(
   data: {
     slug?: string;
     is_featured?: boolean;
+    is_active?: boolean;
     title?: string;
     blog_image?: File | null;
     teaser?: string;
@@ -153,6 +163,8 @@ export async function updateBlog(
     careers?: number[];
     url?: string;
     source_name?: string;
+    /** YYYY-MM-DD; empty string clears custom date */
+    published_date_custom?: string;
   }
 ): Promise<ApiResponse<{ blog: Blog }>> {
   const formData = new FormData();
@@ -169,12 +181,15 @@ export async function updateBlog(
   if (data.is_featured !== undefined) {
     formData.append('is_featured', String(data.is_featured));
   }
-  if (data.teaser !== undefined) {
-    formData.append('teaser', data.teaser || '');
+  if (data.is_active !== undefined) {
+    formData.append('is_active', String(data.is_active));
   }
-  if (data.summary !== undefined) {
-    formData.append('summary', data.summary || '');
+  if (data.published_date_custom !== undefined) {
+    formData.append('published_date_custom', data.published_date_custom || '');
   }
+  // Always send teaser/summary on update so clearing them persists (empty → null in DB).
+  formData.append('teaser', data.teaser ?? '');
+  formData.append('summary', data.summary ?? '');
   if (data.first_part !== undefined) {
     formData.append('first_part', data.first_part || '');
   }
@@ -200,29 +215,12 @@ export async function updateBlog(
     formData.append('source_name', data.source_name || '');
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const url = `${apiUrl}${API_ENDPOINTS.ADMIN.BLOGS}/${id}`;
-  
-  const token = localStorage.getItem('admin_token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to update blog');
-  }
-
-  return result;
+  const multipartConfig: ApiRequestConfig = { timeout: 120000 };
+  return apiRequest<{ blog: Blog }>(
+    `${API_ENDPOINTS.ADMIN.BLOGS}/${id}`,
+    { method: 'PUT', body: formData },
+    multipartConfig
+  );
 }
 
 /**

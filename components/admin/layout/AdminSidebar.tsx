@@ -114,10 +114,10 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Institutes',
+    label: 'Coaching Institutes',
     icon: <FiAward className="h-4 w-4" />,
     children: [
-      { label: 'Institutes', href: '/admin/institutes', icon: <FiHome className="h-4 w-4" />, moduleCode: 'institutes' },
+      { label: 'Coaching Institutes', href: '/admin/institutes', icon: <FiHome className="h-4 w-4" />, moduleCode: 'institutes' },
     ],
   },
   {

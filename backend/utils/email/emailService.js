@@ -60,7 +60,7 @@ const sendOTPEmail = async (email, otp) => {
   // Fallback to default template if not found
   if (!template) {
       template = {
-        subject: 'Verify your email address - College Finder',
+        subject: 'Verify your email address - UniTracko',
         body_html: `<!DOCTYPE html>
 <html>
 <head>
@@ -74,14 +74,14 @@ const sendOTPEmail = async (email, otp) => {
         <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff;">
           <tr>
             <td style="background-color: #232f3e; padding: 30px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">College Finder</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">UniTracko</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 50px 40px; background-color: #ffffff;">
               <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 28px; font-weight: bold; line-height: 1.2;">Verify your email address</h2>
               <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 40px 0;">
-                Thanks for starting the College Finder account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
+                Thanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
               </p>
               <p style="color: #232f3e; font-size: 16px; font-weight: bold; margin: 0 0 15px 0;">Verification code</p>
               <div style="margin: 0 0 15px 0;">
@@ -97,7 +97,7 @@ const sendOTPEmail = async (email, otp) => {
           <tr>
             <td style="padding: 30px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee;">
               <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px;">
-                © ${new Date().getFullYear()} College Finder. All rights reserved.
+                © ${new Date().getFullYear()} UniTracko. All rights reserved.
               </p>
               <p style="margin: 0; color: #666666; font-size: 12px;">
                 This is an automated email, please do not reply.
@@ -128,11 +128,11 @@ const sendOTPEmail = async (email, otp) => {
   }
 
   const mailOptions = {
-    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: subject,
     html: html,
-    text: `Verify your email address - College Finder\n\nThanks for starting the College Finder account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.\n\nVerification code: ${otp}\n\n(This code is valid for 10 minutes)`
+    text: `Verify your email address - UniTracko\n\nThanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.\n\nVerification code: ${otp}\n\n(This code is valid for 10 minutes)`
   };
 
   try {
@@ -167,7 +167,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
   const loginUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const adminLoginUrl = `${loginUrl}/admin/login`;
 
-  const subject = 'Your College Finder Admin Panel Access';
+  const subject = 'Your UniTracko Admin Panel Access';
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -181,7 +181,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
         <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           <tr>
             <td style="background: linear-gradient(135deg, #341050 0%, #8B1E8B 100%); padding: 30px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">College Finder</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">UniTracko</h1>
               <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Admin Panel Access</p>
             </td>
           </tr>
@@ -189,7 +189,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 22px; font-weight: bold;">Welcome to the Admin Panel</h2>
               <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                You have been granted <strong>${typeLabel}</strong> access to the College Finder admin panel. Please use the credentials below to log in.
+                You have been granted <strong>${typeLabel}</strong> access to the UniTracko admin panel. Please use the credentials below to log in.
               </p>
               <div style="background-color: #f9f9f9; border: 1px solid #eeeeee; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
                 <p style="margin: 0 0 8px 0; color: #666666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Login Email</p>
@@ -206,7 +206,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
           <tr>
             <td style="padding: 24px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee;">
               <p style="margin: 0; color: #666666; font-size: 12px;">
-                © ${new Date().getFullYear()} College Finder. All rights reserved.
+                © ${new Date().getFullYear()} UniTracko. All rights reserved.
               </p>
               <p style="margin: 4px 0 0 0; color: #666666; font-size: 12px;">
                 This is an automated email. Please do not reply.
@@ -220,7 +220,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
 </body>
 </html>`;
 
-  const text = `Welcome to College Finder Admin Panel\n\nYou have been granted ${typeLabel} access.\n\nLogin URL: ${adminLoginUrl}\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after your first login. Do not share these credentials.\n\n© ${new Date().getFullYear()} College Finder`;
+  const text = `Welcome to UniTracko Admin Panel\n\nYou have been granted ${typeLabel} access.\n\nLogin URL: ${adminLoginUrl}\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after your first login. Do not share these credentials.\n\n© ${new Date().getFullYear()} UniTracko`;
 
   if (!transporter) {
     console.log('📧 [DEV] Admin welcome email would be sent to:', email);
@@ -229,7 +229,7 @@ const sendAdminWelcomeEmail = async (email, password, type) => {
   }
 
   const mailOptions = {
-    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
     to: email,
     subject,
     html,
@@ -274,7 +274,7 @@ const sendStrengthPaymentNotification = async (studentData) => {
     <tr><td align="center" style="padding:20px 0;">
       <table role="presentation" style="max-width:600px;width:100%;border-collapse:collapse;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
         <tr><td style="background:linear-gradient(135deg,#0f4c75 0%,#3282b8 100%);padding:30px 40px;text-align:center;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:bold;">College Finder</h1>
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:bold;">UniTracko</h1>
           <p style="margin:8px 0 0 0;color:rgba(255,255,255,0.9);font-size:14px;">Strength Analysis Payment Notification</p>
         </td></tr>
         <tr><td style="padding:40px;">
@@ -292,7 +292,7 @@ const sendStrengthPaymentNotification = async (studentData) => {
           </div>
         </td></tr>
         <tr><td style="padding:24px 40px;background-color:#f9f9f9;border-top:1px solid #eeeeee;">
-          <p style="margin:0;color:#666666;font-size:12px;">© ${new Date().getFullYear()} College Finder. All rights reserved.</p>
+          <p style="margin:0;color:#666666;font-size:12px;">© ${new Date().getFullYear()} UniTracko. All rights reserved.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -309,7 +309,7 @@ const sendStrengthPaymentNotification = async (studentData) => {
   }
 
   const mailOptions = {
-    from: `"College Finder" <${process.env.EMAIL_USER}>`,
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
     to: recipientEmail,
     subject,
     html,

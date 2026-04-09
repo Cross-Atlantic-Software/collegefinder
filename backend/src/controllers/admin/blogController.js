@@ -14,7 +14,8 @@ class BlogController {
    */
   static async getAllBlogs(req, res) {
     try {
-      const blogs = await Blog.findAll();
+      const { is_active, content_type } = req.query;
+      const blogs = await Blog.findAllForAdmin({ is_active, content_type });
       
       // Ensure streams and careers are arrays (parse if needed)
       // Also ensure url and source_name exist (for backward compatibility)
@@ -24,9 +25,10 @@ class BlogController {
             ...blog,
             streams: BlogController.parseJsonbArray(blog.streams),
             careers: BlogController.parseJsonbArray(blog.careers),
-            // Ensure new fields exist (for backward compatibility with existing blogs)
             url: blog.url || null,
             source_name: blog.source_name || null,
+            is_active: blog.is_active !== false,
+            published_date_custom: blog.published_date_custom || null,
           };
         } catch (parseError) {
           console.error('Error parsing blog JSONB fields:', parseError, blog);
@@ -128,6 +130,8 @@ class BlogController {
         careers: BlogController.parseJsonbArray(blog.careers),
         url: blog.url || null,
         source_name: blog.source_name || null,
+        is_active: blog.is_active !== false,
+        published_date_custom: blog.published_date_custom || null,
       };
 
       res.json({
@@ -161,6 +165,7 @@ class BlogController {
       const {
         slug,
         is_featured,
+        is_active,
         title,
         teaser,
         summary,
@@ -170,17 +175,11 @@ class BlogController {
         streams,
         careers,
         url,
-        source_name
+        source_name,
+        published_date_custom
       } = req.body;
 
-      // Check if slug already exists
-      const existingBlog = await Blog.findBySlug(slug);
-      if (existingBlog) {
-        return res.status(400).json({
-          success: false,
-          message: 'Blog with this slug already exists'
-        });
-      }
+      const finalSlug = await Blog.uniqueSlug(slug, null);
 
       // Check if title already exists
       const existingBlogByTitle = await Blog.findByTitle(title);
@@ -226,6 +225,17 @@ class BlogController {
 
       // Convert is_featured to boolean (FormData sends as string)
       const isFeaturedBool = is_featured === true || is_featured === 'true' || is_featured === '1';
+      const isActiveBool =
+        is_active === undefined || is_active === null || is_active === ''
+          ? true
+          : is_active === true || is_active === 'true' || is_active === '1';
+
+      const pubDateRaw =
+        published_date_custom !== undefined && published_date_custom !== null
+          ? String(published_date_custom).trim()
+          : '';
+      const publishedDateCustom =
+        pubDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(pubDateRaw) ? pubDateRaw : null;
 
       // Parse streams and careers (can be JSON strings or arrays)
       let streamsArray = [];
@@ -249,8 +259,9 @@ class BlogController {
       }
 
       const blogData = {
-        slug,
+        slug: finalSlug,
         is_featured: isFeaturedBool,
+        is_active: isActiveBool,
         title,
         blog_image,
         teaser: teaser || null,
@@ -262,7 +273,8 @@ class BlogController {
         streams: streamsArray,
         careers: careersArray,
         url: url || null,
-        source_name: source_name || null
+        source_name: source_name || null,
+        published_date_custom: publishedDateCustom
       };
 
       const blog = await Blog.create(blogData);
@@ -309,6 +321,7 @@ class BlogController {
       const {
         slug,
         is_featured,
+        is_active,
         title,
         teaser,
         summary,
@@ -318,7 +331,8 @@ class BlogController {
         streams,
         careers,
         url,
-        source_name
+        source_name,
+        published_date_custom
       } = req.body;
 
       // Parse streams and careers (can be JSON strings or arrays)
@@ -339,17 +353,6 @@ class BlogController {
           if (!Array.isArray(careersArray)) careersArray = [];
         } catch (e) {
           careersArray = [];
-        }
-      }
-
-      // Check if slug is being changed and if it already exists
-      if (slug && slug !== existingBlog.slug) {
-        const slugExists = await Blog.findBySlug(slug);
-        if (slugExists) {
-          return res.status(400).json({
-            success: false,
-            message: 'Blog with this slug already exists'
-          });
         }
       }
 
@@ -423,10 +426,23 @@ class BlogController {
       }
 
       const updateData = {};
-      if (slug !== undefined) updateData.slug = slug;
+      if (slug !== undefined && String(slug).trim() !== '') {
+        updateData.slug = await Blog.uniqueSlug(String(slug).trim(), id);
+      }
       if (is_featured !== undefined) {
         // Convert is_featured to boolean (FormData sends as string)
         updateData.is_featured = is_featured === true || is_featured === 'true' || is_featured === '1';
+      }
+      if (is_active !== undefined && is_active !== null && is_active !== '') {
+        if (
+          is_active === false ||
+          is_active === 'false' ||
+          is_active === '0'
+        ) {
+          updateData.is_active = false;
+        } else {
+          updateData.is_active = true;
+        }
       }
       if (title !== undefined) updateData.title = title;
       if (blog_image !== undefined) updateData.blog_image = blog_image;
@@ -440,6 +456,11 @@ class BlogController {
       if (careersArray !== undefined) updateData.careers = careersArray;
       if (url !== undefined) updateData.url = url || null;
       if (source_name !== undefined) updateData.source_name = source_name || null;
+      if (published_date_custom !== undefined) {
+        const raw = String(published_date_custom).trim();
+        updateData.published_date_custom =
+          raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+      }
 
       const blog = await Blog.update(id, updateData);
 

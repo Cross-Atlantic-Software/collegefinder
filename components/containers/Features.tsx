@@ -45,23 +45,6 @@ export default function Features() {
                     <p className="mt-4 text-sm text-black/50 md:text-base">
                         We&apos;ve built the unfair advantage you&apos;ve been looking for.
                     </p>
-
-                    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                        <Link
-                            href="/login"
-                            className="inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-black/85"
-                        >
-                            Get a demo
-                            <FiChevronRight className="text-base" />
-                        </Link>
-                        <Link
-                            href="/login"
-                            className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold text-black/70 transition-colors hover:text-black"
-                        >
-                            Get started free
-                            <FiChevronRight className="text-base" />
-                        </Link>
-                    </div>
                 </div>
             </div>
         </section>

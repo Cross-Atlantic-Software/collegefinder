@@ -3,10 +3,11 @@
  * In browser: always use relative /api so requests go to same origin (nginx proxies to backend)
  * On server: use env or localhost for SSR
  */
-const API_BASE_URL =
-  typeof window !== 'undefined'
+export function getApiBaseUrl(): string {
+  return typeof window !== 'undefined'
     ? '/api'
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+}
 
 /** Config for apiRequest - timeout in ms (default 30s; pass higher for slow SMTP / heavy work) */
 export interface ApiRequestConfig {
@@ -27,7 +28,7 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   config?: ApiRequestConfig
 ): Promise<import('./types').ApiResponse<T>> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${getApiBaseUrl()}${endpoint}`;
   const timeoutMs = config?.timeout ?? 30000;
 
   // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)

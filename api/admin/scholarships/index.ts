@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -126,7 +126,7 @@ export interface ScholarshipsBulkUploadResult {
 
 export async function downloadScholarshipsBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -144,7 +144,7 @@ export async function downloadScholarshipsBulkTemplate(): Promise<void> {
 /** Download all scholarships data as Excel (Super Admin only) */
 export async function downloadAllDataExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -163,7 +163,7 @@ export async function bulkUploadScholarships(excelFile: File): Promise<ApiRespon
   const formData = new FormData();
   formData.append('excel', excelFile);
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/bulk-upload`;
   const res = await fetch(url, {
     method: 'POST',

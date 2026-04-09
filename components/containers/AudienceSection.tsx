@@ -130,7 +130,7 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                                 <span>{audience.headingAndParents}</span>
                             </span>
                         </h3>
-                        <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-black/60 md:text-base">
+                        <p className="mx-auto mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
                         {audience.subtitle}
                         </p>
 
@@ -222,9 +222,9 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                             {audience.whyTitleBreak}
                         </h3>
 
-                        <p className="mt-5 max-w-lg text-sm leading-relaxed text-black/60 md:text-base">
+                        <p className="mt-5 max-w-lg whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
                         {audience.whyBody}
-                            <span className="block pt-3">
+                            <span className="mt-3 block whitespace-pre-line pt-3">
                             {audience.whyBody2}
                             </span>
                         </p>
