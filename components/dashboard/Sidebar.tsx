@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
+import { BiChevronDown, BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiActivity,
   FiBookOpen,
@@ -109,7 +110,7 @@ const baseNavItems: {
     sub: "Study time",
     icon: FiBookOpen,
     activeIcon: FaBookOpen,
-    getValue: () => "156h",
+    getValue: () => "",
   },
   {
     id: "test-module",
@@ -160,6 +161,8 @@ export default function Sidebar({
   activeSubSection,
   onSubSectionChange,
 }: SidebarProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
   const [examPrepExpanded, setExamPrepExpanded] = useState(false);
@@ -211,27 +214,24 @@ export default function Sidebar({
           : undefined,
   }));
 
-  const closeOnMobile = () => {
+          const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
+
+  const handleSectionClick = (id: SectionId) => {
+    onSectionChange(id);
+
+    // Auto-close only on mobile drawer layouts.
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
       onToggle();
     }
   };
 
-  const handleSectionClick = (id: SectionId) => {
-    if (id === "exam-prep") {
-      setExamPrepExpanded((prev) => !prev);
-    }
-    onSectionChange(id);
-    closeOnMobile();
-  };
-
-  const handleSubSectionClick = (subId: string) => {
+  const handlePrepSubmenuClick = (mode: "self" | "coaching") => {
     onSectionChange("exam-prep");
-    setExamPrepExpanded(true);
-    if (onSubSectionChange) {
-      onSubSectionChange(subId);
+    router.push(`/dashboard?section=exam-prep&mode=${mode}`);
+
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      onToggle();
     }
-    closeOnMobile();
   };
 
   return (
@@ -250,11 +250,11 @@ export default function Sidebar({
         <div className={`flex min-w-0 items-center ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}>
           {isCollapsed && (
             <Image
-              src="/logo.svg"
+              src="/landing-page/collapse.svg"
               alt="Unitracko icon"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl"
+              width={20}
+              height={20}
+              className="h-7 w-7 "
               priority
             />
           )}
@@ -311,6 +311,8 @@ export default function Sidebar({
       >
         {navItems.map((item) => {
           const isActive = activeSection === item.id;
+          const isExamPrepItem = item.id === "exam-prep";
+          const isExamPrepExpanded = isExamPrepItem && activeSection === "exam-prep";
           const MenuIcon = isActive ? item.activeIcon : item.icon;
           const isExamPrep = item.id === "exam-prep";
 
@@ -359,9 +361,11 @@ export default function Sidebar({
                       </span>
                     </div>
 
-                    {isExamPrep ? (
-                      <FiChevronDown
-                        className={`h-3.5 w-3.5 shrink-0 ml-2 transition-transform duration-200 ${examPrepExpanded ? "rotate-180" : ""} ${isActive ? "text-brand-ink dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}`}
+                    {isExamPrepItem ? (
+                      <BiChevronDown
+                        className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 ease-in-out dark:text-slate-400 ${
+                          isExamPrepExpanded ? "rotate-180" : "rotate-0"
+                        }`}
                       />
                     ) : item.value ? (
                       <span
@@ -374,32 +378,55 @@ export default function Sidebar({
                         {item.value}
                       </span>
                     ) : null}
+                    ) : null}
                   </div>
                 )}
               </button>
 
-              {/* Exam Prep Submenu */}
-              {isExamPrep && !isCollapsed && examPrepExpanded && (
-                <div className={`${sidebarOpen ? "flex" : "hidden md:flex"} flex-col pl-4 mt-0.5 mb-1 space-y-0.5`}>
-                  {EXAM_PREP_SUB_ITEMS.map((sub) => {
-                    const isSubActive = activeSection === "exam-prep" && activeSubSection === sub.id;
-                    const SubIcon = sub.icon;
-                    return (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        onClick={() => handleSubSectionClick(sub.id)}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight-300
-                          ${isSubActive
-                            ? "bg-highlight-200/60 text-brand-ink font-semibold dark:bg-highlight-300/10 dark:text-slate-100"
-                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
-                          }`}
-                      >
-                        <SubIcon className={`h-4 w-4 shrink-0 ${isSubActive ? "text-brand-ink dark:text-highlight-300" : "text-slate-400 dark:text-slate-500"}`} />
-                        <span className="truncate">{sub.label}</span>
-                      </button>
-                    );
-                  })}
+              {!isCollapsed && item.id === "exam-prep" && (
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isExamPrepExpanded ? "mt-1 max-h-40 opacity-100" : "mt-0 max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="ml-5 border-l border-slate-200 pl-2.5 dark:border-slate-700/70">
+                  <button
+                    type="button"
+                    onClick={() => handlePrepSubmenuClick("self")}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors ${
+                      activePrepMode === "self"
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800/70 dark:text-slate-100"
+                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        activePrepMode === "self"
+                          ? "bg-slate-900 dark:bg-slate-100"
+                          : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                    />
+                    Self Study
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrepSubmenuClick("coaching")}
+                    className={`mt-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors ${
+                      activePrepMode === "coaching"
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800/70 dark:text-slate-100"
+                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        activePrepMode === "coaching"
+                          ? "bg-slate-900 dark:bg-slate-100"
+                          : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                    />
+                    Coaching Institutes
+                  </button>
+                </div>
                 </div>
               )}
             </div>

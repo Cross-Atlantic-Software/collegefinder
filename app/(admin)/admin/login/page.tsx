@@ -60,8 +60,17 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F6F8FA]">
-      <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-3.5">
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden text-slate-900">
+      <Image
+        src="/login.png"
+        alt="Admin login background"
+        fill
+        priority
+        className="object-cover object-center"
+      />
+      <div className="absolute inset-0 bg-white/74 backdrop-blur-[1px]" />
+
+      <header className="relative z-10 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white/92 px-6 py-3.5 backdrop-blur-md">
         <Link href="/" className="block">
           <Image
             src="/svgs/logo-unitracko.svg"
@@ -77,7 +86,7 @@ export default function AdminLoginPage() {
         </span>
       </header>
 
-      <div className="flex flex-1 items-center justify-center px-4 py-10">
+      <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-[460px] space-y-2">
           <div className="text-center">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Admin login</h1>
