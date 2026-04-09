@@ -10,6 +10,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { handleLandingHashClick } from "@/lib/landingNav";
 import { usePathname, useRouter } from "next/navigation";
 
 const navLinks = [
@@ -27,15 +28,6 @@ const navLinks = [
     { label: "How It Works", href: "/#how-it-works" },
     { label: "FAQ", href: "/#faq" },
 ];
-
-const HEADER_SCROLL_OFFSET_PX = 12;
-const ANCHOR_SCROLL_DURATION_MS = 700;
-
-const easeInOutCubic = (value: number) => {
-    return value < 0.5
-        ? 4 * value * value * value
-        : 1 - Math.pow(-2 * value + 2, 3) / 2;
-};
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);

@@ -378,7 +378,6 @@ export default function Sidebar({
                         {item.value}
                       </span>
                     ) : null}
-                    ) : null}
                   </div>
                 )}
               </button>

@@ -43,7 +43,7 @@ export function generateStrongPassword(length = 12): string {
   const getRandom = (str: string) => str[Math.floor(Math.random() * str.length)];
 
   // Ensure at least one of each required type
-  let password = [
+  const password = [
     getRandom(UPPERCASE),
     getRandom(LOWERCASE),
     getRandom(NUMBERS),
