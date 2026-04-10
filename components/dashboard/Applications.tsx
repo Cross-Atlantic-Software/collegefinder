@@ -15,8 +15,7 @@ import { FiPlay, FiRefreshCw } from "react-icons/fi";
 import { Button } from "@/components/shared";
 import { StudentExamCreateModal } from "./StudentExamCreateModal";
 import { StudentWorkflowModal } from "./StudentWorkflowModal";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+import { getApiBaseUrl } from "@/api/client";
 
 type ApplicationStatus = "pending" | "approved" | "running" | "completed" | "failed";
 
@@ -207,7 +206,7 @@ export default function ApplicationsPage() {
       const token = localStorage.getItem('auth_token');
       const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
 
-      const response = await fetch(`${API_URL}/user/automation-applications${statusParam}`, {
+      const response = await fetch(`${getApiBaseUrl()}/user/automation-applications${statusParam}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

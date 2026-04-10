@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/shared";
-import { MdOutlineReplay, MdOutlineHistory, MdSchool } from "react-icons/md";
-import { IoPlayCircleOutline } from "react-icons/io5";
 import { getSubjectsByStream } from "@/api/auth/profile";
+import { getStrengthResults } from "@/api/strength";
 import { FiAlertCircle } from "react-icons/fi";
 
 import SelfStudyTab from "./SelfStudyTab";
@@ -35,18 +35,23 @@ type ExamPreparationProps = {
 
 export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<PrepMode>(initialMode ?? "self");
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userStrengths, setUserStrengths] = useState<string[] | null>(null);
+  const [strengthsLoading, setStrengthsLoading] = useState(true);
 
   useEffect(() => {
-    if (initialMode) {
-      setMode(initialMode);
+    const requestedMode = searchParams.get("mode");
+    if (requestedMode === "self" || requestedMode === "coaching") {
+      setMode(requestedMode);
     }
-  }, [initialMode]);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -84,12 +89,46 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
     fetchSubjects();
   }, []);
 
+  useEffect(() => {
+    const fetchStrengths = async () => {
+      try {
+        const response = await getStrengthResults();
+        if (response.success && response.data?.has_results && response.data.results?.strengths) {
+          setUserStrengths(response.data.results.strengths);
+        } else {
+          setUserStrengths(null);
+        }
+      } catch (err) {
+        console.error("Error fetching strength results:", err);
+        setUserStrengths(null);
+      } finally {
+        setStrengthsLoading(false);
+      }
+    };
+
+    fetchStrengths();
+  }, []);
+
   return (
-    <div className="w-full min-h-screen bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-      <section className="w-full bg-[#f5f9ff]">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <section className="w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff]">
         <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link
+                  href="/dashboard"
+                  className="font-semibold text-black/70 hover:text-black hover:underline dark:text-slate-200 dark:hover:text-white"
+                >
+                  Dashboard
+                </Link>
+                <span>/</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">Exam Prep</span>
+                <span>/</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {mode === "self" ? "Self Study" : "Coaching Institutes"}
+                </span>
+              </div>
               <div>
                 <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Exam Prep</p>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -100,69 +139,7 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
           </div>
         </header>
 
-        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
-      {/* PERFORMANCE RADAR STRIP */}
-      {/* <div className="flex flex-col gap-3 rounded-md bg-amber-400/90 p-4 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center text-3xl text-white/40">
-            <MdSchool />
-          </div>
-          <div>
-            <p className="text-md font-semibold">Performance Radar</p>
-            <p className="text-xs font-medium opacity-90">
-              Current Score: 7.5
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button
-            variant="DarkGradient"
-            size="sm"
-            className="flex items-center justify-center gap-1 rounded-md text-white"
-          >
-            <MdOutlineReplay className="text-lg" />
-            Take the Retest
-          </Button>
-
-          <Button
-            variant="themeButtonOutline"
-            size="sm"
-            className="flex items-center justify-center gap-1 rounded-md bg-white text-slate-900"
-          >
-            <MdOutlineHistory className="text-lg" />
-            View Old Scores
-          </Button>
-        </div>
-      </div> */}
-
-      {/* MODE TABS */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button
-          onClick={() => setMode("self")}
-          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-95 ${
-            mode === "self"
-              ? "bg-black text-[#FAD53C] shadow-sm"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-          }`}
-        >
-          <IoPlayCircleOutline className="text-lg" />
-          Self-Study Mode
-        </button>
-
-        <button
-          onClick={() => setMode("coaching")}
-          className={`flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-95 ${
-            mode === "coaching"
-              ? "bg-black text-[#FAD53C] shadow-sm"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-          }`}
-        >
-          <MdSchool className="text-lg" />
-          Coaching Centers
-        </button>
-      </div>
-
+        <div className="min-w-0 max-w-full overflow-x-hidden bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
       {/* Stream Selection Required Message */}
       {requiresStreamSelection && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
@@ -209,8 +186,10 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
             subjects={subjects}
             query={query}
             onQueryChange={setQuery}
-            sortBy="latest"
-            onToggleSort={() => {}}
+            sortBy={sortBy}
+            onToggleSort={() => setSortBy((prev) => (prev === "latest" ? "popular" : "latest"))}
+            userStrengths={userStrengths}
+            strengthsLoading={strengthsLoading}
           />
         ) : (
           <CoachingCentersTab />

@@ -44,14 +44,23 @@ export function AuthShell({
 
   if (variant === "minimal") {
     return (
-      <main className="flex min-h-screen flex-col bg-white text-slate-900">
+      <main className="relative isolate flex min-h-screen flex-col overflow-hidden text-slate-900">
+        <Image
+          src="/login-3.png"
+          alt="Login page background"
+          fill
+          priority
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-white/72 backdrop-blur-[1px]" />
+
         {showMinimalHeader && (
-          <header className="appContainer flex w-full items-center justify-center border-b border-slate-200 py-5 lg:justify-start">
+          <header className="appContainer relative z-10 flex w-full items-center justify-center border-b border-slate-200 py-5 lg:justify-start">
             <Logo mode="light" />
           </header>
         )}
 
-        <div className={`appContainer flex w-full flex-1 py-10 sm:py-12 ${contentClassName}`}>
+        <div className={`appContainer relative z-10 flex w-full flex-1 py-10 sm:py-12 ${contentClassName}`}>
           {children}
         </div>
       </main>

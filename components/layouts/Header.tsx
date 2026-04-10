@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import {
+    FiChevronDown,
     FiMenu,
     FiX,
 } from "react-icons/fi";
@@ -9,11 +10,24 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { handleLandingHashClick } from "@/lib/landingNav";
 import { usePathname, useRouter } from "next/navigation";
-import {
-    handleLandingHashClick,
-    LANDING_PRIMARY_NAV,
-} from "@/lib/landingNav";
+
+const navLinks = [
+    { label: "Home", href: "/#home" },
+    { label: "The Problem", href: "/#problem" },
+    {
+        label: "Exam Prep",
+        href: "/dashboard?section=exam-prep",
+        children: [
+            { label: "Self Study", href: "/dashboard?section=exam-prep&mode=self" },
+            { label: "Coaching Institutes", href: "/dashboard?section=exam-prep&mode=coaching" },
+        ],
+    },
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "FAQ", href: "/#faq" },
+];
 
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -49,7 +63,6 @@ export default function Header() {
     const headerSurfaceClass = isSolidHeader
         ? "border-b border-black/10 bg-white/95 shadow-sm backdrop-blur-md"
         : "border-b border-transparent bg-transparent";
-    const brandLogoClass = isSolidHeader ? "" : "invert";
     const navTextClass = isSolidHeader
         ? "text-black/70 hover:text-black"
         : "text-white/80 hover:text-white";
@@ -86,26 +99,50 @@ export default function Header() {
                             aria-label="UniTracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
+                                src={isSolidHeader ? "/landing-page/black-logo.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={170}
                                 height={38}
                                 priority
-                                className={`h-auto w-[150px] transition duration-300 md:w-[170px] ${brandLogoClass}`}
+                                className="h-auto w-[150px] transition duration-300 md:w-[170px]"
                             />
                         </Link>
 
                         <nav className="flex items-center gap-7 text-sm font-medium">
-                            {LANDING_PRIMARY_NAV.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={(event) => handleNavLinkClick(event, item.href)}
-                                    className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
+                            {navLinks.map((item) =>
+                                item.children ? (
+                                    <div key={item.label} className="group relative">
+                                        <Link
+                                            href={item.href}
+                                            className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
+                                        >
+                                            {item.label}
+                                            <FiChevronDown className="text-xs transition-transform duration-200 group-hover:rotate-180" />
+                                        </Link>
+
+                                        <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-3 w-52 -translate-x-1/2 rounded-xl border border-black/10 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                                            {item.children.map((child) => (
+                                                <Link
+                                                    key={child.href}
+                                                    href={child.href}
+                                                    className="block rounded-lg px-3 py-2 text-sm text-black/80 transition-colors hover:bg-black/5 hover:text-black"
+                                                >
+                                                    {child.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={(event) => handleNavLinkClick(event, item.href)}
+                                        className={`inline-flex items-center gap-1 transition-colors duration-300 ${navTextClass}`}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                )
+                            )}
                         </nav>
 
                         <div className="flex items-center gap-4">
@@ -157,12 +194,12 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/logo.svg" : "/landing-page/black-logo.svg"}
+                                src={isSolidHeader ? "/landing-page/logos.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={150}
                                 height={34}
                                 priority
-                                className={`h-auto w-[140px] transition duration-300 ${brandLogoClass}`}
+                                className="h-auto w-[140px] transition duration-300"
                             />
                         </Link>
 
@@ -186,15 +223,39 @@ export default function Header() {
                     {mobileOpen && (
                         <div className="border-t border-black/10 py-4 lg:hidden">
                             <nav className="flex flex-col gap-3 text-sm font-medium text-black/80">
-                                {LANDING_PRIMARY_NAV.map((link) => (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
-                                        onClick={(event) => handleNavLinkClick(event, link.href)}
-                                    >
-                                        {link.label}
-                                    </Link>
+                                {navLinks.map((link) => (
+                                    link.children ? (
+                                        <div key={link.label} className="flex flex-col gap-1">
+                                            <Link
+                                                href={link.href}
+                                                className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
+                                                onClick={() => setMobileOpen(false)}
+                                            >
+                                                {link.label}
+                                            </Link>
+                                            <div className="ml-3 flex flex-col gap-1 border-l border-black/10 pl-3">
+                                                {link.children.map((child) => (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className="inline-flex items-center justify-between py-1 text-black/70 transition-colors hover:text-black"
+                                                        onClick={() => setMobileOpen(false)}
+                                                    >
+                                                        {child.label}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Link
+                                            key={link.href}
+                                            href={link.href}
+                                            className="inline-flex items-center justify-between py-1 text-black/80 transition-colors hover:text-black"
+                                            onClick={(event) => handleNavLinkClick(event, link.href)}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    )
                                 ))}
                             </nav>
 

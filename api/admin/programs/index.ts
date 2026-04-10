@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -79,7 +79,7 @@ export async function deleteProgram(id: number): Promise<ApiResponse<null>> {
  */
 export async function downloadProgramsBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.PROGRAMS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -99,7 +99,7 @@ export async function downloadProgramsBulkTemplate(): Promise<void> {
  */
 export async function downloadAllProgramsExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.PROGRAMS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -129,7 +129,7 @@ export async function bulkUploadPrograms(file: File): Promise<ApiResponse<{
   const adminToken = localStorage.getItem('admin_token');
   if (!adminToken) throw new Error('Admin token not found');
 
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.PROGRAMS}/bulk-upload`;
 
   const response = await fetch(url, {

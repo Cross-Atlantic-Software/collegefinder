@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -169,7 +169,7 @@ export interface LecturesBulkUploadResult {
 
 export async function downloadLecturesBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -186,7 +186,7 @@ export async function downloadLecturesBulkTemplate(): Promise<void> {
 
 export async function downloadLecturesAllExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -214,7 +214,7 @@ export async function bulkUploadLectures(
     thumbnailFiles.forEach((file) => formData.append('thumbnails', file));
   }
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/bulk-upload`;
   const res = await fetch(url, {
     method: 'POST',
@@ -239,7 +239,7 @@ export async function uploadMissingLectureThumbnails(
   const formData = new FormData();
   formData.append('thumbnails_zip', zipFile);
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/upload-missing-thumbnails`;
   const res = await fetch(url, {
     method: 'POST',

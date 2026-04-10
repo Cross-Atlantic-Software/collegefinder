@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -63,7 +63,7 @@ export async function uploadLoanProviderLogo(file: File): Promise<ApiResponse<{ 
   const formData = new FormData();
   formData.append('image', file);
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/upload-logo`;
   const res = await fetch(url, {
     method: 'POST',
@@ -149,7 +149,7 @@ export interface LoansBulkUploadResult {
 
 export async function downloadLoanProvidersBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -167,7 +167,7 @@ export async function downloadLoanProvidersBulkTemplate(): Promise<void> {
 /** Download all loan providers data as Excel (Super Admin only) */
 export async function downloadAllDataExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -193,7 +193,7 @@ export async function uploadMissingLogosLoanProviders(logosZipFile: File): Promi
   const formData = new FormData();
   formData.append('logos_zip', logosZipFile);
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/upload-missing-logos`;
   const res = await fetch(url, {
     method: 'POST',
@@ -218,7 +218,7 @@ export async function bulkUploadLoanProviders(
     logoFiles.forEach((file) => formData.append('logos', file));
   }
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LOANS}/bulk-upload`;
   const res = await fetch(url, {
     method: 'POST',

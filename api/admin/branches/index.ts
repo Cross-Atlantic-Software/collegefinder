@@ -1,10 +1,10 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
 // Same as client: in browser use relative /api so requests go through Next proxy; on server use env or localhost
 const getApiBase = () =>
-  typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  getApiBaseUrl();
 
 export interface Branch {
   id: number;

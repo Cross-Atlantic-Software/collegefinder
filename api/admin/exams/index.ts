@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -113,7 +113,7 @@ export async function uploadExamLogo(file: File): Promise<ApiResponse<{
     throw new Error('Admin token not found');
   }
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
   const apiUrl = `${API_BASE_URL}${API_ENDPOINTS.ADMIN.EXAMS}/upload-logo`;
   
   const response = await fetch(apiUrl, {
@@ -227,7 +227,7 @@ export interface BulkUploadResult {
  */
 export async function downloadBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -247,7 +247,7 @@ export async function downloadBulkTemplate(): Promise<void> {
  */
 export async function downloadAllDataExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
@@ -278,7 +278,7 @@ export async function uploadMissingLogos(logosZipFile: File): Promise<ApiRespons
   formData.append('logos_zip', logosZipFile);
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/upload-missing-logos`;
   const res = await fetch(url, {
     method: 'POST',
@@ -308,7 +308,7 @@ export async function bulkUploadExams(
   }
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/bulk-upload`;
   const res = await fetch(url, {
     method: 'POST',

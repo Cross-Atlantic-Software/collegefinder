@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import type { ApiResponse } from '../../types';
 import { API_ENDPOINTS } from '../../constants';
 import type { StrengthResultData } from '../../strength';
@@ -44,7 +44,7 @@ export async function updateCounsellorResults(userId: number, data: FormData): P
 /** Download bulk upload template (Excel) */
 export async function downloadCounsellorBulkTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.COUNSELLOR}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
@@ -62,7 +62,7 @@ export async function downloadCounsellorBulkTemplate(): Promise<void> {
 /** Download all strength results as Excel */
 export async function downloadAllCounsellorExcel(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.COUNSELLOR}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
