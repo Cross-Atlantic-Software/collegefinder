@@ -145,6 +145,8 @@ export interface BulkUploadResult {
   createdColleges: { id: number; name: string }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
+  /** CollegePrograms sheet/file rows referencing a college name not created in this run. */
+  programSheetWarnings?: string[];
 }
 
 export async function downloadCollegesBulkTemplate(): Promise<void> {
@@ -208,10 +210,14 @@ export async function uploadMissingLogosColleges(logosZipFile: File): Promise<Ap
 export async function bulkUploadColleges(
   excelFile: File,
   logoFiles: File[] = [],
-  logosZipFile: File | null = null
+  logosZipFile: File | null = null,
+  programsExcelFile: File | null = null
 ): Promise<ApiResponse<BulkUploadResult>> {
   const formData = new FormData();
   formData.append('excel', excelFile);
+  if (programsExcelFile) {
+    formData.append('programs_excel', programsExcelFile);
+  }
   if (logosZipFile) {
     formData.append('logos_zip', logosZipFile);
   } else {

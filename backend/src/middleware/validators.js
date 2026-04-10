@@ -1919,7 +1919,15 @@ const validateCreateBranch = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array'),
+  body('program_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each program_ids entry must be a positive integer')
 ];
 
 const validateUpdateBranch = [
@@ -1936,7 +1944,15 @@ const validateUpdateBranch = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('program_ids')
+    .optional()
+    .isArray()
+    .withMessage('program_ids must be an array'),
+  body('program_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each program_ids entry must be a positive integer')
 ];
 
 module.exports = {

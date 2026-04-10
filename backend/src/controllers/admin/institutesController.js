@@ -19,7 +19,106 @@ function splitReferralContactEmails(raw) {
   return [...new Set(raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
 }
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
-const { splitList, parseDate, parseBool } = require('../../utils/bulkUploadUtils');
+const { splitList, parseDate, parseBool, getCell } = require('../../utils/bulkUploadUtils');
+
+/**
+ * Build map: lowercased institute_name -> array of course row objects (from InstituteCourses sheet / file).
+ */
+function groupInstituteCourseRowsToMap(rows) {
+  const map = new Map();
+  if (!rows || !rows.length) return map;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const instituteName = getCell(row, 'institute_name', 'institute_Name');
+    if (!instituteName) continue;
+    const course_name = getCell(row, 'course_name', 'course_Name');
+    if (!course_name) continue;
+    const key = instituteName.toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    const durationRaw = getCell(row, 'duration_months', 'duration_Months');
+    const dur = durationRaw !== '' ? parseInt(durationRaw, 10) : null;
+    const feesRaw = getCell(row, 'fees');
+    const feeVal = feesRaw !== '' ? parseFloat(feesRaw) : null;
+    const batchRaw = getCell(row, 'batch_size', 'batch_Size');
+    const batch = batchRaw !== '' ? parseInt(batchRaw, 10) : null;
+    const startRaw = getCell(row, 'start_date', 'start_Date');
+    const start_date = startRaw ? parseDate(startRaw) : null;
+    map.get(key).push({
+      institute_name: instituteName,
+      course_name,
+      target_class: getCell(row, 'target_class', 'target_Class') || null,
+      duration_months: dur != null && !Number.isNaN(dur) ? dur : null,
+      fees: feeVal != null && !Number.isNaN(feeVal) ? feeVal : null,
+      batch_size: batch != null && !Number.isNaN(batch) ? batch : null,
+      start_date
+    });
+  }
+  return map;
+}
+
+/**
+ * @param {import('xlsx').WorkBook} workbook
+ * @param {{ dedicatedCoursesFile: boolean }} opts - true when workbook is the optional courses_excel upload only
+ */
+function loadGroupedCoursesFromWorkbook(workbook, opts = { dedicatedCoursesFile: false }) {
+  if (!workbook?.SheetNames?.length) return new Map();
+  const names = workbook.SheetNames;
+  const norm = (n) => n.toLowerCase().replace(/\s+/g, '');
+  let sheetName = names.find((n) => {
+    const x = norm(n);
+    return x === 'institutecourses' || x === 'institute_courses';
+  });
+  if (!sheetName && names.length > 1) {
+    sheetName = names[1];
+  }
+  if (!sheetName && names.length === 1 && opts.dedicatedCoursesFile) {
+    sheetName = names[0];
+  }
+  if (!sheetName) return new Map();
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return new Map();
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+  return groupInstituteCourseRowsToMap(rows);
+}
+
+async function insertInstituteCoursesFromBucket(instituteId, bucket, courseNamesFilter, errors, rowNum) {
+  if (!bucket || !bucket.length) return;
+  let toInsert = bucket;
+  if (courseNamesFilter && courseNamesFilter.length > 0) {
+    toInsert = [];
+    for (const w of courseNamesFilter) {
+      const found = bucket.find((c) => String(c.course_name || '').toLowerCase() === w.toLowerCase());
+      if (!found) {
+        errors.push({
+          row: rowNum,
+          message: `course_names "${w}" has no matching row in the Institute Courses sheet for this institute`
+        });
+      } else if (!toInsert.includes(found)) {
+        toInsert.push(found);
+      }
+    }
+  }
+  for (const c of toInsert) {
+    await InstituteCourse.create({
+      institute_id: instituteId,
+      course_name: c.course_name || null,
+      target_class: c.target_class,
+      duration_months: c.duration_months,
+      fees: c.fees,
+      batch_size: c.batch_size,
+      start_date: c.start_date
+    });
+  }
+}
+
+function mergeGroupedCourseMaps(base, extra) {
+  const out = new Map(base);
+  for (const [k, arr] of extra) {
+    if (!out.has(k)) out.set(k, []);
+    out.get(k).push(...arr);
+  }
+  return out;
+}
 
 /** Student / exam-style rating: integer 1–5 only (null if empty/invalid; values above 5 coerced to 5). */
 function clampStudentRating(val) {
@@ -454,6 +553,7 @@ class InstitutesController {
         'student_rating',
         'exam_names',
         'specialization_exam_names',
+        'course_names',
         'courses'
       ];
       const wb = XLSX.utils.book_new();
@@ -475,7 +575,8 @@ class InstitutesController {
           '5',
           'JEE Main',
           'JEE Main',
-          'JEE Main|Class 12|12|50000|30|2025-01-01, NEET|Class 12|24|80000|25|2025-04-01'
+          'JEE Main Intensive; NEET Foundation',
+          ''
         ],
         [
           'Unacademy',
@@ -493,10 +594,42 @@ class InstitutesController {
           '4',
           'JEE Main',
           'JEE Main',
+          '',
           'Crash Course|Class 12|6|25000|100|2025-01-15'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Institutes');
+      const courseHeaders = [
+        'institute_name',
+        'course_name',
+        'target_class',
+        'duration_months',
+        'fees',
+        'batch_size',
+        'start_date'
+      ];
+      const wsCourses = XLSX.utils.aoa_to_sheet([
+        courseHeaders,
+        [
+          'Allen Kota',
+          'JEE Main Intensive',
+          'Class 12',
+          '12',
+          '50000',
+          '30',
+          '2025-01-01'
+        ],
+        [
+          'Allen Kota',
+          'NEET Foundation',
+          'Class 12',
+          '24',
+          '80000',
+          '25',
+          '2025-04-01'
+        ],
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsCourses, 'InstituteCourses');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=institutes-bulk-template.xlsx');
@@ -514,9 +647,12 @@ class InstitutesController {
       const headers = [
         'institute_name', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
-        'exam_names', 'specialization_exam_names', 'courses'
+        'exam_names', 'specialization_exam_names', 'course_names', 'courses'
       ];
       const rows = [headers];
+      const courseExportRows = [
+        ['institute_name', 'course_name', 'target_class', 'duration_months', 'fees', 'batch_size', 'start_date']
+      ];
       for (const inst of institutes) {
         const [details, examIds, specExamIds, statistics, courses] = await Promise.all([
           InstituteDetails.findByInstituteId(inst.id),
@@ -531,6 +667,22 @@ class InstitutesController {
         const coursesStr = (courses && courses.length)
           ? courses.map((co) => `${co.course_name || ''}|${co.target_class || ''}|${co.duration_months != null ? co.duration_months : ''}|${co.fees != null ? co.fees : ''}|${co.batch_size != null ? co.batch_size : ''}|${co.start_date ? String(co.start_date).slice(0, 10) : ''}`).join(';')
           : '';
+        const courseNamesStr = (courses && courses.length)
+          ? courses.map((co) => (co.course_name || '').trim()).filter(Boolean).join('; ')
+          : '';
+        if (courses && courses.length) {
+          for (const co of courses) {
+            courseExportRows.push([
+              inst.institute_name || '',
+              co.course_name || '',
+              co.target_class || '',
+              co.duration_months != null ? String(co.duration_months) : '',
+              co.fees != null ? String(co.fees) : '',
+              co.batch_size != null ? String(co.batch_size) : '',
+              co.start_date ? String(co.start_date).slice(0, 10) : ''
+            ]);
+          }
+        }
         const examNames = [];
         for (const eid of examIds || []) {
           const ex = await Exam.findById(eid);
@@ -557,12 +709,15 @@ class InstitutesController {
           studentRatingForExport(stats.student_rating),
           examNames.join(','),
           specExamNames.join(','),
+          courseNamesStr,
           coursesStr
         ]);
       }
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Institutes');
+      const wsCourses = XLSX.utils.aoa_to_sheet(courseExportRows);
+      XLSX.utils.book_append_sheet(wb, wsCourses, 'InstituteCourses');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=institutes-all-data.xlsx');
@@ -631,8 +786,27 @@ class InstitutesController {
         return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
       }
 
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+      let courseGrouped = loadGroupedCoursesFromWorkbook(workbook, { dedicatedCoursesFile: false });
+      const coursesExcelFile = req.files?.courses_excel?.[0];
+      if (coursesExcelFile?.buffer) {
+        try {
+          const wbCourses = XLSX.read(coursesExcelFile.buffer, { type: 'buffer', raw: true });
+          courseGrouped = mergeGroupedCourseMaps(
+            courseGrouped,
+            loadGroupedCoursesFromWorkbook(wbCourses, { dedicatedCoursesFile: true })
+          );
+        } catch (e) {
+          return res.status(400).json({ success: false, message: 'Invalid courses Excel file or format.' });
+        }
+      }
+
+      const normSheet = (n) => String(n).toLowerCase().replace(/\s+/g, '');
+      const institutesSheetName =
+        workbook.SheetNames.find((n) => normSheet(n) === 'institutes') || workbook.SheetNames[0];
+      const sheet = workbook.Sheets[institutesSheetName];
+      if (!sheet) {
+        return res.status(400).json({ success: false, message: 'Excel has no valid sheet for institutes.' });
+      }
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
       if (!rows.length) {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
@@ -678,7 +852,9 @@ class InstitutesController {
         const examIdsRaw = (row.exam_ids ?? row.exam_Ids ?? '').toString().trim();
         const specializationExamNamesRaw = (row.specialization_exam_names ?? row.specialization_exam_Names ?? '').toString().trim();
         const specializationExamIdsRaw = (row.specialization_exam_ids ?? row.specialization_exam_Ids ?? '').toString().trim();
+        const courseNamesRaw = getCell(row, 'course_names', 'course_Names');
         const coursesRaw = (row.courses ?? '').toString().trim();
+        const courseNamesFilter = splitList(courseNamesRaw);
 
         let logoUrl = null;
         if (logoFilename) {
@@ -740,7 +916,10 @@ class InstitutesController {
             specExamIds = specializationExamIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
           }
           if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
-          if (coursesRaw) {
+          const bucket = courseGrouped.get(name.toLowerCase()) || [];
+          if (bucket.length > 0) {
+            await insertInstituteCoursesFromBucket(institute.id, bucket, courseNamesFilter, errors, rowNum);
+          } else if (coursesRaw) {
             const courseRows = splitList(coursesRaw);
             for (const cr of courseRows) {
               const [course_name, target_class, duration_months, fees, batch_size, start_dateRaw] = cr.split('|').map((s) => s.trim());
@@ -766,13 +945,25 @@ class InstitutesController {
         }
       }
 
+      const createdNamesLower = new Set(created.map((c) => c.name.toLowerCase()));
+      const courseSheetWarnings = [];
+      for (const [key, arr] of courseGrouped) {
+        if (!createdNamesLower.has(key) && arr.length) {
+          const label = arr[0].institute_name || key;
+          courseSheetWarnings.push(
+            `Institute Courses data references "${label}" but that institute was not created in this upload (${arr.length} course row(s)).`
+          );
+        }
+      }
+
       res.json({
         success: true,
         data: {
           created: created.length,
           createdInstitutes: created,
           errors: errors.length,
-          errorDetails: errors
+          errorDetails: errors,
+          courseSheetWarnings
         },
         message: `Created ${created.length} institute(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
       });

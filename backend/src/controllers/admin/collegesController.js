@@ -14,7 +14,318 @@ const Branch = require('../../models/taxonomy/Branch');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
-const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
+const { splitList, parseDate, getCell } = require('../../utils/bulkUploadUtils');
+
+/**
+ * Seat matrix, previous & expected cutoff strings — same format as one cell in the inline college row.
+ */
+async function addProgramCutoffsAndSeatMatrix(collegeProgramId, seatMatrixBlock, previousYearCutoffBlock, expectedCutoffBlock) {
+  const seatMatrixRaw = (seatMatrixBlock ?? '').toString().trim();
+  const previousYearCutoffRaw = (previousYearCutoffBlock ?? '').toString().trim();
+  const expectedCutoffRaw = (expectedCutoffBlock ?? '').toString().trim();
+
+  if (seatMatrixRaw) {
+    const seatEntries = seatMatrixRaw.split(',').map((s) => s.trim());
+    for (const ent of seatEntries) {
+      if (!ent) continue;
+      let branch = null;
+      let category = null;
+      let seat_count = null;
+      let year = null;
+      if (ent.includes(':')) {
+        const [left, countPart] = ent.split(':').map((x) => x.trim());
+        seat_count = countPart ? parseInt(countPart, 10) : null;
+        if (left && left.includes('-')) {
+          const dashIdx = left.lastIndexOf('-');
+          branch = left.slice(0, dashIdx).trim() || null;
+          category = left.slice(dashIdx + 1).trim() || null;
+        } else {
+          category = left || null;
+        }
+      } else if (ent.includes('|')) {
+        const parts = ent.split('|').map((x) => x.trim());
+        category = parts[0] || null;
+        seat_count = parts[1] ? parseInt(parts[1], 10) : null;
+        year = parts[2] ? parseInt(parts[2], 10) : null;
+      }
+      if (branch || category || seat_count || year) {
+        await CollegeSeatMatrix.create({
+          college_program_id: collegeProgramId,
+          branch: branch || null,
+          category: category || null,
+          seat_count: isNaN(seat_count) ? null : seat_count,
+          year: isNaN(year) ? null : year
+        });
+      }
+    }
+  }
+
+  if (previousYearCutoffRaw) {
+    const prevRecords = previousYearCutoffRaw.split(';').map((s) => s.trim());
+    for (const rec of prevRecords) {
+      if (!rec) continue;
+      const parts = rec.split('|').map((x) => x.trim());
+      const examName = parts[0];
+      const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
+      const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
+      const ex = examName ? await Exam.findByName(examName) : null;
+      if (!ex) continue;
+      if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
+        const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
+        for (const p of pairStrs) {
+          const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
+          const cutoff_rank = rankStr ? parseInt(rankStr, 10) : null;
+          let br = null;
+          let category = null;
+          if (left && left.includes('-')) {
+            const dashIdx = left.lastIndexOf('-');
+            br = left.slice(0, dashIdx).trim() || null;
+            category = left.slice(dashIdx + 1).trim() || null;
+          } else {
+            category = left || null;
+          }
+          if (br || category || cutoff_rank) {
+            await CollegePreviousCutoff.create({
+              college_program_id: collegeProgramId,
+              exam_id: ex.id,
+              branch: br,
+              category,
+              cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
+              year: yearStr ? parseInt(yearStr, 10) : null
+            });
+          }
+        }
+      } else {
+        const category = parts[1] || null;
+        const cutoff_rank = parts[2] ? parseInt(parts[2], 10) : null;
+        const yr = parts[3] ? parseInt(parts[3], 10) : null;
+        await CollegePreviousCutoff.create({
+          college_program_id: collegeProgramId,
+          exam_id: ex.id,
+          branch: null,
+          category,
+          cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
+          year: isNaN(yr) ? null : yr
+        });
+      }
+    }
+  }
+
+  if (expectedCutoffRaw) {
+    const expRecords = expectedCutoffRaw.split(';').map((s) => s.trim());
+    for (const rec of expRecords) {
+      if (!rec) continue;
+      const parts = rec.split('|').map((x) => x.trim());
+      const examName = parts[0];
+      const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
+      const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
+      const ex = examName ? await Exam.findByName(examName) : null;
+      if (!ex) continue;
+      if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
+        const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
+        for (const p of pairStrs) {
+          const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
+          const expected_rank = rankStr ? parseInt(rankStr, 10) : null;
+          let br = null;
+          let category = null;
+          if (left && left.includes('-')) {
+            const dashIdx = left.lastIndexOf('-');
+            br = left.slice(0, dashIdx).trim() || null;
+            category = left.slice(dashIdx + 1).trim() || null;
+          } else {
+            category = left || null;
+          }
+          if (br || category || expected_rank) {
+            await CollegeExpectedCutoff.create({
+              college_program_id: collegeProgramId,
+              exam_id: ex.id,
+              branch: br,
+              category,
+              expected_rank: isNaN(expected_rank) ? null : expected_rank,
+              year: yearStr ? parseInt(yearStr, 10) : null
+            });
+          }
+        }
+      } else {
+        const category = parts[1] || null;
+        const expected_rank = parts[2] ? parseInt(parts[2], 10) : null;
+        const yr = parts[3] ? parseInt(parts[3], 10) : null;
+        await CollegeExpectedCutoff.create({
+          college_program_id: collegeProgramId,
+          exam_id: ex.id,
+          branch: null,
+          category,
+          expected_rank: isNaN(expected_rank) ? null : expected_rank,
+          year: isNaN(yr) ? null : yr
+        });
+      }
+    }
+  }
+}
+
+function groupCollegeProgramRowsToMap(rows) {
+  const map = new Map();
+  if (!rows || !rows.length) return map;
+  for (const row of rows) {
+    const collegeName = getCell(row, 'college_name', 'college_Name');
+    if (!collegeName) continue;
+    const program_name = getCell(row, 'program_name', 'program_Name');
+    if (!program_name) continue;
+    const key = collegeName.toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    const intakeRaw = getCell(row, 'intake_capacity', 'intake_Capacity');
+    const durRaw = getCell(row, 'duration_years', 'duration_Years', 'program_durations');
+    const feeSemRaw = getCell(row, 'fee_per_semester', 'fee_Per_Semester', 'fee_per_semesters');
+    const totalFeeRaw = getCell(row, 'total_fee', 'total_Fee', 'total_fees');
+    map.get(key).push({
+      college_name: collegeName,
+      program_name,
+      branch_course: getCell(row, 'branch_course', 'branch_Course') || null,
+      program_description: getCell(row, 'program_description', 'program_Description', 'program_descriptions') || null,
+      duration_unit: getCell(row, 'program_duration_unit', 'program_Duration_Unit', 'duration_unit') || 'years',
+      intake_capacity: intakeRaw !== '' ? parseInt(intakeRaw, 10) : null,
+      duration_years: durRaw !== '' ? parseInt(durRaw, 10) : null,
+      key_dates_summary: getCell(row, 'key_dates_summary', 'key_Dates_Summary', 'key_dates_summaries') || null,
+      fee_per_semester: feeSemRaw !== '' ? parseFloat(feeSemRaw) : null,
+      total_fee: totalFeeRaw !== '' ? parseFloat(totalFeeRaw) : null,
+      placement: getCell(row, 'placement', 'placements') || null,
+      scholarship: getCell(row, 'scholarship', 'scholarships') || null,
+      counselling_process: getCell(row, 'counselling_process', 'counselling_Process', 'counselling_processes') || null,
+      documents_required: getCell(row, 'documents_required', 'documents_Required', 'documents_requireds') || null,
+      recommended_exam_names: getCell(row, 'recommended_exam_names', 'recommended_exam_Names') || null,
+      contact_email: getCell(row, 'contact_email', 'contact_Email', 'contact_emails') || null,
+      contact_number: getCell(row, 'contact_number', 'contact_Number', 'contact_numbers') || null,
+      brochure_url: getCell(row, 'brochure_url', 'brochure_Url', 'brochure_urls') || null,
+      seat_matrix: getCell(row, 'seat_matrix', 'seat_Matrix') || null,
+      previous_year_cutoff: getCell(row, 'previous_year_cutoff', 'previous_year_Cutoff') || null,
+      expected_cutoff: getCell(row, 'expected_cutoff', 'expected_Cutoff') || null
+    });
+  }
+  return map;
+}
+
+function loadGroupedProgramsFromWorkbook(workbook, opts = { dedicatedProgramsFile: false }) {
+  if (!workbook?.SheetNames?.length) return new Map();
+  const names = workbook.SheetNames;
+  const norm = (n) => String(n).toLowerCase().replace(/\s+/g, '');
+  let sheetName = names.find((n) => {
+    const x = norm(n);
+    return x === 'collegeprograms' || x === 'college_programs';
+  });
+  if (!sheetName && names.length > 1) {
+    sheetName = names[1];
+  }
+  if (!sheetName && names.length === 1 && opts.dedicatedProgramsFile) {
+    sheetName = names[0];
+  }
+  if (!sheetName) return new Map();
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return new Map();
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+  return groupCollegeProgramRowsToMap(rows);
+}
+
+function mergeGroupedProgramMaps(base, extra) {
+  const out = new Map(base);
+  for (const [k, arr] of extra) {
+    if (!out.has(k)) out.set(k, []);
+    out.get(k).push(...arr);
+  }
+  return out;
+}
+
+function programRowMatchesPickToken(token, row) {
+  const t = String(token).trim();
+  if (!t) return false;
+  const pipe = t.indexOf('|');
+  const pname = (pipe >= 0 ? t.slice(0, pipe) : t).trim().toLowerCase();
+  const wantBranch = pipe >= 0 ? t.slice(pipe + 1).trim().toLowerCase() : '';
+  if ((row.program_name || '').trim().toLowerCase() !== pname) return false;
+  if (!wantBranch) return true;
+  return (row.branch_course || '').trim().toLowerCase() === wantBranch;
+}
+
+async function createCollegeProgramFromSheetRow(collegeId, entry, errors, rowNum) {
+  const prog = await Program.findByNameCaseInsensitive(entry.program_name);
+  if (!prog) {
+    errors.push({
+      row: rowNum,
+      message: `Unknown program name "${entry.program_name}" (CollegePrograms sheet for "${entry.college_name}")`
+    });
+    return;
+  }
+  let branchId = null;
+  const branchNameExcel = entry.branch_course ? String(entry.branch_course).trim() : '';
+  if (branchNameExcel) {
+    const branch = await Branch.findByNameCaseInsensitive(branchNameExcel);
+    if (branch) branchId = branch.id;
+  }
+  let progRecommendedExamIds = null;
+  if (entry.recommended_exam_names) {
+    const enames = String(entry.recommended_exam_names)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const eids = [];
+    for (const en of enames) {
+      const ex = await Exam.findByName(en);
+      if (ex) eids.push(ex.id);
+    }
+    if (eids.length > 0) progRecommendedExamIds = eids.join(',');
+  }
+  const intake_capacity = entry.intake_capacity != null && !Number.isNaN(entry.intake_capacity) ? entry.intake_capacity : null;
+  const duration_years = entry.duration_years != null && !Number.isNaN(entry.duration_years) ? entry.duration_years : null;
+  const feePs = entry.fee_per_semester != null && !Number.isNaN(entry.fee_per_semester) ? entry.fee_per_semester : null;
+  const totalFee = entry.total_fee != null && !Number.isNaN(entry.total_fee) ? entry.total_fee : null;
+  const cp = await CollegeProgram.create({
+    college_id: collegeId,
+    program_id: prog.id,
+    intake_capacity,
+    duration_years,
+    branch_id: branchId,
+    branch_course: entry.branch_course || null,
+    program_description: entry.program_description || null,
+    duration_unit: entry.duration_unit || 'years',
+    key_dates_summary: entry.key_dates_summary || null,
+    fee_per_semester: feePs,
+    total_fee: totalFee,
+    placement: entry.placement || null,
+    scholarship: entry.scholarship || null,
+    counselling_process: entry.counselling_process || null,
+    documents_required: entry.documents_required || null,
+    recommended_exam_ids: progRecommendedExamIds,
+    contact_email: entry.contact_email || null,
+    contact_number: entry.contact_number || null,
+    brochure_url: entry.brochure_url || null
+  });
+  if (cp && cp.id) {
+    await addProgramCutoffsAndSeatMatrix(cp.id, entry.seat_matrix, entry.previous_year_cutoff, entry.expected_cutoff);
+  }
+}
+
+async function insertCollegeProgramsFromBucket(collegeId, bucket, pickTokens, errors, rowNum) {
+  if (!bucket || !bucket.length) return;
+  let toInsert = bucket;
+  if (pickTokens && pickTokens.length > 0) {
+    toInsert = [];
+    for (const tok of pickTokens) {
+      const matches = bucket.filter((b) => programRowMatchesPickToken(tok, b));
+      if (!matches.length) {
+        errors.push({
+          row: rowNum,
+          message: `bulk_program_names "${tok}" has no matching row in CollegePrograms for this college`
+        });
+      } else {
+        for (const m of matches) {
+          if (!toInsert.includes(m)) toInsert.push(m);
+        }
+      }
+    }
+  }
+  for (const e of toInsert) {
+    await createCollegeProgramFromSheetRow(collegeId, e, errors, rowNum);
+  }
+}
 
 async function resolveRecommendedExamIds(body) {
   if (body.recommendedExamNames && Array.isArray(body.recommendedExamNames) && body.recommendedExamNames.length > 0) {
@@ -462,6 +773,7 @@ class CollegesController {
         'website',
         'logo_filename',
         'college_description',
+        'bulk_program_names',
         'program_names',
         'branch_courses',
         'program_descriptions',
@@ -496,6 +808,7 @@ class CollegesController {
           'https://www.iitd.ac.in',
           'iit_delhi.png',
           'Premier engineering institute.',
+          '',
           'B.Tech; M.Tech',
           'Computer Science; Electronics',
           'Undergraduate program; Postgraduate program',
@@ -527,7 +840,8 @@ class CollegesController {
           'https://www.sce.ac.in',
           'state_eng.png',
           'State level engineering college.',
-          'B.Tech',
+          '',
+          '',
           'Computer Science',
           'Undergraduate engineering program',
           'years',
@@ -551,6 +865,56 @@ class CollegesController {
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Colleges');
+      const collegeProgramsHeaders = [
+        'college_name',
+        'program_name',
+        'branch_course',
+        'program_description',
+        'program_duration_unit',
+        'duration_years',
+        'intake_capacity',
+        'previous_year_cutoff',
+        'expected_cutoff',
+        'key_dates_summary',
+        'fee_per_semester',
+        'total_fee',
+        'counselling_process',
+        'documents_required',
+        'placement',
+        'scholarship',
+        'recommended_exam_names',
+        'contact_email',
+        'contact_number',
+        'brochure_url',
+        'seat_matrix'
+      ];
+      const wsPrograms = XLSX.utils.aoa_to_sheet([
+        collegeProgramsHeaders,
+        [
+          'State College of Engineering',
+          'B.Tech',
+          'Computer Science',
+          'Undergraduate engineering program',
+          'years',
+          '4',
+          '100',
+          'JEE Main|CSE-GEN:2000|2024',
+          'JEE Main|CSE-GEN:1800|2025',
+          'Applications open Feb 2025',
+          '80000',
+          '320000',
+          'State counselling',
+          'Marksheet',
+          'Average 6 LPA',
+          'SC/ST fee waiver',
+          'JEE Main',
+          'admissions@sce.ac.in',
+          '022-12345678',
+          'https://sce.ac.in/brochure.pdf',
+          'CSE-general:80, CSE-OBC:20'
+        ]
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsPrograms, 'CollegePrograms');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=colleges-bulk-template.xlsx');
@@ -567,7 +931,7 @@ class CollegesController {
       const colleges = await College.findAll();
       const headers = [
         'college_name', 'college_location', 'google_map_link', 'college_type', 'major_program_names', 'website',
-        'logo_filename', 'college_description',
+        'logo_filename', 'college_description', 'bulk_program_names',
         'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
         'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
         'key_dates_summaries', 'fee_per_semesters', 'total_fees',
@@ -576,6 +940,31 @@ class CollegesController {
         'seat_matrix', 'key_dates'
       ];
       const rows = [headers];
+      const programExportRows = [
+        [
+          'college_name',
+          'program_name',
+          'branch_course',
+          'program_description',
+          'program_duration_unit',
+          'duration_years',
+          'intake_capacity',
+          'previous_year_cutoff',
+          'expected_cutoff',
+          'key_dates_summary',
+          'fee_per_semester',
+          'total_fee',
+          'counselling_process',
+          'documents_required',
+          'placement',
+          'scholarship',
+          'recommended_exam_names',
+          'contact_email',
+          'contact_number',
+          'brochure_url',
+          'seat_matrix'
+        ]
+      ];
       for (const c of colleges) {
         const [keyDates, docs, counselling, recExamIds, programs] = await Promise.all([
           CollegeKeyDates.findByCollegeId(c.id),
@@ -692,6 +1081,33 @@ class CollegesController {
             expStrs.push(`${en}|${pairStrs.join(',')}|${year ?? ''}`);
           }
           expectedCutoffBlocks.push(expStrs.join('; '));
+          const seatStr = seatMatrixBlocks[seatMatrixBlocks.length - 1];
+          const prevStr = previousCutoffBlocks[previousCutoffBlocks.length - 1];
+          const expStr = expectedCutoffBlocks[expectedCutoffBlocks.length - 1];
+          const progRecStr = progRecExamsArr[progRecExamsArr.length - 1];
+          programExportRows.push([
+            c.college_name || '',
+            prog && prog.name ? prog.name : String(p.program_id),
+            p.branch_course || '',
+            p.program_description || '',
+            p.duration_unit || 'years',
+            p.duration_years != null ? String(p.duration_years) : '',
+            p.intake_capacity != null ? String(p.intake_capacity) : '',
+            prevStr,
+            expStr,
+            p.key_dates_summary || '',
+            p.fee_per_semester != null ? String(p.fee_per_semester) : '',
+            p.total_fee != null ? String(p.total_fee) : '',
+            p.counselling_process || '',
+            p.documents_required || '',
+            p.placement || '',
+            p.scholarship || '',
+            progRecStr,
+            p.contact_email || '',
+            p.contact_number || '',
+            p.brochure_url || '',
+            seatStr
+          ]);
         }
         const logoFilename = (c.college_logo && typeof c.college_logo === 'string' && c.college_logo.split('/').pop()) ? c.college_logo.split('/').pop() : '';
         const collegeDetails = await CollegeDetails.findByCollegeId(c.id);
@@ -716,6 +1132,7 @@ class CollegesController {
           c.website || '',
           logoFilename,
           desc,
+          '',
           programNamesArr.join('; '),
           branchCoursesArr.join('; '),
           programDescsArr.join('; '),
@@ -742,6 +1159,8 @@ class CollegesController {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Colleges');
+      const wsPrograms = XLSX.utils.aoa_to_sheet(programExportRows);
+      XLSX.utils.book_append_sheet(wb, wsPrograms, 'CollegePrograms');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=colleges-all-data.xlsx');
@@ -810,8 +1229,27 @@ class CollegesController {
         return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
       }
 
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+      let programGrouped = loadGroupedProgramsFromWorkbook(workbook, { dedicatedProgramsFile: false });
+      const programsExcelFile = req.files?.programs_excel?.[0];
+      if (programsExcelFile?.buffer) {
+        try {
+          const wbProg = XLSX.read(programsExcelFile.buffer, { type: 'buffer', raw: true });
+          programGrouped = mergeGroupedProgramMaps(
+            programGrouped,
+            loadGroupedProgramsFromWorkbook(wbProg, { dedicatedProgramsFile: true })
+          );
+        } catch (e) {
+          return res.status(400).json({ success: false, message: 'Invalid programs Excel file or format.' });
+        }
+      }
+
+      const normSheet = (n) => String(n).toLowerCase().replace(/\s+/g, '');
+      const collegesSheetName =
+        workbook.SheetNames.find((n) => normSheet(n) === 'colleges') || workbook.SheetNames[0];
+      const sheet = workbook.Sheets[collegesSheetName];
+      if (!sheet) {
+        return res.status(400).json({ success: false, message: 'Excel has no valid sheet for colleges.' });
+      }
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
       if (!rows.length) {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
@@ -854,6 +1292,7 @@ class CollegesController {
         const counsellingRaw = (row.counselling_process ?? row.counselling_Process ?? '').toString().trim();
         const recommendedExamNamesRaw = (row.recommended_exam_names ?? row.recommended_exam_Names ?? '').toString().trim();
         const recommendedExamIdsRaw = (row.recommended_exam_ids ?? row.recommended_exam_Ids ?? '').toString().trim();
+        const bulkProgramNamesRaw = getCell(row, 'bulk_program_names', 'bulk_Program_Names');
         const programNamesRaw = (row.program_names ?? row.program_Names ?? '').toString().trim();
         const programIdsRaw = (row.program_ids ?? row.program_Ids ?? '').toString().trim();
         const intakeCapacitiesRaw = (row.intake_capacities ?? row.intake_Capacities ?? '').toString().trim();
@@ -983,11 +1422,21 @@ class CollegesController {
           const brochureUrls = brochureUrlsRaw ? splitList(brochureUrlsRaw) : [];
           const recExamNamesByProg = recommendedExamNamesRaw ? splitList(recommendedExamNamesRaw) : [];
 
+          const programBucket = programGrouped.get(name.toLowerCase()) || [];
+          if (programBucket.length > 0) {
+            await insertCollegeProgramsFromBucket(
+              college.id,
+              programBucket,
+              splitList(bulkProgramNamesRaw),
+              errors,
+              rowNum
+            );
+          } else {
           const numPrograms = Math.max(programNames.length, programIds.length);
           for (let idx = 0; idx < numPrograms; idx++) {
             let programId = programIds[idx] != null ? parseInt(programIds[idx], 10) : null;
             if ((!programId || isNaN(programId)) && programNames[idx]) {
-              const prog = await Program.findByName(programNames[idx].trim());
+              const prog = await Program.findByNameCaseInsensitive(programNames[idx].trim());
               if (prog) programId = prog.id;
             }
             if (!programId) continue;
@@ -1019,6 +1468,7 @@ class CollegesController {
               duration_years: isNaN(duration_years) ? null : duration_years,
               branch_id: branchId,
               branch_course: branchCourses[idx] || null,
+              program_description: programDescriptions[idx] || null,
               duration_unit: programDurationUnits[idx] || 'years',
               key_dates_summary: keyDatesSummaries[idx] || null,
               fee_per_semester: feePerSemesters[idx] ? parseFloat(feePerSemesters[idx]) : null,
@@ -1033,139 +1483,30 @@ class CollegesController {
               brochure_url: brochureUrls[idx] || null
             });
             if (cp && cp.id) {
-              const seatEntries = seatMatrixBlocks[idx] ? seatMatrixBlocks[idx].split(',').map((s) => s.trim()) : [];
-              for (const ent of seatEntries) {
-                if (!ent) continue;
-                let branch = null;
-                let category = null;
-                let seat_count = null;
-                let year = null;
-                if (ent.includes(':')) {
-                  const [left, countPart] = ent.split(':').map((x) => x.trim());
-                  seat_count = countPart ? parseInt(countPart, 10) : null;
-                  if (left && left.includes('-')) {
-                    const dashIdx = left.lastIndexOf('-');
-                    branch = left.slice(0, dashIdx).trim() || null;
-                    category = left.slice(dashIdx + 1).trim() || null;
-                  } else {
-                    category = left || null;
-                  }
-                } else if (ent.includes('|')) {
-                  const parts = ent.split('|').map((x) => x.trim());
-                  category = parts[0] || null;
-                  seat_count = parts[1] ? parseInt(parts[1], 10) : null;
-                  year = parts[2] ? parseInt(parts[2], 10) : null;
-                }
-                if (branch || category || seat_count || year) {
-                  await CollegeSeatMatrix.create({
-                    college_program_id: cp.id,
-                    branch: branch || null,
-                    category: category || null,
-                    seat_count: isNaN(seat_count) ? null : seat_count,
-                    year: isNaN(year) ? null : year
-                  });
-                }
-              }
-              const prevRecords = previousCutoffBlocks[idx] ? previousCutoffBlocks[idx].split(';').map((s) => s.trim()) : [];
-              for (const rec of prevRecords) {
-                const parts = rec.split('|').map((x) => x.trim());
-                const examName = parts[0];
-                const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
-                const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
-                const ex = examName ? await Exam.findByName(examName) : null;
-                if (!ex) continue;
-                if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
-                  const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
-                  for (const p of pairStrs) {
-                    const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
-                    const cutoff_rank = rankStr ? parseInt(rankStr, 10) : null;
-                    let branch = null;
-                    let category = null;
-                    if (left && left.includes('-')) {
-                      const dashIdx = left.lastIndexOf('-');
-                      branch = left.slice(0, dashIdx).trim() || null;
-                      category = left.slice(dashIdx + 1).trim() || null;
-                    } else {
-                      category = left || null;
-                    }
-                    if (branch || category || cutoff_rank) {
-                      await CollegePreviousCutoff.create({
-                        college_program_id: cp.id,
-                        exam_id: ex.id,
-                        branch,
-                        category,
-                        cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
-                        year: yearStr ? parseInt(yearStr, 10) : null
-                      });
-                    }
-                  }
-                } else {
-                  const category = parts[1] || null;
-                  const cutoff_rank = parts[2] ? parseInt(parts[2], 10) : null;
-                  const yr = parts[3] ? parseInt(parts[3], 10) : null;
-                  await CollegePreviousCutoff.create({
-                    college_program_id: cp.id,
-                    exam_id: ex.id,
-                    branch: null,
-                    category,
-                    cutoff_rank: isNaN(cutoff_rank) ? null : cutoff_rank,
-                    year: isNaN(yr) ? null : yr
-                  });
-                }
-              }
-              const expRecords = expectedCutoffBlocks[idx] ? expectedCutoffBlocks[idx].split(';').map((s) => s.trim()) : [];
-              for (const rec of expRecords) {
-                const parts = rec.split('|').map((x) => x.trim());
-                const examName = parts[0];
-                const yearStr = parts.length >= 3 ? parts[parts.length - 1] : '';
-                const pairsRaw = parts.length >= 2 ? parts.slice(1, parts.length - 1).join('|') : parts[1] || '';
-                const ex = examName ? await Exam.findByName(examName) : null;
-                if (!ex) continue;
-                if (pairsRaw.includes(':') && pairsRaw.includes('-')) {
-                  const pairStrs = pairsRaw.includes(',') ? pairsRaw.split(',') : [pairsRaw];
-                  for (const p of pairStrs) {
-                    const [left, rankStr] = p.trim().split(':').map((x) => x.trim());
-                    const expected_rank = rankStr ? parseInt(rankStr, 10) : null;
-                    let branch = null;
-                    let category = null;
-                    if (left && left.includes('-')) {
-                      const dashIdx = left.lastIndexOf('-');
-                      branch = left.slice(0, dashIdx).trim() || null;
-                      category = left.slice(dashIdx + 1).trim() || null;
-                    } else {
-                      category = left || null;
-                    }
-                    if (branch || category || expected_rank) {
-                      await CollegeExpectedCutoff.create({
-                        college_program_id: cp.id,
-                        exam_id: ex.id,
-                        branch,
-                        category,
-                        expected_rank: isNaN(expected_rank) ? null : expected_rank,
-                        year: yearStr ? parseInt(yearStr, 10) : null
-                      });
-                    }
-                  }
-                } else {
-                  const category = parts[1] || null;
-                  const expected_rank = parts[2] ? parseInt(parts[2], 10) : null;
-                  const yr = parts[3] ? parseInt(parts[3], 10) : null;
-                  await CollegeExpectedCutoff.create({
-                    college_program_id: cp.id,
-                    exam_id: ex.id,
-                    branch: null,
-                    category,
-                    expected_rank: isNaN(expected_rank) ? null : expected_rank,
-                    year: isNaN(yr) ? null : yr
-                  });
-                }
-              }
+              await addProgramCutoffsAndSeatMatrix(
+                cp.id,
+                seatMatrixBlocks[idx] || '',
+                previousCutoffBlocks[idx] || '',
+                expectedCutoffBlocks[idx] || ''
+              );
             }
+          }
           }
           created.push({ id: college.id, name: college.college_name });
           namesInFile.add(name.toLowerCase());
         } catch (createErr) {
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create college' });
+        }
+      }
+
+      const createdNamesLower = new Set(created.map((c) => c.name.toLowerCase()));
+      const programSheetWarnings = [];
+      for (const [key, arr] of programGrouped) {
+        if (!createdNamesLower.has(key) && arr.length) {
+          const label = arr[0].college_name || key;
+          programSheetWarnings.push(
+            `CollegePrograms data references "${label}" but that college was not created in this upload (${arr.length} program row(s)).`
+          );
         }
       }
 
@@ -1175,7 +1516,8 @@ class CollegesController {
           created: created.length,
           createdColleges: created,
           errors: errors.length,
-          errorDetails: errors
+          errorDetails: errors,
+          programSheetWarnings
         },
         message: `Created ${created.length} college(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
       });

@@ -18,6 +18,7 @@ import {
   deleteAllColleges,
   type College,
   type CollegeWithDetails,
+  type BulkUploadResult,
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
@@ -87,10 +88,11 @@ export default function CollegesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkProgramsExcelFile, setBulkProgramsExcelFile] = useState<File | null>(null);
   const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
   const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ created: number; createdColleges: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkUploadResult | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -452,7 +454,7 @@ export default function CollegesPage() {
     setBulkError(null);
     setBulkResult(null);
     try {
-      const res = await bulkUploadColleges(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile);
+      const res = await bulkUploadColleges(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkProgramsExcelFile);
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} college(s)`);
@@ -546,6 +548,7 @@ export default function CollegesPage() {
                   setBulkResult(null);
                   setBulkError(null);
                   setBulkExcelFile(null);
+                  setBulkProgramsExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
@@ -1050,6 +1053,16 @@ export default function CollegesPage() {
               </button>
             </div>
             <div className="p-5 overflow-auto space-y-5">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                The template includes a <strong>Colleges</strong> sheet and optional <strong>CollegePrograms</strong> sheet. Each program row lists{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">college_name</code> (must match the college row) and{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name</code> (must match a program in your taxonomy; stored as{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_id</code>). On the college row,{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">bulk_program_names</code> selects which program rows to attach (comma/semicolon); use{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name|branch_course</code> if you need to disambiguate. Leave{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">bulk_program_names</code> empty to attach every program row for that college. If there are no
+                program rows for a college, the legacy inline <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_names</code> columns are used instead.
+              </p>
               {canDownloadExcel && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
                   <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
@@ -1100,6 +1113,41 @@ export default function CollegesPage() {
 
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-900">
+                  Programs Excel <span className="text-xs font-normal text-slate-500">(optional)</span>
+                </p>
+                <label className="block w-full">
+                  <div
+                    className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[88px] ${bulkProgramsExcelFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}
+                  >
+                    <FiFile className={`h-8 w-8 ${bulkProgramsExcelFile ? 'text-[#341050]' : 'text-slate-400'}`} />
+                    <span className="text-sm font-medium text-slate-700 text-center px-2">
+                      {bulkProgramsExcelFile ? bulkProgramsExcelFile.name : 'Same layout as CollegePrograms sheet (separate workbook)'}
+                    </span>
+                    {bulkProgramsExcelFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setBulkProgramsExcelFile(null);
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBulkProgramsExcelFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-900">
                   Logos ZIP <span className="text-xs font-normal text-slate-500">(optional)</span>
                 </p>
                 <label className="block w-full">
@@ -1141,7 +1189,7 @@ export default function CollegesPage() {
                 </div>
               )}
               {bulkResult && (
-                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
+                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-2">
                   <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && (
                     <p className="text-amber-700">Errors: {bulkResult.errors} row(s)</p>
@@ -1152,6 +1200,16 @@ export default function CollegesPage() {
                         <li key={i}>Row {e.row}: {e.message}</li>
                       ))}
                     </ul>
+                  )}
+                  {bulkResult.programSheetWarnings && bulkResult.programSheetWarnings.length > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
+                      <p className="font-medium text-xs mb-1">Program sheet notices</p>
+                      <ul className="text-xs list-disc list-inside space-y-0.5">
+                        {bulkResult.programSheetWarnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}

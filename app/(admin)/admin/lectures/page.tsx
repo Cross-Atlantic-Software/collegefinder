@@ -118,7 +118,7 @@ export default function LecturesPage() {
       }
       if (!force && code === lastFetchedIframeRef.current) return;
 
-      setYoutubeDescHint('Fetching description from YouTube…');
+      setYoutubeDescHint('Fetching description and thumbnail from YouTube…');
       try {
         const res = await fetchYoutubeLectureMetadata(code);
         if (!res.success || !res.data) {
@@ -135,13 +135,24 @@ export default function LecturesPage() {
         }
         lastFetchedIframeRef.current = code;
         setFormData((prev) => ({ ...prev, description: res.data!.description || '' }));
+        if (res.data!.thumbnailUrl?.trim() && !thumbnailFile) {
+          setThumbnailPreview(res.data!.thumbnailUrl);
+        }
+        const hasDesc = !!res.data!.description?.trim();
+        const hasThumb = !!res.data!.thumbnailUrl?.trim();
         setYoutubeDescHint(
-          res.data!.description?.trim()
+          hasDesc
             ? null
             : 'YouTube returned no description for this video (the field may be empty on YouTube).'
         );
-        if (toastOnSuccess && res.data!.description?.trim()) {
-          showSuccess('Description loaded from YouTube');
+        if (toastOnSuccess && (hasDesc || hasThumb)) {
+          showSuccess(
+            hasDesc && hasThumb
+              ? 'Description and thumbnail preview loaded from YouTube'
+              : hasDesc
+                ? 'Description loaded from YouTube'
+                : 'Thumbnail preview loaded from YouTube'
+          );
         }
       } catch {
         const m = 'Network error — is the backend running and /api proxy correct?';
@@ -149,7 +160,7 @@ export default function LecturesPage() {
         showError(m);
       }
     },
-    [showError, showSuccess]
+    [showError, showSuccess, thumbnailFile]
   );
 
   useEffect(() => {
@@ -1137,10 +1148,10 @@ export default function LecturesPage() {
                             onClick={() => void applyYoutubeMetadata(iframeCode, true, true)}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#341050] text-white hover:opacity-90"
                           >
-                            Load description from YouTube
+                            Load description &amp; thumbnail from YouTube
                           </button>
                           <span className="text-xs text-slate-500">
-                            Or tab out of the field — it also loads after a short pause.
+                            Or tab out of the field — it also loads after a short pause. On save, the thumbnail is stored in S3 (like file uploads).
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-1.5">
@@ -1177,6 +1188,9 @@ export default function LecturesPage() {
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     Thumbnail
                   </label>
+                  <p className="text-[11px] text-slate-500 mb-1.5">
+                    For YouTube iframe videos, leave empty to use the video&apos;s thumbnail (fetched automatically on save, or preview via &quot;Load from YouTube&quot; above).
+                  </p>
                   {thumbnailPreview && (
                     <div className="mb-2">
                       <img
@@ -1473,7 +1487,8 @@ export default function LecturesPage() {
               <code className="bg-slate-100 px-1 rounded">exam_names</code>). Use <code className="bg-slate-100 px-1 rounded">description</code> for{' '}
               <code className="bg-slate-100 px-1 rounded">ARTICLE</code> rows and for <code className="bg-slate-100 px-1 rounded">VIDEO</code> rows with a{' '}
               <code className="bg-slate-100 px-1 rounded">video_file</code> URL. For <code className="bg-slate-100 px-1 rounded">VIDEO</code> +{' '}
-              <code className="bg-slate-100 px-1 rounded">iframe_code</code>, leave description blank to pull from YouTube, or fill it to override. Optional ZIP: names must match{' '}
+              <code className="bg-slate-100 px-1 rounded">iframe_code</code>, leave description blank to pull from YouTube, or fill it to override. Leave{' '}
+              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code> empty and skip the ZIP to auto-fetch the YouTube thumbnail to S3 (same as description). Optional ZIP: names must match{' '}
               <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code>.
             </p>
             <div className="space-y-3">

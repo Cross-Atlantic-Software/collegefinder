@@ -12,8 +12,10 @@ const { buildLogoMapFromRequest, processMissingLogosFromZip, parseLogosFromZip }
 const { splitList, parseBool, getCell } = require('../../utils/bulkUploadUtils');
 const {
   enrichDescriptionFromYoutubeIframe,
+  enrichThumbnailFromYoutubeIframe,
   extractYouTubeVideoId,
   fetchYouTubeSnippet,
+  pickBestThumbnailUrl,
   MAX_LECTURE_DESCRIPTION_LENGTH,
 } = require('../../utils/youtubeMetadata');
 const multer = require('multer');
@@ -154,12 +156,14 @@ class LectureController {
           message: 'Video not found or unavailable',
         });
       }
+      const thumbnailUrl = pickBestThumbnailUrl(meta.thumbnails);
       return res.json({
         success: true,
         data: {
           videoId,
           title: meta.title,
           description: meta.description,
+          thumbnailUrl: thumbnailUrl || null,
         },
       });
     } catch (error) {
@@ -245,6 +249,11 @@ class LectureController {
         description
       );
 
+      let finalThumbnail = thumbnail;
+      if (!finalThumbnail && effectiveIframe) {
+        finalThumbnail = await enrichThumbnailFromYoutubeIframe(effectiveIframe, null);
+      }
+
       const lecture = await Lecture.create({
         topic_id: parseInt(topic_id),
         subtopic_id: parseInt(subtopic_id),
@@ -253,7 +262,7 @@ class LectureController {
         video_file,
         iframe_code: content_type === 'VIDEO' ? iframeStored : null,
         article_content: content_type === 'ARTICLE' ? article_content : null,
-        thumbnail,
+        thumbnail: finalThumbnail,
         thumbnail_filename: thumbnail_filename != null ? String(thumbnail_filename).trim() || null : null,
         status: status !== undefined ? (status === 'true' || status === true) : true,
         description: finalDescription,
@@ -408,7 +417,6 @@ class LectureController {
         updateData.iframe_code = null;
       }
       if (article_content !== undefined) updateData.article_content = article_content;
-      if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
       if (status !== undefined) updateData.status = status === 'true' || status === true;
       if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order);
 
@@ -433,6 +441,18 @@ class LectureController {
         effectiveIframe,
         baseDesc
       );
+
+      const mergedThumbBefore =
+        thumbnail !== undefined ? thumbnail : existingLecture.thumbnail;
+      const finalThumbnail = await enrichThumbnailFromYoutubeIframe(
+        effectiveIframe,
+        mergedThumbBefore
+      );
+      if (finalThumbnail !== null && finalThumbnail !== existingLecture.thumbnail) {
+        updateData.thumbnail = finalThumbnail;
+      } else if (thumbnail !== undefined) {
+        updateData.thumbnail = thumbnail;
+      }
 
       const lecture = await Lecture.update(parseInt(id), updateData);
 
@@ -934,6 +954,11 @@ class LectureController {
           );
         }
 
+        let thumbnailFinal = thumbnail;
+        if (!thumbnailFinal && iframeNorm) {
+          thumbnailFinal = await enrichThumbnailFromYoutubeIframe(iframeNorm, null);
+        }
+
         try {
           const lecture = await Lecture.create({
             topic_id: topic.id,
@@ -943,7 +968,7 @@ class LectureController {
             video_file: content_type === 'VIDEO' ? video_file : null,
             iframe_code: content_type === 'VIDEO' ? iframe_code : null,
             article_content: content_type === 'ARTICLE' ? article_content : null,
-            thumbnail,
+            thumbnail: thumbnailFinal,
             thumbnail_filename: thumbFn ? String(thumbFn).trim() : null,
             status,
             description,

@@ -57,6 +57,14 @@ class User {
     return result.rows[0];
   }
 
+  /** Permanently delete a site user (cascades to related rows with ON DELETE CASCADE). */
+  static async deleteById(id) {
+    const userId = typeof id === 'string' ? parseInt(id, 10) : id;
+    if (isNaN(userId)) return null;
+    const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [userId]);
+    return result.rows[0] || null;
+  }
+
   static async updateName(id, name) {
     const result = await db.query(
       'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',

@@ -20,6 +20,7 @@ import {
   type InstituteDetails,
   type InstituteStatistics,
   type InstituteCourse,
+  type InstitutesBulkUploadResult,
 } from '@/api/admin/institutes';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiFileText, FiBarChart, FiBook } from 'react-icons/fi';
@@ -107,15 +108,11 @@ export default function InstitutesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkCoursesExcelFile, setBulkCoursesExcelFile] = useState<File | null>(null);
   const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
   const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{
-    created: number;
-    createdInstitutes: { id: number; name: string }[];
-    errors: number;
-    errorDetails: { row: number; message: string }[];
-  } | null>(null);
+  const [bulkResult, setBulkResult] = useState<InstitutesBulkUploadResult | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -499,7 +496,7 @@ export default function InstitutesPage() {
     setBulkError(null);
     setBulkResult(null);
     try {
-      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile);
+      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkCoursesExcelFile);
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} institute(s)`);
@@ -611,6 +608,7 @@ export default function InstitutesPage() {
                   setBulkResult(null);
                   setBulkError(null);
                   setBulkExcelFile(null);
+                  setBulkCoursesExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
@@ -1337,20 +1335,36 @@ export default function InstitutesPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Upload an Excel file (use template). Columns match the template:{' '}
-              <code className="bg-slate-100 px-1 rounded">google_maps_link</code> sits after{' '}
-              <code className="bg-slate-100 px-1 rounded">institute_location</code>. Optionally attach a ZIP of logos;
-              filenames must match the <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
+              Upload the institutes Excel (template includes sheet <strong>Institutes</strong> and optional{' '}
+              <strong>InstituteCourses</strong>). Each course row lists <code className="bg-slate-100 px-1 rounded text-xs">institute_name</code>{' '}
+              (same spelling as in the institutes sheet) and course fields. On the institutes sheet,{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">course_names</code> can list which courses to attach (comma or semicolon); leave
+              blank to attach every course row for that institute. You can still use the legacy{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">courses</code> column when there is no matching InstituteCourses data. Optionally
+              upload a <strong>separate</strong> courses workbook (field below) instead of the second sheet. Attach a ZIP of logos; filenames must
+              match <code className="bg-slate-100 px-1 rounded text-xs">logo_filename</code>.
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Institutes Excel *</label>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
                   className="w-full text-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Courses Excel (optional)</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkCoursesExcelFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Same column layout as the <strong>InstituteCourses</strong> sheet; merged with courses from the main file if both are present.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Logos (ZIP file)</label>
@@ -1383,9 +1397,21 @@ export default function InstitutesPage() {
               <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>
             )}
             {bulkResult && (
-              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
-                Created: {bulkResult.created}.{' '}
-                {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+              <div className="mt-3 space-y-2">
+                <div className="p-2 bg-green-50 text-green-800 text-sm rounded">
+                  Created: {bulkResult.created}.{' '}
+                  {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+                </div>
+                {bulkResult.courseSheetWarnings && bulkResult.courseSheetWarnings.length > 0 && (
+                  <div className="p-2 bg-amber-50 text-amber-900 text-sm rounded border border-amber-200">
+                    <p className="font-medium mb-1">Course sheet notices</p>
+                    <ul className="list-disc list-inside text-xs space-y-0.5">
+                      {bulkResult.courseSheetWarnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">

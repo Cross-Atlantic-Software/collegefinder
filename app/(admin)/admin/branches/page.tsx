@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllBranches, createBranch, updateBranch, deleteBranch, downloadBranchesBulkTemplate, downloadAllBranchesExcel, bulkUploadBranches, type Branch } from '@/api/admin/branches';
+import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect, type MultiSelectOption } from '@/components/shared';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function BranchesPage() {
@@ -20,7 +21,8 @@ export default function BranchesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', description: '', status: true });
+  const [formData, setFormData] = useState({ name: '', description: '', status: true, programIds: [] as string[] });
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,11 +35,24 @@ export default function BranchesPage() {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const { canDownloadExcel } = useAdminPermissions();
 
+  const programOptions: MultiSelectOption[] = programs.map((p) => ({
+    value: String(p.id),
+    label: p.name,
+  }));
+
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
     const adminToken = localStorage.getItem('admin_token');
     if (!isAuthenticated || !adminToken) { router.replace('/admin/login'); return; }
     fetchBranches();
+    (async () => {
+      try {
+        const pr = await getAllPrograms();
+        if (pr.success && pr.data?.programs) setPrograms(pr.data.programs.filter((p) => p.status !== false));
+      } catch {
+        /* ignore */
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -46,7 +61,14 @@ export default function BranchesPage() {
     const timer = setTimeout(() => {
       if (!searchQuery.trim()) { setBranches(allBranches); return; }
       const q = searchQuery.toLowerCase();
-      setBranches(allBranches.filter(b => b.name.toLowerCase().includes(q) || (b.description && b.description.toLowerCase().includes(q))));
+      setBranches(
+        allBranches.filter(
+          (b) =>
+            b.name.toLowerCase().includes(q) ||
+            (b.description && b.description.toLowerCase().includes(q)) ||
+            (b.program_names && b.program_names.toLowerCase().includes(q))
+        )
+      );
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, allBranches]);
@@ -66,12 +88,25 @@ export default function BranchesPage() {
     setError(null);
     if (!formData.name.trim()) { setError('Name is required'); return; }
     try {
+      const program_ids = formData.programIds
+        .map((id) => parseInt(id, 10))
+        .filter((n) => Number.isInteger(n) && n > 0);
       if (editingBranch) {
-        const res = await updateBranch(editingBranch.id, formData);
+        const res = await updateBranch(editingBranch.id, {
+          name: formData.name,
+          description: formData.description,
+          status: formData.status,
+          program_ids,
+        });
         if (res.success) { showSuccess('Branch updated'); setShowModal(false); resetForm(); fetchBranches(); }
         else { setError(res.message || 'Failed to update'); showError(res.message || 'Failed to update'); }
       } else {
-        const res = await createBranch(formData);
+        const res = await createBranch({
+          name: formData.name,
+          description: formData.description,
+          status: formData.status,
+          program_ids,
+        });
         if (res.success) { showSuccess('Branch created'); setShowModal(false); resetForm(); fetchBranches(); }
         else { setError(res.message || 'Failed to create'); showError(res.message || 'Failed to create'); }
       }
@@ -92,12 +127,17 @@ export default function BranchesPage() {
 
   const handleEdit = (branch: Branch) => {
     setEditingBranch(branch);
-    setFormData({ name: branch.name, description: branch.description || '', status: branch.status });
+    setFormData({
+      name: branch.name,
+      description: branch.description || '',
+      status: branch.status,
+      programIds: (branch.program_ids ?? []).map(String),
+    });
     setShowModal(true);
   };
 
   const handleCreate = () => { setEditingBranch(null); resetForm(); setShowModal(true); };
-  const resetForm = () => { setFormData({ name: '', description: '', status: true }); setError(null); };
+  const resetForm = () => { setFormData({ name: '', description: '', status: true, programIds: [] }); setError(null); };
   const handleModalClose = () => { setShowModal(false); setEditingBranch(null); resetForm(); };
 
   const handleDownloadTemplate = async () => {
@@ -157,7 +197,7 @@ export default function BranchesPage() {
               </button>
               <div className="relative">
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input type="text" placeholder="Search by name or description" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64" />
+                <input type="text" placeholder="Search name, description, or programs" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64" />
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -187,6 +227,7 @@ export default function BranchesPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">DESCRIPTION</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PROGRAMS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CREATED</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
@@ -194,11 +235,12 @@ export default function BranchesPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {branches.length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">{branches.length < allBranches.length ? 'No branches found matching your search' : 'No branches found'}</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">{branches.length < allBranches.length ? 'No branches found matching your search' : 'No branches found'}</td></tr>
                     ) : branches.map((branch) => (
                       <tr key={branch.id} className="hover:bg-[#F6F8FA]">
                         <td className="px-4 py-2"><span className="text-sm font-medium text-slate-900">{branch.name}</span></td>
                         <td className="px-4 py-2"><span className="text-sm text-slate-600 line-clamp-1">{branch.description || '-'}</span></td>
+                        <td className="px-4 py-2 max-w-[200px]"><span className="text-sm text-slate-600 line-clamp-2" title={branch.program_names || ''}>{branch.program_names?.trim() ? branch.program_names : '—'}</span></td>
                         <td className="px-4 py-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${branch.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             {branch.status ? 'Active' : 'Inactive'}
@@ -235,6 +277,16 @@ export default function BranchesPage() {
                   <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none" placeholder="Brief description of the branch / course..." />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Programs</label>
+                  <MultiSelect
+                    options={programOptions}
+                    value={formData.programIds}
+                    onChange={(ids) => setFormData({ ...formData, programIds: ids })}
+                    placeholder="Select one or more programs…"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">Linked to taxonomy programs (same names as in Programs manager).</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="status" checked={formData.status === true} onChange={() => setFormData({ ...formData, status: true })} className="w-4 h-4 text-[#341050] border-slate-300 focus:ring-[#341050]/25" /><span className="text-sm text-slate-700">Active</span></label>
@@ -263,18 +315,19 @@ export default function BranchesPage() {
             <div className="flex-1 overflow-auto p-4 space-y-4">
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-slate-600 mb-3">Your Excel file must have these columns.</p>
+                <p className="text-xs text-slate-600 mb-3">Your Excel file must have these columns. Use <span className="font-mono">program_names</span> with program display names separated by comma or semicolon (matched case-insensitively to Programs).</p>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead><tr className="bg-slate-100">
                       <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">name</th>
                       <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">description</th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">status</th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">status</th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">program_names</th>
                     </tr></thead>
                     <tbody>
-                      <tr className="border-b border-slate-200"><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Computer Science</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">CS & IT programs</td><td className="px-3 py-2 text-slate-800">TRUE</td></tr>
-                      <tr className="border-b border-slate-200"><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Electronics & Communication</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">ECE branch</td><td className="px-3 py-2 text-slate-800">TRUE</td></tr>
-                      <tr><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Mechanical Engineering</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">ME branch</td><td className="px-3 py-2 text-slate-800">TRUE</td></tr>
+                      <tr className="border-b border-slate-200"><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Computer Science</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">CS & IT programs</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td><td className="px-3 py-2 text-slate-800">B.Tech; M.Tech</td></tr>
+                      <tr className="border-b border-slate-200"><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Electronics & Communication</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">ECE branch</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td><td className="px-3 py-2 text-slate-800">B.Tech</td></tr>
+                      <tr><td className="px-3 py-2 text-slate-800 border-r border-slate-200">Mechanical Engineering</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">ME branch</td><td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td><td className="px-3 py-2 text-slate-800">—</td></tr>
                     </tbody>
                   </table>
                 </div>

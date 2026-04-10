@@ -173,6 +173,8 @@ export interface InstitutesBulkUploadResult {
   createdInstitutes: { id: number; name: string }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
+  /** Rows in Institute Courses file/sheet that reference an institute name not created in this run. */
+  courseSheetWarnings?: string[];
 }
 
 export interface UploadMissingLogosResult {
@@ -236,10 +238,14 @@ export async function downloadAllDataExcel(): Promise<void> {
 export async function bulkUploadInstitutes(
   excelFile: File,
   logoFiles: File[] = [],
-  logosZipFile: File | null = null
+  logosZipFile: File | null = null,
+  coursesExcelFile: File | null = null
 ): Promise<ApiResponse<InstitutesBulkUploadResult>> {
   const formData = new FormData();
   formData.append('excel', excelFile);
+  if (coursesExcelFile) {
+    formData.append('courses_excel', coursesExcelFile);
+  }
   if (logosZipFile) {
     formData.append('logos_zip', logosZipFile);
   } else {

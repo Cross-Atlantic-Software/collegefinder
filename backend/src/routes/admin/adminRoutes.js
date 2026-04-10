@@ -161,6 +161,31 @@ router.get('/users/academics', authenticateAdmin, requireSuperAdmin, AdminUsersC
 router.get('/users/career-goals', authenticateAdmin, requireSuperAdmin, AdminUsersController.getAllUsersCareerGoals);
 
 /**
+ * @route   PATCH /api/admin/users/:id
+ * @desc    Set site user active / inactive
+ * @access  Super Admin only
+ */
+router.patch(
+  '/users/:id',
+  authenticateAdmin,
+  requireSuperAdmin,
+  AdminUsersController.updateSiteUserStatus
+);
+
+/**
+ * @route   DELETE /api/admin/users/:id
+ * @desc    Permanently delete a site user
+ * @access  Super Admin only
+ */
+router.delete(
+  '/users/:id',
+  authenticateAdmin,
+  requireSuperAdmin,
+  requireCanDelete,
+  AdminUsersController.deleteSiteUser
+);
+
+/**
  * @route   GET /api/admin/users/:id
  * @desc    Get single user with complete details (basic + academics + career goals)
  * @access  Private (Super Admin only)
@@ -896,6 +921,7 @@ router.get('/colleges/download-excel', authenticateAdmin, requireModuleAccess('c
 router.post('/colleges/upload-missing-logos', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CollegesController.uploadMissingLogos);
 router.post('/colleges/bulk-upload', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([
   { name: 'excel', maxCount: 1 },
+  { name: 'programs_excel', maxCount: 1 },
   { name: 'logos', maxCount: 100 },
   { name: 'logos_zip', maxCount: 1 },
 ]), CollegesController.bulkUpload);
@@ -915,6 +941,7 @@ router.get('/institutes/download-excel', authenticateAdmin, requireModuleAccess(
 router.post('/institutes/upload-missing-logos', authenticateAdmin, requireModuleAccess('institutes'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), InstitutesController.uploadMissingLogos);
 router.post('/institutes/bulk-upload', authenticateAdmin, requireModuleAccess('institutes'), uploadBulkExams.fields([
   { name: 'excel', maxCount: 1 },
+  { name: 'courses_excel', maxCount: 1 },
   { name: 'logos', maxCount: 100 },
   { name: 'logos_zip', maxCount: 1 },
 ]), InstitutesController.bulkUpload);

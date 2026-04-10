@@ -34,12 +34,39 @@ class AdmissionExpert {
   }
 
   static async create(data) {
-    const { name, photo_url, contact, phone, email, description, type, created_by, photo_file_name } = data;
+    const {
+      name,
+      photo_url,
+      contact,
+      phone,
+      email,
+      description,
+      type,
+      created_by,
+      photo_file_name,
+      linkedin_url,
+      website
+    } = data;
+    const pfn = photo_file_name && String(photo_file_name).trim() ? String(photo_file_name).trim() : null;
+    const li = linkedin_url != null && String(linkedin_url).trim() ? String(linkedin_url).trim() : null;
+    const web = website != null && String(website).trim() ? String(website).trim() : null;
     const result = await db.query(
-      `INSERT INTO admission_experts (name, photo_url, contact, phone, email, description, type, created_by, photo_file_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO admission_experts (name, photo_url, contact, phone, email, description, type, created_by, photo_file_name, linkedin_url, website)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [name, photo_url || null, contact || null, phone || null, email || null, description || null, type, created_by || null, photo_file_name && String(photo_file_name).trim() ? String(photo_file_name).trim() : null]
+      [
+        name,
+        photo_url || null,
+        contact || null,
+        phone || null,
+        email || null,
+        description || null,
+        type,
+        created_by || null,
+        pfn,
+        li,
+        web
+      ]
     );
     return result.rows[0];
   }
@@ -84,6 +111,14 @@ class AdmissionExpert {
     if (data.photo_file_name !== undefined) {
       updates.push(`photo_file_name = $${paramCount++}`);
       values.push(data.photo_file_name && String(data.photo_file_name).trim() ? String(data.photo_file_name).trim() : null);
+    }
+    if (data.linkedin_url !== undefined) {
+      updates.push(`linkedin_url = $${paramCount++}`);
+      values.push(data.linkedin_url != null && String(data.linkedin_url).trim() ? String(data.linkedin_url).trim() : null);
+    }
+    if (data.website !== undefined) {
+      updates.push(`website = $${paramCount++}`);
+      values.push(data.website != null && String(data.website).trim() ? String(data.website).trim() : null);
     }
 
     if (updates.length === 0) return null;

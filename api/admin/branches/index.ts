@@ -13,6 +13,10 @@ export interface Branch {
   status: boolean;
   created_at: string;
   updated_at: string;
+  /** Linked taxonomy programs (admin list/detail). */
+  program_ids?: number[];
+  program_names?: string;
+  programs?: { id: number; name: string }[];
 }
 
 export async function getAllBranches(): Promise<ApiResponse<{ branches: Branch[] }>> {
@@ -23,11 +27,19 @@ export async function getBranchById(id: number): Promise<ApiResponse<{ branch: B
   return apiRequest(`${API_ENDPOINTS.ADMIN.BRANCHES}/${id}`, { method: 'GET' });
 }
 
-export async function createBranch(data: { name: string; description?: string | null; status?: boolean }): Promise<ApiResponse<{ branch: Branch }>> {
+export async function createBranch(data: {
+  name: string;
+  description?: string | null;
+  status?: boolean;
+  program_ids?: number[];
+}): Promise<ApiResponse<{ branch: Branch }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.BRANCHES, { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateBranch(id: number, data: { name?: string; description?: string | null; status?: boolean }): Promise<ApiResponse<{ branch: Branch }>> {
+export async function updateBranch(
+  id: number,
+  data: { name?: string; description?: string | null; status?: boolean; program_ids?: number[] }
+): Promise<ApiResponse<{ branch: Branch }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.BRANCHES}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 }
 

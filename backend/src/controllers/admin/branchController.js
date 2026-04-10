@@ -1,11 +1,33 @@
 const XLSX = require('xlsx');
 const Branch = require('../../models/taxonomy/Branch');
+const Program = require('../../models/taxonomy/Program');
 const { validationResult } = require('express-validator');
+
+function normalizeProgramIdsFromBody(body) {
+  let raw = body.program_ids;
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!Array.isArray(raw)) return undefined;
+  return [...new Set(raw.map((x) => parseInt(String(x), 10)).filter((n) => Number.isInteger(n) && n > 0))];
+}
+
+function splitProgramNamesCell(val) {
+  if (val == null) return [];
+  const s = String(val).trim();
+  if (!s) return [];
+  return s.split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+}
 
 class BranchController {
   static async getAll(req, res) {
     try {
-      const branches = await Branch.findAll();
+      const branches = await Branch.findAllWithPrograms();
       res.json({ success: true, data: { branches } });
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -15,7 +37,7 @@ class BranchController {
 
   static async getById(req, res) {
     try {
-      const branch = await Branch.findById(parseInt(req.params.id));
+      const branch = await Branch.findByIdWithPrograms(parseInt(req.params.id, 10));
       if (!branch) return res.status(404).json({ success: false, message: 'Branch not found' });
       res.json({ success: true, data: { branch } });
     } catch (error) {
@@ -30,11 +52,21 @@ class BranchController {
       if (!errors.isEmpty()) return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
 
       const { name, description, status } = req.body;
+      const programIds = normalizeProgramIdsFromBody(req.body);
       const existing = await Branch.findByName(name);
       if (existing) return res.status(400).json({ success: false, message: 'Branch with this name already exists' });
 
       const branch = await Branch.create({ name, description: description || null, status: status !== undefined ? status : true });
-      res.status(201).json({ success: true, message: 'Branch created successfully', data: { branch } });
+      if (programIds !== undefined) {
+        try {
+          await Branch.setProgramIds(branch.id, programIds);
+        } catch (linkErr) {
+          await Branch.delete(branch.id).catch(() => {});
+          return res.status(400).json({ success: false, message: linkErr.message || 'Invalid program selection' });
+        }
+      }
+      const full = await Branch.findByIdWithPrograms(branch.id);
+      res.status(201).json({ success: true, message: 'Branch created successfully', data: { branch: full } });
     } catch (error) {
       console.error('Error creating branch:', error);
       res.status(500).json({ success: false, message: error.message || 'Failed to create branch' });
@@ -81,11 +113,11 @@ class BranchController {
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
-        ['name', 'description', 'status'],
-        ['Computer Science', 'CS & IT related programs', 'TRUE'],
-        ['Electronics & Communication', 'ECE branch', 'TRUE'],
-        ['Mechanical Engineering', 'ME branch', 'TRUE'],
-        ['Civil Engineering', 'CE branch', 'TRUE']
+        ['name', 'description', 'status', 'program_names'],
+        ['Computer Science', 'CS & IT related programs', 'TRUE', 'B.Tech; M.Tech'],
+        ['Electronics & Communication', 'ECE branch', 'TRUE', 'B.Tech'],
+        ['Mechanical Engineering', 'ME branch', 'TRUE', ''],
+        ['Civil Engineering', 'CE branch', 'TRUE', '']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Branches');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -100,10 +132,18 @@ class BranchController {
 
   static async downloadAllExcel(req, res) {
     try {
-      const branches = await Branch.findAll();
-      const rows = [['id', 'name', 'description', 'status', 'created_at', 'updated_at']];
+      const branches = await Branch.findAllWithPrograms();
+      const rows = [['id', 'name', 'description', 'status', 'program_names', 'created_at', 'updated_at']];
       for (const b of branches) {
-        rows.push([b.id, b.name || '', b.description || '', b.status ? 'TRUE' : 'FALSE', b.created_at ? String(b.created_at).slice(0, 10) : '', b.updated_at ? String(b.updated_at).slice(0, 10) : '']);
+        rows.push([
+          b.id,
+          b.name || '',
+          b.description || '',
+          b.status ? 'TRUE' : 'FALSE',
+          b.program_names || '',
+          b.created_at ? String(b.created_at).slice(0, 10) : '',
+          b.updated_at ? String(b.updated_at).slice(0, 10) : ''
+        ]);
       }
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -147,11 +187,30 @@ class BranchController {
         const statusRaw = (row.status ?? '').toString().trim();
         const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
 
+        const programNameCell =
+          row.program_names ?? row.Program_names ?? row.programs ?? row.Programs ?? '';
+        const nameParts = splitProgramNamesCell(programNameCell);
+        const programIds = [];
+        let programResolveOk = true;
+        for (const pn of nameParts) {
+          const prog = await Program.findByNameCaseInsensitive(pn);
+          if (!prog) {
+            errors.push({ row: rowNum, message: `Unknown program name: "${pn}"` });
+            programResolveOk = false;
+            break;
+          }
+          if (!programIds.includes(prog.id)) programIds.push(prog.id);
+        }
+        if (!programResolveOk) continue;
+
+        let createdBranch = null;
         try {
-          const branch = await Branch.create({ name: nameRaw, description, status });
-          created.push({ id: branch.id, name: branch.name });
+          createdBranch = await Branch.create({ name: nameRaw, description, status });
+          await Branch.setProgramIds(createdBranch.id, programIds);
+          created.push({ id: createdBranch.id, name: createdBranch.name });
           namesInFile.add(nameRaw.toLowerCase());
         } catch (createErr) {
+          if (createdBranch?.id) await Branch.delete(createdBranch.id).catch(() => {});
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create branch' });
         }
       }

@@ -68,8 +68,21 @@ CREATE TABLE IF NOT EXISTS scholarship_exams (
 CREATE INDEX IF NOT EXISTS idx_scholarship_exams_scholarship_id ON scholarship_exams(scholarship_id);
 CREATE INDEX IF NOT EXISTS idx_scholarship_exams_exam_id ON scholarship_exams(exam_id);
 
+-- 6. scholarship_colleges
+CREATE TABLE IF NOT EXISTS scholarship_colleges (
+  id SERIAL PRIMARY KEY,
+  scholarship_id INTEGER NOT NULL REFERENCES scholarships(id) ON DELETE CASCADE,
+  college_id INTEGER NOT NULL REFERENCES colleges(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(scholarship_id, college_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scholarship_colleges_scholarship_id ON scholarship_colleges(scholarship_id);
+CREATE INDEX IF NOT EXISTS idx_scholarship_colleges_college_id ON scholarship_colleges(college_id);
+
 COMMENT ON TABLE scholarships IS 'Scholarship schemes with eligibility and application details';
 COMMENT ON TABLE scholarship_eligible_categories IS 'Eligible categories (e.g. SC, ST, OBC) per scholarship';
 COMMENT ON TABLE scholarship_applicable_states IS 'States where scholarship is applicable';
 COMMENT ON TABLE scholarship_documents_required IS 'Documents required for application';
 COMMENT ON TABLE scholarship_exams IS 'Related exams for the scholarship';
+COMMENT ON TABLE scholarship_colleges IS 'Related colleges for the scholarship';
