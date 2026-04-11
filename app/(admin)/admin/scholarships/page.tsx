@@ -79,6 +79,7 @@ export default function ScholarshipsPage() {
     applicableStates: [] as { state_name: string }[],
     documentsRequired: [] as { document_name: string }[],
     examIds: [] as number[],
+    collegeIds: [] as number[],
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -189,6 +190,7 @@ export default function ScholarshipsPage() {
         applicableStates: formData.applicableStates.filter((s) => s.state_name?.trim()),
         documentsRequired: formData.documentsRequired.filter((d) => d.document_name?.trim()),
         examIds: formData.examIds,
+        collegeIds: formData.collegeIds,
       };
       if (editingScholarship) {
         const response = await updateScholarship(editingScholarship.id, payload);
@@ -446,6 +448,7 @@ export default function ScholarshipsPage() {
     { id: 'states', label: 'States' },
     { id: 'documents', label: 'Documents' },
     { id: 'exams', label: 'Exams' },
+    { id: 'colleges', label: 'Colleges' },
   ];
 
   if (error && !isLoading) {

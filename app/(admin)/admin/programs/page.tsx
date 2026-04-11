@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllPrograms, createProgram, updateProgram, deleteProgram, downloadProgramsBulkTemplate, downloadAllProgramsExcel, bulkUploadPrograms, Program } from '@/api/admin/programs';
+import { getAllStreams } from '@/api/admin/streams';
+import { getAllCareerGoals } from '@/api/admin/career-goals';
 import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { ConfirmationModal, useToast, Dropdown, MultiSelect, type MultiSelectOption } from '@/components/shared';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function ProgramsPage() {
@@ -20,7 +22,9 @@ export default function ProgramsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState({ name: '', status: true, streamId: '', interestIds: [] as string[] });
+  const [streams, setStreams] = useState<{ id: number; name: string; status?: boolean }[]>([]);
+  const [careerGoals, setCareerGoals] = useState<{ id: number; label: string; status?: boolean }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -42,8 +46,20 @@ export default function ProgramsPage() {
     }
 
     fetchPrograms();
+    (async () => {
+      try {
+        const [sr, cg] = await Promise.all([getAllStreams(), getAllCareerGoals()]);
+        if (sr.success && sr.data?.streams) setStreams(sr.data.streams.filter((s) => s.status !== false));
+        if (cg.success && cg.data?.careerGoals) setCareerGoals(cg.data.careerGoals.filter((g) => g.status !== false));
+      } catch {
+        /* taxonomy APIs may 403 if module disabled */
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const streamOptions = streams.map((s) => ({ value: String(s.id), label: s.name }));
+  const interestOptions: MultiSelectOption[] = careerGoals.map((g) => ({ value: String(g.id), label: g.label }));
 
   useEffect(() => {
     if (allPrograms.length === 0) {
@@ -57,8 +73,11 @@ export default function ProgramsPage() {
         return;
       }
       const searchLower = searchQuery.toLowerCase();
-      const filtered = allPrograms.filter(p =>
-        p.name.toLowerCase().includes(searchLower)
+      const filtered = allPrograms.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchLower) ||
+          (p.stream_name && p.stream_name.toLowerCase().includes(searchLower)) ||
+          (p.interest_labels && p.interest_labels.toLowerCase().includes(searchLower))
       );
       setPrograms(filtered);
     }, 300);
@@ -94,8 +113,14 @@ export default function ProgramsPage() {
     }
 
     try {
+      const payload = {
+        name: formData.name.trim(),
+        status: formData.status,
+        stream_id: formData.streamId ? parseInt(formData.streamId, 10) : null,
+        interest_ids: formData.interestIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n)),
+      };
       if (editingProgram) {
-        const response = await updateProgram(editingProgram.id, formData);
+        const response = await updateProgram(editingProgram.id, payload);
         if (response.success) {
           showSuccess('Program updated successfully');
           setShowModal(false);
@@ -107,7 +132,7 @@ export default function ProgramsPage() {
           showError(errorMsg);
         }
       } else {
-        const response = await createProgram(formData);
+        const response = await createProgram(payload);
         if (response.success) {
           showSuccess('Program created successfully');
           setShowModal(false);
@@ -164,7 +189,13 @@ export default function ProgramsPage() {
 
   const handleEdit = (program: Program) => {
     setEditingProgram(program);
-    setFormData({ name: program.name, status: program.status });
+    const iids = Array.isArray(program.interest_ids) ? program.interest_ids : [];
+    setFormData({
+      name: program.name,
+      status: program.status,
+      streamId: program.stream_id != null ? String(program.stream_id) : '',
+      interestIds: iids.map(String),
+    });
     setShowModal(true);
   };
 
@@ -175,7 +206,7 @@ export default function ProgramsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true });
+    setFormData({ name: '', status: true, streamId: '', interestIds: [] });
     setError(null);
   };
 
@@ -283,7 +314,7 @@ export default function ProgramsPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by name"
+                  placeholder="Search name, stream, interests"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
@@ -340,6 +371,12 @@ export default function ProgramsPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        STREAM
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        INTERESTS
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
@@ -356,7 +393,7 @@ export default function ProgramsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {programs.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
                           {programs.length < allPrograms.length ? 'No programs found matching your search' : 'No programs found'}
                         </td>
                       </tr>
@@ -365,6 +402,10 @@ export default function ProgramsPage() {
                         <tr key={program.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{program.name}</span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-slate-600">{program.stream_name?.trim() || '—'}</td>
+                          <td className="px-4 py-2 text-sm text-slate-600 max-w-[220px] line-clamp-2" title={program.interest_labels || ''}>
+                            {program.interest_labels?.trim() ? program.interest_labels : '—'}
                           </td>
                           <td className="px-4 py-2">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -441,6 +482,28 @@ export default function ProgramsPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Stream</label>
+                  <Dropdown
+                    value={formData.streamId || null}
+                    onChange={(v) => setFormData({ ...formData, streamId: v ? String(v) : '' })}
+                    options={streamOptions}
+                    placeholder={streams.length ? 'Select stream (optional)' : 'No streams — add in Streams module'}
+                    disabled={!streams.length}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Interests</label>
+                  <MultiSelect
+                    options={interestOptions}
+                    value={formData.interestIds}
+                    onChange={(ids) => setFormData({ ...formData, interestIds: ids })}
+                    placeholder={careerGoals.length ? 'Select interests (optional)' : 'No interests — add in Interests module'}
+                    disabled={!careerGoals.length}
+                  />
+                </div>
+
                 {/* Status */}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -513,27 +576,39 @@ export default function ProgramsPage() {
             <div className="flex-1 overflow-auto p-4 space-y-4">
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-slate-600 mb-3">Your Excel file must have these columns.</p>
+                <p className="text-xs text-slate-600 mb-3">
+                  Columns: <span className="font-mono">name</span>, <span className="font-mono">status</span>, optional{' '}
+                  <span className="font-mono">stream</span> (stream name from Streams taxonomy), optional{' '}
+                  <span className="font-mono">interests</span> (interest labels separated by comma or semicolon).
+                </p>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-100">
                         <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">name</th>
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">status</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">status</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">stream</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">interests</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-b border-slate-200">
                         <td className="px-3 py-2 text-slate-800 border-r border-slate-200">B.Tech</td>
-                        <td className="px-3 py-2 text-slate-800">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCM</td>
+                        <td className="px-3 py-2 text-slate-800">Engineering; Technology</td>
                       </tr>
                       <tr className="border-b border-slate-200">
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">B.E.</td>
-                        <td className="px-3 py-2 text-slate-800">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">MBBS</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCB</td>
+                        <td className="px-3 py-2 text-slate-800">Medicine</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">MBBS</td>
-                        <td className="px-3 py-2 text-slate-800">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">B.E.</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200" />
+                        <td className="px-3 py-2 text-slate-800" />
                       </tr>
                     </tbody>
                   </table>

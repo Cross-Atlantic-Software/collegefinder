@@ -36,11 +36,31 @@ class College {
   }
 
   static async create(data) {
-    const { college_name, college_location, college_type, college_logo, logo_filename, google_map_link, website } = data;
+    const {
+      college_name,
+      college_location,
+      college_type,
+      college_logo,
+      logo_filename,
+      google_map_link,
+      website,
+      state,
+      city,
+    } = data;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_filename, google_map_link, website)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [college_name, college_location || null, college_type || null, college_logo || null, logo_filename || null, google_map_link || null, website || null]
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_filename, google_map_link, website, state, city)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [
+        college_name,
+        college_location || null,
+        college_type || null,
+        college_logo || null,
+        logo_filename || null,
+        google_map_link || null,
+        website || null,
+        state != null ? String(state).trim() || null : null,
+        city != null ? String(city).trim() || null : null,
+      ]
     );
     return result.rows[0];
   }
@@ -57,7 +77,17 @@ class College {
   }
 
   static async update(id, data) {
-    const { college_name, college_location, college_type, college_logo, logo_filename, google_map_link, website } = data;
+    const {
+      college_name,
+      college_location,
+      college_type,
+      college_logo,
+      logo_filename,
+      google_map_link,
+      website,
+      state,
+      city,
+    } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -88,6 +118,14 @@ class College {
     if (website !== undefined) {
       updates.push(`website = $${paramCount++}`);
       values.push(website);
+    }
+    if (state !== undefined) {
+      updates.push(`state = $${paramCount++}`);
+      values.push(state != null ? String(state).trim() || null : null);
+    }
+    if (city !== undefined) {
+      updates.push(`city = $${paramCount++}`);
+      values.push(city != null ? String(city).trim() || null : null);
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

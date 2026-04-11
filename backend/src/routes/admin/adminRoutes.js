@@ -81,11 +81,16 @@ const uploadBulkExams = multer({
   },
   fileFilter: (req, file, cb) => {
     const field = file.fieldname || '';
-    if (field === 'excel') {
-      const ok = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel'
-      ].includes(file.mimetype);
+    const isBulkExcelField =
+      field === 'excel' || field === 'courses_excel' || field === 'programs_excel';
+    if (isBulkExcelField) {
+      const name = (file.originalname || '').toLowerCase();
+      const ok =
+        [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel'
+        ].includes(file.mimetype) ||
+        /\.(xlsx|xls)$/i.test(name);
       return cb(ok ? null : new Error('Excel file required (.xlsx or .xls)'), ok);
     }
     if (field === 'logos' || field === 'thumbnails') {
@@ -917,6 +922,7 @@ router.delete('/categories/:id', authenticateAdmin, requireModuleAccess('categor
 router.get('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getAllAdmin);
 router.post('/colleges/upload-logo', authenticateAdmin, requireModuleAccess('colleges'), upload.single('image'), CollegesController.uploadLogo);
 router.get('/colleges/bulk-upload-template', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadBulkTemplate);
+router.get('/colleges/programs-excel-template', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadProgramsExcelTemplate);
 router.get('/colleges/download-excel', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadAllExcel);
 router.post('/colleges/upload-missing-logos', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CollegesController.uploadMissingLogos);
 router.post('/colleges/bulk-upload', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([
@@ -937,6 +943,7 @@ router.delete('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'
 router.get('/institutes', authenticateAdmin, requireModuleAccess('institutes'), InstitutesController.getAllAdmin);
 router.post('/institutes/upload-logo', authenticateAdmin, requireModuleAccess('institutes'), upload.single('image'), InstitutesController.uploadLogo);
 router.get('/institutes/bulk-upload-template', authenticateAdmin, requireModuleAccess('institutes'), requireCanDownloadExcel, InstitutesController.downloadBulkTemplate);
+router.get('/institutes/courses-excel-template', authenticateAdmin, requireModuleAccess('institutes'), requireCanDownloadExcel, InstitutesController.downloadCoursesExcelTemplate);
 router.get('/institutes/download-excel', authenticateAdmin, requireModuleAccess('institutes'), requireCanDownloadExcel, InstitutesController.downloadAllExcel);
 router.post('/institutes/upload-missing-logos', authenticateAdmin, requireModuleAccess('institutes'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), InstitutesController.uploadMissingLogos);
 router.post('/institutes/bulk-upload', authenticateAdmin, requireModuleAccess('institutes'), uploadBulkExams.fields([

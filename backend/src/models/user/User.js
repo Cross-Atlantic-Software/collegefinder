@@ -1,6 +1,29 @@
 const db = require('../../config/database');
 
+/** Client-facing reference: UT + 8-digit number. */
 class User {
+  /**
+   * Generate a new candidate user_code (UT + 8 random digits).
+   */
+  static async generateUniqueUserCode() {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const n = String(Math.floor(Math.random() * 100000000)).padStart(8, '0');
+      const code = `UT${n}`;
+      const existing = await db.query('SELECT 1 FROM users WHERE user_code = $1', [code]);
+      if (existing.rows.length === 0) return code;
+    }
+    throw new Error('Failed to generate unique user_code after 100 attempts');
+  }
+
+  static async findByUserCode(userCode) {
+    if (!userCode || typeof userCode !== 'string') return null;
+    const result = await db.query(
+      'SELECT * FROM users WHERE UPPER(TRIM(user_code)) = UPPER(TRIM($1))',
+      [userCode.trim()]
+    );
+    return result.rows[0] || null;
+  }
+
   static async findByEmail(email) {
     const result = await db.query(
       'SELECT * FROM users WHERE email = $1',
@@ -24,11 +47,12 @@ class User {
   }
 
   static async create(email) {
+    const user_code = await User.generateUniqueUserCode();
     const result = await db.query(
-      `INSERT INTO users (email, auth_provider, email_verified) 
-       VALUES ($1, 'email', false) 
+      `INSERT INTO users (email, auth_provider, email_verified, user_code) 
+       VALUES ($1, 'email', false, $2) 
        RETURNING *`,
-      [email]
+      [email, user_code]
     );
     return result.rows[0];
   }
@@ -201,13 +225,14 @@ class User {
   }
 
   static async createWithGoogle({ email, name, firstName, lastName, googleId, profilePhoto, emailVerified }) {
+    const user_code = await User.generateUniqueUserCode();
     // New Google users should NOT have onboarding_completed set to true
     // They need to go through onboarding even if they have a name from Google
     const result = await db.query(
-      `INSERT INTO users (email, name, first_name, last_name, google_id, profile_photo, auth_provider, email_verified, onboarding_completed) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'google', $7, FALSE) 
+      `INSERT INTO users (email, name, first_name, last_name, google_id, profile_photo, auth_provider, email_verified, onboarding_completed, user_code) 
+       VALUES ($1, $2, $3, $4, $5, $6, 'google', $7, FALSE, $8) 
        RETURNING *`,
-      [email, name || null, firstName || null, lastName || null, googleId, profilePhoto || null, emailVerified || true]
+      [email, name || null, firstName || null, lastName || null, googleId, profilePhoto || null, emailVerified || true, user_code]
     );
     return result.rows[0];
   }
@@ -221,13 +246,14 @@ class User {
   }
 
   static async createWithFacebook({ email, name, firstName, lastName, facebookId, profilePhoto }) {
+    const user_code = await User.generateUniqueUserCode();
     // email_verified is true only if Facebook provided the email
     const emailVerified = email ? true : false;
     const result = await db.query(
-      `INSERT INTO users (email, name, first_name, last_name, facebook_id, profile_photo, auth_provider, email_verified, onboarding_completed)
-       VALUES ($1, $2, $3, $4, $5, $6, 'facebook', $7, FALSE)
+      `INSERT INTO users (email, name, first_name, last_name, facebook_id, profile_photo, auth_provider, email_verified, onboarding_completed, user_code)
+       VALUES ($1, $2, $3, $4, $5, $6, 'facebook', $7, FALSE, $8)
        RETURNING *`,
-      [email || null, name || null, firstName || null, lastName || null, facebookId, profilePhoto || null, emailVerified]
+      [email || null, name || null, firstName || null, lastName || null, facebookId, profilePhoto || null, emailVerified, user_code]
     );
     return result.rows[0];
   }
@@ -329,6 +355,7 @@ class User {
       const result = await db.query(
         `SELECT 
            id, 
+           user_code,
            email, 
            name, 
            first_name, 
@@ -365,6 +392,7 @@ class User {
         // Add default values for missing columns
         return result.rows.map(user => ({
           ...user,
+          user_code: null,
           name: null,
           first_name: null,
           last_name: null,

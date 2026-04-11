@@ -8,7 +8,6 @@ import { FaUser, FaCopy } from "react-icons/fa6";
 import { Button, DateOfBirthPicker, PhoneInput, Select, Notification } from "../../../shared";
 import { useToast } from "../../../shared";
 import { updateBasicInfo } from "@/api";
-import { EmailVerificationModal } from "../EmailVerificationModal";
 import type { CoreIdentityFormData } from "./types";
 import { genderOptions, inputBase } from "./constants";
 
@@ -17,6 +16,7 @@ interface CoreIdentityTabProps {
   setFormData: (data: CoreIdentityFormData | ((prev: CoreIdentityFormData) => CoreIdentityFormData)) => void;
   email: string;
   emailVerified: boolean;
+  userCode: string | null;
   validationErrors: Record<string, string>;
   error: string | null;
   success: boolean;
@@ -35,6 +35,7 @@ export default function CoreIdentityTab({
   setFormData,
   email,
   emailVerified,
+  userCode,
   validationErrors,
   error,
   success,
@@ -49,6 +50,7 @@ export default function CoreIdentityTab({
 }: CoreIdentityTabProps) {
   const { showSuccess, showError } = useToast();
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedUserCode, setCopiedUserCode] = useState(false);
 
   const floatingLabelClass = (hasValue: boolean) =>
     [
@@ -58,6 +60,19 @@ export default function CoreIdentityTab({
         : "top-1/2 -translate-y-1/2 text-xs text-black/45",
       "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[10px] peer-focus:text-black",
     ].join(" ");
+
+  const copyUserCode = async () => {
+    if (userCode) {
+      try {
+        await navigator.clipboard.writeText(userCode);
+        setCopiedUserCode(true);
+        showSuccess("User code copied!");
+        setTimeout(() => setCopiedUserCode(false), 2000);
+      } catch {
+        showError("Failed to copy user code");
+      }
+    }
+  };
 
   const copyPassword = async () => {
     if (automationPassword) {
@@ -183,6 +198,36 @@ export default function CoreIdentityTab({
         {success && (
           <Notification type="success" message="Core Identity updated successfully!" onClose={() => {}} autoClose duration={3000} />
         )}
+
+        {/* Public reference ID (assigned at registration; not editable) */}
+        <div className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-3 space-y-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">User code</label>
+            <div className="flex flex-1 min-w-0 items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                aria-label="Your public user code"
+                value={userCode || "—"}
+                className={`${inputBase} flex-1 cursor-default font-mono text-sm tracking-wide`}
+              />
+              {userCode ? (
+                <button
+                  type="button"
+                  onClick={copyUserCode}
+                  className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-black/15 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/80 hover:bg-black/5"
+                  title="Copy user code"
+                >
+                  <FaCopy className="h-3 w-3" />
+                  {copiedUserCode ? "Copied" : "Copy"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <p className="text-[10px] text-black/45 pl-0 sm:pl-[calc(90px+0.5rem)]">
+            Format UT + 8 digits (e.g. UT12345678). Use for support or references; your internal account id stays private.
+          </p>
+        </div>
 
         {/* Row 1: Name + DOB */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-black/5">

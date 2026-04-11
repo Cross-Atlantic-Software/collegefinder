@@ -14,7 +14,8 @@ const Branch = require('../../models/taxonomy/Branch');
 const Exam = require('../../models/taxonomy/Exam');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
-const { splitList, parseDate, getCell } = require('../../utils/bulkUploadUtils');
+const { splitList, parseDate, getCell, normalizeEntityKey, countMapArrayValues } = require('../../utils/bulkUploadUtils');
+const { resolveGoogleMapsLink, formatLocationLine } = require('../../services/googlePlacesMapsLink');
 
 /**
  * Seat matrix, previous & expected cutoff strings — same format as one cell in the inline college row.
@@ -171,7 +172,7 @@ function groupCollegeProgramRowsToMap(rows) {
     if (!collegeName) continue;
     const program_name = getCell(row, 'program_name', 'program_Name');
     if (!program_name) continue;
-    const key = collegeName.toLowerCase();
+    const key = normalizeEntityKey(collegeName);
     if (!map.has(key)) map.set(key, []);
     const intakeRaw = getCell(row, 'intake_capacity', 'intake_Capacity');
     const durRaw = getCell(row, 'duration_years', 'duration_Years', 'program_durations');
@@ -204,19 +205,34 @@ function groupCollegeProgramRowsToMap(rows) {
   return map;
 }
 
+function programSheetNorm(n) {
+  return String(n).toLowerCase().replace(/\s+/g, '');
+}
+
+function isProgramsCatalogSheet(n) {
+  const x = programSheetNorm(n);
+  return x === 'programscatalog' || x === 'programs_catalog';
+}
+
+function isExcludedFromCollegeProgramsPick(n) {
+  const x = programSheetNorm(n);
+  return x === 'colleges' || x === 'institutes' || isProgramsCatalogSheet(n);
+}
+
 function loadGroupedProgramsFromWorkbook(workbook, opts = { dedicatedProgramsFile: false }) {
   if (!workbook?.SheetNames?.length) return new Map();
   const names = workbook.SheetNames;
-  const norm = (n) => String(n).toLowerCase().replace(/\s+/g, '');
+  const norm = programSheetNorm;
   let sheetName = names.find((n) => {
     const x = norm(n);
     return x === 'collegeprograms' || x === 'college_programs';
   });
-  if (!sheetName && names.length > 1) {
-    sheetName = names[1];
+  if (!sheetName) {
+    sheetName = names.find((n) => !isExcludedFromCollegeProgramsPick(n)) || null;
   }
   if (!sheetName && names.length === 1 && opts.dedicatedProgramsFile) {
-    sheetName = names[0];
+    const only = names[0];
+    sheetName = isExcludedFromCollegeProgramsPick(only) ? null : only;
   }
   if (!sheetName) return new Map();
   const sheet = workbook.Sheets[sheetName];
@@ -307,18 +323,31 @@ async function insertCollegeProgramsFromBucket(collegeId, bucket, pickTokens, er
   if (!bucket || !bucket.length) return;
   let toInsert = bucket;
   if (pickTokens && pickTokens.length > 0) {
-    toInsert = [];
+    const picked = [];
+    const missingToks = [];
     for (const tok of pickTokens) {
-      const matches = bucket.filter((b) => programRowMatchesPickToken(tok, b));
-      if (!matches.length) {
+      const t = String(tok).trim();
+      if (!t) continue;
+      const matches = bucket.filter((b) => programRowMatchesPickToken(t, b));
+      if (!matches.length) missingToks.push(tok);
+      else for (const m of matches) if (!picked.includes(m)) picked.push(m);
+    }
+    if (picked.length > 0) {
+      toInsert = picked;
+      for (const tok of missingToks) {
         errors.push({
           row: rowNum,
-          message: `bulk_program_names "${tok}" has no matching row in CollegePrograms for this college`
+          message: `program_names selector "${tok}" has no matching row in CollegePrograms for this college`
         });
-      } else {
-        for (const m of matches) {
-          if (!toInsert.includes(m)) toInsert.push(m);
-        }
+      }
+    } else {
+      toInsert = bucket;
+      if (missingToks.length) {
+        errors.push({
+          row: rowNum,
+          message:
+            'program_names / bulk_program_names did not match any row in the programs sheet for this college; all program rows from the sheet were attached instead.'
+        });
       }
     }
   }
@@ -519,13 +548,13 @@ class CollegesController {
     try {
       const {
         college_name,
-        college_location,
         college_type,
         college_logo,
         logo_filename,
         college_description,
-        google_map_link,
         website,
+        state,
+        city,
         major_program_ids,
         collegePrograms,
         collegeKeyDates,
@@ -539,19 +568,34 @@ class CollegesController {
         return res.status(400).json({ success: false, message: 'College name is required' });
       }
 
+      const stateTrim = state != null ? String(state).trim() : '';
+      const cityTrim = city != null ? String(city).trim() : '';
+      if (!stateTrim || !cityTrim) {
+        return res.status(400).json({ success: false, message: 'State and city are required' });
+      }
+
       const existing = await College.findByName(college_name.trim());
       if (existing) {
         return res.status(400).json({ success: false, message: 'College with this name already exists' });
       }
 
+      const college_location = formatLocationLine(cityTrim, stateTrim);
+      const google_map_link = await resolveGoogleMapsLink({
+        name: college_name.trim(),
+        city: cityTrim,
+        state: stateTrim
+      });
+
       const college = await College.create({
         college_name: college_name.trim(),
-        college_location: college_location ? college_location.trim() : null,
+        college_location,
         college_type: college_type || null,
         college_logo: college_logo || null,
         logo_filename: logo_filename ? String(logo_filename).trim() || null : null,
-        google_map_link: google_map_link ? google_map_link.trim() : null,
-        website: website ? website.trim() : null
+        google_map_link,
+        website: website ? website.trim() : null,
+        state: stateTrim,
+        city: cityTrim
       });
 
       const majorProgramIdsStr = Array.isArray(major_program_ids) && major_program_ids.length > 0
@@ -628,13 +672,13 @@ class CollegesController {
 
       const {
         college_name,
-        college_location,
         college_type,
         college_logo,
         logo_filename,
         college_description,
-        google_map_link,
         website,
+        state,
+        city,
         major_program_ids,
         collegePrograms,
         collegeKeyDates,
@@ -655,15 +699,46 @@ class CollegesController {
         await deleteFromS3(existing.college_logo);
       }
 
-      await College.update(collegeId, {
+      const hasStateKey = Object.prototype.hasOwnProperty.call(req.body, 'state');
+      const hasCityKey = Object.prototype.hasOwnProperty.call(req.body, 'city');
+      const finalName = college_name !== undefined ? college_name.trim() : existing.college_name;
+
+      const updatePayload = {
         college_name: college_name !== undefined ? college_name.trim() : undefined,
-        college_location: college_location !== undefined ? (college_location && college_location.trim()) || null : undefined,
         college_type: college_type !== undefined ? college_type || null : undefined,
         college_logo: college_logo !== undefined ? college_logo : undefined,
         logo_filename: logo_filename !== undefined ? (logo_filename ? String(logo_filename).trim() || null : null) : undefined,
-        google_map_link: google_map_link !== undefined ? (google_map_link ? google_map_link.trim() : null) : undefined,
         website: website !== undefined ? (website ? website.trim() : null) : undefined
-      });
+      };
+
+      if (hasStateKey || hasCityKey) {
+        const stateTrim = hasStateKey ? String(state ?? '').trim() : '';
+        const cityTrim = hasCityKey ? String(city ?? '').trim() : '';
+        if (!stateTrim || !cityTrim) {
+          return res.status(400).json({ success: false, message: 'State and city are both required' });
+        }
+        updatePayload.state = stateTrim;
+        updatePayload.city = cityTrim;
+        updatePayload.college_location = formatLocationLine(cityTrim, stateTrim);
+        updatePayload.google_map_link = await resolveGoogleMapsLink({
+          name: finalName,
+          city: cityTrim,
+          state: stateTrim
+        });
+      } else if (
+        college_name !== undefined &&
+        finalName !== existing.college_name &&
+        existing.state &&
+        existing.city
+      ) {
+        updatePayload.google_map_link = await resolveGoogleMapsLink({
+          name: finalName,
+          city: existing.city,
+          state: existing.state
+        });
+      }
+
+      await College.update(collegeId, updatePayload);
 
       const majorProgramIdsStr = Array.isArray(major_program_ids) && major_program_ids.length > 0
         ? major_program_ids.join(',') : (typeof major_program_ids === 'string' ? major_program_ids : null);
@@ -766,105 +841,67 @@ class CollegesController {
     try {
       const headers = [
         'college_name',
-        'college_location',
-        'google_map_link',
+        'state',
+        'city',
         'college_type',
-        'major_program_names',
         'website',
         'logo_filename',
         'college_description',
-        'bulk_program_names',
         'program_names',
-        'branch_courses',
-        'program_descriptions',
-        'program_duration_units',
-        'program_durations',
-        'intake_capacities',
-        'previous_year_cutoff',
-        'expected_cutoff',
-        'key_dates_summaries',
-        'fee_per_semesters',
-        'total_fees',
-        'counselling_processes',
-        'documents_requireds',
-        'placements',
-        'scholarships',
-        'recommended_exam_names',
-        'contact_emails',
-        'contact_numbers',
-        'brochure_urls',
-        'seat_matrix',
         'key_dates',
+        'documents_required',
+        'counselling_process',
+        'recommended_exam_names',
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
         [
           'IIT Delhi',
+          'Delhi',
           'New Delhi',
-          'https://maps.google.com/?q=IIT+Delhi',
           'Central,State',
-          'B.Tech, M.Tech',
           'https://www.iitd.ac.in',
           'iit_delhi.png',
           'Premier engineering institute.',
-          '',
           'B.Tech; M.Tech',
-          'Computer Science; Electronics',
-          'Undergraduate program; Postgraduate program',
-          'years; years',
-          '4; 2',
-          '120; 60',
-          'JEE Main|CSE-GEN:1000,CSE-OBC:1500|2024; JEE Main|CSE-GEN:900|2025',
-          'JEE Main|CSE-GEN:2000|2024; JEE Main|CSE-GEN:1800|2025',
-          'Admissions start Jan 2025; Admissions start Feb 2025',
-          '150000; 200000',
-          '600000; 400000',
-          'JOSAA counselling; JOSAA counselling',
-          'Aadhar, Marksheet, Photo; Aadhar, Degree',
-          'Average 12 LPA; Average 10 LPA',
-          'Merit-based scholarship available; Research fellowship',
-          'JEE Advanced, JEE Main; GATE',
-          'admissions@iitd.ac.in; pg@iitd.ac.in',
-          '011-12345678; 011-87654321',
-          'https://iitd.ac.in/btech.pdf; https://iitd.ac.in/mtech.pdf',
-          'CSE-general:50, CSE-OBC:30',
           'Admission Start|2025-01-01, Last Date|2025-02-28',
+          'Aadhar, Marksheet, Photo',
+          'JOSAA counselling',
+          'JEE Advanced, JEE Main',
         ],
         [
           'State College of Engineering',
-          'Mumbai',
-          '',
+          'Maharashtra',
+          'Mumbai City',
           'State',
-          'B.Tech',
           'https://www.sce.ac.in',
           'state_eng.png',
           'State level engineering college.',
-          '',
-          '',
-          'Computer Science',
-          'Undergraduate engineering program',
-          'years',
-          '4',
-          '100',
-          'JEE Main|CSE-GEN:2000|2024',
-          'JEE Main|CSE-GEN:1800|2025',
-          'Applications open Feb 2025',
-          '80000',
-          '320000',
-          'State counselling',
-          'Marksheet',
-          'Average 6 LPA',
-          'SC/ST fee waiver',
-          'JEE Main',
-          'admissions@sce.ac.in',
-          '022-12345678',
-          'https://sce.ac.in/brochure.pdf',
-          'CSE-general:80, CSE-OBC:20',
+          'B.Tech',
           'Application Start|2025-02-01',
+          'Marksheet',
+          'State counselling',
+          'JEE Main',
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Colleges');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=colleges-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Optional programs_excel: CollegePrograms sheet + programs taxonomy (exact program_name strings).
+   * Download separately from colleges-bulk-template.xlsx.
+   */
+  static async downloadProgramsExcelTemplate(req, res) {
+    try {
       const collegeProgramsHeaders = [
         'college_name',
         'program_name',
@@ -888,6 +925,7 @@ class CollegesController {
         'brochure_url',
         'seat_matrix'
       ];
+      const wb = XLSX.utils.book_new();
       const wsPrograms = XLSX.utils.aoa_to_sheet([
         collegeProgramsHeaders,
         [
@@ -915,13 +953,30 @@ class CollegesController {
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, wsPrograms, 'CollegePrograms');
+
+      const programs = await Program.findAll();
+      const catalogRows = [
+        ['program_id', 'program_name', 'stream', 'interest_labels'],
+        ['', 'Use program_name in CollegePrograms; list which programs attach on the Colleges sheet in program_names only.', '', ''],
+      ];
+      for (const p of programs) {
+        catalogRows.push([
+          p.id,
+          p.name || '',
+          p.stream_name || '',
+          p.interest_labels || '',
+        ]);
+      }
+      const wsCatalog = XLSX.utils.aoa_to_sheet(catalogRows);
+      XLSX.utils.book_append_sheet(wb, wsCatalog, 'Programs_catalog');
+
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=colleges-bulk-template.xlsx');
+      res.setHeader('Content-Disposition', 'attachment; filename=colleges-programs-excel-template.xlsx');
       res.send(buf);
     } catch (error) {
-      console.error('Error generating bulk template:', error);
-      res.status(500).json({ success: false, message: 'Failed to generate template' });
+      console.error('Error generating programs Excel template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate programs template' });
     }
   }
 
@@ -930,7 +985,7 @@ class CollegesController {
     try {
       const colleges = await College.findAll();
       const headers = [
-        'college_name', 'college_location', 'google_map_link', 'college_type', 'major_program_names', 'website',
+        'college_name', 'state', 'city', 'college_location', 'google_map_link', 'college_type', 'major_program_names', 'website',
         'logo_filename', 'college_description', 'bulk_program_names',
         'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
         'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
@@ -1125,6 +1180,8 @@ class CollegesController {
         }
         rows.push([
           c.college_name || '',
+          c.state || '',
+          c.city || '',
           c.college_location || '',
           c.google_map_link || '',
           c.college_type || '',
@@ -1231,13 +1288,13 @@ class CollegesController {
 
       let programGrouped = loadGroupedProgramsFromWorkbook(workbook, { dedicatedProgramsFile: false });
       const programsExcelFile = req.files?.programs_excel?.[0];
+      let dedicatedProgramsRowCount = 0;
       if (programsExcelFile?.buffer) {
         try {
           const wbProg = XLSX.read(programsExcelFile.buffer, { type: 'buffer', raw: true });
-          programGrouped = mergeGroupedProgramMaps(
-            programGrouped,
-            loadGroupedProgramsFromWorkbook(wbProg, { dedicatedProgramsFile: true })
-          );
+          const fromDedicated = loadGroupedProgramsFromWorkbook(wbProg, { dedicatedProgramsFile: true });
+          dedicatedProgramsRowCount = countMapArrayValues(fromDedicated);
+          programGrouped = mergeGroupedProgramMaps(programGrouped, fromDedicated);
         } catch (e) {
           return res.status(400).json({ success: false, message: 'Invalid programs Excel file or format.' });
         }
@@ -1277,13 +1334,23 @@ class CollegesController {
           continue;
         }
 
-        const location = (row.college_location ?? row.college_Location ?? '').toString().trim() || null;
+        const stateTrim = getCell(row, 'state', 'State');
+        const cityTrim = getCell(row, 'city', 'City');
+        if (!stateTrim || !cityTrim) {
+          errors.push({ row: rowNum, message: 'state and city are required' });
+          continue;
+        }
+        const location = formatLocationLine(cityTrim, stateTrim);
+        const googleMapLink = await resolveGoogleMapsLink({
+          name,
+          city: cityTrim,
+          state: stateTrim
+        });
         const typeRaw = (row.college_type ?? row.college_Type ?? '').toString().trim();
         const typeParts = typeRaw.split(',').map(s => s.trim()).filter(Boolean);
         const collegeType = typeParts.length > 0 ? typeParts.filter(t => validTypes.find(v => v.toLowerCase() === t.toLowerCase())).map(t => validTypes.find(v => v.toLowerCase() === t.toLowerCase())).join(',') : null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
         const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
-        const googleMapLink = (row.google_map_link ?? '').toString().trim() || null;
         const websiteVal = (row.website ?? '').toString().trim() || null;
         const majorProgramNamesRaw = (row.major_program_names ?? '').toString().trim();
 
@@ -1294,6 +1361,9 @@ class CollegesController {
         const recommendedExamIdsRaw = (row.recommended_exam_ids ?? row.recommended_exam_Ids ?? '').toString().trim();
         const bulkProgramNamesRaw = getCell(row, 'bulk_program_names', 'bulk_Program_Names');
         const programNamesRaw = (row.program_names ?? row.program_Names ?? '').toString().trim();
+        const programPickTokens = splitList(bulkProgramNamesRaw).length
+          ? splitList(bulkProgramNamesRaw)
+          : splitList(programNamesRaw);
         const programIdsRaw = (row.program_ids ?? row.program_Ids ?? '').toString().trim();
         const intakeCapacitiesRaw = (row.intake_capacities ?? row.intake_Capacities ?? '').toString().trim();
         const programDurationsRaw = (row.program_durations ?? row.program_Durations ?? '').toString().trim();
@@ -1336,7 +1406,9 @@ class CollegesController {
             college_logo: collegeLogoUrl,
             logo_filename: logoFilename || null,
             google_map_link: googleMapLink,
-            website: websiteVal
+            website: websiteVal,
+            state: stateTrim,
+            city: cityTrim
           });
           let majorProgramIdsStr = null;
           if (majorProgramNamesRaw) {
@@ -1422,12 +1494,12 @@ class CollegesController {
           const brochureUrls = brochureUrlsRaw ? splitList(brochureUrlsRaw) : [];
           const recExamNamesByProg = recommendedExamNamesRaw ? splitList(recommendedExamNamesRaw) : [];
 
-          const programBucket = programGrouped.get(name.toLowerCase()) || [];
+          const programBucket = programGrouped.get(normalizeEntityKey(name)) || [];
           if (programBucket.length > 0) {
             await insertCollegeProgramsFromBucket(
               college.id,
               programBucket,
-              splitList(bulkProgramNamesRaw),
+              programPickTokens,
               errors,
               rowNum
             );
@@ -1499,8 +1571,13 @@ class CollegesController {
         }
       }
 
-      const createdNamesLower = new Set(created.map((c) => c.name.toLowerCase()));
+      const createdNamesLower = new Set(created.map((c) => normalizeEntityKey(c.name)));
       const programSheetWarnings = [];
+      if (programsExcelFile?.buffer && dedicatedProgramsRowCount === 0) {
+        programSheetWarnings.push(
+          'A programs Excel file was received, but no program rows were read from it. Use a sheet named CollegePrograms (or college_programs) with college_name and program_name on each data row. The Programs_catalog sheet is reference-only and is not imported as programs.'
+        );
+      }
       for (const [key, arr] of programGrouped) {
         if (!createdNamesLower.has(key) && arr.length) {
           const label = arr[0].college_name || key;

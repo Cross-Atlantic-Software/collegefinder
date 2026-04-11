@@ -14,6 +14,8 @@ export interface ApiResponse<T> {
  */
 export interface User {
   id: number;
+  /** Public reference (UT + 8 digits); internal id remains the primary key. */
+  user_code?: string | null;
   email: string;
   name?: string;
   profile_photo?: string | null;
@@ -30,6 +32,7 @@ export interface SendOTPResponse {
 export interface VerifyOTPResponse {
   user: {
     id: number;
+    user_code?: string | null;
     email: string;
     name: string | null;
     onboarding_completed?: boolean;
@@ -43,6 +46,7 @@ export interface VerifyOTPResponse {
  */
 export interface SiteUser {
   id: number;
+  user_code?: string | null;
   email: string;
   name?: string | null;
   first_name?: string | null;

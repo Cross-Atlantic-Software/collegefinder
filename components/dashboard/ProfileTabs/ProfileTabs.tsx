@@ -56,6 +56,7 @@ export default function ProfileTabs() {
   const [activeTab, setActiveTab] = useState<TabKey>("basic");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.profile_photo || null);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
   const tabRefs = useRef<Record<TabKey, HTMLButtonElement | null>>({
     basic: null,
     academics: null,
@@ -250,6 +251,7 @@ export default function ProfileTabs() {
                 title="Edit photo"
               >
                 <input
+                  ref={photoFileInputRef}
                   type="file"
                   accept="image/*"
                   className="hidden"
@@ -258,7 +260,9 @@ export default function ProfileTabs() {
                     const file = e.target.files?.[0];
                     if (file) {
                       await handlePhotoUpload(file);
-                      e.currentTarget.value = "";
+                      if (photoFileInputRef.current) {
+                        photoFileInputRef.current.value = "";
+                      }
                     }
                   }}
                 />

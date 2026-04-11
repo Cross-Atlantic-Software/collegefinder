@@ -64,7 +64,8 @@ export default function UsersPage() {
       const filtered = allUsers.filter(user => {
         const email = user.email.toLowerCase();
         const name = user.name?.toLowerCase() || '';
-        return email.includes(searchLower) || name.includes(searchLower);
+        const code = (user.user_code || '').toLowerCase();
+        return email.includes(searchLower) || name.includes(searchLower) || code.includes(searchLower);
       });
       setUsers(filtered);
     }, 300); // 300ms debounce for smooth search
@@ -110,7 +111,7 @@ export default function UsersPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search users by email or name"
+                  placeholder="Search by email, name, or user code"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"

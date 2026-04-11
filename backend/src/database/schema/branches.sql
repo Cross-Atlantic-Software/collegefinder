@@ -4,9 +4,19 @@ CREATE TABLE IF NOT EXISTS branches (
   name VARCHAR(255) NOT NULL UNIQUE,
   description TEXT,
   status BOOLEAN DEFAULT TRUE,
+  stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL,
+  interest_ids INTEGER[] DEFAULT '{}',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'branches') THEN
+    ALTER TABLE branches ADD COLUMN IF NOT EXISTS stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL;
+    ALTER TABLE branches ADD COLUMN IF NOT EXISTS interest_ids INTEGER[] DEFAULT '{}';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_branches_name ON branches(name);
 CREATE INDEX IF NOT EXISTS idx_branches_status ON branches(status);

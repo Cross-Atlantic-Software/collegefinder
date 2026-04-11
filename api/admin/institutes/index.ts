@@ -6,6 +6,8 @@ export interface Institute {
   id: number;
   institute_name: string;
   institute_location: string | null;
+  state?: string | null;
+  city?: string | null;
   /** Google Maps (or other maps) URL for the institute location. */
   google_maps_link?: string | null;
   type: 'offline' | 'online' | 'hybrid' | null;
@@ -109,6 +111,8 @@ export async function uploadInstituteLogo(file: File): Promise<ApiResponse<{ log
 
 export async function createInstitute(data: {
   institute_name: string;
+  state: string;
+  city: string;
   institute_location?: string | null;
   google_maps_link?: string | null;
   type?: 'offline' | 'online' | 'hybrid' | null;
@@ -136,6 +140,8 @@ export async function updateInstitute(
   id: number,
   data: {
     institute_name?: string;
+    state?: string;
+    city?: string;
     institute_location?: string | null;
     google_maps_link?: string | null;
     type?: 'offline' | 'online' | 'hybrid' | null;
@@ -213,6 +219,24 @@ export async function downloadInstitutesBulkTemplate(): Promise<void> {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'institutes-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Optional courses_excel: InstituteCourses layout + course_name catalog from DB. */
+export async function downloadInstitutesCoursesExcelTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.INSTITUTES}/courses-excel-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download courses template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'institutes-courses-excel-template.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
 }

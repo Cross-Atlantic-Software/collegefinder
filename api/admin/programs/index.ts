@@ -6,6 +6,10 @@ export interface Program {
   id: number;
   name: string;
   status: boolean;
+  stream_id?: number | null;
+  interest_ids?: number[] | null;
+  stream_name?: string | null;
+  interest_labels?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +42,8 @@ export async function getProgramById(id: number): Promise<ApiResponse<{
 export async function createProgram(data: {
   name: string;
   status?: boolean;
+  stream_id?: number | null;
+  interest_ids?: number[];
 }): Promise<ApiResponse<{
   program: Program;
 }>> {
@@ -55,6 +61,8 @@ export async function updateProgram(
   data: {
     name?: string;
     status?: boolean;
+    stream_id?: number | null;
+    interest_ids?: number[];
   }
 ): Promise<ApiResponse<{
   program: Program;

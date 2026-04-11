@@ -11,6 +11,10 @@ export interface Branch {
   name: string;
   description: string | null;
   status: boolean;
+  stream_id?: number | null;
+  interest_ids?: number[] | null;
+  stream_name?: string | null;
+  interest_labels?: string | null;
   created_at: string;
   updated_at: string;
   /** Linked taxonomy programs (admin list/detail). */
@@ -31,6 +35,8 @@ export async function createBranch(data: {
   name: string;
   description?: string | null;
   status?: boolean;
+  stream_id?: number | null;
+  interest_ids?: number[];
   program_ids?: number[];
 }): Promise<ApiResponse<{ branch: Branch }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.BRANCHES, { method: 'POST', body: JSON.stringify(data) });
@@ -38,7 +44,14 @@ export async function createBranch(data: {
 
 export async function updateBranch(
   id: number,
-  data: { name?: string; description?: string | null; status?: boolean; program_ids?: number[] }
+  data: {
+    name?: string;
+    description?: string | null;
+    status?: boolean;
+    stream_id?: number | null;
+    interest_ids?: number[];
+    program_ids?: number[];
+  }
 ): Promise<ApiResponse<{ branch: Branch }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.BRANCHES}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 }

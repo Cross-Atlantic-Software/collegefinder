@@ -2,6 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import {
+  getAcademics,
+  getAllStreamsPublic,
+  getBasicInfo,
+  getProfileCompletion,
+} from "@/api";
 import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
 import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -28,6 +34,68 @@ export default function DashboardPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
+  const [dashboardProfile, setDashboardProfile] = useState({
+    fullName: "User",
+    airRank: "—",
+    stream: "—",
+    targetIntake: "—",
+    profileStrength: 0,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [basicRes, academicsRes, completionRes, streamsRes] = await Promise.all([
+          getBasicInfo(),
+          getAcademics(),
+          getProfileCompletion(),
+          getAllStreamsPublic(),
+        ]);
+        if (cancelled) return;
+
+        const basic = basicRes.success ? basicRes.data : null;
+        const academics =
+          academicsRes.success && academicsRes.data != null ? academicsRes.data : null;
+        const streams =
+          streamsRes.success && streamsRes.data?.streams ? streamsRes.data.streams : [];
+        const pct =
+          completionRes.success && completionRes.data?.percentage != null
+            ? completionRes.data.percentage
+            : 0;
+
+        const fromParts = [basic?.first_name, basic?.last_name]
+          .filter((p): p is string => Boolean(p?.trim()))
+          .join(" ")
+          .trim();
+        const fullName =
+          fromParts || basic?.name?.trim() || "User";
+
+        const streamId = academics?.stream_id;
+        const streamFromTaxonomy =
+          streamId != null
+            ? streams.find((s) => String(s.id) === String(streamId))?.name?.trim() ?? ""
+            : "";
+        const stream =
+          streamFromTaxonomy ||
+          academics?.stream?.trim() ||
+          "—";
+
+        setDashboardProfile({
+          fullName,
+          airRank: "—",
+          stream,
+          targetIntake: "—",
+          profileStrength: pct,
+        });
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const section = searchParams.get("section") as SectionId | null;
@@ -42,14 +110,6 @@ export default function DashboardPage() {
 
   const toggleSidebar = () => setSidebarOpen((v) => !v);
   const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
-
-  const dashboardProfile = {
-    fullName: "Dinesh Sharma",
-    airRank: "#2,340",
-    stream: "Engineering",
-    targetIntake: "2026",
-    profileStrength: 85,
-  };
 
   const fullWidthSections: SectionId[] = [
     "profile",

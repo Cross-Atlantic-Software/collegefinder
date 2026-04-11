@@ -19,7 +19,8 @@ function splitReferralContactEmails(raw) {
   return [...new Set(raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
 }
 const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
-const { splitList, parseDate, parseBool, getCell } = require('../../utils/bulkUploadUtils');
+const { splitList, parseDate, parseBool, getCell, normalizeEntityKey, countMapArrayValues } = require('../../utils/bulkUploadUtils');
+const { resolveGoogleMapsLink, formatLocationLine } = require('../../services/googlePlacesMapsLink');
 
 /**
  * Build map: lowercased institute_name -> array of course row objects (from InstituteCourses sheet / file).
@@ -33,7 +34,7 @@ function groupInstituteCourseRowsToMap(rows) {
     if (!instituteName) continue;
     const course_name = getCell(row, 'course_name', 'course_Name');
     if (!course_name) continue;
-    const key = instituteName.toLowerCase();
+    const key = normalizeEntityKey(instituteName);
     if (!map.has(key)) map.set(key, []);
     const durationRaw = getCell(row, 'duration_months', 'duration_Months');
     const dur = durationRaw !== '' ? parseInt(durationRaw, 10) : null;
@@ -56,6 +57,20 @@ function groupInstituteCourseRowsToMap(rows) {
   return map;
 }
 
+function sheetNorm(n) {
+  return String(n).toLowerCase().replace(/\s+/g, '');
+}
+
+function isInstituteCourseCatalogSheet(n) {
+  const x = sheetNorm(n);
+  return x === 'coursenamescatalog' || x === 'course_names_catalog';
+}
+
+function isExcludedFromInstituteCoursesPick(n) {
+  const x = sheetNorm(n);
+  return x === 'institutes' || x === 'colleges' || isInstituteCourseCatalogSheet(n);
+}
+
 /**
  * @param {import('xlsx').WorkBook} workbook
  * @param {{ dedicatedCoursesFile: boolean }} opts - true when workbook is the optional courses_excel upload only
@@ -63,16 +78,17 @@ function groupInstituteCourseRowsToMap(rows) {
 function loadGroupedCoursesFromWorkbook(workbook, opts = { dedicatedCoursesFile: false }) {
   if (!workbook?.SheetNames?.length) return new Map();
   const names = workbook.SheetNames;
-  const norm = (n) => n.toLowerCase().replace(/\s+/g, '');
+  const norm = sheetNorm;
   let sheetName = names.find((n) => {
     const x = norm(n);
     return x === 'institutecourses' || x === 'institute_courses';
   });
-  if (!sheetName && names.length > 1) {
-    sheetName = names[1];
+  if (!sheetName) {
+    sheetName = names.find((n) => !isExcludedFromInstituteCoursesPick(n)) || null;
   }
   if (!sheetName && names.length === 1 && opts.dedicatedCoursesFile) {
-    sheetName = names[0];
+    const only = names[0];
+    sheetName = isExcludedFromInstituteCoursesPick(only) ? null : only;
   }
   if (!sheetName) return new Map();
   const sheet = workbook.Sheets[sheetName];
@@ -85,16 +101,33 @@ async function insertInstituteCoursesFromBucket(instituteId, bucket, courseNames
   if (!bucket || !bucket.length) return;
   let toInsert = bucket;
   if (courseNamesFilter && courseNamesFilter.length > 0) {
-    toInsert = [];
+    const picked = [];
+    const missing = [];
     for (const w of courseNamesFilter) {
-      const found = bucket.find((c) => String(c.course_name || '').toLowerCase() === w.toLowerCase());
-      if (!found) {
+      const wt = String(w).trim();
+      if (!wt) continue;
+      const found = bucket.find(
+        (c) => String(c.course_name || '').trim().toLowerCase() === wt.toLowerCase()
+      );
+      if (!found) missing.push(w);
+      else if (!picked.includes(found)) picked.push(found);
+    }
+    if (picked.length > 0) {
+      toInsert = picked;
+      for (const w of missing) {
         errors.push({
           row: rowNum,
           message: `course_names "${w}" has no matching row in the Institute Courses sheet for this institute`
         });
-      } else if (!toInsert.includes(found)) {
-        toInsert.push(found);
+      }
+    } else {
+      toInsert = bucket;
+      if (missing.length) {
+        errors.push({
+          row: rowNum,
+          message:
+            'course_names did not match any row in the courses sheet for this institute; all course rows from the sheet were attached instead.'
+        });
       }
     }
   }
@@ -291,8 +324,6 @@ class InstitutesController {
     try {
       const {
         institute_name,
-        institute_location,
-        google_maps_link,
         type,
         logo,
         website,
@@ -306,11 +337,19 @@ class InstitutesController {
         ranking_score,
         success_rate,
         student_rating,
-        instituteCourses
+        instituteCourses,
+        state,
+        city,
       } = req.body;
 
       if (!institute_name || !institute_name.trim()) {
         return res.status(400).json({ success: false, message: 'Institute name is required' });
+      }
+
+      const stateTrim = state != null ? String(state).trim() : '';
+      const cityTrim = city != null ? String(city).trim() : '';
+      if (!stateTrim || !cityTrim) {
+        return res.status(400).json({ success: false, message: 'State and city are required' });
       }
 
       const existing = await Institute.findByName(institute_name.trim());
@@ -318,15 +357,24 @@ class InstitutesController {
         return res.status(400).json({ success: false, message: 'Institute with this name already exists' });
       }
 
+      const institute_location = formatLocationLine(cityTrim, stateTrim);
+      const google_maps_link = await resolveGoogleMapsLink({
+        name: institute_name.trim(),
+        city: cityTrim,
+        state: stateTrim,
+      });
+
       const institute = await Institute.create({
         institute_name: institute_name.trim(),
-        institute_location: institute_location ? institute_location.trim() : null,
-        google_maps_link: google_maps_link != null ? String(google_maps_link).trim() || null : null,
+        institute_location,
+        google_maps_link,
         type: type || null,
         logo: logo || null,
         website: website ? website.trim() : null,
         contact_number: contact_number ? contact_number.trim() : null,
         referral_contact_email: referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
+        state: stateTrim,
+        city: cityTrim,
       });
 
       if (institute_description != null || demo_available != null || scholarship_available != null) {
@@ -400,8 +448,6 @@ class InstitutesController {
 
       const {
         institute_name,
-        institute_location,
-        google_maps_link,
         type,
         logo,
         website,
@@ -415,7 +461,9 @@ class InstitutesController {
         ranking_score,
         success_rate,
         student_rating,
-        instituteCourses
+        instituteCourses,
+        state,
+        city,
       } = req.body;
 
       if (institute_name && institute_name.trim() !== existing.institute_name) {
@@ -429,15 +477,12 @@ class InstitutesController {
         await deleteFromS3(existing.logo);
       }
 
-      await Institute.update(instituteId, {
+      const hasStateKey = Object.prototype.hasOwnProperty.call(req.body, 'state');
+      const hasCityKey = Object.prototype.hasOwnProperty.call(req.body, 'city');
+      const finalName = institute_name !== undefined ? institute_name.trim() : existing.institute_name;
+
+      const updatePayload = {
         institute_name: institute_name !== undefined ? institute_name.trim() : undefined,
-        institute_location: institute_location !== undefined ? (institute_location && institute_location.trim()) || null : undefined,
-        google_maps_link:
-          google_maps_link !== undefined
-            ? google_maps_link != null
-              ? String(google_maps_link).trim() || null
-              : null
-            : undefined,
         type: type !== undefined ? type || null : undefined,
         logo: logo !== undefined ? logo : undefined,
         website: website !== undefined ? (website && website.trim()) || null : undefined,
@@ -448,7 +493,36 @@ class InstitutesController {
               ? String(referral_contact_email).trim() || null
               : null
             : undefined,
-      });
+      };
+
+      if (hasStateKey || hasCityKey) {
+        const stateTrim = hasStateKey ? String(state ?? '').trim() : '';
+        const cityTrim = hasCityKey ? String(city ?? '').trim() : '';
+        if (!stateTrim || !cityTrim) {
+          return res.status(400).json({ success: false, message: 'State and city are both required' });
+        }
+        updatePayload.state = stateTrim;
+        updatePayload.city = cityTrim;
+        updatePayload.institute_location = formatLocationLine(cityTrim, stateTrim);
+        updatePayload.google_maps_link = await resolveGoogleMapsLink({
+          name: finalName,
+          city: cityTrim,
+          state: stateTrim,
+        });
+      } else if (
+        institute_name !== undefined &&
+        finalName !== existing.institute_name &&
+        existing.state &&
+        existing.city
+      ) {
+        updatePayload.google_maps_link = await resolveGoogleMapsLink({
+          name: finalName,
+          city: existing.city,
+          state: existing.state,
+        });
+      }
+
+      await Institute.update(instituteId, updatePayload);
 
       if (institute_description !== undefined || demo_available !== undefined || scholarship_available !== undefined) {
         await InstituteDetails.create({
@@ -539,8 +613,8 @@ class InstitutesController {
     try {
       const headers = [
         'institute_name',
-        'institute_location',
-        'google_maps_link',
+        'state',
+        'city',
         'type',
         'logo_filename',
         'website',
@@ -553,16 +627,15 @@ class InstitutesController {
         'student_rating',
         'exam_names',
         'specialization_exam_names',
-        'course_names',
-        'courses'
+        'course_names'
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
         [
           'Allen Kota',
+          'Rajasthan',
           'Kota',
-          'https://maps.app.goo.gl/example-allen',
           'Offline',
           'allen.png',
           'https://allen.ac.in',
@@ -575,13 +648,12 @@ class InstitutesController {
           '5',
           'JEE Main',
           'JEE Main',
-          'JEE Main Intensive; NEET Foundation',
-          ''
+          'JEE Main Intensive; NEET Foundation'
         ],
         [
           'Unacademy',
-          'Online',
-          '',
+          'Karnataka',
+          'Bengaluru Urban',
           'Online',
           'unacademy.png',
           'https://unacademy.com',
@@ -594,11 +666,26 @@ class InstitutesController {
           '4',
           'JEE Main',
           'JEE Main',
-          '',
-          'Crash Course|Class 12|6|25000|100|2025-01-15'
+          ''
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Institutes');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=institutes-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Optional courses_excel file: InstituteCourses sheet layout + catalog of course_name values in use.
+   * Download separately from institutes-bulk-template.xlsx.
+   */
+  static async downloadCoursesExcelTemplate(req, res) {
+    try {
       const courseHeaders = [
         'institute_name',
         'course_name',
@@ -608,6 +695,7 @@ class InstitutesController {
         'batch_size',
         'start_date'
       ];
+      const wb = XLSX.utils.book_new();
       const wsCourses = XLSX.utils.aoa_to_sheet([
         courseHeaders,
         [
@@ -630,13 +718,29 @@ class InstitutesController {
         ],
       ]);
       XLSX.utils.book_append_sheet(wb, wsCourses, 'InstituteCourses');
+
+      const distinctNames = await InstituteCourse.findDistinctCourseNames();
+      const catalogRows = [
+        ['course_names'],
+        ['(Use exact spelling in the main institutes sheet column course_names, semicolon-separated, or as course_name per row below.)'],
+      ];
+      if (distinctNames.length === 0) {
+        catalogRows.push(['(No saved institute courses yet — you may use any new name.)']);
+      } else {
+        for (const name of distinctNames) {
+          catalogRows.push([name]);
+        }
+      }
+      const wsCatalog = XLSX.utils.aoa_to_sheet(catalogRows);
+      XLSX.utils.book_append_sheet(wb, wsCatalog, 'Course_names_catalog');
+
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=institutes-bulk-template.xlsx');
+      res.setHeader('Content-Disposition', 'attachment; filename=institutes-courses-excel-template.xlsx');
       res.send(buf);
     } catch (error) {
-      console.error('Error generating bulk template:', error);
-      res.status(500).json({ success: false, message: 'Failed to generate template' });
+      console.error('Error generating courses Excel template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate courses template' });
     }
   }
 
@@ -645,9 +749,9 @@ class InstitutesController {
     try {
       const institutes = await Institute.findAll();
       const headers = [
-        'institute_name', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
+        'institute_name', 'state', 'city', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
-        'exam_names', 'specialization_exam_names', 'course_names', 'courses'
+        'exam_names', 'specialization_exam_names', 'course_names'
       ];
       const rows = [headers];
       const courseExportRows = [
@@ -664,9 +768,6 @@ class InstitutesController {
         const detail = details || {};
         const stats = statistics || {};
         const logoFilename = (inst.logo && typeof inst.logo === 'string' && inst.logo.split('/').pop()) ? inst.logo.split('/').pop() : '';
-        const coursesStr = (courses && courses.length)
-          ? courses.map((co) => `${co.course_name || ''}|${co.target_class || ''}|${co.duration_months != null ? co.duration_months : ''}|${co.fees != null ? co.fees : ''}|${co.batch_size != null ? co.batch_size : ''}|${co.start_date ? String(co.start_date).slice(0, 10) : ''}`).join(';')
-          : '';
         const courseNamesStr = (courses && courses.length)
           ? courses.map((co) => (co.course_name || '').trim()).filter(Boolean).join('; ')
           : '';
@@ -695,6 +796,8 @@ class InstitutesController {
         }
         rows.push([
           inst.institute_name || '',
+          inst.state || '',
+          inst.city || '',
           inst.institute_location || '',
           inst.google_maps_link || '',
           inst.type || '',
@@ -709,8 +812,7 @@ class InstitutesController {
           studentRatingForExport(stats.student_rating),
           examNames.join(','),
           specExamNames.join(','),
-          courseNamesStr,
-          coursesStr
+          courseNamesStr
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -834,9 +936,18 @@ class InstitutesController {
           continue;
         }
 
-        const location = (row.institute_location ?? row.institute_Location ?? '').toString().trim() || null;
-        const googleMapsLink =
-          (row.google_maps_link ?? row.google_Maps_Link ?? row.google_maps_Link ?? '').toString().trim() || null;
+        const stateTrim = getCell(row, 'state', 'State');
+        const cityTrim = getCell(row, 'city', 'City');
+        if (!stateTrim || !cityTrim) {
+          errors.push({ row: rowNum, message: 'state and city are required' });
+          continue;
+        }
+        const location = formatLocationLine(cityTrim, stateTrim);
+        const googleMapsLink = await resolveGoogleMapsLink({
+          name,
+          city: cityTrim,
+          state: stateTrim,
+        });
         const typeRaw = (row.type ?? '').toString().trim();
         const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
         const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
@@ -853,7 +964,6 @@ class InstitutesController {
         const specializationExamNamesRaw = (row.specialization_exam_names ?? row.specialization_exam_Names ?? '').toString().trim();
         const specializationExamIdsRaw = (row.specialization_exam_ids ?? row.specialization_exam_Ids ?? '').toString().trim();
         const courseNamesRaw = getCell(row, 'course_names', 'course_Names');
-        const coursesRaw = (row.courses ?? '').toString().trim();
         const courseNamesFilter = splitList(courseNamesRaw);
 
         let logoUrl = null;
@@ -878,7 +988,9 @@ class InstitutesController {
             logo: logoUrl,
             logo_filename: logoFilename || null,
             website,
-            contact_number: contactNumber
+            contact_number: contactNumber,
+            state: stateTrim,
+            city: cityTrim,
           });
           if (description || demoAvailable || scholarshipAvailable) {
             await InstituteDetails.create({
@@ -916,27 +1028,9 @@ class InstitutesController {
             specExamIds = specializationExamIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
           }
           if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
-          const bucket = courseGrouped.get(name.toLowerCase()) || [];
+          const bucket = courseGrouped.get(normalizeEntityKey(name)) || [];
           if (bucket.length > 0) {
             await insertInstituteCoursesFromBucket(institute.id, bucket, courseNamesFilter, errors, rowNum);
-          } else if (coursesRaw) {
-            const courseRows = splitList(coursesRaw);
-            for (const cr of courseRows) {
-              const [course_name, target_class, duration_months, fees, batch_size, start_dateRaw] = cr.split('|').map((s) => s.trim());
-              const start_date = start_dateRaw ? parseDate(start_dateRaw) : null;
-              const dur = duration_months ? parseInt(duration_months, 10) : null;
-              const feeVal = fees ? parseFloat(fees) : null;
-              const batch = batch_size ? parseInt(batch_size, 10) : null;
-              await InstituteCourse.create({
-                institute_id: institute.id,
-                course_name: course_name || null,
-                target_class: target_class || null,
-                duration_months: isNaN(dur) ? null : dur,
-                fees: isNaN(feeVal) ? null : feeVal,
-                batch_size: isNaN(batch) ? null : batch,
-                start_date: start_date
-              });
-            }
           }
           created.push({ id: institute.id, name: institute.institute_name });
           namesInFile.add(name.toLowerCase());
@@ -945,8 +1039,13 @@ class InstitutesController {
         }
       }
 
-      const createdNamesLower = new Set(created.map((c) => c.name.toLowerCase()));
+      const createdNamesLower = new Set(created.map((c) => normalizeEntityKey(c.name)));
       const courseSheetWarnings = [];
+      if (coursesExcelFile?.buffer && dedicatedCoursesRowCount === 0) {
+        courseSheetWarnings.push(
+          'A courses Excel file was received, but no course rows were read from it. Use a sheet named InstituteCourses (or institute_courses) with institute_name and course_name on each data row. Course name catalog sheets are not imported as course rows.'
+        );
+      }
       for (const [key, arr] of courseGrouped) {
         if (!createdNamesLower.has(key) && arr.length) {
           const label = arr[0].institute_name || key;

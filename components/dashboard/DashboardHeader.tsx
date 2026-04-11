@@ -16,13 +16,13 @@ export default function DashboardHeader({
   return (
     <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="px-4 py-2 md:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
             <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dashboard</p>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{fullName}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:justify-items-end">
+          <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
             <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">AIR</p>
               <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{airRank}</p>

@@ -1,7 +1,38 @@
 const XLSX = require('xlsx');
 const Branch = require('../../models/taxonomy/Branch');
 const Program = require('../../models/taxonomy/Program');
+const Stream = require('../../models/taxonomy/Stream');
+const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const { validationResult } = require('express-validator');
+
+function normalizeInterestIdsInput(raw) {
+  if (raw == null) return [];
+  let arr = raw;
+  if (typeof arr === 'string') {
+    try {
+      arr = JSON.parse(arr);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return [...new Set(arr.map((x) => parseInt(String(x), 10)).filter((n) => Number.isInteger(n) && n > 0))];
+}
+
+async function assertInterestIdsValid(ids) {
+  for (const iid of ids) {
+    const cg = await CareerGoal.findById(iid);
+    if (!cg) return `Invalid interest id: ${iid}`;
+  }
+  return null;
+}
+
+function splitInterestNamesCell(val) {
+  if (val == null) return [];
+  const s = String(val).trim();
+  if (!s) return [];
+  return s.split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+}
 
 function normalizeProgramIdsFromBody(body) {
   let raw = body.program_ids;
@@ -53,10 +84,32 @@ class BranchController {
 
       const { name, description, status } = req.body;
       const programIds = normalizeProgramIdsFromBody(req.body);
+
+      let stream_id = null;
+      if (req.body.stream_id != null && String(req.body.stream_id).trim() !== '') {
+        const n = parseInt(req.body.stream_id, 10);
+        if (!Number.isInteger(n) || n < 1) {
+          return res.status(400).json({ success: false, message: 'Invalid stream_id' });
+        }
+        const st = await Stream.findById(n);
+        if (!st) return res.status(400).json({ success: false, message: 'Stream not found' });
+        stream_id = n;
+      }
+
+      const interest_ids = normalizeInterestIdsInput(req.body.interest_ids);
+      const interestErr = await assertInterestIdsValid(interest_ids);
+      if (interestErr) return res.status(400).json({ success: false, message: interestErr });
+
       const existing = await Branch.findByName(name);
       if (existing) return res.status(400).json({ success: false, message: 'Branch with this name already exists' });
 
-      const branch = await Branch.create({ name, description: description || null, status: status !== undefined ? status : true });
+      const branch = await Branch.create({
+        name,
+        description: description || null,
+        status: status !== undefined ? status : true,
+        stream_id,
+        interest_ids
+      });
       if (programIds !== undefined) {
         try {
           await Branch.setProgramIds(branch.id, programIds);
@@ -88,7 +141,40 @@ class BranchController {
         if (nameExists) return res.status(400).json({ success: false, message: 'Branch with this name already exists' });
       }
 
-      const branch = await Branch.update(id, { name, description, status });
+      const patch = { name, description, status };
+      if (Object.prototype.hasOwnProperty.call(req.body, 'stream_id')) {
+        const v = req.body.stream_id;
+        if (v === null || v === undefined || String(v).trim() === '') {
+          patch.stream_id = null;
+        } else {
+          const n = parseInt(v, 10);
+          if (!Number.isInteger(n) || n < 1) {
+            return res.status(400).json({ success: false, message: 'Invalid stream_id' });
+          }
+          const st = await Stream.findById(n);
+          if (!st) return res.status(400).json({ success: false, message: 'Stream not found' });
+          patch.stream_id = n;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'interest_ids')) {
+        const interest_ids = normalizeInterestIdsInput(req.body.interest_ids);
+        const interestErr = await assertInterestIdsValid(interest_ids);
+        if (interestErr) return res.status(400).json({ success: false, message: interestErr });
+        patch.interest_ids = interest_ids;
+      }
+
+      await Branch.update(id, patch);
+
+      const programIds = normalizeProgramIdsFromBody(req.body);
+      if (programIds !== undefined) {
+        try {
+          await Branch.setProgramIds(id, programIds);
+        } catch (linkErr) {
+          return res.status(400).json({ success: false, message: linkErr.message || 'Invalid program selection' });
+        }
+      }
+
+      const branch = await Branch.findByIdWithPrograms(id);
       res.json({ success: true, message: 'Branch updated successfully', data: { branch } });
     } catch (error) {
       console.error('Error updating branch:', error);
@@ -113,11 +199,11 @@ class BranchController {
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
-        ['name', 'description', 'status', 'program_names'],
-        ['Computer Science', 'CS & IT related programs', 'TRUE', 'B.Tech; M.Tech'],
-        ['Electronics & Communication', 'ECE branch', 'TRUE', 'B.Tech'],
-        ['Mechanical Engineering', 'ME branch', 'TRUE', ''],
-        ['Civil Engineering', 'CE branch', 'TRUE', '']
+        ['name', 'description', 'status', 'stream', 'interests', 'program_names'],
+        ['Computer Science', 'CS & IT related programs', 'TRUE', 'PCM', 'Engineering; Technology', 'B.Tech; M.Tech'],
+        ['Electronics & Communication', 'ECE branch', 'TRUE', 'PCM', '', 'B.Tech'],
+        ['Mechanical Engineering', 'ME branch', 'TRUE', '', '', ''],
+        ['Civil Engineering', 'CE branch', 'TRUE', '', '', '']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Branches');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -133,13 +219,15 @@ class BranchController {
   static async downloadAllExcel(req, res) {
     try {
       const branches = await Branch.findAllWithPrograms();
-      const rows = [['id', 'name', 'description', 'status', 'program_names', 'created_at', 'updated_at']];
+      const rows = [['id', 'name', 'description', 'status', 'stream', 'interests', 'program_names', 'created_at', 'updated_at']];
       for (const b of branches) {
         rows.push([
           b.id,
           b.name || '',
           b.description || '',
           b.status ? 'TRUE' : 'FALSE',
+          b.stream_name || '',
+          b.interest_labels || '',
           b.program_names || '',
           b.created_at ? String(b.created_at).slice(0, 10) : '',
           b.updated_at ? String(b.updated_at).slice(0, 10) : ''
@@ -203,9 +291,34 @@ class BranchController {
         }
         if (!programResolveOk) continue;
 
+        const streamName = (row.stream ?? row.Stream ?? '').toString().trim();
+        let stream_id = null;
+        if (streamName) {
+          const st = await Stream.findByName(streamName);
+          if (!st) {
+            errors.push({ row: rowNum, message: `Unknown stream name: "${streamName}"` });
+            continue;
+          }
+          stream_id = st.id;
+        }
+
+        const interestParts = splitInterestNamesCell(row.interests ?? row.Interests ?? '');
+        const interest_ids = [];
+        let interestsOk = true;
+        for (const label of interestParts) {
+          const cg = await CareerGoal.findByLabel(label);
+          if (!cg) {
+            errors.push({ row: rowNum, message: `Unknown interest name: "${label}"` });
+            interestsOk = false;
+            break;
+          }
+          if (!interest_ids.includes(cg.id)) interest_ids.push(cg.id);
+        }
+        if (!interestsOk) continue;
+
         let createdBranch = null;
         try {
-          createdBranch = await Branch.create({ name: nameRaw, description, status });
+          createdBranch = await Branch.create({ name: nameRaw, description, status, stream_id, interest_ids });
           await Branch.setProgramIds(createdBranch.id, programIds);
           created.push({ id: createdBranch.id, name: createdBranch.name });
           namesInFile.add(nameRaw.toLowerCase());

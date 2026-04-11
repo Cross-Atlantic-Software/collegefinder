@@ -47,6 +47,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS mother_full_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT 'Ax' || substr(md5(random()::text), 1, 6) || '@1';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS user_code VARCHAR(12);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;
@@ -75,6 +76,7 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_user_code ON users(user_code);
 
 -- Trigger to automatically update updated_at for users
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;

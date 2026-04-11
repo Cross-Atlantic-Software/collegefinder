@@ -1051,7 +1051,19 @@ const validateCreateProgram = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('stream_id')
+    .optional({ nullable: true })
+    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
+    .withMessage('stream_id must be null or a positive integer'),
+  body('interest_ids')
+    .optional()
+    .isArray()
+    .withMessage('interest_ids must be an array'),
+  body('interest_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each interest_ids entry must be a positive integer')
 ];
 
 /**
@@ -1068,7 +1080,19 @@ const validateUpdateProgram = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('stream_id')
+    .optional({ nullable: true })
+    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
+    .withMessage('stream_id must be null or a positive integer'),
+  body('interest_ids')
+    .optional()
+    .isArray()
+    .withMessage('interest_ids must be an array'),
+  body('interest_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each interest_ids entry must be a positive integer')
 ];
 
 /**
@@ -1927,7 +1951,19 @@ const validateCreateBranch = [
   body('program_ids.*')
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Each program_ids entry must be a positive integer')
+    .withMessage('Each program_ids entry must be a positive integer'),
+  body('stream_id')
+    .optional({ nullable: true })
+    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
+    .withMessage('stream_id must be null or a positive integer'),
+  body('interest_ids')
+    .optional()
+    .isArray()
+    .withMessage('interest_ids must be an array'),
+  body('interest_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each interest_ids entry must be a positive integer')
 ];
 
 const validateUpdateBranch = [
@@ -1952,7 +1988,19 @@ const validateUpdateBranch = [
   body('program_ids.*')
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Each program_ids entry must be a positive integer')
+    .withMessage('Each program_ids entry must be a positive integer'),
+  body('stream_id')
+    .optional({ nullable: true })
+    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
+    .withMessage('stream_id must be null or a positive integer'),
+  body('interest_ids')
+    .optional()
+    .isArray()
+    .withMessage('interest_ids must be an array'),
+  body('interest_ids.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each interest_ids entry must be a positive integer')
 ];
 
 module.exports = {

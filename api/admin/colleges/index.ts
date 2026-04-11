@@ -6,6 +6,8 @@ export interface College {
   id: number;
   college_name: string;
   college_location: string | null;
+  state?: string | null;
+  city?: string | null;
   college_type: string | null;
   college_logo: string | null;
   logo_filename: string | null;
@@ -162,6 +164,24 @@ export async function downloadCollegesBulkTemplate(): Promise<void> {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'colleges-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Optional programs_excel: CollegePrograms layout + programs taxonomy from DB. */
+export async function downloadCollegesProgramsExcelTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/programs-excel-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download programs template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'colleges-programs-excel-template.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
 }

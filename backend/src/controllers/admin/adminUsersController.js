@@ -81,6 +81,7 @@ class AdminUsersController {
         usersWithAcademics.push({
           user: {
             id: user.id,
+            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },
@@ -162,6 +163,7 @@ class AdminUsersController {
         usersWithCareerGoals.push({
           user: {
             id: user.id,
+            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },

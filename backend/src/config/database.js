@@ -168,7 +168,10 @@ const runMigrations = async () => {
     'add_landing_page_content.sql',
     'add_branch_programs_junction.sql',
     'add_scholarship_colleges.sql',
-    'add_expert_linkedin_website.sql'
+    'add_expert_linkedin_website.sql',
+    'add_user_code_to_users.sql',
+    'add_college_institute_state_city.sql',
+    'add_stream_interests_to_programs_branches.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

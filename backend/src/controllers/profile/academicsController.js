@@ -3,6 +3,19 @@ const Subject = require('../../models/taxonomy/Subject');
 const Stream = require('../../models/taxonomy/Stream');
 const { validationResult } = require('express-validator');
 
+/**
+ * Display stream label: prefer `streams.name` from `user_academics.stream_id`,
+ * else fall back to legacy `user_academics.stream` text.
+ */
+async function streamDisplayFromAcademics(academics) {
+  if (!academics) return null;
+  if (academics.stream_id != null) {
+    const row = await Stream.findById(academics.stream_id);
+    if (row?.name) return row.name;
+  }
+  return academics.stream || null;
+}
+
 class AcademicsController {
   /**
    * Get academics
@@ -66,6 +79,8 @@ class AcademicsController {
         }
       }
 
+      const streamDisplay = await streamDisplayFromAcademics(academics);
+
       res.json({
         success: true,
         data: {
@@ -95,7 +110,7 @@ class AcademicsController {
           postmatric_marks_type: academics.postmatric_marks_type,
           postmatric_cgpa: academics.postmatric_cgpa,
           postmatric_result_status: academics.postmatric_result_status,
-          stream: academics.stream,
+          stream: streamDisplay,
           stream_id: academics.stream_id,
           matric_subjects: matricSubjects,
           subjects: subjects,
@@ -175,6 +190,8 @@ class AcademicsController {
         }
       }
 
+      const streamDisplay = await streamDisplayFromAcademics(academics);
+
       res.json({
         success: true,
         message: 'Academics updated successfully',
@@ -205,7 +222,7 @@ class AcademicsController {
           postmatric_marks_type: academics.postmatric_marks_type,
           postmatric_cgpa: academics.postmatric_cgpa,
           postmatric_result_status: academics.postmatric_result_status,
-          stream: academics.stream,
+          stream: streamDisplay,
           stream_id: academics.stream_id,
           matric_subjects: matricSubjects,
           subjects: subjects,
