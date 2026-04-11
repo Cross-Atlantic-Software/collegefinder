@@ -78,7 +78,7 @@ const init = async () => {
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)
       'institutes.sql',       // Institutes (Coachings) module: institutes + institute_details + institute_exams + institute_exam_specialization + institute_statistics + institute_courses
-      'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams
+      'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams + scholarship_colleges
       'loans.sql',            // Loans module: loan_providers + disbursement_process + eligible_countries + eligible_course_types
       'user_address.sql',      // User address table (depends on users)
       'government_identification.sql', // Government ID table (depends on users)
@@ -165,7 +165,13 @@ const runMigrations = async () => {
     'add_referral_uses_table.sql',
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
-    'add_landing_page_content.sql'
+    'add_landing_page_content.sql',
+    'add_branch_programs_junction.sql',
+    'add_scholarship_colleges.sql',
+    'add_expert_linkedin_website.sql',
+    'add_user_code_to_users.sql',
+    'add_college_institute_state_city.sql',
+    'add_stream_interests_to_programs_branches.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

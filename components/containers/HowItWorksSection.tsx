@@ -130,7 +130,6 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
 
     return (
         <section
-            id="our-edge"
             ref={sectionRef}
             className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
         >

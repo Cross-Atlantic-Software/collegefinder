@@ -4,8 +4,10 @@ const ScholarshipEligibleCategory = require('../../models/scholarship/Scholarshi
 const ScholarshipApplicableState = require('../../models/scholarship/ScholarshipApplicableState');
 const ScholarshipDocumentsRequired = require('../../models/scholarship/ScholarshipDocumentsRequired');
 const ScholarshipExam = require('../../models/scholarship/ScholarshipExam');
+const ScholarshipCollege = require('../../models/scholarship/ScholarshipCollege');
 const Stream = require('../../models/taxonomy/Stream');
 const Exam = require('../../models/taxonomy/Exam');
+const College = require('../../models/college/College');
 const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
 
 async function resolveStreamNameToId(nameStr) {
@@ -27,6 +29,20 @@ async function resolveExamNamesToIds(namesStr) {
   return ids;
 }
 
+/** Resolves every listed college name; returns unknown names for row-level errors. */
+async function resolveCollegeNamesToIdsWithUnknown(namesStr) {
+  if (!namesStr || typeof namesStr !== 'string') return { ids: [], unknown: [] };
+  const names = splitList(namesStr);
+  const ids = [];
+  const unknown = [];
+  for (const nm of names) {
+    const col = await College.findByName(nm);
+    if (col) ids.push(col.id);
+    else unknown.push(nm);
+  }
+  return { ids, unknown };
+}
+
 class ScholarshipsController {
   static async getAllAdmin(req, res) {
     try {
@@ -46,11 +62,12 @@ class ScholarshipsController {
       if (!scholarship) {
         return res.status(404).json({ success: false, message: 'Scholarship not found' });
       }
-      const [eligibleCategories, applicableStates, documentsRequired, examIds] = await Promise.all([
+      const [eligibleCategories, applicableStates, documentsRequired, examIds, collegeIds] = await Promise.all([
         ScholarshipEligibleCategory.findByScholarshipId(scholarshipId),
         ScholarshipApplicableState.findByScholarshipId(scholarshipId),
         ScholarshipDocumentsRequired.findByScholarshipId(scholarshipId),
-        ScholarshipExam.getExamIdsByScholarshipId(scholarshipId)
+        ScholarshipExam.getExamIdsByScholarshipId(scholarshipId),
+        ScholarshipCollege.getCollegeIdsByScholarshipId(scholarshipId)
       ]);
 
       let streamName = null;
@@ -63,6 +80,11 @@ class ScholarshipsController {
         const ex = await Exam.findById(eid);
         if (ex && ex.name) examNames.push(ex.name);
       }
+      const collegeNames = [];
+      for (const cid of collegeIds || []) {
+        const col = await College.findById(cid);
+        if (col && col.college_name) collegeNames.push(col.college_name);
+      }
 
       res.json({
         success: true,
@@ -73,7 +95,9 @@ class ScholarshipsController {
           applicableStates: applicableStates || [],
           documentsRequired: documentsRequired || [],
           examIds: examIds || [],
-          examNames
+          examNames,
+          collegeIds: collegeIds || [],
+          collegeNames
         }
       });
     } catch (error) {
@@ -101,7 +125,8 @@ class ScholarshipsController {
         eligibleCategories,
         applicableStates,
         documentsRequired,
-        examIds
+        examIds,
+        collegeIds
       } = req.body;
 
       if (!scholarship_name || !scholarship_name.trim()) {
@@ -162,6 +187,9 @@ class ScholarshipsController {
       if (examIds && Array.isArray(examIds) && examIds.length > 0) {
         await ScholarshipExam.setExamsForScholarship(scholarship.id, examIds);
       }
+      if (collegeIds && Array.isArray(collegeIds) && collegeIds.length > 0) {
+        await ScholarshipCollege.setCollegesForScholarship(scholarship.id, collegeIds);
+      }
 
       res.status(201).json({
         success: true,
@@ -200,7 +228,8 @@ class ScholarshipsController {
         eligibleCategories,
         applicableStates,
         documentsRequired,
-        examIds
+        examIds,
+        collegeIds
       } = req.body;
 
       if (scholarship_name && scholarship_name.trim() !== existing.scholarship_name) {
@@ -265,6 +294,9 @@ class ScholarshipsController {
       if (examIds !== undefined) {
         await ScholarshipExam.setExamsForScholarship(scholarshipId, Array.isArray(examIds) ? examIds : []);
       }
+      if (collegeIds !== undefined) {
+        await ScholarshipCollege.setCollegesForScholarship(scholarshipId, Array.isArray(collegeIds) ? collegeIds : []);
+      }
 
       const scholarship = await Scholarship.findById(scholarshipId);
       res.json({ success: true, data: { scholarship }, message: 'Scholarship updated successfully' });
@@ -324,7 +356,8 @@ class ScholarshipsController {
         'eligible_categories',
         'applicable_states',
         'documents_required',
-        'exam_names'
+        'exam_names',
+        'college_names'
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
@@ -346,7 +379,8 @@ class ScholarshipsController {
           'SC, ST, OBC, General',
           'All India, Delhi, Maharashtra',
           'Aadhar, Marksheet, Income Certificate',
-          'JEE Main'
+          'JEE Main',
+          ''
         ],
         [
           'State Merit Scholarship',
@@ -365,7 +399,8 @@ class ScholarshipsController {
           'General, OBC',
           'Maharashtra, Gujarat',
           'Marksheet, Domicile',
-          'JEE Main'
+          'JEE Main',
+          ''
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Scholarships');
@@ -387,15 +422,16 @@ class ScholarshipsController {
         'scholarship_name', 'conducting_authority', 'scholarship_type', 'description', 'stream_name',
         'income_limit', 'minimum_marks_required', 'scholarship_amount', 'selection_process',
         'application_start_date', 'application_end_date', 'mode', 'official_website',
-        'eligible_categories', 'applicable_states', 'documents_required', 'exam_names'
+        'eligible_categories', 'applicable_states', 'documents_required', 'exam_names', 'college_names'
       ];
       const rows = [headers];
       for (const s of scholarships) {
-        const [categories, states, docs, examIds] = await Promise.all([
+        const [categories, states, docs, examIds, collegeIds] = await Promise.all([
           ScholarshipEligibleCategory.findByScholarshipId(s.id),
           ScholarshipApplicableState.findByScholarshipId(s.id),
           ScholarshipDocumentsRequired.findByScholarshipId(s.id),
-          ScholarshipExam.getExamIdsByScholarshipId(s.id)
+          ScholarshipExam.getExamIdsByScholarshipId(s.id),
+          ScholarshipCollege.getCollegeIdsByScholarshipId(s.id)
         ]);
         const catStr = (categories && categories.length) ? categories.map((c) => c.category || '').filter(Boolean).join(';') : '';
         const stateStr = (states && states.length) ? states.map((st) => st.state_name || '').filter(Boolean).join(';') : '';
@@ -409,6 +445,11 @@ class ScholarshipsController {
         for (const eid of examIds || []) {
           const ex = await Exam.findById(eid);
           if (ex && ex.name) examNames.push(ex.name);
+        }
+        const collegeNames = [];
+        for (const cid of collegeIds || []) {
+          const col = await College.findById(cid);
+          if (col && col.college_name) collegeNames.push(col.college_name);
         }
         rows.push([
           s.scholarship_name || '',
@@ -427,7 +468,8 @@ class ScholarshipsController {
           catStr,
           stateStr,
           docsStr,
-          examNames.join(',')
+          examNames.join(','),
+          collegeNames.join(',')
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -521,6 +563,34 @@ class ScholarshipsController {
         const documentsRequiredRaw = getVal(row, 'documents_required') || '';
         const examNamesRaw = getVal(row, 'exam_names', 'exam_Names') || '';
         const examIdsRaw = getVal(row, 'exam_ids') || '';
+        const collegeNamesRaw = getVal(row, 'college_names', 'college_Names') || '';
+        const collegeIdsRaw = getVal(row, 'college_ids') || '';
+
+        let resolvedCollegeIds = [];
+        if (collegeNamesRaw) {
+          const { ids, unknown } = await resolveCollegeNamesToIdsWithUnknown(collegeNamesRaw);
+          if (unknown.length > 0) {
+            errors.push({
+              row: rowNum,
+              message: `college not found: ${unknown.map((n) => `"${n}"`).join(', ')}`
+            });
+            continue;
+          }
+          resolvedCollegeIds = ids;
+        } else if (collegeIdsRaw) {
+          const parsed = collegeIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+          let skipRow = false;
+          for (const cid of parsed) {
+            const c = await College.findById(cid);
+            if (!c) {
+              errors.push({ row: rowNum, message: `college_id not found: ${cid}` });
+              skipRow = true;
+              break;
+            }
+          }
+          if (skipRow) continue;
+          resolvedCollegeIds = parsed;
+        }
 
         try {
           const scholarship = await Scholarship.create({
@@ -558,6 +628,9 @@ class ScholarshipsController {
             examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
           }
           if (examIds.length) await ScholarshipExam.setExamsForScholarship(scholarship.id, examIds);
+          if (resolvedCollegeIds.length) {
+            await ScholarshipCollege.setCollegesForScholarship(scholarship.id, resolvedCollegeIds);
+          }
           created.push({ id: scholarship.id, name: scholarship.scholarship_name });
           namesInFile.add(name.toLowerCase());
         } catch (createErr) {

@@ -32,6 +32,7 @@ import {
 import { IoPlayCircleOutline } from "react-icons/io5";
 import { MdSchool } from "react-icons/md";
 import { getProfileCompletion, getAllExams } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SectionId =
   | "dashboard"
@@ -163,6 +164,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { logout } = useAuth();
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
   const [examPrepExpanded, setExamPrepExpanded] = useState(false);
@@ -470,6 +472,10 @@ export default function Sidebar({
         <button
           type="button"
           title="Logout"
+          onClick={() => {
+            if (sidebarOpen) onToggle();
+            logout();
+          }}
           className={`group relative flex w-full items-center rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
         >
           <FiLogOut className="h-[18px] w-[18px]" />

@@ -48,10 +48,14 @@ export async function getAllScholarshipsAdmin(): Promise<ApiResponse<{ scholarsh
 
 export async function getScholarshipById(id: number): Promise<ApiResponse<{
   scholarship: Scholarship;
+  streamName?: string | null;
   eligibleCategories: ScholarshipEligibleCategory[];
   applicableStates: ScholarshipApplicableState[];
   documentsRequired: ScholarshipDocumentRequired[];
   examIds: number[];
+  examNames?: string[];
+  collegeIds: number[];
+  collegeNames?: string[];
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/${id}`, { method: 'GET' });
 }
@@ -74,6 +78,7 @@ export async function createScholarship(data: {
   applicableStates?: { state_name?: string }[];
   documentsRequired?: { document_name?: string }[];
   examIds?: number[];
+  collegeIds?: number[];
 }): Promise<ApiResponse<{ scholarship: Scholarship }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.SCHOLARSHIPS, {
     method: 'POST',
@@ -101,6 +106,7 @@ export async function updateScholarship(
     applicableStates?: { state_name?: string }[];
     documentsRequired?: { document_name?: string }[];
     examIds?: number[];
+    collegeIds?: number[];
   }
 ): Promise<ApiResponse<{ scholarship: Scholarship }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/${id}`, {

@@ -18,6 +18,7 @@ const shouldReset = args.includes('--reset');
 
 const DEMO_USERS = [
   {
+    user_code: 'UT20000001',
     email: 'student.full.demo@unitracko.test',
     name: 'Aarav Verma',
     first_name: 'Aarav',
@@ -31,6 +32,7 @@ const DEMO_USERS = [
     type: 'full'
   },
   {
+    user_code: 'UT20000002',
     email: 'student.partial.demo@unitracko.test',
     name: 'Riya Singh',
     first_name: 'Riya',
@@ -346,12 +348,13 @@ async function getIdsForFlow() {
 async function upsertDemoUserBasics(user) {
   const result = await db.query(
     `INSERT INTO users (
-      email, name, first_name, last_name, date_of_birth, gender, phone_number,
+      user_code, email, name, first_name, last_name, date_of_birth, gender, phone_number,
       state, district, auth_provider, email_verified, onboarding_completed, is_active
     )
-    VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, 'email', TRUE, $10, TRUE)
+    VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9, $10, 'email', TRUE, $11, TRUE)
     ON CONFLICT (email)
     DO UPDATE SET
+      user_code = COALESCE(users.user_code, EXCLUDED.user_code),
       name = EXCLUDED.name,
       first_name = EXCLUDED.first_name,
       last_name = EXCLUDED.last_name,
@@ -366,6 +369,7 @@ async function upsertDemoUserBasics(user) {
       updated_at = CURRENT_TIMESTAMP
     RETURNING id`,
     [
+      user.user_code,
       user.email,
       user.name,
       user.first_name,

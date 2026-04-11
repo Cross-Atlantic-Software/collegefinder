@@ -12,6 +12,9 @@ export interface AdmissionExpert {
   description: string | null;
   type: string;
   is_active?: boolean;
+  linkedin_url?: string | null;
+  website?: string | null;
+  photo_file_name?: string | null;
   created_at: string;
 }
 

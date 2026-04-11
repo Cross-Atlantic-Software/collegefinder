@@ -268,6 +268,12 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">User code:</span>
+                    <p className="text-sm text-slate-900 font-mono font-medium" title="Public reference">
+                      {details.user.user_code || "—"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
                     <span className="text-xs font-medium text-slate-600">Email:</span>
                     <p className="text-sm text-slate-900 truncate font-medium" title={details.user.email}>{details.user.email}</p>
                   </div>

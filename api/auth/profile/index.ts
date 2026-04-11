@@ -37,6 +37,7 @@ export async function updateProfile(
  */
 export async function getBasicInfo(): Promise<ApiResponse<{
   id: number;
+  user_code?: string | null;
   email: string | null;
   name: string | null;
   first_name: string | null;
@@ -81,6 +82,7 @@ export async function updateBasicInfo(data: {
   alternate_mobile_number?: string;
 }): Promise<ApiResponse<{
   id: number;
+  user_code?: string | null;
   email: string;
   name: string | null;
   first_name: string | null;

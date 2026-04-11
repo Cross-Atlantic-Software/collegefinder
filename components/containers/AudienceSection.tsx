@@ -95,7 +95,6 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
 
     return (
         <section
-            id="audience"
             ref={sectionRef}
             className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
         >

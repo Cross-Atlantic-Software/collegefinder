@@ -27,7 +27,10 @@ export default async function SiteUsersPage() {
     <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Site Users" subtitle="View and manage all site users." />
+        <AdminHeader
+          title="Site Users"
+          subtitle="Super Admin: view users, activate or deactivate accounts, and permanently delete users."
+        />
         <main className="flex-1 p-4 overflow-auto">
           <SimplifiedUsersTable initialUsers={users} />
         </main>

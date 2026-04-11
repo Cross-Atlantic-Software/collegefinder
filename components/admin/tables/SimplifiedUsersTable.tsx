@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, Search } from 'lucide-react';
-import { SiteUser } from '@/api';
+import { useRouter } from 'next/navigation';
+import { Eye, Search, UserX, Trash2 } from 'lucide-react';
+import { SiteUser, updateSiteUserStatus, deleteSiteUser } from '@/api';
 import UserDetailsModal from '../modals/UserDetailsModal';
+import { ConfirmationModal, useToast } from '@/components/shared';
 
 interface SimplifiedUsersTableProps {
   initialUsers: SiteUser[];
@@ -52,9 +54,15 @@ function formatDate(dateString: string): string {
 }
 
 export default function SimplifiedUsersTable({ initialUsers, isLoading }: SimplifiedUsersTableProps) {
+  const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
+  const [showDeleteUserConfirm, setShowDeleteUserConfirm] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const handleViewDetails = (userId: number) => {
     setSelectedUserId(userId);
@@ -64,6 +72,50 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedUserId(null);
+  };
+
+  const handleToggleActive = async (user: SiteUser) => {
+    const currentlyActive = toBoolean(user.is_active as boolean | string | number | null | undefined);
+    const next = !currentlyActive;
+    setStatusUpdatingId(user.id);
+    try {
+      const res = await updateSiteUserStatus(user.id, next);
+      if (res.success) {
+        showSuccess(next ? 'User activated' : 'User deactivated');
+        router.refresh();
+      } else {
+        showError(res.message || 'Failed to update user');
+      }
+    } catch {
+      showError('Failed to update user');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  const handleDeleteUserClick = (userId: number) => {
+    setDeletingUserId(userId);
+    setShowDeleteUserConfirm(true);
+  };
+
+  const handleDeleteUserConfirm = async () => {
+    if (deletingUserId == null) return;
+    setIsDeletingUser(true);
+    try {
+      const res = await deleteSiteUser(deletingUserId);
+      if (res.success) {
+        showSuccess('User deleted');
+        setShowDeleteUserConfirm(false);
+        setDeletingUserId(null);
+        router.refresh();
+      } else {
+        showError(res.message || 'Failed to delete user');
+      }
+    } catch {
+      showError('Failed to delete user');
+    } finally {
+      setIsDeletingUser(false);
+    }
   };
 
   // Filter users based on search query
@@ -206,14 +258,40 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
                           : <span className="text-slate-400">Never</span>}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <button
-                          onClick={() => handleViewDetails(user.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#341050] bg-[#341050]/10 rounded-lg hover:bg-[#341050]/20 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </button>
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetails(user.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#341050] bg-[#341050]/10 rounded-lg hover:bg-[#341050]/20 transition-colors"
+                            title="View details"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            disabled={statusUpdatingId === user.id}
+                            onClick={() => handleToggleActive(user)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
+                            title={toBoolean(user.is_active as boolean | string | number | null | undefined) ? 'Deactivate account' : 'Activate account'}
+                          >
+                            <UserX className="h-3.5 w-3.5" />
+                            {statusUpdatingId === user.id
+                              ? '…'
+                              : toBoolean(user.is_active as boolean | string | number | null | undefined)
+                                ? 'Deactivate'
+                                : 'Activate'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUserClick(user.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                            title="Permanently delete user"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -228,6 +306,21 @@ export default function SimplifiedUsersTable({ initialUsers, isLoading }: Simpli
         userId={selectedUserId}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteUserConfirm}
+        onClose={() => {
+          setShowDeleteUserConfirm(false);
+          setDeletingUserId(null);
+        }}
+        onConfirm={handleDeleteUserConfirm}
+        title="Delete site user"
+        message="This permanently removes the user and related data that is configured to cascade. This cannot be undone."
+        confirmText="Delete user"
+        cancelText="Cancel"
+        isLoading={isDeletingUser}
+        confirmButtonStyle="danger"
       />
     </>
   );

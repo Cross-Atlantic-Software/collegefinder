@@ -77,6 +77,9 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
         <table className="w-full">
           <thead className="bg-[#F6F8FA] border-b border-slate-200">
             <tr>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                USER CODE
+              </th>
               <th className="px-4 py-2 text-left">
                 <button
                   onClick={() => handleSort('email')}
@@ -121,7 +124,7 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
           <tbody className="divide-y divide-slate-200">
             {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
+                <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                   No users found
                 </td>
               </tr>
@@ -132,6 +135,11 @@ export default function UsersTable({ users, isLoading }: UsersTableProps) {
                 
                 return (
                   <tr key={user.id} className="hover:bg-[#F6F8FA] transition-colors">
+                    <td className="px-4 py-2">
+                      <span className="font-mono text-xs text-slate-800" title="Public user code">
+                        {user.user_code || "—"}
+                      </span>
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-highlight-100 flex items-center justify-center text-[#341050] text-sm font-semibold">

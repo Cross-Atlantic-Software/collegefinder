@@ -77,18 +77,22 @@ export default function Home() {
         <InfoSection info={landing.info} />
       </ScrollRevealSection>
       <FeatureStackSection features={landing.features} />
-      <ScrollRevealSection delayMs={180}>
-        <HowItWorksSection howItWorks={landing.howItWorks} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={260}>
-        <AudienceSection audience={landing.audience} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={340}>
-        <ContactSection contact={landing.contact} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={420}>
-        <FaqSection faq={landing.faq} />
-      </ScrollRevealSection>
+      <div id="our-edge" className="scroll-mt-20 md:scroll-mt-24">
+        <ScrollRevealSection delayMs={180}>
+          <HowItWorksSection howItWorks={landing.howItWorks} />
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={260}>
+          <AudienceSection audience={landing.audience} />
+        </ScrollRevealSection>
+      </div>
+      <div id="get-in-touch" className="scroll-mt-20 md:scroll-mt-24">
+        <ScrollRevealSection delayMs={340}>
+          <ContactSection contact={landing.contact} />
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={420}>
+          <FaqSection faq={landing.faq} />
+        </ScrollRevealSection>
+      </div>
     </main>
   );
 }

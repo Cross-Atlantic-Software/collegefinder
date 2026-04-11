@@ -45,6 +45,9 @@ export default function ExpertsPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formType, setFormType] = useState('career_consultant');
+  const [formLinkedin, setFormLinkedin] = useState('');
+  const [formWebsite, setFormWebsite] = useState('');
+  const [formActive, setFormActive] = useState(true);
   const [formPhoto, setFormPhoto] = useState<File | null>(null);
   const [formSaving, setFormSaving] = useState(false);
 
@@ -106,6 +109,9 @@ export default function ExpertsPage() {
       setFormEmail(expert.email ?? '');
       setFormDescription(expert.description ?? '');
       setFormType(expert.type);
+      setFormLinkedin(expert.linkedin_url ?? '');
+      setFormWebsite(expert.website ?? '');
+      setFormActive(expert.is_active !== false);
     } else {
       setEditing(null);
       setFormName('');
@@ -113,6 +119,9 @@ export default function ExpertsPage() {
       setFormEmail('');
       setFormDescription('');
       setFormType('career_consultant');
+      setFormLinkedin('');
+      setFormWebsite('');
+      setFormActive(true);
     }
     setFormPhoto(null);
     setShowModal(true);
@@ -132,6 +141,11 @@ export default function ExpertsPage() {
       formData.append('email', formEmail);
       formData.append('description', formDescription);
       formData.append('type', formType);
+      formData.append('linkedin_url', formLinkedin.trim());
+      formData.append('website', formWebsite.trim());
+      if (editing) {
+        formData.append('is_active', formActive ? 'true' : 'false');
+      }
       if (formPhoto) formData.append('photo', formPhoto);
 
       let res;
@@ -443,6 +457,26 @@ export default function ExpertsPage() {
                 />
               </div>
               <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">LinkedIn profile</label>
+                <input
+                  type="url"
+                  value={formLinkedin}
+                  onChange={(e) => setFormLinkedin(e.target.value)}
+                  placeholder="https://linkedin.com/in/..."
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Website</label>
+                <input
+                  type="url"
+                  value={formWebsite}
+                  onChange={(e) => setFormWebsite(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Type <span className="text-[#341050]">*</span></label>
                 <select
                   value={formType}
@@ -454,6 +488,17 @@ export default function ExpertsPage() {
                   ))}
                 </select>
               </div>
+              {editing && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formActive}
+                    onChange={(e) => setFormActive(e.target.checked)}
+                    className="rounded border-slate-300 text-[#341050] focus:ring-[#341050]/25"
+                  />
+                  <span className="text-sm text-slate-700">Expert visible on Admission Help</span>
+                </label>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Photo</label>
                 <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 cursor-pointer transition-colors">
@@ -510,7 +555,7 @@ export default function ExpertsPage() {
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
               <p className="text-xs text-slate-600">
-                Upload an Excel file with columns: name, phone, email, description, type, photo_file_name (e.g. john_doe.jpg). Optionally attach a ZIP of photos—file names in the ZIP must match photo_file_name in the Excel. You can also upload photos later via &quot;Upload expert photos&quot; or Edit.
+                Columns: name, phone, email, description, type, photo_file_name, linkedin_url, website (last two optional). Photos are stored in S3. Optionally attach a ZIP of images—names must match photo_file_name—or upload later via &quot;Upload expert photos&quot; or Edit.
               </p>
               <div>
                 <button

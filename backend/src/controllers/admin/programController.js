@@ -1,6 +1,37 @@
 const XLSX = require('xlsx');
 const Program = require('../../models/taxonomy/Program');
+const Stream = require('../../models/taxonomy/Stream');
+const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const { validationResult } = require('express-validator');
+
+function splitNameListCell(val) {
+  if (val == null) return [];
+  const s = String(val).trim();
+  if (!s) return [];
+  return s.split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+}
+
+function normalizeInterestIdsInput(raw) {
+  if (raw == null) return [];
+  let arr = raw;
+  if (typeof arr === 'string') {
+    try {
+      arr = JSON.parse(arr);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return [...new Set(arr.map((x) => parseInt(String(x), 10)).filter((n) => Number.isInteger(n) && n > 0))];
+}
+
+async function assertInterestIdsValid(ids) {
+  for (const iid of ids) {
+    const cg = await CareerGoal.findById(iid);
+    if (!cg) return `Invalid interest id: ${iid}`;
+  }
+  return null;
+}
 
 class ProgramController {
   /**
@@ -78,9 +109,28 @@ class ProgramController {
         });
       }
 
-      const program = await Program.create({ 
-        name, 
-        status: status !== undefined ? status : true 
+      let stream_id = null;
+      if (req.body.stream_id != null && String(req.body.stream_id).trim() !== '') {
+        const n = parseInt(req.body.stream_id, 10);
+        if (!Number.isInteger(n) || n < 1) {
+          return res.status(400).json({ success: false, message: 'Invalid stream_id' });
+        }
+        const st = await Stream.findById(n);
+        if (!st) return res.status(400).json({ success: false, message: 'Stream not found' });
+        stream_id = n;
+      }
+
+      const interest_ids = normalizeInterestIdsInput(req.body.interest_ids);
+      const interestErr = await assertInterestIdsValid(interest_ids);
+      if (interestErr) {
+        return res.status(400).json({ success: false, message: interestErr });
+      }
+
+      const program = await Program.create({
+        name,
+        status: status !== undefined ? status : true,
+        stream_id,
+        interest_ids
       });
 
       res.status(201).json({
@@ -134,7 +184,31 @@ class ProgramController {
         }
       }
 
-      const program = await Program.update(parseInt(id), { name, status });
+      const patch = { name, status };
+      if (Object.prototype.hasOwnProperty.call(req.body, 'stream_id')) {
+        const v = req.body.stream_id;
+        if (v === null || v === undefined || String(v).trim() === '') {
+          patch.stream_id = null;
+        } else {
+          const n = parseInt(v, 10);
+          if (!Number.isInteger(n) || n < 1) {
+            return res.status(400).json({ success: false, message: 'Invalid stream_id' });
+          }
+          const st = await Stream.findById(n);
+          if (!st) return res.status(400).json({ success: false, message: 'Stream not found' });
+          patch.stream_id = n;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'interest_ids')) {
+        const interest_ids = normalizeInterestIdsInput(req.body.interest_ids);
+        const interestErr = await assertInterestIdsValid(interest_ids);
+        if (interestErr) {
+          return res.status(400).json({ success: false, message: interestErr });
+        }
+        patch.interest_ids = interest_ids;
+      }
+
+      const program = await Program.update(parseInt(id), patch);
 
       res.json({
         success: true,
@@ -187,14 +261,14 @@ class ProgramController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const headers = ['name', 'status'];
+      const headers = ['name', 'status', 'stream', 'interests'];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['B.Tech', 'TRUE'],
-        ['B.E.', 'TRUE'],
-        ['MBBS', 'TRUE'],
-        ['BDS', 'TRUE']
+        ['B.Tech', 'TRUE', 'PCM', 'Engineering; Technology'],
+        ['B.E.', 'TRUE', 'PCM', ''],
+        ['MBBS', 'TRUE', 'PCB', 'Medicine'],
+        ['BDS', 'TRUE', 'PCB', '']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Programs');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -214,13 +288,17 @@ class ProgramController {
   static async downloadAllExcel(req, res) {
     try {
       const programs = await Program.findAll();
-      const headers = ['id', 'name', 'status', 'created_at', 'updated_at'];
+      const headers = ['id', 'name', 'status', 'stream', 'interests', 'created_at', 'updated_at'];
       const rows = [headers];
       for (const p of programs) {
+        const streamName = p.stream_name || '';
+        const interestsCell = p.interest_labels || '';
         rows.push([
           p.id,
           p.name || '',
           p.status ? 'TRUE' : 'FALSE',
+          streamName,
+          interestsCell,
           p.created_at ? String(p.created_at).slice(0, 10) : '',
           p.updated_at ? String(p.updated_at).slice(0, 10) : ''
         ]);
@@ -291,8 +369,33 @@ class ProgramController {
         const statusRaw = (row.status ?? '').toString().trim();
         const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
 
+        const streamName = (row.stream ?? row.Stream ?? '').toString().trim();
+        let stream_id = null;
+        if (streamName) {
+          const st = await Stream.findByName(streamName);
+          if (!st) {
+            errors.push({ row: rowNum, message: `Unknown stream name: "${streamName}"` });
+            continue;
+          }
+          stream_id = st.id;
+        }
+
+        const interestParts = splitNameListCell(row.interests ?? row.Interests ?? '');
+        const interest_ids = [];
+        let interestsOk = true;
+        for (const label of interestParts) {
+          const cg = await CareerGoal.findByLabel(label);
+          if (!cg) {
+            errors.push({ row: rowNum, message: `Unknown interest name: "${label}"` });
+            interestsOk = false;
+            break;
+          }
+          if (!interest_ids.includes(cg.id)) interest_ids.push(cg.id);
+        }
+        if (!interestsOk) continue;
+
         try {
-          const program = await Program.create({ name: nameRaw, status });
+          const program = await Program.create({ name: nameRaw, status, stream_id, interest_ids });
           created.push({ id: program.id, name: program.name });
           namesInFile.add(nameRaw.toLowerCase());
         } catch (createErr) {

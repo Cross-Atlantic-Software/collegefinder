@@ -112,7 +112,11 @@ export default function TopBar({ onToggleSidebar, onToggleCollapse, isSidebarCol
                 Settings
               </button>
               <button
-                onClick={logout}
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  logout();
+                }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
               >
                 <FiLogOut className="h-4 w-4" />

@@ -20,13 +20,14 @@ import {
   type ScholarshipDocumentRequired,
 } from '@/api/admin/scholarships';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
+import { getAllCollegesAdmin, type College } from '@/api/admin/colleges';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
-type FormTab = 'basic' | 'categories' | 'states' | 'documents' | 'exams';
+type FormTab = 'basic' | 'categories' | 'states' | 'documents' | 'exams' | 'colleges';
 
 const toDateInput = (val: string | null | undefined): string => {
   if (val == null || val === '') return '';
@@ -41,6 +42,7 @@ export default function ScholarshipsPage() {
   const [allScholarships, setAllScholarships] = useState<Scholarship[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [colleges, setColleges] = useState<College[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +56,8 @@ export default function ScholarshipsPage() {
     documentsRequired: ScholarshipDocumentRequired[];
     examIds: number[];
     examNames?: string[];
+    collegeIds?: number[];
+    collegeNames?: string[];
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [activeTab, setActiveTab] = useState<FormTab>('basic');
@@ -75,6 +79,7 @@ export default function ScholarshipsPage() {
     applicableStates: [] as { state_name: string }[],
     documentsRequired: [] as { document_name: string }[],
     examIds: [] as number[],
+    collegeIds: [] as number[],
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -133,10 +138,11 @@ export default function ScholarshipsPage() {
   const fetchData = async (silent = false) => {
     try {
       if (!silent) setIsLoading(true);
-      const [schRes, streamsRes, examsRes] = await Promise.all([
+      const [schRes, streamsRes, examsRes, collegesRes] = await Promise.all([
         getAllScholarshipsAdmin(),
         getAllStreams(),
         getAllExamsAdmin(),
+        getAllCollegesAdmin().catch(() => null),
       ]);
       if (schRes.success && schRes.data) {
         setAllScholarships(schRes.data.scholarships);
@@ -147,6 +153,11 @@ export default function ScholarshipsPage() {
       }
       if (examsRes.success && examsRes.data) {
         setExams(examsRes.data.exams || []);
+      }
+      if (collegesRes && collegesRes.success && collegesRes.data) {
+        setColleges(collegesRes.data.colleges || []);
+      } else {
+        setColleges([]);
       }
     } catch (err) {
       setError('Failed to fetch scholarships');
@@ -179,6 +190,7 @@ export default function ScholarshipsPage() {
         applicableStates: formData.applicableStates.filter((s) => s.state_name?.trim()),
         documentsRequired: formData.documentsRequired.filter((d) => d.document_name?.trim()),
         examIds: formData.examIds,
+        collegeIds: formData.collegeIds,
       };
       if (editingScholarship) {
         const response = await updateScholarship(editingScholarship.id, payload);
@@ -223,10 +235,14 @@ export default function ScholarshipsPage() {
       if (response.success && response.data) {
         setViewingData({
           scholarship: response.data.scholarship,
+          streamName: response.data.streamName,
           eligibleCategories: response.data.eligibleCategories || [],
           applicableStates: response.data.applicableStates || [],
           documentsRequired: response.data.documentsRequired || [],
           examIds: response.data.examIds || [],
+          examNames: response.data.examNames,
+          collegeIds: response.data.collegeIds,
+          collegeNames: response.data.collegeNames,
         });
       } else {
         showError('Failed to load scholarship');
@@ -261,6 +277,7 @@ export default function ScholarshipsPage() {
           applicableStates: (d.applicableStates || []).map((s) => ({ state_name: s.state_name ?? '' })),
           documentsRequired: (d.documentsRequired || []).map((doc) => ({ document_name: doc.document_name ?? '' })),
           examIds: d.examIds ?? [],
+          collegeIds: d.collegeIds ?? [],
         });
         setEditingScholarship(d.scholarship);
         setActiveTab('basic');
@@ -316,6 +333,7 @@ export default function ScholarshipsPage() {
       applicableStates: [],
       documentsRequired: [],
       examIds: [],
+      collegeIds: [],
     });
     setError(null);
     setActiveTab('basic');
@@ -430,6 +448,7 @@ export default function ScholarshipsPage() {
     { id: 'states', label: 'States' },
     { id: 'documents', label: 'Documents' },
     { id: 'exams', label: 'Exams' },
+    { id: 'colleges', label: 'Colleges' },
   ];
 
   if (error && !isLoading) {
@@ -454,7 +473,7 @@ export default function ScholarshipsPage() {
           <div className="mb-3">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Scholarships Manager</h1>
             <p className="text-sm text-slate-600">
-              Manage scholarships with eligibility, states, documents and related exams. CRUD and Excel bulk upload.
+              Manage scholarships with eligibility, states, documents, related exams and colleges. CRUD and Excel bulk upload.
             </p>
           </div>
 
@@ -829,6 +848,24 @@ export default function ScholarshipsPage() {
                 </div>
               )}
 
+              {activeTab === 'colleges' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Related Colleges</label>
+                  {colleges.length === 0 ? (
+                    <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      No colleges loaded. Ensure your admin role includes the Colleges module so the list can be fetched.
+                    </p>
+                  ) : (
+                    <MultiSelect
+                      options={colleges.map((c) => ({ value: String(c.id), label: c.college_name }))}
+                      value={formData.collegeIds.map(String)}
+                      onChange={(vals) => setFormData({ ...formData, collegeIds: vals.map(Number) })}
+                      placeholder="Select colleges"
+                    />
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Cancel</button>
                 <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
@@ -896,6 +933,12 @@ export default function ScholarshipsPage() {
                 <p className="text-sm text-slate-600">{(viewingData.examNames ?? []).join(', ')}</p>
               </div>
             )}
+            {((viewingData.collegeNames ?? []).length > 0) && (
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700">Related colleges</p>
+                <p className="text-sm text-slate-600">{(viewingData.collegeNames ?? []).join(', ')}</p>
+              </div>
+            )}
             <button type="button" onClick={() => { setViewingData(null); handleEdit(viewingData.scholarship); }} className="mt-4 px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90">Edit</button>
           </div>
         </div>
@@ -912,7 +955,7 @@ export default function ScholarshipsPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Upload an Excel file. Use the template; columns must match (scholarship_name, conducting_authority, stream_id, dates, etc.).
+              Upload an Excel file. Use the template; columns include scholarship fields, exam_names, and college_names (comma or semicolon separated; names must match colleges in the database, case-insensitive). Optional college_ids column accepts comma-separated IDs.
             </p>
             <div className="space-y-3">
               <div>

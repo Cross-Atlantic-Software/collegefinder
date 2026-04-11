@@ -224,6 +224,7 @@ class AuthController {
         data: {
           user: {
             id: updatedUser.id,
+            user_code: updatedUser.user_code || null,
             email: updatedUser.email,
             name: updatedUser.name || null,
             onboarding_completed: finalOnboardingCompleted, // Explicitly send as boolean
@@ -327,6 +328,7 @@ class AuthController {
         data: {
           user: {
             id: updatedUser.id,
+            user_code: updatedUser.user_code || null,
             email: updatedUser.email,
             name: updatedUser.name,
             profile_photo: updatedUser.profile_photo,
@@ -371,6 +373,7 @@ class AuthController {
         data: {
           user: {
             id: updatedUser.id,
+            user_code: updatedUser.user_code || null,
             email: updatedUser.email,
             name: updatedUser.name,
             createdAt: updatedUser.created_at

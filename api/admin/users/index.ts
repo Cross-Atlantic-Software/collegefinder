@@ -90,6 +90,24 @@ export async function getAllUsersCareerGoals(): Promise<ApiResponse<{
 /**
  * Get single user with complete details (Admin only)
  */
+/** Super Admin: set site user active / inactive */
+export async function updateSiteUserStatus(
+  userId: number,
+  is_active: boolean
+): Promise<ApiResponse<{ user: import('../../types').SiteUser }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active }),
+  });
+}
+
+/** Super Admin: permanently delete a site user */
+export async function deleteSiteUser(userId: number): Promise<ApiResponse<null>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getUserDetails(userId: number): Promise<ApiResponse<{
   user: import('../../types').SiteUser;
   academics: {
