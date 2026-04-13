@@ -6,6 +6,8 @@ export interface College {
   id: number;
   college_name: string;
   college_location: string | null;
+  state?: string | null;
+  city?: string | null;
   college_type: string | null;
   college_logo: string | null;
   logo_filename: string | null;
@@ -145,6 +147,8 @@ export interface BulkUploadResult {
   createdColleges: { id: number; name: string }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
+  /** CollegePrograms sheet/file rows referencing a college name not created in this run. */
+  programSheetWarnings?: string[];
 }
 
 export async function downloadCollegesBulkTemplate(): Promise<void> {
@@ -160,6 +164,24 @@ export async function downloadCollegesBulkTemplate(): Promise<void> {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'colleges-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Optional programs_excel: CollegePrograms layout + programs taxonomy from DB. */
+export async function downloadCollegesProgramsExcelTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/programs-excel-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download programs template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'colleges-programs-excel-template.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -208,10 +230,14 @@ export async function uploadMissingLogosColleges(logosZipFile: File): Promise<Ap
 export async function bulkUploadColleges(
   excelFile: File,
   logoFiles: File[] = [],
-  logosZipFile: File | null = null
+  logosZipFile: File | null = null,
+  programsExcelFile: File | null = null
 ): Promise<ApiResponse<BulkUploadResult>> {
   const formData = new FormData();
   formData.append('excel', excelFile);
+  if (programsExcelFile) {
+    formData.append('programs_excel', programsExcelFile);
+  }
   if (logosZipFile) {
     formData.append('logos_zip', logosZipFile);
   } else {

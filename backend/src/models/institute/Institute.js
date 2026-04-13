@@ -35,10 +35,12 @@ class Institute {
       website,
       contact_number,
       referral_contact_email,
+      state,
+      city,
     } = data;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, state, city)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         institute_name,
         institute_location || null,
@@ -49,6 +51,8 @@ class Institute {
         website || null,
         contact_number || null,
         referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
+        state != null ? String(state).trim() || null : null,
+        city != null ? String(city).trim() || null : null,
       ]
     );
     return result.rows[0];
@@ -94,6 +98,14 @@ class Institute {
     if (referral_contact_email !== undefined) {
       updates.push(`referral_contact_email = $${paramCount++}`);
       values.push(referral_contact_email != null ? String(referral_contact_email).trim() || null : null);
+    }
+    if (data.state !== undefined) {
+      updates.push(`state = $${paramCount++}`);
+      values.push(data.state != null ? String(data.state).trim() || null : null);
+    }
+    if (data.city !== undefined) {
+      updates.push(`city = $${paramCount++}`);
+      values.push(data.city != null ? String(data.city).trim() || null : null);
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

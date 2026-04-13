@@ -1,6 +1,17 @@
 const db = require('../../config/database');
 
 class InstituteCourse {
+  /** Distinct course_name values already stored (reference for bulk Excel). */
+  static async findDistinctCourseNames() {
+    const result = await db.query(
+      `SELECT DISTINCT TRIM(course_name) AS course_name
+       FROM institute_courses
+       WHERE course_name IS NOT NULL AND TRIM(course_name) <> ''
+       ORDER BY course_name`
+    );
+    return result.rows.map((r) => r.course_name).filter(Boolean);
+  }
+
   static async findByInstituteId(instituteId) {
     const result = await db.query(
       'SELECT * FROM institute_courses WHERE institute_id = $1 ORDER BY id',

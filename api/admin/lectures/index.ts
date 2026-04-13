@@ -112,6 +112,8 @@ export interface YoutubeLectureMetadata {
   videoId: string;
   title: string;
   description: string;
+  /** YouTube CDN URL for preview; saved lecture thumbnail is uploaded to S3 on create/update. */
+  thumbnailUrl: string | null;
 }
 
 /**

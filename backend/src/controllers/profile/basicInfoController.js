@@ -26,6 +26,7 @@ class BasicInfoController {
         success: true,
         data: {
           id: user.id,
+          user_code: user.user_code,
           email: user.email,
           name: user.name,
           first_name: user.first_name,
@@ -298,6 +299,7 @@ class BasicInfoController {
         message: 'Basic info updated successfully',
         data: {
           id: updatedUser.id,
+          user_code: updatedUser.user_code,
           email: updatedUser.email,
           name: updatedUser.name,
           first_name: updatedUser.first_name,

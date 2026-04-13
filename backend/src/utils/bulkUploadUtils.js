@@ -58,4 +58,24 @@ function getCell(row, ...keys) {
   return '';
 }
 
-module.exports = { splitList, parseDate, parseBool, getCell };
+/**
+ * Normalize institute/college names for cross-file map keys (trim, lowercase, collapse whitespace).
+ */
+function normalizeEntityKey(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** Count total rows across Map<string, Array> values (e.g. grouped bulk sheet data). */
+function countMapArrayValues(map) {
+  if (!map || typeof map.values !== 'function') return 0;
+  let n = 0;
+  for (const arr of map.values()) {
+    if (Array.isArray(arr)) n += arr.length;
+  }
+  return n;
+}
+
+module.exports = { splitList, parseDate, parseBool, getCell, normalizeEntityKey, countMapArrayValues };

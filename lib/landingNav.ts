@@ -16,7 +16,7 @@ export const LANDING_PRIMARY_NAV: LandingNavItem[] = [
     { label: "The Playbook", href: "/#the-playbook" },
     { label: "Our Edge", href: "/#our-edge" },
     { label: "The Feed", href: "/blogs" },
-    { label: "Get in Touch", href: "/#contact" },
+    { label: "Get in Touch", href: "/#get-in-touch" },
 ];
 
 const easeInOutCubic = (value: number) =>

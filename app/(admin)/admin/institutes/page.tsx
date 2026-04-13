@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -12,6 +12,7 @@ import {
   deleteInstitute,
   uploadInstituteLogo,
   downloadInstitutesBulkTemplate,
+  downloadInstitutesCoursesExcelTemplate,
   downloadAllDataExcel,
   bulkUploadInstitutes,
   uploadMissingLogosInstitutes,
@@ -20,6 +21,7 @@ import {
   type InstituteDetails,
   type InstituteStatistics,
   type InstituteCourse,
+  type InstitutesBulkUploadResult,
 } from '@/api/admin/institutes';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiFileText, FiBarChart, FiBook } from 'react-icons/fi';
@@ -28,6 +30,7 @@ import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import InstituteReferralSendModal from '@/components/admin/modals/InstituteReferralSendModal';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { getAllStates, getDistrictsForState } from '@/lib/data/indianStatesDistricts';
 import Image from 'next/image';
 
 type FormTab = 'basic' | 'details' | 'exams' | 'statistics' | 'courses';
@@ -81,8 +84,8 @@ export default function InstitutesPage() {
   const [activeTab, setActiveTab] = useState<FormTab>('basic');
   const [formData, setFormData] = useState({
     institute_name: '',
-    institute_location: '',
-    google_maps_link: '',
+    state: '',
+    city: '',
     type: '' as 'offline' | 'online' | 'hybrid' | '',
     logo: '',
     website: '',
@@ -98,6 +101,22 @@ export default function InstitutesPage() {
     student_rating: '' as string | number,
     instituteCourses: [] as Partial<InstituteCourse>[],
   });
+  const instituteStateOptions = useMemo(
+    () => getAllStates().map((s) => ({ value: s, label: s })),
+    []
+  );
+  const instituteCityOptions = useMemo(() => {
+    if (!formData.state) return [];
+    return getDistrictsForState(formData.state).map((d) => ({ value: d, label: d }));
+  }, [formData.state]);
+  useEffect(() => {
+    if (!formData.state) return;
+    const districts = getDistrictsForState(formData.state);
+    setFormData((prev) => {
+      if (!prev.city || districts.includes(prev.city)) return prev;
+      return { ...prev, city: '' };
+    });
+  }, [formData.state]);
   const [, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -107,15 +126,11 @@ export default function InstitutesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkCoursesExcelFile, setBulkCoursesExcelFile] = useState<File | null>(null);
   const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
   const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{
-    created: number;
-    createdInstitutes: { id: number; name: string }[];
-    errors: number;
-    errorDetails: { row: number; message: string }[];
-  } | null>(null);
+  const [bulkResult, setBulkResult] = useState<InstitutesBulkUploadResult | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -162,6 +177,8 @@ export default function InstitutesPage() {
           (c) =>
             c.institute_name.toLowerCase().includes(q) ||
             (c.institute_location && c.institute_location.toLowerCase().includes(q)) ||
+            (c.state && c.state.toLowerCase().includes(q)) ||
+            (c.city && c.city.toLowerCase().includes(q)) ||
             (c.type && c.type.toLowerCase().includes(q)) ||
             (c.website && c.website.toLowerCase().includes(q)) ||
             (c.referral_contact_email && c.referral_contact_email.toLowerCase().includes(q))
@@ -224,13 +241,17 @@ export default function InstitutesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.state.trim() || !formData.city.trim()) {
+      showError('Please select state and city');
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
       const payload = {
         institute_name: formData.institute_name.trim(),
-        institute_location: formData.institute_location.trim() || null,
-        google_maps_link: formData.google_maps_link.trim() || null,
+        state: formData.state.trim(),
+        city: formData.city.trim(),
         type: formData.type || null,
         logo: formData.logo || null,
         website: formData.website.trim() || null,
@@ -330,8 +351,8 @@ export default function InstitutesPage() {
         const d = response.data;
         setFormData({
           institute_name: d.institute.institute_name ?? '',
-          institute_location: d.institute.institute_location ?? '',
-          google_maps_link: d.institute.google_maps_link ?? '',
+          state: d.institute.state ?? '',
+          city: d.institute.city ?? '',
           type: (d.institute.type as 'offline' | 'online' | 'hybrid') ?? '',
           logo: d.institute.logo ?? '',
           website: d.institute.website ?? '',
@@ -395,8 +416,8 @@ export default function InstitutesPage() {
     setEditingInstitute(null);
     setFormData({
       institute_name: '',
-      institute_location: '',
-      google_maps_link: '',
+      state: '',
+      city: '',
       type: '',
       logo: '',
       website: '',
@@ -426,9 +447,18 @@ export default function InstitutesPage() {
   const handleBulkTemplateDownload = async () => {
     try {
       await downloadInstitutesBulkTemplate();
-      showSuccess('Template downloaded');
+      showSuccess('Institutes template downloaded');
     } catch {
       showError('Failed to download template');
+    }
+  };
+
+  const handleCoursesExcelTemplateDownload = async () => {
+    try {
+      await downloadInstitutesCoursesExcelTemplate();
+      showSuccess('Courses Excel template downloaded');
+    } catch {
+      showError('Failed to download courses template');
     }
   };
 
@@ -499,7 +529,7 @@ export default function InstitutesPage() {
     setBulkError(null);
     setBulkResult(null);
     try {
-      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile);
+      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkCoursesExcelFile);
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} institute(s)`);
@@ -611,6 +641,7 @@ export default function InstitutesPage() {
                   setBulkResult(null);
                   setBulkError(null);
                   setBulkExcelFile(null);
+                  setBulkCoursesExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
@@ -807,29 +838,31 @@ export default function InstitutesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={formData.institute_location}
-                      onChange={(e) =>
-                        setFormData({ ...formData, institute_location: e.target.value })
-                      }
-                      placeholder="e.g. Kota"
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
+                    <Dropdown
+                      value={formData.state || null}
+                      onChange={(v) => setFormData({ ...formData, state: v, city: '' })}
+                      options={instituteStateOptions}
+                      placeholder="Select state"
+                      className="w-full"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Google Maps link</label>
-                    <input
-                      type="text"
-                      value={formData.google_maps_link}
-                      onChange={(e) =>
-                        setFormData({ ...formData, google_maps_link: e.target.value })
-                      }
-                      placeholder="https://maps.app.goo.gl/..."
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    <label className="block text-xs font-medium text-slate-700 mb-1">City / district *</label>
+                    <Dropdown
+                      value={formData.city || null}
+                      onChange={(v) => setFormData({ ...formData, city: v })}
+                      options={instituteCityOptions}
+                      placeholder={formData.state ? 'Select city or district' : 'Select state first'}
+                      disabled={!formData.state}
+                      className="w-full"
                     />
                   </div>
+                  <p className="text-xs text-slate-500">
+                    Google Maps link is generated on save from institute name and location. Use{' '}
+                    <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_PLACES_API_KEY</code> or{' '}
+                    <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_MAPS_API_KEY</code> on the backend for Places API results.
+                  </p>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
                     <Dropdown
@@ -1194,6 +1227,12 @@ export default function InstitutesPage() {
             </div>
             <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Location:</strong> {viewingData.institute?.institute_location ?? '-'}</p>
+              {(viewingData.institute?.state || viewingData.institute?.city) && (
+                <p>
+                  <strong>State / city:</strong>{' '}
+                  {[viewingData.institute?.city, viewingData.institute?.state].filter(Boolean).join(', ') || '-'}
+                </p>
+              )}
               <p>
                 <strong>Google Maps:</strong>{' '}
                 {viewingData.institute?.google_maps_link ? (
@@ -1337,20 +1376,34 @@ export default function InstitutesPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Upload an Excel file (use template). Columns match the template:{' '}
-              <code className="bg-slate-100 px-1 rounded">google_maps_link</code> sits after{' '}
-              <code className="bg-slate-100 px-1 rounded">institute_location</code>. Optionally attach a ZIP of logos;
-              filenames must match the <code className="bg-slate-100 px-1 rounded">logo_filename</code> column.
+              Download <strong>two</strong> templates: institutes only (<code className="bg-slate-100 px-1 rounded text-xs">institutes-bulk-template.xlsx</code>) and, separately, the optional courses file layout plus a catalog of course names already in use (
+              <code className="bg-slate-100 px-1 rounded text-xs">institutes-courses-excel-template.xlsx</code>). On the <strong>Institutes</strong> sheet,{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">state</code> and <code className="bg-slate-100 px-1 rounded text-xs">city</code> are required; the map link is generated automatically (no{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">google_maps_link</code> column). Course rows use <code className="bg-slate-100 px-1 rounded text-xs">institute_name</code> matching the institutes sheet;{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">course_names</code> on the institute row lists which courses to attach (comma or semicolon); leave blank to attach every course row for that institute from the courses file or sheet. Optionally upload a <strong>separate</strong> courses workbook below instead of a second sheet in the main file. Logos ZIP: filenames must match{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">logo_filename</code>.
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Excel file *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Institutes Excel *</label>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
                   className="w-full text-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Courses Excel (optional)</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkCoursesExcelFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Same layout as the separate <strong>institutes-courses-excel-template.xlsx</strong> (InstituteCourses sheet). Merged with course rows from the main file if both are present.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Logos (ZIP file)</label>
@@ -1369,23 +1422,45 @@ export default function InstitutesPage() {
                 />
               </div>
               {canDownloadExcel && (
-                <button
-                  type="button"
-                  onClick={handleBulkTemplateDownload}
-                  className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline"
-                >
-                  <FiDownload className="h-4 w-4" />
-                  Download Excel template
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleBulkTemplateDownload}
+                    className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Download institutes template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCoursesExcelTemplateDownload}
+                    className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Download courses Excel template
+                  </button>
+                </div>
               )}
             </div>
             {bulkError && (
               <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>
             )}
             {bulkResult && (
-              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
-                Created: {bulkResult.created}.{' '}
-                {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+              <div className="mt-3 space-y-2">
+                <div className="p-2 bg-green-50 text-green-800 text-sm rounded">
+                  Created: {bulkResult.created}.{' '}
+                  {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+                </div>
+                {bulkResult.courseSheetWarnings && bulkResult.courseSheetWarnings.length > 0 && (
+                  <div className="p-2 bg-amber-50 text-amber-900 text-sm rounded border border-amber-200">
+                    <p className="font-medium mb-1">Course sheet notices</p>
+                    <ul className="list-disc list-inside text-xs space-y-0.5">
+                      {bulkResult.courseSheetWarnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">

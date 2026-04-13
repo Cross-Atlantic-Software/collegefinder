@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -12,12 +12,14 @@ import {
   deleteCollege,
   uploadCollegeLogo,
   downloadCollegesBulkTemplate,
+  downloadCollegesProgramsExcelTemplate,
   downloadAllDataExcel,
   bulkUploadColleges,
   uploadMissingLogosColleges,
   deleteAllColleges,
   type College,
   type CollegeWithDetails,
+  type BulkUploadResult,
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
@@ -26,6 +28,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile,
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { getAllStates, getDistrictsForState } from '@/lib/data/indianStatesDistricts';
 import Image from 'next/image';
 
 export default function CollegesPage() {
@@ -64,8 +67,8 @@ export default function CollegesPage() {
   };
   const [formData, setFormData] = useState({
     college_name: '',
-    college_location: '',
-    google_map_link: '',
+    state: '',
+    city: '',
     college_type: [] as string[],
     major_program_ids: [] as number[],
     website: '',
@@ -74,6 +77,22 @@ export default function CollegesPage() {
     college_description: '',
     collegePrograms: [{ ...emptyProgram }] as (typeof emptyProgram)[],
   });
+  const stateOptions = useMemo(
+    () => getAllStates().map((s) => ({ value: s, label: s })),
+    []
+  );
+  const cityOptions = useMemo(() => {
+    if (!formData.state) return [];
+    return getDistrictsForState(formData.state).map((d) => ({ value: d, label: d }));
+  }, [formData.state]);
+  useEffect(() => {
+    if (!formData.state) return;
+    const districts = getDistrictsForState(formData.state);
+    setFormData((prev) => {
+      if (!prev.city || districts.includes(prev.city)) return prev;
+      return { ...prev, city: '' };
+    });
+  }, [formData.state]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -87,10 +106,11 @@ export default function CollegesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkProgramsExcelFile, setBulkProgramsExcelFile] = useState<File | null>(null);
   const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
   const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ created: number; createdColleges: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkUploadResult | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -146,6 +166,8 @@ export default function CollegesPage() {
       setColleges(allColleges.filter((c) =>
         c.college_name.toLowerCase().includes(q) ||
         (c.college_location && c.college_location.toLowerCase().includes(q)) ||
+        (c.state && c.state.toLowerCase().includes(q)) ||
+        (c.city && c.city.toLowerCase().includes(q)) ||
         (c.college_type && c.college_type.toLowerCase().includes(q))
       ));
     }, 300);
@@ -199,13 +221,17 @@ export default function CollegesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.state.trim() || !formData.city.trim()) {
+      showError('Please select state and city');
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
       const payload = {
         college_name: formData.college_name.trim(),
-        college_location: formData.college_location.trim() || null,
-        google_map_link: formData.google_map_link.trim() || null,
+        state: formData.state.trim(),
+        city: formData.city.trim(),
         college_type: formData.college_type.length > 0 ? formData.college_type.join(',') : null,
         major_program_ids: formData.major_program_ids,
         website: formData.website.trim() || null,
@@ -303,8 +329,8 @@ export default function CollegesPage() {
         const majorIds = majorIdsStr ? majorIdsStr.split(',').map((s: string) => parseInt(s.trim(), 10)).filter((n: number) => !isNaN(n)) : [];
         setFormData({
           college_name: d.college.college_name ?? '',
-          college_location: d.college.college_location ?? '',
-          google_map_link: d.college.google_map_link ?? '',
+          state: d.college.state ?? '',
+          city: d.college.city ?? '',
           college_type: typeArr,
           major_program_ids: majorIds,
           website: d.college.website ?? '',
@@ -376,8 +402,8 @@ export default function CollegesPage() {
     setEditingCollege(null);
     setFormData({
       college_name: '',
-      college_location: '',
-      google_map_link: '',
+      state: '',
+      city: '',
       college_type: [],
       major_program_ids: [],
       website: '',
@@ -425,9 +451,18 @@ export default function CollegesPage() {
   const handleBulkTemplateDownload = async () => {
     try {
       await downloadCollegesBulkTemplate();
-      showSuccess('Template downloaded');
+      showSuccess('Colleges template downloaded');
     } catch {
       showError('Failed to download template');
+    }
+  };
+
+  const handleProgramsExcelTemplateDownload = async () => {
+    try {
+      await downloadCollegesProgramsExcelTemplate();
+      showSuccess('Programs Excel template downloaded');
+    } catch {
+      showError('Failed to download programs template');
     }
   };
 
@@ -452,7 +487,7 @@ export default function CollegesPage() {
     setBulkError(null);
     setBulkResult(null);
     try {
-      const res = await bulkUploadColleges(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile);
+      const res = await bulkUploadColleges(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkProgramsExcelFile);
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} college(s)`);
@@ -546,6 +581,7 @@ export default function CollegesPage() {
                   setBulkResult(null);
                   setBulkError(null);
                   setBulkExcelFile(null);
+                  setBulkProgramsExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
@@ -684,13 +720,31 @@ export default function CollegesPage() {
                 <input type="text" value={formData.college_name} onChange={(e) => setFormData({ ...formData, college_name: e.target.value })} required placeholder="e.g. IIT Delhi" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Location</label>
-                <input type="text" value={formData.college_location} onChange={(e) => setFormData({ ...formData, college_location: e.target.value })} placeholder="e.g. New Delhi" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
+                <Dropdown
+                  value={formData.state || null}
+                  onChange={(v) => setFormData({ ...formData, state: v, city: '' })}
+                  options={stateOptions}
+                  placeholder="Select state"
+                  className="w-full"
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Google Map Link</label>
-                <input type="url" value={formData.google_map_link} onChange={(e) => setFormData({ ...formData, google_map_link: e.target.value })} placeholder="https://maps.google.com/..." className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1">City / district *</label>
+                <Dropdown
+                  value={formData.city || null}
+                  onChange={(v) => setFormData({ ...formData, city: v })}
+                  options={cityOptions}
+                  placeholder={formData.state ? 'Select city or district' : 'Select state first'}
+                  disabled={!formData.state}
+                  className="w-full"
+                />
               </div>
+              <p className="text-xs text-slate-500">
+                The Google Maps link is filled automatically from the college name and location when you save (Places API on the server). Add{' '}
+                <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_PLACES_API_KEY</code> or{' '}
+                <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_MAPS_API_KEY</code> to the backend env for best results.
+              </p>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">College Type (multiple)</label>
                 <MultiSelect
@@ -943,6 +997,11 @@ export default function CollegesPage() {
                 <div className="min-w-0">
                   <h2 className="text-lg font-bold text-slate-900">{viewingData.college_name}</h2>
                   <p className="text-sm text-slate-600"><strong>Location:</strong> {viewingData.college_location || '-'}</p>
+                  {(viewingData.state || viewingData.city) && (
+                    <p className="text-sm text-slate-600">
+                      <strong>State / city:</strong> {[viewingData.city, viewingData.state].filter(Boolean).join(', ') || '-'}
+                    </p>
+                  )}
                   <p className="text-sm text-slate-600"><strong>Type:</strong> {viewingData.college_type || '-'}</p>
                   {viewingData.google_map_link && <p className="text-sm text-slate-600"><strong>Map:</strong> <a href={viewingData.google_map_link} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">View on Google Maps</a></p>}
                   {viewingData.website && <p className="text-sm text-slate-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.website}</a></p>}
@@ -1050,22 +1109,49 @@ export default function CollegesPage() {
               </button>
             </div>
             <div className="p-5 overflow-auto space-y-5">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Download <strong>two</strong> files: <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">colleges-bulk-template.xlsx</code> (Colleges sheet only) and{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">colleges-programs-excel-template.xlsx</code> (CollegePrograms example + <strong>Programs_catalog</strong> with every{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name</code> from your taxonomy). On the <strong>Colleges</strong> sheet, use{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> (no manual Google Maps column). Each program row lists{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">college_name</code> matching the college row and                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name</code> exactly as in Programs. On the <strong>Colleges</strong> sheet, only{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_names</code> is used to choose which program rows attach (comma or semicolon; optional{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name|branch_course</code> tokens); leave it empty to attach every program row for that college. If there is no programs file, legacy inline columns in the colleges workbook are still read when present.
+              </p>
               {canDownloadExcel && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
-                  <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
-                    <FiDownload className="h-5 w-5" />
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
+                  <div className="flex flex-1 min-w-[200px] items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
+                    <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
+                      <FiDownload className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900">Colleges template</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Main sheet only</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleBulkTemplateDownload}
+                      className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      Download
+                    </button>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900">Get the template</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Download the Excel file with all columns</p>
+                  <div className="flex flex-1 min-w-[200px] items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
+                    <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
+                      <FiDownload className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900">Programs Excel template</p>
+                      <p className="text-xs text-slate-500 mt-0.5">CollegePrograms + program names list</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleProgramsExcelTemplateDownload}
+                      className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      Download
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleBulkTemplateDownload}
-                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
-                  >
-                    Download
-                  </button>
                 </div>
               )}
 
@@ -1093,6 +1179,41 @@ export default function CollegesPage() {
                     type="file"
                     accept=".xlsx,.xls"
                     onChange={(e) => setBulkExcelFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-900">
+                  Programs Excel <span className="text-xs font-normal text-slate-500">(optional)</span>
+                </p>
+                <label className="block w-full">
+                  <div
+                    className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[88px] ${bulkProgramsExcelFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}
+                  >
+                    <FiFile className={`h-8 w-8 ${bulkProgramsExcelFile ? 'text-[#341050]' : 'text-slate-400'}`} />
+                    <span className="text-sm font-medium text-slate-700 text-center px-2">
+                      {bulkProgramsExcelFile ? bulkProgramsExcelFile.name : 'Use CollegePrograms sheet layout (see colleges-programs-excel-template.xlsx)'}
+                    </span>
+                    {bulkProgramsExcelFile ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setBulkProgramsExcelFile(null);
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBulkProgramsExcelFile(e.target.files?.[0] ?? null)}
                     className="sr-only"
                   />
                 </label>
@@ -1141,7 +1262,7 @@ export default function CollegesPage() {
                 </div>
               )}
               {bulkResult && (
-                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
+                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-2">
                   <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
                   {bulkResult.errors > 0 && (
                     <p className="text-amber-700">Errors: {bulkResult.errors} row(s)</p>
@@ -1152,6 +1273,16 @@ export default function CollegesPage() {
                         <li key={i}>Row {e.row}: {e.message}</li>
                       ))}
                     </ul>
+                  )}
+                  {bulkResult.programSheetWarnings && bulkResult.programSheetWarnings.length > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
+                      <p className="font-medium text-xs mb-1">Program sheet notices</p>
+                      <ul className="text-xs list-disc list-inside space-y-0.5">
+                        {bulkResult.programSheetWarnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}

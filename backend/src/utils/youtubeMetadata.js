@@ -53,9 +53,24 @@ function extractYouTubeVideoId(raw) {
 }
 
 /**
+ * Prefer highest-resolution thumbnail from YouTube snippet.
+ * @param {Record<string, { url?: string }>|undefined} thumbnails
+ * @returns {string|null}
+ */
+function pickBestThumbnailUrl(thumbnails) {
+  if (!thumbnails || typeof thumbnails !== 'object') return null;
+  const order = ['maxres', 'standard', 'high', 'medium', 'default'];
+  for (const k of order) {
+    const u = thumbnails[k]?.url;
+    if (u && typeof u === 'string') return u;
+  }
+  return null;
+}
+
+/**
  * @param {string} videoId
  * @param {string} apiKey
- * @returns {Promise<{ title: string, description: string } | null>}
+ * @returns {Promise<{ title: string, description: string, thumbnails: object } | null>}
  */
 async function fetchYouTubeSnippet(videoId, apiKey) {
   if (!videoId || !apiKey) return null;
@@ -71,7 +86,52 @@ async function fetchYouTubeSnippet(videoId, apiKey) {
   return {
     title: sn.title || '',
     description: (sn.description || '').trim(),
+    thumbnails: sn.thumbnails && typeof sn.thumbnails === 'object' ? sn.thumbnails : {},
   };
+}
+
+/**
+ * If existing thumbnail URL is non-empty, return it. Otherwise download YouTube default thumbnail and upload to S3.
+ * @param {string|null|undefined} iframeCode
+ * @param {string|null|undefined} existingThumbnail
+ * @returns {Promise<string|null>}
+ */
+async function enrichThumbnailFromYoutubeIframe(iframeCode, existingThumbnail) {
+  const trimmed =
+    existingThumbnail != null && String(existingThumbnail).trim() !== ''
+      ? String(existingThumbnail).trim()
+      : '';
+  if (trimmed) return trimmed;
+
+  if (!iframeCode || !String(iframeCode).trim()) return null;
+
+  const apiKey =
+    process.env.YOUTUBE_API_KEY ||
+    process.env.GOOGLE_YOUTUBE_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+  if (!apiKey) return null;
+
+  const videoId = extractYouTubeVideoId(String(iframeCode));
+  if (!videoId) return null;
+
+  try {
+    const meta = await fetchYouTubeSnippet(videoId, apiKey);
+    const thumbUrl = pickBestThumbnailUrl(meta?.thumbnails);
+    if (!thumbUrl) return null;
+
+    const imgRes = await fetch(thumbUrl);
+    if (!imgRes.ok) {
+      throw new Error(`Thumbnail image HTTP ${imgRes.status}`);
+    }
+    const arrayBuf = await imgRes.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+    const ext = thumbUrl.toLowerCase().includes('.png') ? 'png' : 'jpg';
+    const { uploadToS3 } = require('../../utils/storage/s3Upload');
+    return await uploadToS3(buf, `youtube-${videoId}.${ext}`, 'lecture_thumbnails');
+  } catch (e) {
+    console.error('YouTube thumbnail fetch/upload failed:', e.message || e);
+    return null;
+  }
 }
 
 /**
@@ -116,6 +176,8 @@ async function enrichDescriptionFromYoutubeIframe(iframeCode, existingDescriptio
 module.exports = {
   extractYouTubeVideoId,
   fetchYouTubeSnippet,
+  pickBestThumbnailUrl,
   enrichDescriptionFromYoutubeIframe,
+  enrichThumbnailFromYoutubeIframe,
   MAX_LECTURE_DESCRIPTION_LENGTH,
 };

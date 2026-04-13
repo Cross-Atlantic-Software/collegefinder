@@ -14,7 +14,11 @@ export * from './modules';
 
 // Export site users management APIs
 export * from './users';
-export { getAllUsersBasicInfo, getAllUsersAcademics, getAllUsersCareerGoals } from './users';
+export {
+  getAllUsersBasicInfo,
+  getAllUsersAcademics,
+  getAllUsersCareerGoals,
+} from './users';
 
 // Export email templates management APIs
 export * from './email-templates';

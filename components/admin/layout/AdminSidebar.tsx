@@ -283,11 +283,11 @@ function AdminSidebarInner() {
           <Link href="/admin" className="block min-w-0">
             {railMode ? (
               <Image
-                src="/collapse.svg"
+                src="/landing-page/collapse.svg"
                 alt="Unitracko"
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-xl"
+                className="h-7 w-7"
                 priority
               />
             ) : (
@@ -307,9 +307,9 @@ function AdminSidebarInner() {
             type="button"
             onClick={toggleCollapse}
             aria-label="Collapse sidebar"
-            className="hidden shrink-0 rounded-lg border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-sm transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700 md:inline-flex"
+            className="hidden md:inline-flex rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 p-1.5 text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           >
-            <BiChevronLeft className="h-4 w-4 stroke-[2.5]" />
+            <BiChevronLeft className="h-4 w-4" />
           </button>
         )}
         {railMode && (
@@ -317,9 +317,9 @@ function AdminSidebarInner() {
             type="button"
             onClick={toggleCollapse}
             aria-label="Expand sidebar"
-            className="absolute right-[-14px] top-4 z-50 hidden rounded-full border-2 border-slate-300 bg-slate-100 p-1.5 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-white transition-all hover:border-[#341050]/45 hover:bg-white hover:text-[#341050] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#341050]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-950 dark:hover:bg-slate-700 md:inline-flex"
+            className="absolute right-[-14px] top-4 z-50 hidden rounded-full border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 p-1 text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 md:inline-flex"
           >
-            <BiChevronRight className="h-4 w-4 stroke-[2.5]" />
+            <BiChevronRight className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

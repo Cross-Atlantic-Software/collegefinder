@@ -84,6 +84,7 @@ export default function BasicInfoForm() {
 
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
+  const [userCode, setUserCode] = useState<string | null>(null);
   const [automationPassword, setAutomationPassword] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export default function BasicInfoForm() {
           setFormData(formDataToSet);
           setEmail(response.data.email || "");
           setEmailVerified(response.data.email_verified || false);
+          setUserCode(response.data.user_code ?? null);
           setAutomationPassword(response.data.automation_password || null);
 
           // Fetch government identification
@@ -258,6 +260,7 @@ export default function BasicInfoForm() {
       if (response.success && response.data) {
         setEmail(response.data.email || "");
         setEmailVerified(response.data.email_verified || false);
+        setUserCode(response.data.user_code ?? null);
         showSuccess("Email verified successfully!");
       }
     } catch (err) {
@@ -288,6 +291,7 @@ export default function BasicInfoForm() {
         setFormData={setFormData}
         email={email}
         emailVerified={emailVerified}
+        userCode={userCode}
         getCurrentLocation={getCurrentLocation}
         onShowEmailModal={() => setShowEmailModal(true)}
         govIdData={govIdData}

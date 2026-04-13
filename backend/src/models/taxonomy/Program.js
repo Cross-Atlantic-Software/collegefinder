@@ -6,7 +6,15 @@ class Program {
    */
   static async findAll() {
     const result = await db.query(
-      'SELECT * FROM programs ORDER BY name ASC'
+      `SELECT p.*, st.name AS stream_name,
+        (
+          SELECT COALESCE(string_agg(cg.label, ', ' ORDER BY cg.label), '')
+          FROM unnest(COALESCE(p.interest_ids, ARRAY[]::integer[])) AS t(interest_id)
+          JOIN career_goals_taxonomies cg ON cg.id = t.interest_id
+        ) AS interest_labels
+       FROM programs p
+       LEFT JOIN streams st ON st.id = p.stream_id
+       ORDER BY p.name ASC`
     );
     return result.rows;
   }
@@ -49,13 +57,16 @@ class Program {
    * Create a new program
    */
   static async create(data) {
-    const { name, status = true } = data;
+    const { name, status = true, stream_id = null, interest_ids = [] } = data;
+    const ids = Array.isArray(interest_ids)
+      ? [...new Set(interest_ids.map((x) => parseInt(x, 10)).filter((n) => Number.isInteger(n) && n > 0))]
+      : [];
 
     const result = await db.query(
-      `INSERT INTO programs (name, status)
-       VALUES ($1, $2)
+      `INSERT INTO programs (name, status, stream_id, interest_ids)
+       VALUES ($1, $2, $3, $4::integer[])
        RETURNING *`,
-      [name, status]
+      [name, status, stream_id != null ? stream_id : null, ids]
     );
     return result.rows[0];
   }
@@ -64,7 +75,7 @@ class Program {
    * Update a program
    */
   static async update(id, data) {
-    const { name, status } = data;
+    const { name, status, stream_id, interest_ids } = data;
 
     const updates = [];
     const values = [];
@@ -77,6 +88,17 @@ class Program {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+    if (stream_id !== undefined) {
+      updates.push(`stream_id = $${paramCount++}`);
+      values.push(stream_id);
+    }
+    if (interest_ids !== undefined) {
+      const ids = Array.isArray(interest_ids)
+        ? [...new Set(interest_ids.map((x) => parseInt(x, 10)).filter((n) => Number.isInteger(n) && n > 0))]
+        : [];
+      updates.push(`interest_ids = $${paramCount++}`);
+      values.push(ids);
     }
 
     if (updates.length === 0) {

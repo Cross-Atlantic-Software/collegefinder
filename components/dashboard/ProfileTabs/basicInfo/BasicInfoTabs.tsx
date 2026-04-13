@@ -21,6 +21,7 @@ interface BasicInfoTabsProps {
   setFormData: (data: CoreIdentityFormData | ((prev: CoreIdentityFormData) => CoreIdentityFormData)) => void;
   email: string;
   emailVerified: boolean;
+  userCode: string | null;
   getCurrentLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   onShowEmailModal: () => void;
 
@@ -50,6 +51,7 @@ export default function BasicInfoTabs({
   setFormData,
   email,
   emailVerified,
+  userCode,
   getCurrentLocation,
   onShowEmailModal,
   govIdData,
@@ -139,6 +141,7 @@ export default function BasicInfoTabs({
             setFormData={setFormData}
             email={email}
             emailVerified={emailVerified}
+            userCode={userCode}
             validationErrors={validationErrors}
             error={error}
             success={success["core-identity"]}

@@ -81,6 +81,7 @@ class AdminUsersController {
         usersWithAcademics.push({
           user: {
             id: user.id,
+            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },
@@ -162,6 +163,7 @@ class AdminUsersController {
         usersWithCareerGoals.push({
           user: {
             id: user.id,
+            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },
@@ -580,6 +582,61 @@ class AdminUsersController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch user details'
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/admin/users/:id
+   * Body: { is_active: boolean }
+   */
+  static async updateSiteUserStatus(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid user id' });
+      }
+      const { is_active: isActive } = req.body;
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active (boolean) is required' });
+      }
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      await User.updateActiveStatus(id, isActive);
+      const updated = await User.findById(id);
+      res.json({
+        success: true,
+        message: `User ${isActive ? 'activated' : 'deactivated'}`,
+        data: { user: updated }
+      });
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      res.status(500).json({ success: false, message: 'Failed to update user status' });
+    }
+  }
+
+  /**
+   * DELETE /api/admin/users/:id — Super Admin only (route also uses requireCanDelete)
+   */
+  static async deleteSiteUser(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid user id' });
+      }
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      await User.deleteById(id);
+      res.json({ success: true, message: 'User deleted permanently' });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete user'
       });
     }
   }
