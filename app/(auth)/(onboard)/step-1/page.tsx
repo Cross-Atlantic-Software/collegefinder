@@ -11,15 +11,15 @@ export default function StepOne() {
   const { user, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect to dashboard if user has completed onboarding
+  // Redirect to home if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed) {
       queueMicrotask(() => setIsRedirecting(true));
-      // Prefetch dashboard for faster loading
-      router.prefetch('/dashboard');
+      // Prefetch home for faster loading
+      router.prefetch('/');
       // Small delay for smooth transition
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -27,12 +27,12 @@ export default function StepOne() {
 
   // Show smooth loader while checking auth or redirecting
   if (isLoading || isRedirecting) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
   // Don't render if user has completed onboarding (will redirect)
   if (user?.onboarding_completed) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   return (

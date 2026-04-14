@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { FiX } from "react-icons/fi";
-import { getCareerGoals, updateCareerGoals, getAllCareerGoalsPublic } from "@/api";
+import { getCareerGoals, updateCareerGoals, getAllCareerGoalsPublic, getAcademics } from "@/api";
 import { getAllExams, getExamPreferences, updateExamPreferences } from "@/api/exams";
 import { Button, Select, SelectOption, useToast } from "../../shared";
 
@@ -35,8 +35,12 @@ export default function CareerGoalsTab() {
             try {
                 setLoading(true);
                 
-                // Fetch available career goal options from taxonomy
-                const optionsResponse = await getAllCareerGoalsPublic();
+                const acRes = await getAcademics();
+                const streamId =
+                    acRes.success && acRes.data?.stream_id != null && acRes.data.stream_id > 0
+                        ? acRes.data.stream_id
+                        : undefined;
+                const optionsResponse = await getAllCareerGoalsPublic(streamId);
                 if (optionsResponse.success && optionsResponse.data) {
                     const options = optionsResponse.data.careerGoals.map(cg => ({
                         id: cg.id.toString(),

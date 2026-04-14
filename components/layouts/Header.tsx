@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FiMenu, FiX } from "react-icons/fi";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { FiChevronDown, FiLogOut, FiMenu, FiX } from "react-icons/fi";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -12,10 +12,21 @@ import { usePathname, useRouter } from "next/navigation";
 export default function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
-    const { isAuthenticated, logout } = useAuth();
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuRef = useRef<HTMLDivElement | null>(null);
+    const { isAuthenticated, logout, user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const isHomePage = pathname === "/";
+    const userDisplayName = useMemo(() => {
+        const name = user?.name?.trim();
+        if (name) return name;
+        return user?.email?.split("@")[0] || "User";
+    }, [user]);
+    const userInitial = useMemo(() => {
+        const first = userDisplayName.trim().charAt(0);
+        return first ? first.toUpperCase() : "U";
+    }, [userDisplayName]);
 
     useEffect(() => {
         if (!isHomePage) {
@@ -33,6 +44,18 @@ export default function Header() {
             window.removeEventListener("scroll", handleScroll);
         };
     }, [isHomePage]);
+
+    useEffect(() => {
+        if (!userMenuOpen) return;
+        const onDocClick = (event: MouseEvent) => {
+            if (!userMenuRef.current) return;
+            if (!userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", onDocClick);
+        return () => document.removeEventListener("mousedown", onDocClick);
+    }, [userMenuOpen]);
 
     const handleLogout = () => {
         logout();
@@ -109,30 +132,58 @@ export default function Header() {
                                         onClick={() => router.push("/dashboard")}
                                         className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
-                                        Dashboard
+                                        My Dashboard
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleLogout}
-                                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-300 ${
-                                            isSolidHeader
-                                                ? "border-black/20 text-black hover:bg-black hover:text-white"
-                                                : "border-white/35 text-white hover:bg-white hover:text-black"
-                                        }`}
-                                    >
-                                        Log out
-                                    </button>
+                                    <div className="relative" ref={userMenuRef}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUserMenuOpen((v) => !v)}
+                                            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm font-semibold transition-all duration-300 ${
+                                                isSolidHeader
+                                                    ? "border-black/20 bg-white text-black hover:bg-black/5"
+                                                    : "border-white/35 bg-black/15 text-white hover:bg-black/30"
+                                            }`}
+                                        >
+                                            {user?.profile_photo ? (
+                                                <Image
+                                                    src={user.profile_photo}
+                                                    alt={userDisplayName}
+                                                    width={28}
+                                                    height={28}
+                                                    className="h-7 w-7 rounded-full object-cover"
+                                                    unoptimized
+                                                />
+                                            ) : (
+                                                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs ${
+                                                    isSolidHeader ? "bg-black text-white" : "bg-white text-black"
+                                                }`}>
+                                                    {userInitial}
+                                                </span>
+                                            )}
+                                            <span className="max-w-[110px] truncate">{userDisplayName}</span>
+                                            <FiChevronDown className={`transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+                                        </button>
+                                        {userMenuOpen && (
+                                            <div className="absolute right-0 mt-2 w-44 rounded-xl border border-black/10 bg-white p-1.5 shadow-lg">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setUserMenuOpen(false);
+                                                        handleLogout();
+                                                    }}
+                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                                                >
+                                                    <FiLogOut className="h-4 w-4" />
+                                                    Logout
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <>
                                     <Link
-                                        href="/login"
-                                        className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
-                                    >
-                                       My Dashboard
-                                    </Link>
-                                    <Link
-                                        href="/login"
+                                        href="/signup"
                                         className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${primaryActionClass}`}
                                     >
                                         Start My Journey
@@ -202,7 +253,7 @@ export default function Header() {
                                             }}
                                             className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
                                         >
-                                            Dashboard
+                                            My Dashboard
                                         </button>
                                         <button
                                             type="button"
@@ -210,22 +261,16 @@ export default function Header() {
                                                 setMobileOpen(false);
                                                 handleLogout();
                                             }}
-                                            className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
+                                            className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
                                         >
-                                            Log out
+                                            <FiLogOut className="h-4 w-4" />
+                                            Logout
                                         </button>
                                     </>
                                 ) : (
                                     <>
                                         <Link
-                                            href="/login"
-                                            className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                             My Dashboard
-                                        </Link>
-                                        <Link
-                                            href="/login"
+                                            href="/signup"
                                             className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
                                             onClick={() => setMobileOpen(false)}
                                         >

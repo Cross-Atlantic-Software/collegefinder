@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLandingPageContent } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
@@ -18,20 +17,12 @@ import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import ScrollRevealSection from "@/components/shared/ScrollRevealSection";
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { isLoading } = useAuth();
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [landingError, setLandingError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.prefetch("/dashboard");
-      router.replace("/dashboard");
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  useEffect(() => {
-    if (isLoading || isAuthenticated) return;
+    if (isLoading) return;
 
     let cancelled = false;
     (async () => {
@@ -52,10 +43,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading]);
 
-  if (isLoading || isAuthenticated) {
-    return <OnboardingLoader message="Redirecting..." />;
+  if (isLoading) {
+    return <OnboardingLoader message="Loading..." />;
   }
 
   if (!landing && !landingError) {

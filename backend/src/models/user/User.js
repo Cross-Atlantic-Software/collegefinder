@@ -25,9 +25,12 @@ class User {
   }
 
   static async findByEmail(email) {
+    if (email === null || email === undefined) return null;
+    const normalized = String(email).trim().toLowerCase();
+    if (!normalized) return null;
     const result = await db.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
+      'SELECT * FROM users WHERE LOWER(TRIM(email)) = $1',
+      [normalized]
     );
     return result.rows[0] || null;
   }
@@ -55,6 +58,60 @@ class User {
       [email, user_code]
     );
     return result.rows[0];
+  }
+
+  static async createWithPassword(email, passwordHash) {
+    const user_code = await User.generateUniqueUserCode();
+    const result = await db.query(
+      `INSERT INTO users (email, auth_provider, email_verified, user_code, password_hash)
+       VALUES ($1, 'email', false, $2, $3)
+       RETURNING *`,
+      [email, user_code, passwordHash]
+    );
+    return result.rows[0];
+  }
+
+  static async setPasswordHash(id, passwordHash) {
+    const result = await db.query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [passwordHash, id]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Store password reset token (opaque) and expiry for forgot-password flow.
+   */
+  static async setPasswordResetToken(userId, token, expiresAt) {
+    const uid = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    await db.query(
+      `UPDATE users SET password_reset_token = $1, password_reset_expires = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [token, expiresAt, uid]
+    );
+  }
+
+  /**
+   * Find user by valid (non-expired) password reset token.
+   */
+  static async findByValidPasswordResetToken(token) {
+    if (!token || !String(token).trim()) return null;
+    const result = await db.query(
+      `SELECT * FROM users
+       WHERE password_reset_token = $1 AND password_reset_expires > CURRENT_TIMESTAMP`,
+      [String(token).trim()]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Set new password and clear reset token fields.
+   */
+  static async setPasswordHashAndClearReset(id, passwordHash) {
+    const result = await db.query(
+      `UPDATE users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+      [passwordHash, id]
+    );
+    return result.rows[0] || null;
   }
 
   static async markEmailAsVerified(id) {

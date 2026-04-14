@@ -41,5 +41,21 @@ export function canAccessUsersModule(type: AdminUserTypePermission | undefined):
 
 /** Can add new records (POST). All admin types can add within their modules. */
 export function canAdd(type: AdminUserTypePermission | undefined): boolean {
-  return !!type && ['data_entry', 'admin', 'super_admin'].includes(type);
+  return !!type && ['data_entry', 'admin', 'super_admin', 'counsellor'].includes(type);
+}
+
+/** Human-readable role for admin header / UI */
+export function formatAdminRoleLabel(type: string | undefined | null): string {
+  switch (type) {
+    case 'super_admin':
+      return 'Super Admin';
+    case 'admin':
+      return 'Admin';
+    case 'data_entry':
+      return 'Data Entry';
+    case 'counsellor':
+      return 'Counsellor';
+    default:
+      return 'Admin';
+  }
 }

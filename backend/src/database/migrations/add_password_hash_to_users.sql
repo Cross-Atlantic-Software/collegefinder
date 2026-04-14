@@ -1,0 +1,4 @@
+-- Add password hash for email/password authentication
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+

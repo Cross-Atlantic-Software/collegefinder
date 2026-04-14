@@ -16,17 +16,17 @@ export default function StepTwo() {
   const router = useRouter();
   const { user, refreshUser, isLoading } = useAuth();
 
-  // Redirect to dashboard if user has completed onboarding
+  // Redirect to home if user has completed onboarding
   // But NEVER redirect if we're saving or navigating to step-3
   useEffect(() => {
     // Only redirect if we're not in the middle of saving or navigating to step-3
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
       queueMicrotask(() => setIsRedirecting(true));
-      // Prefetch dashboard for faster loading
-      router.prefetch('/dashboard');
+      // Prefetch home for faster loading
+      router.prefetch('/');
       // Small delay for smooth transition
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -34,12 +34,12 @@ export default function StepTwo() {
 
   // Show smooth loader while checking auth or redirecting (but NEVER while saving/navigating to step-3)
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
   // Don't render if user has completed onboarding and we're not saving/navigating to step-3
   if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   // Show saving state if we're navigating to step-3

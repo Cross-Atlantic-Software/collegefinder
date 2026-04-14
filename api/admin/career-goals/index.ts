@@ -9,6 +9,8 @@ export interface CareerGoal {
   logo_filename?: string | null;
   description?: string | null;
   status?: boolean;
+  stream_id?: number | null;
+  stream_name?: string | null;
   created_at: string;
   updated_at: string;
   updated_by?: number | null;
@@ -49,6 +51,7 @@ export async function getCareerGoalById(id: number): Promise<ApiResponse<{
  */
 export async function createCareerGoal(data: {
   label: string;
+  stream_id?: number | null;
   logo?: string | null;
   logo_filename?: string | null;
   description?: string | null;
@@ -114,6 +117,7 @@ export async function updateCareerGoal(
   id: number,
   data: {
     label?: string;
+    stream_id?: number;
     logo?: string;
     logo_filename?: string | null;
     description?: string | null;

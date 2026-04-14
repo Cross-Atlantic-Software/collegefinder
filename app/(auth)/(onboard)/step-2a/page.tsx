@@ -42,13 +42,13 @@ export default function StepTwoA() {
     fetchStreams();
   }, []);
 
-  // Redirect to dashboard if user has completed onboarding
+  // Redirect to home if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2B && !saving) {
       setIsRedirecting(true);
-      router.prefetch('/dashboard');
+      router.prefetch('/');
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -56,12 +56,12 @@ export default function StepTwoA() {
 
   // Show smooth loader while checking auth or redirecting
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2B)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
   // Don't render if user has completed onboarding and we're not saving/navigating
   if (user?.onboarding_completed && !saving && !isNavigatingToStep2B) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   // Show saving state if we're navigating to step-2b

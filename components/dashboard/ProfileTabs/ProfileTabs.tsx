@@ -4,7 +4,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, FileText } from "lucide-react";
+import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, FileText, KeyRound } from "lucide-react";
 import { uploadProfilePhoto, deleteProfilePhoto } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "../../shared";
@@ -13,14 +13,16 @@ import BasicInfoForm from "./BasicInfoForm";
 import AcademicsProfile from "./AcademicsProfile";
 import CareerGoalsTab from "./CareerGoals";
 import OtherInfoTab from "./OtherInfoTab";
+import ResetPasswordTab from "./ResetPasswordTab";
 
-type TabKey = "basic" | "academics" | "career" | "other";
+type TabKey = "basic" | "academics" | "career" | "other" | "password";
 
 const tabs: { key: TabKey; label: string; icon: ReactNode }[] = [
   { key: "basic", label: "Personal Details", icon: <User className="h-4 w-4" /> },
   { key: "academics", label: "Academics", icon: <GraduationCap className="h-4 w-4" /> },
   { key: "career", label: "Interests", icon: <Target className="h-4 w-4" /> },
   { key: "other", label: "Other Info", icon: <Info className="h-4 w-4" /> },
+  { key: "password", label: "Reset password", icon: <KeyRound className="h-4 w-4" /> },
 ];
 
 const tabMeta: Record<TabKey, { sideTitle: string; sideText: string; rowTitle: string; rowText: string }> = {
@@ -48,6 +50,12 @@ const tabMeta: Record<TabKey, { sideTitle: string; sideText: string; rowTitle: s
     rowTitle: "Preference Review",
     rowText: "Keep preferences realistic and updated before each major exam and counselling cycle.",
   },
+  password: {
+    sideTitle: "Account security",
+    sideText: "Use a unique password you do not reuse on other sites. Update it periodically if you suspect it may be known.",
+    rowTitle: "Password hygiene",
+    rowText: "After changing your password, stay signed in on this device or sign in again on others with the new password.",
+  },
 };
 
 export default function ProfileTabs() {
@@ -62,6 +70,7 @@ export default function ProfileTabs() {
     academics: null,
     career: null,
     other: null,
+    password: null,
   });
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
@@ -126,6 +135,8 @@ export default function ProfileTabs() {
         return <CareerGoalsTab />;
       case "other":
         return <OtherInfoTab />;
+      case "password":
+        return <ResetPasswordTab />;
       default:
         return null;
     }

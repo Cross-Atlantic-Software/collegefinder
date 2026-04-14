@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BiChevronDown, BiChevronLeft, BiChevronRight, BiMenu } from "react-icons/bi";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiActivity,
@@ -249,7 +250,11 @@ export default function Sidebar({
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-4">
-        <div className={`flex min-w-0 items-center ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}>
+        <Link
+          href="/"
+          className={`flex min-w-0 cursor-pointer items-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-600 ${isCollapsed ? "w-full justify-center" : "flex-1 gap-2"}`}
+          aria-label="Go to home"
+        >
           {isCollapsed && (
             <Image
               src="/landing-page/collapse.svg"
@@ -272,7 +277,7 @@ export default function Sidebar({
               />
             </div>
           )}
-        </div>
+        </Link>
 
         {!isCollapsed && (
           <button

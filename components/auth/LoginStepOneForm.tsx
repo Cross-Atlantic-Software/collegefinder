@@ -3,16 +3,25 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { sendOTP, initiateGoogleAuth, initiateFacebookAuth } from "@/api";
+import { initiateFacebookAuth, initiateGoogleAuth, loginWithPassword, startSignup } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { PasswordStrengthIndicator } from "@/components/admin/PasswordStrengthIndicator";
+import { isPasswordStrong } from "@/lib/passwordStrength";
 
-export function LoginStepOneForm() {
+type LoginStepOneFormProps = {
+  mode?: "login" | "signup";
+};
+
+export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login } = useAuth();
 
   // Persist ?ref= referral code so it survives the OTP flow and OAuth redirects
   useEffect(() => {
@@ -30,22 +39,44 @@ export function LoginStepOneForm() {
     setError(null);
 
     try {
-      const response = await sendOTP(email);
-      
-      if (response.success) {
-        const otpRoute = `/otpverification?email=${encodeURIComponent(email)}`;
-        router.prefetch(otpRoute);
-        setIsLeaving(true);
-
-        // Eased exit before navigating to OTP page.
-        setTimeout(() => {
-          router.push(otpRoute);
-        }, 260);
+      if (mode === "signup") {
+        if (!isPasswordStrong(password)) {
+          setError(
+            "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character (!@#$%^&* etc.)."
+          );
+          return;
+        }
+        const response = await startSignup(email, password);
+        if (response.success) {
+          const otpRoute = `/otpverification?email=${encodeURIComponent(email)}`;
+          router.prefetch(otpRoute);
+          setIsLeaving(true);
+          setTimeout(() => {
+            router.push(otpRoute);
+          }, 260);
+        } else {
+          setError(response.message || "Could not start signup. Please try again.");
+        }
       } else {
-        setError(response.message || "Failed to send OTP. Please try again.");
+        const response = await loginWithPassword(email, password);
+        if (response.success && response.data?.token && response.data.user) {
+          const normalizedUser = {
+            ...response.data.user,
+            name: response.data.user.name ?? undefined
+          };
+          login(response.data.token, normalizedUser);
+          const target = normalizedUser.onboarding_completed ? "/" : "/step-1";
+          router.prefetch(target);
+          setIsLeaving(true);
+          setTimeout(() => {
+            router.replace(target);
+          }, 220);
+        } else {
+          setError(response.message || "Login failed. Please check your credentials.");
+        }
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+      setError(mode === "signup" ? "Unable to sign up right now. Please try again." : "An unexpected error occurred. Please try again.");
       console.error("Error sending OTP:", err);
     } finally {
       setIsLoading(false);
@@ -87,6 +118,36 @@ export function LoginStepOneForm() {
             placeholder="you@example.com"
           />
         </div>
+        <div className="space-y-1.5 text-sm">
+          <label
+            htmlFor="password"
+            className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600"
+          >
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition duration-300 placeholder:text-slate-400 focus:border-slate-900"
+            placeholder={mode === "signup" ? "Create a strong password" : "Enter your password"}
+          />
+          {mode === "signup" && (
+            <PasswordStrengthIndicator password={password} className="mt-2" />
+          )}
+          {mode === "login" && (
+            <div className="flex justify-end pt-0.5">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-slate-600 transition hover:text-slate-900 underline underline-offset-2"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
+        </div>
 
         <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-600">
           <input
@@ -115,7 +176,13 @@ export function LoginStepOneForm() {
 
         <button
           type="submit"
-          disabled={!email || !agree || isLoading}
+          disabled={
+            !email ||
+            !password ||
+            !agree ||
+            isLoading ||
+            (mode === "signup" && !isPasswordStrong(password))
+          }
           className={`landing-cta mt-1 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
             isLoading ? "animate-pulse" : ""
           }`}
@@ -131,10 +198,10 @@ export function LoginStepOneForm() {
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
                 <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>
-              <span>Sending OTP...</span>
+              <span>{mode === "signup" ? "Sending OTP..." : "Logging in..."}</span>
             </span>
           ) : (
-            "Continue to verification"
+            mode === "signup" ? "Sign Up" : "Login"
           )}
         </button>
 
@@ -190,10 +257,21 @@ export function LoginStepOneForm() {
           </span>
         </button>
 
-        <p className="pt-1 text-center text-xs text-slate-500">
-          New here? Your account will be created automatically after
-          verification.
-        </p>
+        {mode === "login" ? (
+          <p className="pt-1 text-center text-xs text-slate-500">
+            New here?{" "}
+            <Link href="/signup" className="font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2">
+              Sign up
+            </Link>
+          </p>
+        ) : (
+          <p className="pt-1 text-center text-xs text-slate-500">
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2">
+              Login
+            </Link>
+          </p>
+        )}
       </form>
     </section>
   );

@@ -727,3 +727,17 @@ export async function deleteDocument(fieldName: string): Promise<ApiResponse<{
     method: 'DELETE',
   });
 }
+
+/**
+ * Change account password (requires current password; strong password rules apply)
+ */
+export async function changePassword(data: {
+  old_password: string;
+  new_password: string;
+  new_password_confirm: string;
+}): Promise<ApiResponse<Record<string, never>>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_PASSWORD, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}

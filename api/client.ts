@@ -157,10 +157,17 @@ export async function apiRequest<T>(
       // 403 (Forbidden) means user is authenticated but not allowed for this action (e.g. module access);
       // do not clear session so Admin/Data Entry users stay logged in.
       if (response.status === 401 && typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_authenticated');
-        window.location.href = '/admin/login';
+        const isAdminApi = endpoint.startsWith('/admin');
+        if (isAdminApi) {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_authenticated');
+          localStorage.removeItem('admin_user');
+          window.location.href = '/admin/login';
+        } else {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          window.location.href = '/login';
+        }
       }
 
       return {

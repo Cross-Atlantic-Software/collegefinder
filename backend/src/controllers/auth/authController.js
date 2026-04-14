@@ -1,14 +1,373 @@
 const User = require('../../models/user/User');
 const Otp = require('../../models/user/Otp');
 const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator');
-const { sendOTPEmail } = require('../../../utils/email/emailService');
+const { sendOTPEmail, sendPasswordResetEmail } = require('../../../utils/email/emailService');
+const crypto = require('crypto');
 const { generateToken } = require('../../../utils/auth/jwt');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const { downloadAndUploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const Referral = require('../../models/referral/Referral');
+const bcrypt = require('bcryptjs');
 
 class AuthController {
+  static normalizeOnboardingCompleted(raw) {
+    return raw === true || raw === 't' || raw === 1 || raw === 'true';
+  }
+
+  /** PG booleans / strings from some drivers */
+  static truthyEmailVerified(raw) {
+    if (raw === null || raw === undefined) return false;
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'string') {
+      const lower = raw.toLowerCase().trim();
+      return lower === 't' || lower === 'true' || lower === '1';
+    }
+    if (typeof raw === 'number') return raw === 1;
+    return false;
+  }
+
+  static buildAuthResponseUser(user) {
+    return {
+      id: user.id,
+      user_code: user.user_code || null,
+      email: user.email,
+      name: user.name || null,
+      profile_photo: user.profile_photo || null,
+      onboarding_completed: AuthController.normalizeOnboardingCompleted(user.onboarding_completed),
+      createdAt: user.created_at,
+      has_password: Boolean(user && user.password_hash)
+    };
+  }
+
+  static async issueAuthToken(user) {
+    const tokenPayload = { userId: user.id, email: user.email };
+    return generateToken(tokenPayload);
+  }
+
+  /**
+   * Start signup flow (email + password) and send OTP.
+   * Existing verified users must use password login.
+   */
+  static async startSignup(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+      }
+      const { email, password } = req.body;
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const otpLength = parseInt(process.env.OTP_LENGTH) || 6;
+      const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
+
+      let user = await User.findByEmail(normalizedEmail);
+      if (user && user.email_verified) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email is already verified. Please login with password.'
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(String(password), 12);
+      if (!user) user = await User.createWithPassword(normalizedEmail, passwordHash);
+      else user = await User.setPasswordHash(user.id, passwordHash);
+
+      const recentOtpCount = await Otp.getRecentOtpCount(normalizedEmail, 10);
+      if (recentOtpCount >= 3) {
+        return res.status(429).json({
+          success: false,
+          message: 'Too many OTP requests. Please wait before requesting again.'
+        });
+      }
+
+      const code = generateOTP(otpLength);
+      const expiresAt = getOTPExpiry(otpExpiryMinutes);
+      await Otp.invalidateUserOtps(user.id, normalizedEmail);
+      await Otp.create(user.id, normalizedEmail, code, expiresAt);
+      await sendOTPEmail(normalizedEmail, code);
+
+      return res.json({
+        success: true,
+        message: 'OTP sent successfully',
+        data: {
+          email: normalizedEmail,
+          expiresIn: otpExpiryMinutes * 60,
+          requiresOtp: true
+        }
+      });
+    } catch (error) {
+      console.error('Error starting signup:', error);
+      return res.status(500).json({ success: false, message: 'Failed to start signup. Please try again.' });
+    }
+  }
+
+  /**
+   * Login with email + password (for already verified users).
+   */
+  static async loginWithPassword(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+      }
+      const { email, password } = req.body;
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const user = await User.findByEmail(normalizedEmail);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found. Please sign up first.' });
+      }
+      if (!user.email_verified) {
+        return res.status(403).json({
+          success: false,
+          message: 'Email is not verified yet. Please complete signup verification.'
+        });
+      }
+      if (!user.password_hash) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password is not set for this account. Please reset or sign up again.'
+        });
+      }
+
+      const ok = await bcrypt.compare(String(password), user.password_hash);
+      if (!ok) {
+        return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      }
+
+      await User.updateLastLogin(user.id);
+      const updatedUser = await User.findById(user.id);
+      const token = await AuthController.issueAuthToken(updatedUser);
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: AuthController.buildAuthResponseUser(updatedUser),
+          token,
+          requiresOtp: false
+        }
+      });
+    } catch (error) {
+      console.error('Error logging in with password:', error);
+      return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
+    }
+  }
+
+  /**
+   * Change password (email/password accounts)
+   * PUT /api/auth/profile/password
+   */
+  static async changePassword(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const userId = req.user.id;
+      const { old_password, new_password } = req.body;
+
+      if (String(old_password) === String(new_password)) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be different from your current password.'
+        });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found.' });
+      }
+      if (!user.password_hash) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'No password is set for this account. If you signed in with Google or Facebook, use that method to sign in.'
+        });
+      }
+
+      const ok = await bcrypt.compare(String(old_password), user.password_hash);
+      if (!ok) {
+        // Use 400 (not 401) so the shared API client does not treat this as an expired session.
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is incorrect.'
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(String(new_password), 12);
+      await User.setPasswordHash(userId, passwordHash);
+
+      return res.json({
+        success: true,
+        message: 'Password updated successfully.'
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update password. Please try again.'
+      });
+    }
+  }
+
+  /**
+   * Request password reset email (public)
+   * POST /api/auth/forgot-password
+   */
+  static async forgotPassword(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const email = String(req.body.email || '')
+        .trim()
+        .toLowerCase();
+      const genericResponse = {
+        success: true,
+        message:
+          'If an account exists for that email, we sent a password reset link. Check your inbox and spam folder.'
+      };
+
+      const user = await User.findByEmail(email);
+      const emailVerified = AuthController.truthyEmailVerified(user?.email_verified);
+      // Verified email only (no password required: OAuth-only users can use this to set a password)
+      if (!user || !emailVerified) {
+        if (process.env.NODE_ENV === 'development') {
+          const skipReason = !user ? 'no_user' : 'email_not_verified';
+          console.warn('[forgot-password] No email sent.', { email, skipReason });
+          return res.json({
+            ...genericResponse,
+            data: {
+              devSkipReason: skipReason,
+              devHint:
+                skipReason === 'no_user'
+                  ? 'No account uses this email in the database.'
+                  : 'This email is not verified yet. Complete signup verification first.'
+            }
+          });
+        }
+        return res.json(genericResponse);
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiryMinutes = parseInt(process.env.PASSWORD_RESET_EXPIRY_MINUTES || '60', 10);
+      const safeMinutes =
+        Number.isFinite(expiryMinutes) && expiryMinutes > 0 && expiryMinutes <= 1440 ? expiryMinutes : 60;
+      const expiresAt = new Date(Date.now() + safeMinutes * 60 * 1000);
+
+      await User.setPasswordResetToken(user.id, token, expiresAt);
+
+      const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const resetLink = `${frontendBase}/reset-password?token=${encodeURIComponent(token)}`;
+
+      const isDev = process.env.NODE_ENV === 'development';
+
+      try {
+        await sendPasswordResetEmail(email, resetLink);
+      } catch (emailErr) {
+        console.error('Forgot password: email send failed:', emailErr);
+        if (isDev) {
+          // Local/dev: still return success with reset link so SMTP misconfig does not block testing
+          return res.json({
+            ...genericResponse,
+            data: {
+              resetLink,
+              emailDelivered: false,
+              devHint:
+                'Email could not be sent (check EMAIL_* in backend .env and server logs). Use the link below only on this machine.'
+            }
+          });
+        }
+        return res.status(500).json({
+          success: false,
+          message:
+            'Could not send the reset email. Check spam, try again later, or contact support if the problem continues.'
+        });
+      }
+
+      if (isDev) {
+        return res.json({
+          ...genericResponse,
+          data: {
+            resetLink,
+            emailDelivered: true,
+            devHint: 'Development: reset link is also shown below in case email is delayed.'
+          }
+        });
+      }
+
+      return res.json(genericResponse);
+    } catch (error) {
+      console.error('forgotPassword:', error);
+      const code = error && error.code;
+      const msg = error && error.message ? String(error.message) : '';
+      if (code === '42703' || /password_reset_token|password_reset_expires/i.test(msg)) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'Password reset is not fully configured on the server. Ask an admin to run the database migration add_password_reset_to_users.sql and restart the API.'
+        });
+      }
+      return res.status(500).json({
+        success: false,
+        message:
+          process.env.NODE_ENV === 'development'
+            ? `Something went wrong: ${msg || 'unknown error'}`
+            : 'Something went wrong. Please try again.'
+      });
+    }
+  }
+
+  /**
+   * Complete password reset with token from email (public)
+   * POST /api/auth/reset-password
+   */
+  static async resetPasswordWithToken(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { token, new_password } = req.body;
+      const user = await User.findByValidPasswordResetToken(token);
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: 'This reset link is invalid or has expired. Request a new one from the login page.'
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(String(new_password), 12);
+      await User.setPasswordHashAndClearReset(user.id, passwordHash);
+
+      return res.json({
+        success: true,
+        message: 'Your password was updated. You can sign in with your new password.'
+      });
+    } catch (error) {
+      console.error('resetPasswordWithToken:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Could not reset password. Please try again.'
+      });
+    }
+  }
+
   /**
    * Send OTP to user's email
    * POST /api/auth/send-otp
@@ -227,8 +586,10 @@ class AuthController {
             user_code: updatedUser.user_code || null,
             email: updatedUser.email,
             name: updatedUser.name || null,
+            profile_photo: updatedUser.profile_photo || null,
             onboarding_completed: finalOnboardingCompleted, // Explicitly send as boolean
-            createdAt: updatedUser.created_at
+            createdAt: updatedUser.created_at,
+            has_password: Boolean(updatedUser.password_hash)
           },
           token
         }
@@ -334,7 +695,8 @@ class AuthController {
             profile_photo: updatedUser.profile_photo,
             onboarding_completed: onboardingCompleted,
             createdAt: updatedUser.created_at,
-            lastLogin: updatedUser.last_login
+            lastLogin: updatedUser.last_login,
+            has_password: Boolean(updatedUser.password_hash)
           }
         }
       });

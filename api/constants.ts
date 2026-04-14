@@ -7,6 +7,10 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
     SEND_OTP: '/auth/send-otp',
+    SIGNUP_START: '/auth/signup/start',
+    LOGIN_PASSWORD: '/auth/login-password',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
     VERIFY_OTP: '/auth/verify-otp',
     RESEND_OTP: '/auth/resend-otp',
     GOOGLE_AUTH: '/auth/google',
@@ -20,6 +24,7 @@ export const API_ENDPOINTS = {
     PROFILE_SUBJECTS: '/auth/profile/subjects',
     PROFILE_TOPICS: '/auth/profile/topics',
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
+    PROFILE_PASSWORD: '/auth/profile/password',
     PROFILE_RECOMMENDED_EXAMS: '/auth/profile/recommended-exams',
     PROFILE_RECOMMENDED_COLLEGES: '/auth/profile/recommended-colleges',
     PROFILE_COMPLETION: '/auth/profile/completion',
