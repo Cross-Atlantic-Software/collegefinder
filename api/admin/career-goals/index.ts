@@ -51,6 +51,7 @@ export async function getCareerGoalById(id: number): Promise<ApiResponse<{
  */
 export async function createCareerGoal(data: {
   label: string;
+  stream_id?: number | null;
   logo?: string | null;
   logo_filename?: string | null;
   description?: string | null;

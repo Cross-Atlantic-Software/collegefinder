@@ -70,6 +70,7 @@ export default function ProfileTabs() {
     academics: null,
     career: null,
     other: null,
+    password: null,
   });
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
