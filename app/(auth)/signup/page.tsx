@@ -7,18 +7,16 @@ import { AuthShell, LoginStepOneForm } from "@/components/auth";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { Logo } from "@/components/shared";
 
-export default function LoginStepOnePage() {
+export default function SignupPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If user is authenticated, land on home.
     if (!isLoading && isAuthenticated) {
       router.replace("/");
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Show loader while checking auth or redirecting
   if (isLoading || isAuthenticated) {
     return <OnboardingLoader message="Redirecting to home..." />;
   }
@@ -27,8 +25,9 @@ export default function LoginStepOnePage() {
     <AuthShell variant="minimal" showMinimalHeader={false} contentClassName="items-center justify-center">
       <div className="flex w-full flex-col items-center justify-center gap-6">
         <Logo mode="light" width={190} height={42} className="h-auto w-[170px] sm:w-[190px]" />
-        <LoginStepOneForm mode="login" />
+        <LoginStepOneForm mode="signup" />
       </div>
     </AuthShell>
   );
 }
+

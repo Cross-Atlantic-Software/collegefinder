@@ -69,10 +69,10 @@ export default function StepThree() {
               <Button
                 variant="DarkGradient"
                 size="lg"
-                href="/dashboard"
+                href="/"
                 className="px-10 rounded-full"
               >
-                Lets go to Dashboard
+                Lets go to Home
               </Button>
             </div>
           </div>

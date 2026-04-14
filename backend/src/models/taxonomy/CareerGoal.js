@@ -6,16 +6,17 @@ class CareerGoal {
    */
   static async findAll() {
     const result = await db.query(
-      `SELECT cg.*, a.email as updated_by_email
+      `SELECT cg.*, a.email as updated_by_email, s.name AS stream_name
        FROM career_goals_taxonomies cg
        LEFT JOIN admin_users a ON cg.updated_by = a.id
+       LEFT JOIN streams s ON cg.stream_id = s.id
        ORDER BY cg.label ASC`
     );
     return result.rows;
   }
 
   /**
-   * Find all active career goals taxonomies (for public use)
+   * Find all active career goals taxonomies (for public use, no stream filter)
    */
   static async findActive() {
     const result = await db.query(
@@ -25,13 +26,31 @@ class CareerGoal {
   }
 
   /**
+   * Active interests for a given stream (onboarding / profile)
+   */
+  static async findActiveByStreamId(streamId) {
+    const sid = typeof streamId === 'string' ? parseInt(streamId, 10) : streamId;
+    if (sid == null || Number.isNaN(sid) || sid < 1) {
+      return [];
+    }
+    const result = await db.query(
+      `SELECT * FROM career_goals_taxonomies
+       WHERE status = TRUE AND stream_id = $1
+       ORDER BY label ASC`,
+      [sid]
+    );
+    return result.rows;
+  }
+
+  /**
    * Find career goal taxonomy by ID (with updated_by admin email)
    */
   static async findById(id) {
     const result = await db.query(
-      `SELECT cg.*, a.email as updated_by_email
+      `SELECT cg.*, a.email as updated_by_email, s.name AS stream_name
        FROM career_goals_taxonomies cg
        LEFT JOIN admin_users a ON cg.updated_by = a.id
+       LEFT JOIN streams s ON cg.stream_id = s.id
        WHERE cg.id = $1`,
       [id]
     );
@@ -53,10 +72,19 @@ class CareerGoal {
    * Create a new career goal taxonomy
    */
   static async create(data) {
-    const { label, logo, logo_filename, description, status, updated_by } = data;
+    const { label, logo, logo_filename, description, status, updated_by, stream_id } = data;
     const result = await db.query(
-      'INSERT INTO career_goals_taxonomies (label, logo, logo_filename, description, status, updated_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [label, logo || null, logo_filename || null, description || null, status !== undefined ? status : true, updated_by || null]
+      `INSERT INTO career_goals_taxonomies (label, logo, logo_filename, description, status, updated_by, stream_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [
+        label,
+        logo || null,
+        logo_filename || null,
+        description || null,
+        status !== undefined ? status : true,
+        updated_by || null,
+        stream_id != null && stream_id !== '' ? parseInt(String(stream_id), 10) : null
+      ]
     );
     return result.rows[0];
   }
@@ -64,6 +92,25 @@ class CareerGoal {
   /**
    * Find career goals with given logo_filename and no logo (missing logos)
    */
+  /**
+   * Count how many of the given taxonomy IDs are active and tagged with stream_id
+   */
+  static async countActiveMatchingStream(ids, streamId) {
+    if (!ids || ids.length === 0) return 0;
+    const ints = ids
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (ints.length === 0) return 0;
+    const sid = typeof streamId === 'string' ? parseInt(streamId, 10) : streamId;
+    if (sid == null || Number.isNaN(sid) || sid < 1) return 0;
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS c FROM career_goals_taxonomies
+       WHERE id = ANY($1::int[]) AND status = TRUE AND stream_id = $2`,
+      [ints, sid]
+    );
+    return result.rows[0]?.c ?? 0;
+  }
+
   static async findMissingLogosByFilename(filename) {
     if (!filename || !String(filename).trim()) return [];
     const result = await db.query(
@@ -79,7 +126,7 @@ class CareerGoal {
    * Update a career goal taxonomy
    */
   static async update(id, data) {
-    const { label, logo, logo_filename, description, status, updated_by } = data;
+    const { label, logo, logo_filename, description, status, updated_by, stream_id } = data;
 
     const updates = [];
     const values = [];
@@ -108,6 +155,14 @@ class CareerGoal {
     if (updated_by !== undefined) {
       updates.push(`updated_by = $${paramCount++}`);
       values.push(updated_by);
+    }
+    if (stream_id !== undefined) {
+      updates.push(`stream_id = $${paramCount++}`);
+      const sid =
+        stream_id === null || stream_id === ''
+          ? null
+          : parseInt(String(stream_id), 10);
+      values.push(Number.isNaN(sid) ? null : sid);
     }
 
     if (updates.length === 0) {

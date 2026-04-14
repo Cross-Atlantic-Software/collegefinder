@@ -1,5 +1,7 @@
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
+const Stream = require('../../models/taxonomy/Stream');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
+const UserAcademics = require('../../models/user/UserAcademics');
 const User = require('../../models/user/User');
 const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
@@ -12,7 +14,15 @@ class CareerGoalsTaxonomyController {
    */
   static async getAll(req, res) {
     try {
-      const careerGoals = await CareerGoal.findActive(); // Only active goals for public
+      const raw = req.query.stream_id;
+      const streamId =
+        raw !== undefined && raw !== null && String(raw).trim() !== ''
+          ? parseInt(String(raw), 10)
+          : NaN;
+      const careerGoals =
+        Number.isInteger(streamId) && streamId > 0
+          ? await CareerGoal.findActiveByStreamId(streamId)
+          : await CareerGoal.findActive();
       res.json({
         success: true,
         data: { careerGoals }
@@ -81,13 +91,31 @@ class CareerGoalsTaxonomyController {
    */
   static async create(req, res) {
     try {
-      const { label, logo, logo_filename, description, status } = req.body;
+      const { label, logo, logo_filename, description, status, stream_id } = req.body;
 
       // Validate required fields (logo is optional)
       if (!label) {
         return res.status(400).json({
           success: false,
           message: 'Label is required'
+        });
+      }
+
+      const streamIdNum =
+        stream_id !== undefined && stream_id !== null && String(stream_id).trim() !== ''
+          ? parseInt(String(stream_id), 10)
+          : NaN;
+      if (!Number.isInteger(streamIdNum) || streamIdNum < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Stream is required — select which stream this interest belongs to'
+        });
+      }
+      const streamRow = await Stream.findById(streamIdNum);
+      if (!streamRow) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid stream'
         });
       }
 
@@ -106,7 +134,8 @@ class CareerGoalsTaxonomyController {
         logo_filename: logo_filename || null,
         description: description || null,
         status: status !== undefined ? status : true,
-        updated_by: req.admin?.id || null
+        updated_by: req.admin?.id || null,
+        stream_id: streamIdNum
       });
       res.status(201).json({
         success: true,
@@ -161,7 +190,7 @@ class CareerGoalsTaxonomyController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { label, logo, logo_filename, description, status } = req.body;
+      const { label, logo, logo_filename, description, status, stream_id } = req.body;
 
       const existing = await CareerGoal.findById(parseInt(id));
       if (!existing) {
@@ -187,13 +216,33 @@ class CareerGoalsTaxonomyController {
         await deleteFromS3(existing.logo);
       }
 
+      let streamIdForUpdate;
+      if (stream_id !== undefined) {
+        if (stream_id === null || stream_id === '') {
+          return res.status(400).json({
+            success: false,
+            message: 'Stream cannot be cleared — select which stream this interest belongs to'
+          });
+        }
+        const streamIdNum = parseInt(String(stream_id), 10);
+        if (!Number.isInteger(streamIdNum) || streamIdNum < 1) {
+          return res.status(400).json({ success: false, message: 'Invalid stream' });
+        }
+        const streamRow = await Stream.findById(streamIdNum);
+        if (!streamRow) {
+          return res.status(400).json({ success: false, message: 'Invalid stream' });
+        }
+        streamIdForUpdate = streamIdNum;
+      }
+
       const careerGoal = await CareerGoal.update(parseInt(id), {
         label,
         logo,
         logo_filename,
         description,
         status,
-        updated_by: req.admin?.id || null
+        updated_by: req.admin?.id || null,
+        ...(stream_id !== undefined ? { stream_id: streamIdForUpdate } : {})
       });
       res.json({
         success: true,
@@ -297,13 +346,27 @@ class CareerGoalsTaxonomyController {
   static async downloadAllExcel(req, res) {
     try {
       const careerGoals = await CareerGoal.findAll();
-      const headers = ['id', 'label', 'logo', 'logo_filename', 'description', 'status', 'created_at', 'updated_at', 'updated_by_email'];
+      const headers = [
+        'id',
+        'label',
+        'stream_id',
+        'stream_name',
+        'logo',
+        'logo_filename',
+        'description',
+        'status',
+        'created_at',
+        'updated_at',
+        'updated_by_email'
+      ];
       const rows = [headers];
       for (const cg of careerGoals) {
         const logoFilename = cg.logo_filename || (cg.logo && typeof cg.logo === 'string' ? cg.logo.split('/').pop() : '') || '';
         rows.push([
           cg.id,
           cg.label || '',
+          cg.stream_id ?? '',
+          cg.stream_name || '',
           cg.logo || '',
           logoFilename,
           cg.description || '',
@@ -407,6 +470,28 @@ class CareerGoalsTaxonomyController {
           success: false,
           message: 'Interests must be an array'
         });
+      }
+
+      const interestIds = (interests || [])
+        .map((id) => parseInt(String(id), 10))
+        .filter((n) => Number.isInteger(n) && n > 0);
+
+      if (interestIds.length > 0) {
+        const academics = await UserAcademics.findByUserId(userId);
+        const userStreamId = academics?.stream_id;
+        if (!userStreamId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Select your stream (academics) before choosing interests'
+          });
+        }
+        const matchCount = await CareerGoal.countActiveMatchingStream(interestIds, userStreamId);
+        if (matchCount !== interestIds.length) {
+          return res.status(400).json({
+            success: false,
+            message: 'One or more interests are not valid for your selected stream'
+          });
+        }
       }
 
       const userCareerGoals = await UserCareerGoals.upsert(userId, {

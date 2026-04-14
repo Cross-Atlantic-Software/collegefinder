@@ -69,12 +69,17 @@ const uploadPhoto = multer({
 
 const {
   validateSendOTP,
+  validateSignupStart,
+  validatePasswordLogin,
+  validateForgotPassword,
+  validateResetPassword,
   validateVerifyOTP,
   validateResendOTP,
   validateUpdateProfile,
   validateUpdateBasicInfo,
   validateUpdateAcademics,
   validateUpdateCareerGoals,
+  validateChangePassword,
   validateSendEmailOTP,
   validateVerifyEmailOTP,
   validateGovernmentIdentification,
@@ -89,6 +94,34 @@ const {
  * @access  Public
  */
 router.post('/send-otp', validateSendOTP, AuthController.sendOTP);
+
+/**
+ * @route   POST /api/auth/signup/start
+ * @desc    Start email/password signup and send verification OTP
+ * @access  Public
+ */
+router.post('/signup/start', validateSignupStart, AuthController.startSignup);
+
+/**
+ * @route   POST /api/auth/login-password
+ * @desc    Login using email + password
+ * @access  Public
+ */
+router.post('/login-password', validatePasswordLogin, AuthController.loginWithPassword);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Email a password reset link (always generic success message)
+ * @access  Public
+ */
+router.post('/forgot-password', validateForgotPassword, AuthController.forgotPassword);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Set new password using token from email
+ * @access  Public
+ */
+router.post('/reset-password', validateResetPassword, AuthController.resetPasswordWithToken);
 
 /**
  * @route   POST /api/auth/verify-otp
@@ -236,6 +269,13 @@ router.get('/profile/career-goals', authenticate, CareerGoalsController.getCaree
  * @access  Private
  */
 router.put('/profile/career-goals', authenticate, validateUpdateCareerGoals, CareerGoalsController.updateCareerGoals);
+
+/**
+ * @route   PUT /api/auth/profile/password
+ * @desc    Change password (requires current password)
+ * @access  Private
+ */
+router.put('/profile/password', authenticate, validateChangePassword, AuthController.changePassword);
 
 /**
  * @route   GET /api/auth/profile/exam-preferences

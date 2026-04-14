@@ -48,6 +48,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS alternate_mobile_number VARCHAR(25);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS automation_password VARCHAR(255) DEFAULT 'Ax' || substr(md5(random()::text), 1, 6) || '@1';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS user_code VARCHAR(12);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 -- Backfill default values for new columns where needed
 UPDATE users SET email_verified = false WHERE email_verified IS NULL;

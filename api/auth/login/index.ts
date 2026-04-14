@@ -7,6 +7,7 @@ import type {
   ApiResponse,
   SendOTPResponse,
   VerifyOTPResponse,
+  PasswordAuthResponse,
 } from '../../types';
 
 import { API_ENDPOINTS } from '../../constants';
@@ -18,6 +19,52 @@ export async function sendOTP(email: string): Promise<ApiResponse<SendOTPRespons
   return apiRequest<SendOTPResponse>(API_ENDPOINTS.AUTH.SEND_OTP, {
     method: 'POST',
     body: JSON.stringify({ email }),
+  });
+}
+
+export async function startSignup(email: string, password: string): Promise<ApiResponse<SendOTPResponse>> {
+  return apiRequest<SendOTPResponse>(API_ENDPOINTS.AUTH.SIGNUP_START, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function loginWithPassword(
+  email: string,
+  password: string
+): Promise<ApiResponse<PasswordAuthResponse>> {
+  return apiRequest<PasswordAuthResponse>(API_ENDPOINTS.AUTH.LOGIN_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+/** Dev server may include resetLink when NODE_ENV=development (SMTP fallback). */
+export type ForgotPasswordResponse = {
+  resetLink?: string;
+  emailDelivered?: boolean;
+  devHint?: string;
+  /** development only: no_user | email_not_verified */
+  devSkipReason?: string;
+};
+
+/** Request a password reset link by email (public). */
+export async function requestPasswordReset(email: string): Promise<ApiResponse<ForgotPasswordResponse>> {
+  return apiRequest<ForgotPasswordResponse>(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** Complete password reset with token from email (public). */
+export async function resetPasswordWithToken(
+  token: string,
+  new_password: string,
+  new_password_confirm: string
+): Promise<ApiResponse<{ message?: string }>> {
+  return apiRequest(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({ token, new_password, new_password_confirm }),
   });
 }
 

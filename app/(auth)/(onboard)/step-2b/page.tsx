@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
 import { Button, useToast } from "@/components/shared";
-import { updateCareerGoals, getAllCareerGoalsPublic } from "@/api";
+import { updateCareerGoals, getAllCareerGoalsPublic, getAcademics } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -22,16 +22,25 @@ export default function StepTwoB() {
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
+  const [needsStream, setNeedsStream] = useState(false);
   const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
   const { showError } = useToast();
 
-  // Fetch career goals on mount
+  // Fetch interests for the stream chosen in step-2a (saved on user academics)
   useEffect(() => {
     const fetchCareerGoals = async () => {
       try {
         setLoadingInterests(true);
-        const response = await getAllCareerGoalsPublic();
+        setNeedsStream(false);
+        const acRes = await getAcademics();
+        const streamId = acRes.success && acRes.data?.stream_id != null ? acRes.data.stream_id : null;
+        if (!streamId || streamId < 1) {
+          setNeedsStream(true);
+          setInterestOptions([]);
+          return;
+        }
+        const response = await getAllCareerGoalsPublic(streamId);
         if (response.success && response.data) {
           const options = response.data.careerGoals.map(cg => ({
             id: cg.id.toString(),
@@ -51,26 +60,44 @@ export default function StepTwoB() {
     fetchCareerGoals();
   }, []);
 
-  // Redirect to dashboard if user has completed onboarding
+  useEffect(() => {
+    if (!needsStream || isLoading) return;
+    const t = setTimeout(() => {
+      router.replace("/step-2a");
+    }, 800);
+    return () => clearTimeout(t);
+  }, [needsStream, isLoading, router]);
+
+  // Redirect to home if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
       setIsRedirecting(true);
-      router.prefetch('/dashboard');
+      router.prefetch('/');
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToStep3, saving]);
 
   // Show smooth loader while checking auth or redirecting
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+  if (isLoading || needsStream || (isRedirecting && !saving && !isNavigatingToStep3)) {
+    return (
+      <OnboardingLoader
+        message={
+          needsStream
+            ? "Taking you back to choose your stream..."
+            : isRedirecting
+              ? "Taking you home..."
+              : "Loading..."
+        }
+      />
+    );
   }
 
   // Don't render if user has completed onboarding and we're not saving/navigating
   if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   // Show saving state if we're navigating to step-3
@@ -118,7 +145,7 @@ export default function StepTwoB() {
       });
 
       if (response.success) {
-        await refreshUser(); // Update context + localStorage with onboarding_completed: true so next visit goes to dashboard
+        await refreshUser(); // Update context + localStorage with onboarding_completed state.
         router.prefetch("/step-2c");
         router.replace("/step-2c");
       } else {
@@ -159,6 +186,10 @@ export default function StepTwoB() {
             {loadingInterests ? (
               <div className="w-full rounded-2xl bg-white border border-slate-200 p-6 text-center text-slate-400">
                 Loading interests...
+              </div>
+            ) : interestOptions.length === 0 ? (
+              <div className="w-full rounded-2xl bg-amber-50 border border-amber-200 p-6 text-center text-sm text-amber-900">
+                No interests are set up for your stream yet. Please contact support or try another stream in the previous step.
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">

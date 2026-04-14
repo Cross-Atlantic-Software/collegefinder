@@ -72,20 +72,20 @@ export default function StepTwoD() {
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
       setIsRedirecting(true);
-      router.prefetch('/dashboard');
+      router.prefetch('/');
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToStep3, saving]);
 
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
   if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   if (saving || isNavigatingToStep3) {

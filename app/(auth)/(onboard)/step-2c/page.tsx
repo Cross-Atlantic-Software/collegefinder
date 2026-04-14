@@ -14,7 +14,7 @@ export default function StepTwoC() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isNavigatingToDashboard, setIsNavigatingToDashboard] = useState(false);
+  const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
   const router = useRouter();
   const { user, refreshUser, isLoading } = useAuth();
 
@@ -49,25 +49,25 @@ export default function StepTwoC() {
   }, [isLoading, user]);
 
   useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToDashboard && !saving) {
+    if (!isLoading && user?.onboarding_completed && !isNavigatingToHome && !saving) {
       setIsRedirecting(true);
-      router.prefetch('/dashboard');
+      router.prefetch('/');
       const timer = setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/');
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router, isNavigatingToDashboard, saving]);
+  }, [user, isLoading, router, isNavigatingToHome, saving]);
 
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToDashboard)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+  if (isLoading || (isRedirecting && !saving && !isNavigatingToHome)) {
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
-  if (user?.onboarding_completed && !saving && !isNavigatingToDashboard) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+  if (user?.onboarding_completed && !saving && !isNavigatingToHome) {
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
-  if (saving || isNavigatingToDashboard) {
+  if (saving || isNavigatingToHome) {
     return <OnboardingLoader message="Saving your city..." />;
   }
 
@@ -86,7 +86,7 @@ export default function StepTwoC() {
 
     setSaving(true);
     setError(null);
-    setIsNavigatingToDashboard(true);
+    setIsNavigatingToHome(true);
 
     try {
       const response = await upsertUserAddress({
@@ -96,18 +96,18 @@ export default function StepTwoC() {
 
       if (response.success) {
         await refreshUser();
-        router.prefetch("/dashboard");
-        router.replace("/dashboard");
+        router.prefetch("/");
+        router.replace("/");
       } else {
         setError(response.message || "Failed to save city. Please try again.");
         setSaving(false);
-        setIsNavigatingToDashboard(false);
+        setIsNavigatingToHome(false);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       console.error("Error updating city:", err);
       setSaving(false);
-      setIsNavigatingToDashboard(false);
+      setIsNavigatingToHome(false);
     }
   };
 

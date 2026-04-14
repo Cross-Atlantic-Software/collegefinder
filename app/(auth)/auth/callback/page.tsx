@@ -38,10 +38,10 @@ export default function AuthCallbackPage() {
             login(token, userData);
             
             // Check if user has completed onboarding
-            // If onboarding_completed is true → go to dashboard
+            // If onboarding_completed is true → go to home
             // If onboarding_completed is false/null → go to onboarding step-1
             if (userData.onboarding_completed) {
-              router.push("/dashboard");
+              router.push("/");
             } else {
               router.push("/step-1");
             }

@@ -20,6 +20,8 @@ export interface User {
   name?: string;
   profile_photo?: string | null;
   onboarding_completed?: boolean;
+  /** True if the account has an email/password hash (OAuth-only users may be false). */
+  has_password?: boolean;
   createdAt: string;
   lastLogin?: string;
 }
@@ -27,6 +29,21 @@ export interface User {
 export interface SendOTPResponse {
   email: string;
   expiresIn: number;
+  requiresOtp?: boolean;
+}
+
+export interface PasswordAuthResponse {
+  user: {
+    id: number;
+    user_code?: string | null;
+    email: string;
+    name: string | null;
+    profile_photo?: string | null;
+    onboarding_completed?: boolean;
+    createdAt: string;
+  };
+  token: string;
+  requiresOtp?: boolean;
 }
 
 export interface VerifyOTPResponse {
@@ -35,6 +52,7 @@ export interface VerifyOTPResponse {
     user_code?: string | null;
     email: string;
     name: string | null;
+    profile_photo?: string | null;
     onboarding_completed?: boolean;
     createdAt: string;
   };

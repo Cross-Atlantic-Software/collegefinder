@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { FiX, FiUpload, FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import Image from 'next/image';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, CareerGoalAdmin } from '@/api';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { getAllStreams } from '@/api/admin/streams';
+import { ConfirmationModal, useToast, Select, type SelectOption } from '@/components/shared';
 
 interface CareerGoalsTaxonomyModalProps {
   isOpen: boolean;
@@ -18,7 +19,8 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingCareerGoal, setEditingCareerGoal] = useState<CareerGoalAdmin | null>(null);
-  const [formData, setFormData] = useState({ label: '', logo: '' });
+  const [formData, setFormData] = useState({ label: '', logo: '', streamId: '' });
+  const [streamOptions, setStreamOptions] = useState<SelectOption[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -29,6 +31,16 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
   useEffect(() => {
     if (isOpen) {
       fetchCareerGoals();
+      (async () => {
+        try {
+          const sr = await getAllStreams();
+          if (sr.success && sr.data?.streams) {
+            setStreamOptions(sr.data.streams.map((s) => ({ value: String(s.id), label: s.name })));
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
     }
   }, [isOpen]);
 
@@ -94,10 +106,19 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
       setError('Label and logo are required');
       return;
     }
+    const streamIdNum = parseInt(formData.streamId, 10);
+    if (!formData.streamId || Number.isNaN(streamIdNum) || streamIdNum < 1) {
+      setError('Please select a stream');
+      return;
+    }
 
     try {
       if (editingCareerGoal) {
-        const response = await updateCareerGoal(editingCareerGoal.id, formData);
+        const response = await updateCareerGoal(editingCareerGoal.id, {
+          label: formData.label,
+          logo: formData.logo,
+          stream_id: streamIdNum,
+        });
         if (response.success) {
           showSuccess('Interest updated successfully');
           setShowForm(false);
@@ -109,7 +130,11 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
           showError(errorMsg);
         }
       } else {
-        const response = await createCareerGoal(formData);
+        const response = await createCareerGoal({
+          label: formData.label,
+          logo: formData.logo,
+          stream_id: streamIdNum,
+        });
         if (response.success) {
           showSuccess('Career goal created successfully');
           setShowForm(false);
@@ -166,7 +191,11 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
 
   const handleEdit = (careerGoal: CareerGoalAdmin) => {
     setEditingCareerGoal(careerGoal);
-    setFormData({ label: careerGoal.label, logo: careerGoal.logo ?? '' });
+    setFormData({
+      label: careerGoal.label,
+      logo: careerGoal.logo ?? '',
+      streamId: careerGoal.stream_id != null ? String(careerGoal.stream_id) : '',
+    });
     setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
     setShowForm(true);
@@ -179,7 +208,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
   };
 
   const resetForm = () => {
-    setFormData({ label: '', logo: '' });
+    setFormData({ label: '', logo: '', streamId: '' });
     setLogoFile(null);
     setLogoPreview(null);
     setError(null);
@@ -225,6 +254,26 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                   placeholder="e.g., Technology, Design"
                   className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Stream <span className="text-[#341050]">*</span>
+                </label>
+                {streamOptions.length === 0 ? (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    No streams available.
+                  </p>
+                ) : (
+                  <Select
+                    options={streamOptions}
+                    value={formData.streamId}
+                    onChange={(v) => setFormData({ ...formData, streamId: v || '' })}
+                    placeholder="Select stream"
+                    isSearchable
+                    isClearable={false}
+                  />
+                )}
               </div>
 
               <div>
@@ -279,7 +328,7 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading || !formData.label || !formData.logo}
+                  disabled={uploading || !formData.label || !formData.logo || !formData.streamId}
                   className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingCareerGoal ? 'Update' : 'Create'}
@@ -350,7 +399,10 @@ export default function CareerGoalsTaxonomyModal({ isOpen, onClose }: CareerGoal
                         </div>
                       </div>
                       <h4 className="text-sm font-medium text-slate-900">{cg.label}</h4>
-                      <p className="text-xs text-slate-500 mt-1">ID: {cg.id}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        ID: {cg.id}
+                        {cg.stream_name ? ` · ${cg.stream_name}` : ''}
+                      </p>
                     </div>
                   ))}
                 </div>

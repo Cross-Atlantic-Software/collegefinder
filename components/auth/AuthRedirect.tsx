@@ -13,11 +13,11 @@ interface AuthRedirectProps {
 /**
  * Redirects authenticated users away from auth pages (login, OTP, etc.)
  * Allows access to onboarding pages only if user hasn't completed onboarding (no name)
- * Redirects to dashboard if user has completed onboarding (has name)
+ * Redirects to home if user has completed onboarding (has name)
  */
 export function AuthRedirect({ 
   children, 
-  redirectTo = '/dashboard' 
+  redirectTo = '/' 
 }: AuthRedirectProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
@@ -39,14 +39,14 @@ export function AuthRedirect({
       const isStep2C = pathname?.includes('/step-2c');
       const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
       
-      // If authenticated and on onboarding route (but not allowed steps) and has completed onboarding, redirect to dashboard
+      // If authenticated and on onboarding route (but not allowed steps) and has completed onboarding, redirect to home
       if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
         router.prefetch(redirectTo);
         router.replace(redirectTo);
         return;
       }
       
-      // If authenticated and NOT on onboarding route, redirect to dashboard
+      // If authenticated and NOT on onboarding route, redirect to home
       if (isAuthenticated && !isOnboardingRoute) {
         router.push(redirectTo);
       }
@@ -64,7 +64,7 @@ export function AuthRedirect({
   const isStep2C = pathname?.includes('/step-2c');
   const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
   if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   // If authenticated and NOT on onboarding route, don't render (will redirect)

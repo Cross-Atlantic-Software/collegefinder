@@ -104,8 +104,8 @@ export function OtpVerificationForm({
         login(response.data.token, user);
         onVerified?.(code);
         
-        // Redirect based on whether user has completed onboarding
-        // If onboarding_completed is true → go to dashboard
+        // Redirect based on whether user has completed onboarding.
+        // If onboarding_completed is true → go to home
         // If onboarding_completed is false/null → go to onboarding step-1
         const onboardingCompletedValue = response.data.user?.onboarding_completed;
         
@@ -137,18 +137,18 @@ export function OtpVerificationForm({
         console.log('🔍 OTP Verification - User data:', response.data.user);
         console.log('🔍 OTP Verification - onboarding_completed (raw):', onboardingCompletedValue, 'Type:', typeof onboardingCompletedValue);
         console.log('🔍 OTP Verification - onboarding_completed (converted):', onboardingCompleted);
-        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/dashboard' : '/step-1');
+        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/' : '/step-1');
         
         // Prefetch target route for faster loading
         if (onboardingCompleted) {
-          router.prefetch("/dashboard");
+          router.prefetch("/");
         } else {
           router.prefetch("/step-1");
         }
         // Small delay for smooth transition, then redirect
         setTimeout(() => {
           if (onboardingCompleted) {
-            router.replace("/dashboard");
+            router.replace("/");
           } else {
             router.replace("/step-1");
           }

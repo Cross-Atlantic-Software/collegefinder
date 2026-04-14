@@ -456,8 +456,75 @@ const sendInstituteReferralInviteEmail = async (recipients, institute) => {
   return { sent, failed };
 };
 
+/**
+ * Send password reset link (forgot password)
+ * @param {string} email
+ * @param {string} resetLink - Full URL to reset-password page with token query param
+ */
+const sendPasswordResetEmail = async (email, resetLink) => {
+  const transporter = createTransporter();
+  const subject = 'Reset your UniTracko password';
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#f5f5f5;"><tr><td align="center" style="padding:24px 12px;">
+    <table role="presentation" style="max-width:560px;width:100%;border-collapse:collapse;background:#fff;border-radius:8px;">
+      <tr><td style="background:linear-gradient(135deg,#341050 0%,#8B1E8B 100%);padding:28px;text-align:center;">
+        <h1 style="margin:0;color:#fff;font-size:22px;">UniTracko</h1>
+        <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:13px;">Password reset</p>
+      </td></tr>
+      <tr><td style="padding:32px 28px;">
+        <p style="margin:0 0 16px;color:#232f3e;font-size:16px;line-height:1.5;">We received a request to reset the password for your account. Click the button below to choose a new password. This link expires in one hour.</p>
+        <p style="margin:0 0 24px;text-align:center;">
+          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#341050 0%,#8B1E8B 100%);color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;font-size:15px;">Reset password</a>
+        </p>
+        <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">If you did not request this, you can ignore this email. Your password will not change.</p>
+        <p style="margin:16px 0 0;color:#999;font-size:11px;word-break:break-all;">If the button does not work, copy and paste this link into your browser:<br/>${resetLink}</p>
+      </td></tr>
+      <tr><td style="padding:20px 28px;background:#f9f9f9;border-top:1px solid #eee;">
+        <p style="margin:0;color:#666;font-size:12px;">© ${new Date().getFullYear()} UniTracko</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+  const text = `Reset your UniTracko password\n\nOpen this link (valid about 1 hour):\n${resetLink}\n\nIf you did not request this, ignore this email.`;
+
+  if (!transporter) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('\n' + '='.repeat(60));
+      console.log('📧 [DEV] Password reset email (no SMTP)');
+      console.log('To:', email);
+      console.log('Link:', resetLink);
+      console.log('='.repeat(60) + '\n');
+    }
+    return true;
+  }
+
+  const mailOptions = {
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject,
+    html,
+    text
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Password reset email sent to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Password reset email error:', error.message || error);
+    // Do not swallow errors in development — callers must know delivery failed
+    // (forgot-password returns a dev-only link or 500 instead of a false success).
+    throw new Error(
+      error && error.message ? `Failed to send password reset email: ${error.message}` : 'Failed to send password reset email'
+    );
+  }
+};
+
 module.exports = {
   sendOTPEmail,
+  sendPasswordResetEmail,
   sendAdminWelcomeEmail,
   sendStrengthPaymentNotification,
   sendReferralInviteEmail,

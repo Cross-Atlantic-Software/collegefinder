@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
+import { getAllStreams } from '@/api/admin/streams';
 import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import Image from 'next/image';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { ConfirmationModal, useToast, Select, type SelectOption } from '@/components/shared';
 
 export default function CareerGoalsPage() {
   const router = useRouter();
@@ -20,7 +21,15 @@ export default function CareerGoalsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCareerGoal, setEditingCareerGoal] = useState<CareerGoalAdmin | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ label: '', logo: '', logo_filename: '', description: '', status: true });
+  const [formData, setFormData] = useState({
+    label: '',
+    logo: '',
+    logo_filename: '',
+    description: '',
+    status: true,
+    streamId: '',
+  });
+  const [streamOptions, setStreamOptions] = useState<SelectOption[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -46,6 +55,18 @@ export default function CareerGoalsPage() {
       } catch (_) {}
     }
 
+    (async () => {
+      try {
+        const sr = await getAllStreams();
+        if (sr.success && sr.data?.streams) {
+          setStreamOptions(
+            sr.data.streams.map((s) => ({ value: String(s.id), label: s.name }))
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
     fetchCareerGoals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -64,7 +85,8 @@ export default function CareerGoalsPage() {
       const searchLower = searchQuery.toLowerCase();
       const filtered = allCareerGoals.filter(cg =>
         cg.label.toLowerCase().includes(searchLower) ||
-        (cg.description && cg.description.toLowerCase().includes(searchLower))
+        (cg.description && cg.description.toLowerCase().includes(searchLower)) ||
+        (cg.stream_name && cg.stream_name.toLowerCase().includes(searchLower))
       );
       setCareerGoals(filtered);
     }, 300);
@@ -136,10 +158,22 @@ export default function CareerGoalsPage() {
       setError('Label is required');
       return;
     }
+    const streamIdNum = parseInt(formData.streamId, 10);
+    if (!formData.streamId || Number.isNaN(streamIdNum) || streamIdNum < 1) {
+      setError('Please select a stream for this interest');
+      return;
+    }
 
     try {
       if (editingCareerGoal) {
-        const response = await updateCareerGoal(editingCareerGoal.id, formData);
+        const response = await updateCareerGoal(editingCareerGoal.id, {
+          label: formData.label,
+          logo: formData.logo,
+          logo_filename: formData.logo_filename,
+          description: formData.description,
+          status: formData.status,
+          stream_id: streamIdNum,
+        });
         if (response.success) {
           showSuccess('Interest updated successfully');
           setShowModal(false);
@@ -151,7 +185,14 @@ export default function CareerGoalsPage() {
           showError(errorMsg);
         }
       } else {
-        const response = await createCareerGoal(formData);
+        const response = await createCareerGoal({
+          label: formData.label,
+          stream_id: streamIdNum,
+          logo: formData.logo || null,
+          logo_filename: formData.logo_filename || null,
+          description: formData.description || null,
+          status: formData.status,
+        });
         if (response.success) {
           showSuccess('Career goal created successfully');
           setShowModal(false);
@@ -213,7 +254,8 @@ export default function CareerGoalsPage() {
       logo: careerGoal.logo ?? '',
       logo_filename: careerGoal.logo_filename ?? '',
       description: careerGoal.description || '',
-      status: careerGoal.status !== undefined ? careerGoal.status : true
+      status: careerGoal.status !== undefined ? careerGoal.status : true,
+      streamId: careerGoal.stream_id != null ? String(careerGoal.stream_id) : '',
     });
     setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
@@ -227,7 +269,7 @@ export default function CareerGoalsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ label: '', logo: '', logo_filename: '', description: '', status: true });
+    setFormData({ label: '', logo: '', logo_filename: '', description: '', status: true, streamId: '' });
     setLogoFile(null);
     setLogoPreview(null);
     setError(null);
@@ -311,7 +353,7 @@ export default function CareerGoalsPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by label or description"
+                  placeholder="Search by label, stream, or description"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
@@ -374,6 +416,9 @@ export default function CareerGoalsPage() {
                         LABEL
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        STREAM
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         DESCRIPTION
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
@@ -396,7 +441,7 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-slate-500">
                           {careerGoals.length < allCareerGoals.length ? 'No interests found matching your search' : 'No interests found'}
                         </td>
                       </tr>
@@ -421,6 +466,11 @@ export default function CareerGoalsPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{cg.label}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="text-xs text-slate-600">
+                              {cg.stream_name || '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-xs text-slate-600 line-clamp-2 max-w-xs">
@@ -502,6 +552,29 @@ export default function CareerGoalsPage() {
                     placeholder="e.g., Technology, Design"
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Stream <span className="text-[#341050]">*</span>
+                  </label>
+                  {streamOptions.length === 0 ? (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      No streams loaded. Add streams under Streams, then refresh this page.
+                    </p>
+                  ) : (
+                    <Select
+                      options={streamOptions}
+                      value={formData.streamId}
+                      onChange={(v) => setFormData({ ...formData, streamId: v || '' })}
+                      placeholder="Select stream"
+                      isSearchable
+                      isClearable={false}
+                    />
+                  )}
+                  <p className="text-xs text-slate-500 mt-1">
+                    Users see this interest only when that stream is selected in onboarding.
+                  </p>
                 </div>
 
                 <div>
@@ -610,7 +683,7 @@ export default function CareerGoalsPage() {
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={uploading || !formData.label}
+                disabled={uploading || !formData.label || !formData.streamId}
                 className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingCareerGoal ? 'Update' : 'Create'}

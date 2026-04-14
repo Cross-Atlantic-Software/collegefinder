@@ -1,6 +1,23 @@
 const { body } = require('express-validator');
 
 /**
+ * Strong password (site signup + admin users)
+ * Min 8 chars, uppercase, lowercase, number, special (!@#$%^&*()_+-=[]{}|;:,.<>?)
+ */
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{}|;:,.<>?])[A-Za-z\d!@#$%^&*()_+\-=[\]{}|;:,.<>?]{8,}$/;
+const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
+
+/**
+ * express-validator's default normalizeEmail() removes dots in Gmail locals (gmail_remove_dots: true),
+ * which breaks lookups when the DB stores the address with dots (e.g. khan.alia3032 vs khanalia3032).
+ */
+const AUTH_NORMALIZE_EMAIL = {
+  all_lowercase: true,
+  gmail_remove_dots: false,
+  gmail_remove_subaddress: false,
+};
+
+/**
  * Validation rules for sending OTP
  */
 const validateSendOTP = [
@@ -32,6 +49,53 @@ const validateResendOTP = [
     .withMessage('Please provide a valid email address')
 ];
 
+const validateSignupStart = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS)
+];
+
+const validatePasswordLogin = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+];
+
+const validateForgotPassword = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(AUTH_NORMALIZE_EMAIL)
+];
+
+const validateResetPassword = [
+  body('token')
+    .notEmpty()
+    .withMessage('Reset token is required')
+    .isLength({ min: 16, max: 200 })
+    .withMessage('Invalid reset token'),
+  body('new_password')
+    .notEmpty()
+    .withMessage('New password is required')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
+  body('new_password_confirm')
+    .notEmpty()
+    .withMessage('Please confirm your new password')
+    .custom((value, { req }) => String(value) === String(req.body.new_password))
+    .withMessage('New password and confirmation do not match')
+];
+
 /**
  * Validation rules for updating user profile
  */
@@ -57,17 +121,6 @@ const validateAdminLogin = [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters')
 ];
-
-/**
- * Strong password requirements for admin users
- * - Min 8 characters
- * - At least one uppercase letter
- * - At least one lowercase letter
- * - At least one number
- * - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
- */
-const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{}|;:,.<>?])[A-Za-z\d!@#$%^&*()_+\-=[\]{}|;:,.<>?]{8,}$/;
-const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
 
 /**
  * Validation rules for creating admin user
@@ -391,7 +444,7 @@ const validateSendEmailOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
+    .normalizeEmail(AUTH_NORMALIZE_EMAIL)
 ];
 
 /**
@@ -401,7 +454,7 @@ const validateVerifyEmailOTP = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .normalizeEmail(AUTH_NORMALIZE_EMAIL),
   body('code')
     .isLength({ min: 6, max: 6 })
     .withMessage('OTP code must be 6 digits')
@@ -511,8 +564,30 @@ const validateUpdateCareerGoals = [
     .withMessage('Interests must be an array'),
   body('interests.*')
     .optional()
-    .isIn(['tech', 'design', 'medical', 'engineering', 'business', 'science'])
-    .withMessage('Invalid interest value')
+    .custom((value) => {
+      const n = parseInt(String(value), 10);
+      return Number.isInteger(n) && n >= 1;
+    })
+    .withMessage('Each interest must be a valid interest id')
+];
+
+/**
+ * Change password (authenticated user)
+ */
+const validateChangePassword = [
+  body('old_password')
+    .notEmpty()
+    .withMessage('Current password is required'),
+  body('new_password')
+    .notEmpty()
+    .withMessage('New password is required')
+    .matches(STRONG_PASSWORD_REGEX)
+    .withMessage(PASSWORD_REQUIREMENTS),
+  body('new_password_confirm')
+    .notEmpty()
+    .withMessage('Please confirm your new password')
+    .custom((value, { req }) => String(value) === String(req.body.new_password))
+    .withMessage('New password and confirmation do not match')
 ];
 
 /**
@@ -947,6 +1022,10 @@ const validateUpdateLecture = [
 
 module.exports = {
   validateSendOTP,
+  validateSignupStart,
+  validatePasswordLogin,
+  validateForgotPassword,
+  validateResetPassword,
   validateVerifyOTP,
   validateResendOTP,
   validateUpdateProfile,
@@ -958,6 +1037,7 @@ module.exports = {
   validateUpdateBasicInfo,
   validateUpdateAcademics,
   validateUpdateCareerGoals,
+  validateChangePassword,
   validateCreateBlog,
   validateUpdateBlog,
   validateCreateSubject,
@@ -2005,6 +2085,10 @@ const validateUpdateBranch = [
 
 module.exports = {
   validateSendOTP,
+  validateSignupStart,
+  validatePasswordLogin,
+  validateForgotPassword,
+  validateResetPassword,
   validateVerifyOTP,
   validateResendOTP,
   validateUpdateProfile,
@@ -2018,6 +2102,7 @@ module.exports = {
   validateVerifyEmailOTP,
   validateUpdateAcademics,
   validateUpdateCareerGoals,
+  validateChangePassword,
   validateCreateBlog,
   validateUpdateBlog,
   validateCreateSubject,
