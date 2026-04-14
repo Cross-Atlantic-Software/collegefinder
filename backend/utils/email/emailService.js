@@ -157,13 +157,20 @@ const sendOTPEmail = async (email, otp) => {
  * Send admin welcome email with login credentials
  * @param {string} email - Admin email
  * @param {string} password - Plain text password (sent only once at creation)
- * @param {string} type - Admin type (data_entry, admin, super_admin)
+ * @param {string} type - Admin type (data_entry, admin, super_admin, counsellor)
  * @returns {Promise<boolean>} - Success status
  */
 const sendAdminWelcomeEmail = async (email, password, type) => {
   const transporter = createTransporter();
 
-  const typeLabel = type === 'super_admin' ? 'Super Admin' : type === 'admin' ? 'Admin' : 'Data Entry';
+  const typeLabel =
+    type === 'super_admin'
+      ? 'Super Admin'
+      : type === 'admin'
+        ? 'Admin'
+        : type === 'counsellor'
+          ? 'Counsellor'
+          : 'Data Entry';
   const loginUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const adminLoginUrl = `${loginUrl}/admin/login`;
 

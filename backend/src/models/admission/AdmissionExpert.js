@@ -8,6 +8,29 @@ class AdmissionExpert {
     return result.rows;
   }
 
+  /**
+   * Super admin: all experts. Everyone else: only rows they created (created_by = admin id).
+   */
+  static async findAllVisibleToAdmin(admin) {
+    if (!admin || admin.id == null) return [];
+    if (admin.type === 'super_admin') {
+      return this.findAll();
+    }
+    const result = await db.query(
+      'SELECT * FROM admission_experts WHERE created_by = $1 ORDER BY type, created_at DESC',
+      [admin.id]
+    );
+    return result.rows;
+  }
+
+  /** IDs of experts created by this admin (for assignment validation). */
+  static async findIdsCreatedByAdmin(adminUserId) {
+    const uid = typeof adminUserId === 'string' ? parseInt(adminUserId, 10) : adminUserId;
+    if (uid == null || Number.isNaN(uid)) return [];
+    const result = await db.query('SELECT id FROM admission_experts WHERE created_by = $1', [uid]);
+    return result.rows.map((r) => r.id);
+  }
+
   static async findAllActive() {
     const result = await db.query(
       'SELECT * FROM admission_experts WHERE is_active = true ORDER BY type, created_at DESC'
@@ -157,6 +180,20 @@ class AdmissionExpert {
     const result = await db.query(
       'SELECT * FROM admission_experts WHERE photo_file_name = $1',
       [name]
+    );
+    return result.rows || [];
+  }
+
+  /** Photo ZIP matching: non–super-admin only touches experts they created. */
+  static async findByPhotoFileNameForAdmin(filename, admin) {
+    if (!filename || !String(filename).trim()) return [];
+    const name = String(filename).trim();
+    if (!admin || admin.type === 'super_admin') {
+      return this.findByPhotoFileName(name);
+    }
+    const result = await db.query(
+      'SELECT * FROM admission_experts WHERE photo_file_name = $1 AND created_by = $2',
+      [name, admin.id]
     );
     return result.rows || [];
   }

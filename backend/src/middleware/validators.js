@@ -138,8 +138,8 @@ const validateCreateAdmin = [
     .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
-    .isIn(['data_entry', 'admin', 'super_admin'])
-    .withMessage('Type must be data_entry, admin, or super_admin')
+    .isIn(['data_entry', 'admin', 'super_admin', 'counsellor'])
+    .withMessage('Type must be data_entry, admin, super_admin, or counsellor')
 ];
 
 /**
@@ -158,8 +158,8 @@ const validateUpdateAdmin = [
     .withMessage(PASSWORD_REQUIREMENTS),
   body('type')
     .optional()
-    .isIn(['data_entry', 'admin', 'super_admin'])
-    .withMessage('Type must be data_entry, admin, or super_admin'),
+    .isIn(['data_entry', 'admin', 'super_admin', 'counsellor'])
+    .withMessage('Type must be data_entry, admin, super_admin, or counsellor'),
   body('is_active')
     .optional()
     .isBoolean()

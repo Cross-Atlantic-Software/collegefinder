@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { formatAdminRoleLabel } from '@/lib/adminPermissions';
 
 type AdminHeaderProps = {
   title?: string;
@@ -49,7 +50,7 @@ export default function AdminHeader({ title, subtitle, tabs }: AdminHeaderProps)
         <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="text-right">
             <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-              {adminInfo?.type === 'super_admin' ? 'Super Admin' : 'Admin'}
+              {formatAdminRoleLabel(adminInfo?.type)}
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
               {adminInfo?.email || 'Admin'}
