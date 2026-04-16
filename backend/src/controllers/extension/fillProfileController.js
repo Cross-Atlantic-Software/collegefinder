@@ -130,7 +130,15 @@ class FillProfileController {
           st_certificate:     docs?.st_certificate || '',
           obc_certificate:    docs?.obc_ncl_certificate || '',
           ews_certificate:    docs?.ews_certificate || '',
-          pwbd_certificate:   docs?.pwbd_disability_certificate || ''
+          pwbd_certificate:   docs?.pwbd_disability_certificate || '',
+          category_certificate: (() => {
+            const cat = (categoryName || '').toUpperCase();
+            if (cat === 'ST')  return docs?.st_certificate || '';
+            if (cat === 'SC')  return docs?.sc_certificate || '';
+            if (cat === 'OBC' || cat === 'OBC-NCL') return docs?.obc_ncl_certificate || '';
+            if (cat === 'EWS') return docs?.ews_certificate || '';
+            return '';
+          })()
         },
         other: {
           medium: otherInfo?.medium || '',

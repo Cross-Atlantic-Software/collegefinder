@@ -41,11 +41,8 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn'],
     } : false,
   },
-  // Serializes webpack module graph work — slower builds, much lower peak RSS on 2GB hosts.
-  webpack: (config) => {
-    config.parallelism = 1;
-    return config;
-  },
+  // Explicitly opt into Turbopack (default in Next.js 16) — silences the webpack/turbopack mismatch warning
+  turbopack: {},
 };
 
 export default nextConfig;

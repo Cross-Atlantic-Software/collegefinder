@@ -100,6 +100,85 @@ const Filler = {
       return { status: 'filled', note: null };
     }
 
+    // masked_text: portal uses a segmented date input (DD / MM / YYYY).
+    // NATA renders each digit as its own <input>, so we find all sibling
+    // inputs in the date container and fill one digit per input.
+    if (variant === 'masked_text') {
+      const isoMatch = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      let dd = '', mm = '', yyyy = '';
+      if (isoMatch) {
+        [, yyyy, mm, dd] = isoMatch;
+      } else {
+        const raw = String(value).replace(/\D/g, '');
+        dd = raw.slice(0, 2); mm = raw.slice(2, 4); yyyy = raw.slice(4, 8);
+      }
+
+      const digitsOnly = `${dd}${mm}${yyyy}`;
+      const withSlashes = `${dd}/${mm}/${yyyy}`;
+      const delay = ms => new Promise(r => setTimeout(r, ms));
+
+      // Strategy 1: Multi-input — find all digit inputs in the date group
+      const dateGroup = el.closest('[class*="date"], [class*="Date"], [class*="dob"], [class*="DOB"], [class*="birth"]')
+                     || el.parentElement?.parentElement?.parentElement
+                     || el.parentElement?.parentElement
+                     || el.parentElement;
+      if (dateGroup) {
+        const allInputs = Array.from(dateGroup.querySelectorAll('input'))
+          .filter(inp => {
+            if (inp.type && inp.type !== 'text' && inp.type !== 'tel' && inp.type !== 'number') return false;
+            const w = inp.offsetWidth;
+            return w > 0 && w < 80; // small individual digit inputs
+          })
+          .sort((a, b) => {
+            const pos = a.compareDocumentPosition(b);
+            if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+            if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+            return 0;
+          });
+
+        // Per-digit inputs (8 inputs for DD MM YYYY)
+        if (allInputs.length >= 8) {
+          for (let i = 0; i < Math.min(digitsOnly.length, allInputs.length); i++) {
+            await this._fillSingleDigitInput(allInputs[i], digitsOnly[i]);
+            await delay(40);
+          }
+          return { status: 'filled', note: null };
+        }
+
+        // Per-segment inputs (3 inputs for DD, MM, YYYY)
+        if (allInputs.length >= 3) {
+          await this._fillSingleDigitInput(allInputs[0], dd);
+          await delay(40);
+          await this._fillSingleDigitInput(allInputs[1], mm);
+          await delay(40);
+          await this._fillSingleDigitInput(allInputs[2], yyyy);
+          return { status: 'filled', note: null };
+        }
+      }
+
+      // Strategy 2 (fallback): Single input — try React onChange with formatted value
+      el.focus();
+      await delay(50);
+      if (this._callReactOnChange(el, withSlashes)) {
+        await delay(100);
+        if (el.value.replace(/\D/g, '') === digitsOnly) {
+          el.dispatchEvent(new Event('blur', { bubbles: true }));
+          return { status: 'filled', note: null };
+        }
+      }
+
+      // Strategy 3: Native setter
+      this._setNativeValue(el, withSlashes);
+      this._dispatchEvents(el);
+      await delay(100);
+      if (el.value.replace(/\D/g, '') === digitsOnly) {
+        return { status: 'filled', note: null };
+      }
+
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
+      return { status: 'filled', note: null };
+    }
+
     if (variant === 'text') {
       const format = dateConfig.format || 'DD/MM/YYYY';
       const Formatter = window.ExamFillFormatter;
@@ -271,7 +350,14 @@ const Filler = {
               if (optText === v.toLowerCase() || optText.includes(v.toLowerCase())) {
                 opt.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                 opt.click();
-                await delay(200);
+                await delay(150);
+
+                // Close the dropdown: press Escape, then mousedown on document body
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+                document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                document.body.click();
+                await delay(100);
+
                 return { status: 'filled', note: `Custom dropdown: "${opt.textContent.trim()}"` };
               }
             }
@@ -279,7 +365,8 @@ const Filler = {
         }
 
         // Close dropdown and report
-        trigger.click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+        document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
         return { status: 'failed', note: `Custom dropdown opened but no option matched "${strVal}"` };
       }
       wrapper = wrapper.parentElement;
@@ -606,6 +693,28 @@ const Filler = {
       nativeSetter.set.call(el, value);
     } else {
       el.value = value;
+    }
+  },
+
+  async _fillSingleDigitInput(el, value) {
+    const v = String(value);
+    el.focus();
+    // Try React onChange first
+    if (this._callReactOnChange(el, v)) {
+      await new Promise(r => setTimeout(r, 30));
+      if (el.value === v) return;
+    }
+    // Fallback: native setter + full event sequence
+    this._setNativeValue(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 30));
+    if (el.value === v) return;
+    // Last resort: keyboard simulation for single character
+    if (v.length === 1) {
+      el.select && el.select();
+      document.execCommand('insertText', false, v);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   },
 

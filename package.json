@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:fast": "next dev",
+    "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build --webpack",
     "start": "next start",
     "lint": "eslint",

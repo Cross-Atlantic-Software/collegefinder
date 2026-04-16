@@ -87,6 +87,28 @@ const Verifier = {
     const intended = String(intendedValue ?? '').trim();
     const actualTrimmed = String(actual).trim();
 
+    // For masked date inputs, compare digit-only sequences so "07 / 04 / 2006"
+    // matches the ISO source "2004-08-07" after reformatting.
+    if (fieldConfig.type === 'date') {
+      const dc = fieldConfig.date_config || {};
+      const fmt = (dc.format || 'DDMMYYYY').toUpperCase();
+      let digitsExpected = '';
+      const isoMatch = intended.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoMatch) {
+        const [, yyyy, mm, dd] = isoMatch;
+        digitsExpected = fmt === 'MMDDYYYY' ? mm + dd + yyyy : dd + mm + yyyy;
+      } else {
+        digitsExpected = intended.replace(/\D/g, '');
+      }
+      const digitsActual = actualTrimmed.replace(/\D/g, '');
+      if (digitsActual.length > 0 && digitsActual === digitsExpected) {
+        return { status: 'filled', note: null, actualValue: actual };
+      }
+      if (digitsActual.length > 0) {
+        return { status: 'check', note: `Date digits: got "${digitsActual}" expected "${digitsExpected}"`, actualValue: actual };
+      }
+    }
+
     if (this._matches(intended, actualTrimmed, fieldConfig)) {
       return { status: 'filled', note: null, actualValue: actual };
     }

@@ -2,7 +2,7 @@
   "exam_id": "nata",
   "exam_name": "NATA 2026",
   "portal_url_pattern": "nata-app.org",
-  "version": 8,
+  "version": 10,
 
   "sections": [
     {
@@ -98,9 +98,9 @@
           "label": "Date of Birth",
           "source": "student.dob",
           "type": "date",
-          "date_config": { "variant": "native", "format": "YYYY-MM-DD" },
+          "date_config": { "variant": "masked_text", "format": "DDMMYYYY" },
           "selectors": {
-            "by_placeholder": ["Select Date of Birth", "Date of Birth", "DD/MM/YYYY", "MM/DD/YYYY"],
+            "by_placeholder": ["Select Date of Birth", "Date of Birth", "DD/MM/YYYY", "MM/DD/YYYY", "DD / MM / YYYY"],
             "by_label":       ["Date of Birth", "DOB", "Birth Date"],
             "by_id":          ["dob", "dateOfBirth", "date_of_birth", "birthDate"],
             "by_name":        ["dob", "dateOfBirth"]
@@ -302,6 +302,19 @@
             "Yes": ["Yes", "YES", "yes", "true", "1"]
           },
           "required": true
+        },
+        {
+          "field_id": "category_certificate",
+          "label": "Category Certificate",
+          "source": "documents.category_certificate",
+          "type": "file",
+          "accepted_types": ["image/jpeg", "image/png", "application/pdf"],
+          "selectors": {
+            "by_label": ["Category Certificate", "Caste Certificate", "SC Certificate", "ST Certificate", "OBC Certificate", "EWS Certificate", "Upload Category Certificate"],
+            "by_id":    ["categoryCertificate", "casteCertificate", "category_certificate", "caste_certificate"],
+            "by_name":  ["categoryCertificate", "casteCertificate", "category_certificate"]
+          },
+          "required": false
         },
         {
           "field_id": "upload_id_document",
