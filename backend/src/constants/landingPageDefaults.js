@@ -12,7 +12,7 @@ const landingPageDefaults = {
   },
   info: {
     label: 'THE REALITY',
-    statsLine: '1K+ Exams • 40K+ Colleges • 20M Students',
+    statsLine: '1K+ Exams\n20M Students\n40K+ Colleges',
     highlightQuestion: 'Still tracking it all manually?',
     body: 'UniTracko brings it all into one place - nothing slips, nothing gets missed.\nNo scattered portals · No forgotten forms · No last-minute chaos',
     ctaLabel: 'Let\'s Figure This Out',
@@ -89,7 +89,8 @@ const landingPageDefaults = {
       'Personalised exam prep, built in',
     ],
     parentPoints: [
-      'No missed forms, no surprises Cost and scholarship clarity',
+      'No missed forms, no surprises',
+      'Cost and scholarship clarity',
       'Live progress tracking',
       'Confidence at every step',
     ],
