@@ -172,6 +172,7 @@ const runMigrations = async () => {
     'add_photo_file_name_to_admission_experts.sql',
     'add_user_code_to_users.sql',
     'add_college_institute_state_city.sql',
+    'add_stream_id_to_career_goals_taxonomies.sql',
     'add_stream_interests_to_programs_branches.sql',
     'add_password_reset_to_users.sql'
   ];
