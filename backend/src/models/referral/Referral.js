@@ -89,11 +89,78 @@ class Referral {
   // ── Referral attribution ─────────────────────────────────────────────
 
   /**
+   * Set or clear the "referred by" code on the user (code they received from someone else).
+   * @param {number} userId
+   * @param {string|null|undefined} email - used for referral_uses; optional when clearing
+   * @param {*} rawInput - undefined = skip; null or '' = clear column
+   * @param {{ silent?: boolean }} options - if silent, invalid/own code does not error (signup/OAuth)
+   * @returns {Promise<{ skipped?: boolean, ok?: boolean, cleared?: boolean, code?: string, message?: string, noop?: boolean }>}
+   */
+  static async updateReferredByCode(userId, email, rawInput, options = {}) {
+    const { silent = false } = options;
+
+    if (rawInput === undefined) {
+      return { skipped: true };
+    }
+
+    if (rawInput === null) {
+      await db.query(
+        'UPDATE users SET referred_by_code = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [userId]
+      );
+      return { ok: true, cleared: true };
+    }
+
+    const str = String(rawInput).trim();
+    if (!str) {
+      await db.query(
+        'UPDATE users SET referred_by_code = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [userId]
+      );
+      return { ok: true, cleared: true };
+    }
+
+    const code = str.toUpperCase();
+
+    const selfCheck = await db.query(
+      'SELECT referral_code FROM users WHERE id = $1',
+      [userId]
+    );
+    if (selfCheck.rows[0]?.referral_code === code) {
+      if (silent) return { ok: true, noop: true };
+      return { ok: false, message: 'You cannot use your own referral code.' };
+    }
+
+    const codeExists = await db.query(
+      `SELECT 1 FROM (
+         SELECT referral_code FROM users WHERE referral_code = $1
+         UNION ALL
+         SELECT referral_code FROM institutes WHERE referral_code = $1
+       ) t LIMIT 1`,
+      [code]
+    );
+    if (codeExists.rows.length === 0) {
+      if (silent) return { ok: true, noop: true };
+      return { ok: false, message: 'Referral code not found. Check the code and try again.' };
+    }
+
+    await db.query(
+      'UPDATE users SET referred_by_code = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [code, userId]
+    );
+    if (email) {
+      try {
+        await this.recordUse(code, userId, email);
+      } catch (e) {
+        console.error('Referral.recordUse after referred_by_code', e);
+      }
+    }
+    return { ok: true, code };
+  }
+
+  /**
    * Record that a user signed up / logged in using a referral code.
    * No-ops if the code doesn't exist or the same pair already exists.
-   * @param {string} code - The referral code that was used
-   * @param {number} userId - The user who used the code
-   * @param {string} email  - Email of that user (stored for display)
    */
   static async recordUse(code, userId, email) {
     if (!code || !userId) return null;

@@ -96,8 +96,13 @@ export default function StepTwoC() {
 
       if (response.success) {
         await refreshUser();
-        router.prefetch("/");
-        router.replace("/");
+        try {
+          sessionStorage.setItem("cf_onboarding_referral_step", "1");
+        } catch {
+          /* ignore */
+        }
+        router.prefetch("/step-referral");
+        router.replace("/step-referral");
       } else {
         setError(response.message || "Failed to save city. Please try again.");
         setSaving(false);

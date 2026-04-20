@@ -39,6 +39,7 @@ export default function BasicInfoForm() {
     mother_full_name: "",
     guardian_name: "",
     alternate_mobile_number: "",
+    referred_by_code: "",
   });
 
   const [govIdData, setGovIdData] = useState<GovernmentIdentificationData>({
@@ -123,6 +124,7 @@ export default function BasicInfoForm() {
             mother_full_name: response.data.mother_full_name ?? "",
             guardian_name: response.data.guardian_name ?? "",
             alternate_mobile_number: response.data.alternate_mobile_number ?? "",
+            referred_by_code: response.data.referred_by_code ?? "",
           };
 
           setFormData(formDataToSet);

@@ -277,7 +277,17 @@ const validateUpdateBasicInfo = [
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Guardian name must be less than 255 characters')
+    .withMessage('Guardian name must be less than 255 characters'),
+  body('referred_by_code')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === undefined) return true;
+      if (typeof value !== 'string') return false;
+      const t = value.trim();
+      if (t === '') return true;
+      return /^[A-Za-z0-9-]{1,32}$/.test(t);
+    })
+    .withMessage('Referral code must be 1–32 letters, numbers, or hyphens')
 ];
 
 /**

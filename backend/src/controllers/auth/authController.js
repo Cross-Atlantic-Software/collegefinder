@@ -518,14 +518,13 @@ class AuthController {
       console.log(`🔐 [OTP:verifyOTP] Updating last login for user ID: ${user.id}`);
       await User.updateLastLogin(user.id);
 
-      // Record referral code use (non-blocking)
+      // Referral someone shared with this user (stores referred_by_code + referral_uses when valid)
       if (referralRef) {
         try {
-          console.log(`🔐 [OTP:verifyOTP] Recording referral code use: ${referralRef}`);
-          await Referral.recordUse(referralRef.trim().toUpperCase(), user.id, user.email);
-          console.log(`🔐 [OTP:verifyOTP] Referral recorded successfully`);
+          console.log(`🔐 [OTP:verifyOTP] Applying referral code: ${referralRef}`);
+          await Referral.updateReferredByCode(user.id, user.email, referralRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code', refErr);
         }
       } else {
         console.log(`🔐 [OTP:verifyOTP] No referral code provided`);
@@ -937,12 +936,11 @@ class AuthController {
         console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
       }
 
-      // Record referral code use if one was passed via OAuth state (non-blocking)
       if (pendingRef) {
         try {
-          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+          await Referral.updateReferredByCode(user.id, user.email, pendingRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use (Google)', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code (Google)', refErr);
         }
       }
 
@@ -1157,12 +1155,11 @@ class AuthController {
         console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
       }
 
-      // Record referral code use if one was passed via OAuth state (non-blocking)
       if (pendingRef && user.email) {
         try {
-          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+          await Referral.updateReferredByCode(user.id, user.email, pendingRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use (Facebook)', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code (Facebook)', refErr);
         }
       }
 

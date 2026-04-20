@@ -1,5 +1,6 @@
 const User = require('../../models/user/User');
 const Otp = require('../../models/user/Otp');
+const Referral = require('../../models/referral/Referral');
 const { validationResult } = require('express-validator');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator');
@@ -44,7 +45,8 @@ class BasicInfoController {
           mother_full_name: user.mother_full_name,
           guardian_name: user.guardian_name,
           alternate_mobile_number: user.alternate_mobile_number,
-          automation_password: user.automation_password
+          automation_password: user.automation_password,
+          referred_by_code: user.referred_by_code || null
         }
       });
     } catch (error) {
@@ -187,8 +189,25 @@ class BasicInfoController {
         father_full_name,
         mother_full_name,
         guardian_name,
-        alternate_mobile_number
+        alternate_mobile_number,
+        referred_by_code
       } = req.body;
+
+      if (referred_by_code !== undefined) {
+        const userRow = await User.findById(userId);
+        const refResult = await Referral.updateReferredByCode(
+          userId,
+          userRow?.email || null,
+          referred_by_code,
+          { silent: false }
+        );
+        if (refResult.ok === false && refResult.message) {
+          return res.status(400).json({
+            success: false,
+            message: refResult.message
+          });
+        }
+      }
 
       // Build update query dynamically
       const updates = [];
@@ -275,24 +294,31 @@ class BasicInfoController {
         values.push(alternate_mobile_number || null);
       }
 
-      if (updates.length === 0) {
+      if (updates.length === 0 && referred_by_code === undefined) {
         return res.status(400).json({
           success: false,
           message: 'No fields to update'
         });
       }
 
-      values.push(userId);
       const db = require('../../config/database');
-      const query = `
+      let updatedUser;
+
+      if (updates.length === 0) {
+        const fresh = await User.findById(userId);
+        updatedUser = fresh;
+      } else {
+        values.push(userId);
+        const query = `
         UPDATE users 
         SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
         WHERE id = $${paramCount}
         RETURNING *
       `;
 
-      const result = await db.query(query, values);
-      const updatedUser = result.rows[0];
+        const result = await db.query(query, values);
+        updatedUser = result.rows[0];
+      }
 
       res.json({
         success: true,
@@ -315,7 +341,8 @@ class BasicInfoController {
           father_full_name: updatedUser.father_full_name,
           mother_full_name: updatedUser.mother_full_name,
           guardian_name: updatedUser.guardian_name,
-          alternate_mobile_number: updatedUser.alternate_mobile_number
+          alternate_mobile_number: updatedUser.alternate_mobile_number,
+          referred_by_code: updatedUser.referred_by_code || null
         }
       });
     } catch (error) {

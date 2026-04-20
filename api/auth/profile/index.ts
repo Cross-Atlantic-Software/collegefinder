@@ -56,6 +56,8 @@ export async function getBasicInfo(): Promise<ApiResponse<{
   guardian_name: string | null;
   alternate_mobile_number: string | null;
   automation_password: string | null;
+  /** Code this user entered (someone else's share code), not their own Refer & Earn code. */
+  referred_by_code: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'GET',
@@ -80,6 +82,8 @@ export async function updateBasicInfo(data: {
   mother_full_name?: string;
   guardian_name?: string;
   alternate_mobile_number?: string;
+  /** Someone else's referral code you used; omit to leave unchanged. Send null or "" to clear. */
+  referred_by_code?: string | null;
 }): Promise<ApiResponse<{
   id: number;
   user_code?: string | null;
@@ -99,6 +103,7 @@ export async function updateBasicInfo(data: {
   mother_full_name: string | null;
   guardian_name: string | null;
   alternate_mobile_number: string | null;
+  referred_by_code: string | null;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_BASIC, {
     method: 'PUT',

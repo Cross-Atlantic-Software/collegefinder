@@ -52,15 +52,6 @@ export default function CoreIdentityTab({
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [copiedUserCode, setCopiedUserCode] = useState(false);
 
-  const floatingLabelClass = (hasValue: boolean) =>
-    [
-      "pointer-events-none absolute left-3 z-10 bg-white px-1 font-medium transition-all duration-200 ease-out",
-      hasValue
-        ? "top-0 -translate-y-1/2 text-[10px] text-black"
-        : "top-1/2 -translate-y-1/2 text-xs text-black/45",
-      "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[10px] peer-focus:text-black",
-    ].join(" ");
-
   const copyUserCode = async () => {
     if (userCode) {
       try {
@@ -111,6 +102,7 @@ export default function CoreIdentityTab({
         mother_full_name?: string;
         guardian_name?: string;
         alternate_mobile_number?: string;
+        referred_by_code?: string | null;
       } = {};
 
       if (formData.name !== undefined) {
@@ -127,6 +119,10 @@ export default function CoreIdentityTab({
       if (formData.mother_full_name) updateData.mother_full_name = formData.mother_full_name;
       if (formData.guardian_name !== undefined) updateData.guardian_name = formData.guardian_name || undefined;
       if (formData.alternate_mobile_number !== undefined) updateData.alternate_mobile_number = formData.alternate_mobile_number || undefined;
+      if (formData.referred_by_code !== undefined) {
+        const t = formData.referred_by_code.trim();
+        updateData.referred_by_code = t === "" ? null : t;
+      }
 
       if (location) {
         updateData.latitude = location.latitude;
@@ -162,6 +158,7 @@ export default function CoreIdentityTab({
           mother_full_name: response.data.mother_full_name || "",
           guardian_name: response.data.guardian_name || "",
           alternate_mobile_number: response.data.alternate_mobile_number || "",
+          referred_by_code: response.data.referred_by_code ?? "",
         };
 
         setFormData(updatedFormData);
@@ -226,6 +223,36 @@ export default function CoreIdentityTab({
           </div>
           <p className="text-[10px] text-black/45 pl-0 sm:pl-[calc(90px+0.5rem)]">
             Format UT + 8 digits (e.g. UT12345678). Use for support or references; your internal account id stays private.
+          </p>
+        </div>
+
+        {/* Code someone else gave you (not your Refer & Earn share code) */}
+        <div className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-3 space-y-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">
+              Used referral code
+            </label>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Optional — code you received from someone"
+                value={formData.referred_by_code}
+                onChange={(e) =>
+                  setFormData({ ...formData, referred_by_code: e.target.value.toUpperCase() })
+                }
+                className={`${inputBase} font-mono text-sm tracking-wide uppercase ${validationErrors.referred_by_code ? "border-red-500" : ""}`}
+                autoCapitalize="characters"
+                spellCheck={false}
+                maxLength={32}
+              />
+              {validationErrors.referred_by_code && (
+                <p className="mt-0.5 text-xs text-red-400">{validationErrors.referred_by_code}</p>
+              )}
+            </div>
+          </div>
+          <p className="text-[10px] text-black/45 pl-0 sm:pl-[calc(90px+0.5rem)]">
+            If someone invited you, enter their referral code here. This is different from your own share code in Refer &amp; Earn.
+            Clear the field to remove it.
           </p>
         </div>
 

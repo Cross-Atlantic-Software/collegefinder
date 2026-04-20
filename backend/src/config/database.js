@@ -174,7 +174,8 @@ const runMigrations = async () => {
     'add_college_institute_state_city.sql',
     'add_stream_id_to_career_goals_taxonomies.sql',
     'add_stream_interests_to_programs_branches.sql',
-    'add_password_reset_to_users.sql'
+    'add_password_reset_to_users.sql',
+    'add_referred_by_code_to_users.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
