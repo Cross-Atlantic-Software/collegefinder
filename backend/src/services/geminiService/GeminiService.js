@@ -307,6 +307,30 @@ class GeminiService {
     };
   }
 
+  /**
+   * Short plain-text generation (e.g. lecture 2-line hook). Same model/retry as other calls.
+   * @param {string} promptText - Full user prompt (instructions + data).
+   * @returns {Promise<string>} Trimmed model output.
+   */
+  async generatePlainText(promptText) {
+    await this.ensureInitialized();
+    if (this.model === null) {
+      throw new Error(this._initError || 'Gemini service is not available.');
+    }
+    if (!promptText || !String(promptText).trim()) {
+      throw new Error('generatePlainText requires a non-empty prompt');
+    }
+
+    const doRequest = async () => {
+      const result = await this.model.generateContent(String(promptText));
+      const response = await result.response;
+      const t = response.text();
+      return typeof t === 'string' ? t.trim() : '';
+    };
+
+    return apiLimit(() => withRetry(doRequest, { operationName: 'generatePlainText' }));
+  }
+
   async testService() {
     if (this.genAI === null) {
       return { success: false, error: 'Service not available' };

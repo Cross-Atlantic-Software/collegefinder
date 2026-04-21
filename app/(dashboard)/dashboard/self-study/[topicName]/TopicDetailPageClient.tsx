@@ -7,12 +7,6 @@ import Image from "next/image";
 import ArticleModal from "@/components/dashboard/ArticleModal";
 import VideoModal from "@/components/dashboard/VideoModal";
 
-type Purpose = {
-  id: number;
-  name: string;
-  status: boolean;
-};
-
 type Lecture = {
   id: number;
   name: string;
@@ -22,7 +16,6 @@ type Lecture = {
   article_content: string | null;
   thumbnail: string | null;
   description: string | null;
-  purposes: Purpose[];
   sort_order: number;
 };
 
@@ -111,20 +104,6 @@ export default function TopicDetailPageClient({ topic, subtopics }: Props) {
                       <p className="text-xs font-medium text-slate-100 line-clamp-2">
                         {lecture.name}
                       </p>
-
-                      {/* Purpose Tags */}
-                      {lecture.purposes && lecture.purposes.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {lecture.purposes.map((purpose) => (
-                            <span
-                              key={purpose.id}
-                              className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300"
-                            >
-                              {purpose.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}

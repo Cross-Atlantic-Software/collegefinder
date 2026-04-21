@@ -9,6 +9,30 @@ export function getApiBaseUrl(): string {
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
 }
 
+/**
+ * Admin JWT for browser requests: prefer localStorage (set at login), then HttpOnly-less cookie fallback.
+ * Avoid treating the literal strings "null" / "undefined" as tokens.
+ */
+export function getBrowserAdminToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  const fromLs = localStorage.getItem('admin_token');
+  if (fromLs && fromLs !== 'null' && fromLs !== 'undefined') {
+    const t = fromLs.trim();
+    if (t) return t;
+  }
+  const match = document.cookie.match(/(?:^|; )admin_token=([^;]*)/);
+  if (!match?.[1]) return null;
+  let fromCookie = match[1];
+  try {
+    fromCookie = decodeURIComponent(fromCookie);
+  } catch {
+    /* use raw */
+  }
+  if (!fromCookie || fromCookie === 'null' || fromCookie === 'undefined') return null;
+  const t = fromCookie.trim();
+  return t || null;
+}
+
 /** Config for apiRequest - timeout in ms (default 30s; pass higher for slow SMTP / heavy work) */
 export interface ApiRequestConfig {
   timeout?: number;
@@ -43,7 +67,7 @@ export async function apiRequest<T>(
 
   if (typeof window !== 'undefined') {
     const userToken = localStorage.getItem('auth_token');
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = getBrowserAdminToken();
     
     // Determine which token to use based on endpoint
     let token = null;
@@ -162,6 +186,8 @@ export async function apiRequest<T>(
           localStorage.removeItem('admin_token');
           localStorage.removeItem('admin_authenticated');
           localStorage.removeItem('admin_user');
+          document.cookie = 'admin_token=; path=/; max-age=0; SameSite=Lax';
+          document.cookie = 'admin_authenticated=; path=/; max-age=0; SameSite=Lax';
           window.location.href = '/admin/login';
         } else {
           localStorage.removeItem('auth_token');

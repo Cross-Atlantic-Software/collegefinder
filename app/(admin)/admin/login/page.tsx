@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_user', JSON.stringify(admin));
 
         const maxAge = 60 * 60 * 24; // 24 hours, aligned with JWT session
-        document.cookie = `admin_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `admin_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `admin_authenticated=true; path=/; max-age=${maxAge}; SameSite=Lax`;
 
         const isSuperAdmin = (admin as { type?: string })?.type === 'super_admin';

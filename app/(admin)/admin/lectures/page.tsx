@@ -11,11 +11,9 @@ import {
   deleteLecture,
   deleteAllLectures,
   Lecture,
-  getAllPurposes,
   getAllTopics,
   getSubtopicsByTopicId,
   getAllSubtopics,
-  getAllStreams,
   getAllSubjects,
   getAllExamsAdmin,
   downloadLecturesBulkTemplate,
@@ -23,7 +21,6 @@ import {
   bulkUploadLectures,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
-  type Stream,
   type Subject,
   type Exam,
 } from '@/api';
@@ -44,14 +41,13 @@ export default function LecturesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ 
+  const [formData, setFormData] = useState({
     topic_id: '',
-    subtopic_id: '', 
-    name: '', 
+    subtopic_id: '',
+    name: '',
     content_type: 'VIDEO' as 'VIDEO' | 'ARTICLE',
-    status: true,
     description: '',
-    sort_order: 0
+    key_topics_to_be_covered: '',
   });
   const [articleContent, setArticleContent] = useState('');
   const [availableTopics, setAvailableTopics] = useState<SelectOption[]>([]);
@@ -71,13 +67,9 @@ export default function LecturesPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Purposes for lecture form (read-only)
-  const [availablePurposes, setAvailablePurposes] = useState<SelectOption[]>([]);
-  const [selectedPurposes, setSelectedPurposes] = useState<string[]>([]);
-  const [streamOptions, setStreamOptions] = useState<SelectOption[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<SelectOption[]>([]);
   const [examOptions, setExamOptions] = useState<SelectOption[]>([]);
-  const [selectedStreamIds, setSelectedStreamIds] = useState<string[]>([]);
+  const [subjectsCatalog, setSubjectsCatalog] = useState<Subject[]>([]);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [thumbnailFilename, setThumbnailFilename] = useState('');
@@ -197,31 +189,17 @@ export default function LecturesPage() {
     fetchLectures();
     fetchTopics();
     fetchAllSubtopics();
-    fetchPurposes();
     fetchTaxonomyOptions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTaxonomyOptions = async () => {
     try {
-      const [streamsRes, subjectsRes, examsRes] = await Promise.all([
-        getAllStreams(),
-        getAllSubjects(),
-        getAllExamsAdmin(),
-      ]);
-      if (streamsRes.success && streamsRes.data) {
-        setStreamOptions(
-          streamsRes.data.streams
-            .filter((s: Stream) => s.status)
-            .map((s: Stream) => ({ value: String(s.id), label: s.name }))
-        );
-      }
+      const [subjectsRes, examsRes] = await Promise.all([getAllSubjects(), getAllExamsAdmin()]);
       if (subjectsRes.success && subjectsRes.data) {
-        setSubjectOptions(
-          subjectsRes.data.subjects
-            .filter((s: Subject) => s.status)
-            .map((s: Subject) => ({ value: String(s.id), label: s.name }))
-        );
+        const active = subjectsRes.data.subjects.filter((s: Subject) => s.status);
+        setSubjectsCatalog(active);
+        setSubjectOptions(active.map((s: Subject) => ({ value: String(s.id), label: s.name })));
       }
       if (examsRes.success && examsRes.data) {
         setExamOptions(
@@ -306,24 +284,6 @@ export default function LecturesPage() {
     }
   }, [formData.topic_id, editingLecture]);
 
-  const fetchPurposes = async () => {
-    try {
-      const response = await getAllPurposes();
-      if (response.success && response.data) {
-        setAvailablePurposes(
-          response.data.purposes
-            .filter(p => p.status)
-            .map((p) => ({
-              value: String(p.id),
-              label: p.name,
-            }))
-        );
-      }
-    } catch (err) {
-      console.error('Error fetching purposes:', err);
-    }
-  };
-
   useEffect(() => {
     if (allLectures.length === 0) {
       setLectures([]);
@@ -374,9 +334,18 @@ export default function LecturesPage() {
       formDataToSend.append('subtopic_id', formData.subtopic_id);
       formDataToSend.append('name', formData.name);
       formDataToSend.append('content_type', formData.content_type);
-      formDataToSend.append('status', String(formData.status));
+      formDataToSend.append(
+        'status',
+        editingLecture ? String(editingLecture.status) : 'true'
+      );
       formDataToSend.append('description', formData.description || '');
-      formDataToSend.append('sort_order', String(formData.sort_order));
+      formDataToSend.append(
+        'sort_order',
+        editingLecture != null && editingLecture.sort_order != null
+          ? String(editingLecture.sort_order)
+          : '0'
+      );
+      formDataToSend.append('key_topics_to_be_covered', formData.key_topics_to_be_covered.trim());
       
       // Add content based on type
       if (formData.content_type === 'VIDEO') {
@@ -403,15 +372,18 @@ export default function LecturesPage() {
         formDataToSend.append('thumbnail', thumbnailFile);
       }
 
-      // Add purposes
-      if (selectedPurposes.length > 0) {
-        formDataToSend.append('purposes', JSON.stringify(selectedPurposes.map(id => parseInt(id))));
-      } else {
-        formDataToSend.append('purposes', JSON.stringify([]));
-      }
-
       formDataToSend.append('thumbnail_filename', thumbnailFilename.trim());
-      formDataToSend.append('stream_ids', JSON.stringify(selectedStreamIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
+      const streamIdsFromSubjects = new Set<number>();
+      for (const sid of selectedSubjectIds) {
+        const subj = subjectsCatalog.find((s) => String(s.id) === sid);
+        if (subj?.streams?.length) {
+          for (const x of subj.streams) {
+            const n = typeof x === 'number' ? x : parseInt(String(x), 10);
+            if (!Number.isNaN(n) && n > 0) streamIdsFromSubjects.add(n);
+          }
+        }
+      }
+      formDataToSend.append('stream_ids', JSON.stringify([...streamIdsFromSubjects]));
       formDataToSend.append('subject_ids', JSON.stringify(selectedSubjectIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
       formDataToSend.append('exam_ids', JSON.stringify(selectedExamIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n))));
 
@@ -457,9 +429,8 @@ export default function LecturesPage() {
       subtopic_id: String(lecture.subtopic_id),
       name: lecture.name,
       content_type: lecture.content_type || 'VIDEO',
-      status: lecture.status,
       description: lecture.description || '',
-      sort_order: lecture.sort_order
+      key_topics_to_be_covered: lecture.key_topics_to_be_covered?.trim() || '',
     });
 
     // Fetch subtopics for this topic
@@ -479,13 +450,6 @@ export default function LecturesPage() {
       setIframeCode('');
       lastFetchedIframeRef.current = '';
     }
-    // Set selected purposes
-    if (lecture.purposes && lecture.purposes.length > 0) {
-      setSelectedPurposes(lecture.purposes.map(p => String(p.id)));
-    } else {
-      setSelectedPurposes([]);
-    }
-    setSelectedStreamIds((lecture.streams || []).map((s) => String(s.id)));
     setSelectedSubjectIds((lecture.subjects || []).map((s) => String(s.id)));
     setSelectedExamIds((lecture.exams || []).map((e) => String(e.id)));
     setThumbnailFilename(lecture.thumbnail_filename?.trim() || '');
@@ -545,14 +509,13 @@ export default function LecturesPage() {
   const resetForm = () => {
     lastFetchedIframeRef.current = '';
     setYoutubeDescHint(null);
-    setFormData({ 
+    setFormData({
       topic_id: '',
-      subtopic_id: '', 
-      name: '', 
+      subtopic_id: '',
+      name: '',
       content_type: 'VIDEO',
-      status: true,
       description: '',
-      sort_order: 0
+      key_topics_to_be_covered: '',
     });
     setArticleContent('');
     setVideoFile(null);
@@ -560,8 +523,6 @@ export default function LecturesPage() {
     setIframeCode('');
     setThumbnailFile(null);
     setThumbnailPreview(null);
-    setSelectedPurposes([]);
-    setSelectedStreamIds([]);
     setSelectedSubjectIds([]);
     setSelectedExamIds([]);
     setThumbnailFilename('');
@@ -815,7 +776,6 @@ export default function LecturesPage() {
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBJECTS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">EXAMS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CONTENT TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PURPOSES</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CREATED</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
@@ -824,7 +784,7 @@ export default function LecturesPage() {
                   <tbody className="divide-y divide-slate-200">
                     {lectures.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={11} className="px-4 py-4 text-center text-sm text-slate-500">
                           {lectures.length < allLectures.length ? 'No items match your search' : 'No items yet'}
                         </td>
                       </tr>
@@ -834,7 +794,6 @@ export default function LecturesPage() {
                         const topic = subtopicData ? availableTopics.find((t) => t.value === String(subtopicData.topic_id)) : null;
                         const subtopic = availableSubtopics.find((s) => s.value === String(lecture.subtopic_id)) || 
                           (subtopicData ? { value: String(subtopicData.id), label: subtopicData.name } : null);
-                        const lecturePurposes = lecture.purposes || [];
                         const streamList = lecture.streams || [];
                         const subjectList = lecture.subjects || [];
                         const examList = lecture.exams || [];
@@ -898,25 +857,6 @@ export default function LecturesPage() {
                                   'Article'
                                 )}
                               </span>
-                            </td>
-                            <td className="px-4 py-2">
-                              {lecturePurposes.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {lecturePurposes.slice(0, 2).map((purpose) => (
-                                    <span
-                                      key={purpose.id}
-                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800"
-                                    >
-                                      {purpose.name}
-                                    </span>
-                                  ))}
-                                  {lecturePurposes.length > 2 && (
-                                    <span className="text-xs text-slate-500">+{lecturePurposes.length - 2}</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
                             </td>
                             <td className="px-4 py-2">
                               {lecture.status ? (
@@ -1022,15 +962,23 @@ export default function LecturesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Streams</label>
-                  <MultiSelect
-                    options={streamOptions}
-                    value={selectedStreamIds}
-                    onChange={setSelectedStreamIds}
-                    placeholder="Select streams"
-                    isSearchable
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Key topics to be covered
+                  </label>
+                  <textarea
+                    value={formData.key_topics_to_be_covered}
+                    onChange={(e) =>
+                      setFormData({ ...formData, key_topics_to_be_covered: e.target.value })
+                    }
+                    placeholder="Optional outline (same as Excel column key_topics_to_be_covered)"
+                    rows={3}
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Streams are set automatically from the subjects you select below.
+                  </p>
                 </div>
+
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Subjects</label>
                   <MultiSelect
@@ -1234,45 +1182,72 @@ export default function LecturesPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Purposes
-                  </label>
-                  <MultiSelect
-                    options={availablePurposes}
-                    value={selectedPurposes}
-                    onChange={setSelectedPurposes}
-                    placeholder="Select purposes"
-                    isSearchable
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
-                      Sort Order
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.sort_order}
-                      onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                    />
+                {editingLecture ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold text-slate-700 mb-2">
+                      YouTube metadata (from DB)
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-500">Title:</span>{' '}
+                        <span className="text-slate-900">{editingLecture.youtube_title || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Channel name:</span>{' '}
+                        <span className="text-slate-900">{editingLecture.youtube_channel_name || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Channel ID:</span>{' '}
+                        <span className="text-slate-900">{editingLecture.youtube_channel_id || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Subscribers:</span>{' '}
+                        <span className="text-slate-900">
+                          {editingLecture.youtube_subscriber_count != null
+                            ? editingLecture.youtube_subscriber_count.toLocaleString()
+                            : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Likes:</span>{' '}
+                        <span className="text-slate-900">
+                          {editingLecture.youtube_like_count != null
+                            ? editingLecture.youtube_like_count.toLocaleString()
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="md:col-span-2 break-all">
+                        <span className="text-slate-500">Channel URL:</span>{' '}
+                        {editingLecture.youtube_channel_url ? (
+                          <a
+                            href={editingLecture.youtube_channel_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#341050] hover:underline"
+                          >
+                            {editingLecture.youtube_channel_url}
+                          </a>
+                        ) : (
+                          <span className="text-slate-900">—</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                ) : null}
 
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
-                        className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
-                      />
-                      <span className="text-xs font-medium text-slate-700">Active</span>
-                    </label>
+                {editingLecture ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold text-slate-700 mb-2">AI student hook (from DB)</p>
+                    <p className="text-sm text-slate-900 whitespace-pre-wrap">
+                      {editingLecture.hook_summary?.trim() ? editingLecture.hook_summary : '—'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      Two-sentence summary generated after save (Gemini). Refresh the list or reopen this item
+                      if it still shows &quot;—&quot; right after updating.
+                    </p>
                   </div>
-                </div>
+                ) : null}
+
               </div>
 
               {/* Footer */}
@@ -1322,6 +1297,16 @@ export default function LecturesPage() {
                   <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
                   <p className="text-sm text-slate-900">{viewingLecture.name}</p>
                 </div>
+                {viewingLecture.key_topics_to_be_covered ? (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Key topics to be covered
+                    </label>
+                    <p className="text-sm text-slate-900 whitespace-pre-wrap">
+                      {viewingLecture.key_topics_to_be_covered}
+                    </p>
+                  </div>
+                ) : null}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Topic</label>
                   <p className="text-sm text-slate-900">
@@ -1422,21 +1407,60 @@ export default function LecturesPage() {
                     <p className="text-sm text-slate-900">{viewingLecture.description}</p>
                   </div>
                 )}
-                {viewingLecture.purposes && viewingLecture.purposes.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Purposes</label>
-                    <div className="flex flex-wrap gap-2">
-                      {viewingLecture.purposes.map((purpose) => (
-                        <span
-                          key={purpose.id}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800"
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-700 mb-2">YouTube metadata (DB)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500">Title:</span>{' '}
+                      <span className="text-slate-900">{viewingLecture.youtube_title || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Channel name:</span>{' '}
+                      <span className="text-slate-900">{viewingLecture.youtube_channel_name || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Channel ID:</span>{' '}
+                      <span className="text-slate-900">{viewingLecture.youtube_channel_id || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Subscribers:</span>{' '}
+                      <span className="text-slate-900">
+                        {viewingLecture.youtube_subscriber_count != null
+                          ? viewingLecture.youtube_subscriber_count.toLocaleString()
+                          : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Likes:</span>{' '}
+                      <span className="text-slate-900">
+                        {viewingLecture.youtube_like_count != null
+                          ? viewingLecture.youtube_like_count.toLocaleString()
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className="md:col-span-2 break-all">
+                      <span className="text-slate-500">Channel URL:</span>{' '}
+                      {viewingLecture.youtube_channel_url ? (
+                        <a
+                          href={viewingLecture.youtube_channel_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#341050] hover:underline"
                         >
-                          {purpose.name}
-                        </span>
-                      ))}
+                          {viewingLecture.youtube_channel_url}
+                        </a>
+                      ) : (
+                        <span className="text-slate-900">—</span>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-700 mb-2">AI student hook (DB)</p>
+                  <p className="text-sm text-slate-900 whitespace-pre-wrap">
+                    {viewingLecture.hook_summary?.trim() ? viewingLecture.hook_summary : '—'}
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
@@ -1480,16 +1504,12 @@ export default function LecturesPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-3">
-              Use the template (columns include <code className="bg-slate-100 px-1 rounded">description</code>,{' '}
-              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code>,{' '}
-              <code className="bg-slate-100 px-1 rounded">stream_names</code>,{' '}
-              <code className="bg-slate-100 px-1 rounded">subject_names</code>,{' '}
-              <code className="bg-slate-100 px-1 rounded">exam_names</code>). Use <code className="bg-slate-100 px-1 rounded">description</code> for{' '}
-              <code className="bg-slate-100 px-1 rounded">ARTICLE</code> rows and for <code className="bg-slate-100 px-1 rounded">VIDEO</code> rows with a{' '}
-              <code className="bg-slate-100 px-1 rounded">video_file</code> URL. For <code className="bg-slate-100 px-1 rounded">VIDEO</code> +{' '}
-              <code className="bg-slate-100 px-1 rounded">iframe_code</code>, leave description blank to pull from YouTube, or fill it to override. Leave{' '}
-              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code> empty and skip the ZIP to auto-fetch the YouTube thumbnail to S3 (same as description). Optional ZIP: names must match{' '}
-              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code>.
+              Template columns: <code className="bg-slate-100 px-1 rounded">topic_name</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">subtopic_name</code>, <code className="bg-slate-100 px-1 rounded">name</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">key_topics_to_be_covered</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">subject_names</code>, <code className="bg-slate-100 px-1 rounded">exam_names</code>, and{' '}
+              <code className="bg-slate-100 px-1 rounded">youtube_video_link</code> (YouTube URL or direct https video URL). New rows are created as active with sort order 0. Streams follow the subjects you list. Description and YouTube thumbnail are fetched automatically for YouTube links. Optional thumbnails ZIP still matches{' '}
+              <code className="bg-slate-100 px-1 rounded">thumbnail_filename</code> if you add that column manually.
             </p>
             <div className="space-y-3">
               <div>

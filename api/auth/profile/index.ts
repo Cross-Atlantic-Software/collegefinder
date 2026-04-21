@@ -209,7 +209,6 @@ export async function getTopicByName(topicName: string): Promise<ApiResponse<{
       article_content: string | null;
       thumbnail: string | null;
       description: string | null;
-      purposes: Array<{ id: number; name: string; status: boolean }>;
       sort_order: number;
     }>;
   }>;

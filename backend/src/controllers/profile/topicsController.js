@@ -24,7 +24,7 @@ class TopicsController {
       // Get subtopics for this topic
       const subtopics = await Subtopic.findByTopicId(topic.id);
       
-      // Get lectures for each subtopic with purposes
+      // Get lectures for each subtopic
       const subtopicsWithLectures = await Promise.all(
         subtopics.map(async (subtopic) => {
           const lectures = await Lecture.findBySubtopicIdWithPurposes(subtopic.id);
@@ -42,7 +42,6 @@ class TopicsController {
               article_content: lecture.article_content,
               thumbnail: lecture.thumbnail,
               description: lecture.description,
-              purposes: lecture.purposes || [],
               sort_order: lecture.sort_order
             }))
           };
