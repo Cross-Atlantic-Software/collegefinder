@@ -35,7 +35,7 @@ class TopicsController {
             sort_order: subtopic.sort_order,
             lectures: lectures.map(lecture => ({
               id: lecture.id,
-              name: lecture.name,
+              name: lecture.youtube_title || 'Untitled lecture',
               content_type: lecture.content_type,
               video_file: lecture.video_file,
               iframe_code: lecture.iframe_code,

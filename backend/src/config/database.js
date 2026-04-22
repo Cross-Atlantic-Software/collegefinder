@@ -180,7 +180,8 @@ const runMigrations = async () => {
     'add_referred_by_code_to_users.sql',
     'add_youtube_meta_to_lectures.sql',
     'add_key_topics_to_be_covered_to_lectures.sql',
-    'add_hook_summary_to_lectures.sql'
+    'add_hook_summary_to_lectures.sql',
+    'remove_name_from_lectures_use_youtube_title.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

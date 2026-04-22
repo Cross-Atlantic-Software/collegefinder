@@ -963,12 +963,6 @@ const validateCreateLecture = [
     .withMessage('Subtopic ID is required')
     .isInt({ min: 1 })
     .withMessage('Subtopic ID must be a positive integer'),
-  body('name')
-    .notEmpty()
-    .withMessage('Name is required')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
   body('content_type')
     .optional()
     .isIn(['VIDEO', 'ARTICLE'])
@@ -1006,11 +1000,6 @@ const validateUpdateLecture = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('Subtopic ID must be a positive integer'),
-  body('name')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
   body('content_type')
     .optional()
     .isIn(['VIDEO', 'ARTICLE'])

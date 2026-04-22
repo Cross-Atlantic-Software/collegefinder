@@ -1,6 +1,10 @@
 const db = require('../../config/database');
 
 class Lecture {
+  static displayNameExpr(alias = 'l') {
+    return `COALESCE(NULLIF(TRIM(${alias}.youtube_title), ''), 'Untitled lecture')`;
+  }
+
   static normalizeJsonAgg(arr) {
     if (!arr || !Array.isArray(arr) || arr.length === 0) return [];
     if (arr[0] != null && arr[0].id != null) return arr;
@@ -13,6 +17,7 @@ class Lecture {
   static async findAll() {
     const result = await db.query(
       `SELECT l.*,
+       ${Lecture.displayNameExpr('l')} AS name,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
          FILTER (WHERE st.id IS NOT NULL),
@@ -36,7 +41,7 @@ class Lecture {
        LEFT JOIN lecture_exams le ON l.id = le.lecture_id
        LEFT JOIN exams_taxonomies ex ON le.exam_id = ex.id
        GROUP BY l.id
-       ORDER BY l.sort_order ASC, l.name ASC`
+       ORDER BY l.sort_order ASC, ${Lecture.displayNameExpr('l')} ASC`
     );
     return result.rows.map((row) => ({
       ...row,
@@ -52,6 +57,7 @@ class Lecture {
   static async findById(id) {
     const result = await db.query(
       `SELECT l.*,
+       ${Lecture.displayNameExpr('l')} AS name,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
          FILTER (WHERE st.id IS NOT NULL),
@@ -95,7 +101,10 @@ class Lecture {
    */
   static async findBySubtopicId(subtopicId) {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE subtopic_id = $1 ORDER BY sort_order ASC, name ASC',
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE subtopic_id = $1
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`,
       [subtopicId]
     );
     return result.rows;
@@ -106,7 +115,10 @@ class Lecture {
    */
   static async findBySubtopicIdWithPurposes(subtopicId) {
     const result = await db.query(
-      `SELECT * FROM lectures WHERE subtopic_id = $1 AND status = true ORDER BY sort_order ASC, name ASC`,
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE subtopic_id = $1 AND status = true
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`,
       [subtopicId]
     );
     return result.rows;
@@ -117,18 +129,23 @@ class Lecture {
    */
   static async findActive() {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE status = TRUE ORDER BY sort_order ASC, name ASC'
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE status = TRUE
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`
     );
     return result.rows;
   }
 
   /**
-   * Find lecture by name and subtopic ID
+   * Find lecture by youtube title and subtopic ID
    */
-  static async findByNameAndSubtopicId(name, subtopicId) {
+  static async findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId) {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE name = $1 AND subtopic_id = $2',
-      [name, subtopicId]
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE LOWER(TRIM(youtube_title)) = LOWER(TRIM($1)) AND subtopic_id = $2`,
+      [youtubeTitle, subtopicId]
     );
     return result.rows[0] || null;
   }
@@ -140,7 +157,6 @@ class Lecture {
     const {
       topic_id,
       subtopic_id,
-      name,
       content_type = 'VIDEO',
       video_file,
       iframe_code,
@@ -160,13 +176,12 @@ class Lecture {
     } = data;
 
     const result = await db.query(
-      `INSERT INTO lectures (topic_id, subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, thumbnail_filename, status, description, key_topics_to_be_covered, youtube_title, youtube_channel_name, youtube_channel_id, youtube_channel_url, youtube_like_count, youtube_subscriber_count, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      `INSERT INTO lectures (topic_id, subtopic_id, content_type, video_file, iframe_code, article_content, thumbnail, thumbnail_filename, status, description, key_topics_to_be_covered, youtube_title, youtube_channel_name, youtube_channel_id, youtube_channel_url, youtube_like_count, youtube_subscriber_count, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING *`,
       [
         topic_id,
         subtopic_id,
-        name,
         content_type,
         content_type === 'VIDEO' ? (video_file || null) : null,
         content_type === 'VIDEO' ? (iframe_code || null) : null,
@@ -187,7 +202,10 @@ class Lecture {
         sort_order
       ]
     );
-    return result.rows[0];
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   /**
@@ -197,7 +215,6 @@ class Lecture {
     const {
       topic_id,
       subtopic_id,
-      name,
       content_type,
       video_file,
       iframe_code,
@@ -228,10 +245,6 @@ class Lecture {
     if (subtopic_id !== undefined) {
       updates.push(`subtopic_id = $${paramCount++}`);
       values.push(subtopic_id);
-    }
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(name);
     }
     if (content_type !== undefined) {
       updates.push(`content_type = $${paramCount++}`);
@@ -328,7 +341,11 @@ class Lecture {
        WHERE id = $${paramCount} RETURNING *`,
       values
     );
-    return result.rows[0] || null;
+    if (!result.rows[0]) return null;
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   /**
@@ -336,7 +353,11 @@ class Lecture {
    */
   static async delete(id) {
     const result = await db.query('DELETE FROM lectures WHERE id = $1 RETURNING *', [id]);
-    return result.rows[0] || null;
+    if (!result.rows[0]) return null;
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   static async setStreams(lectureId, streamIds) {
@@ -395,7 +416,10 @@ class Lecture {
        AND (thumbnail IS NULL OR thumbnail = '')`,
       [String(filename).trim()]
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      name: (row.youtube_title || '').trim() || 'Untitled lecture',
+    }));
   }
 }
 

@@ -241,7 +241,6 @@ class LectureController {
       const {
         topic_id,
         subtopic_id,
-        name,
         content_type = 'VIDEO',
         status,
         description,
@@ -251,15 +250,6 @@ class LectureController {
         iframe_code,
         thumbnail_filename,
       } = req.body;
-
-      // Check if lecture with same name exists for this subtopic
-      const existing = await Lecture.findByNameAndSubtopicId(name, parseInt(subtopic_id));
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'Lecture with this name already exists for this subtopic'
-        });
-      }
 
       // Validate content_type specific fields
       if (content_type === 'ARTICLE') {
@@ -298,6 +288,16 @@ class LectureController {
         description
       );
       const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
+      const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+      if (youtubeTitle) {
+        const existing = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, parseInt(subtopic_id, 10));
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: 'Lecture with this YouTube title already exists for this subtopic',
+          });
+        }
+      }
 
       let finalThumbnail = thumbnail;
       if (!finalThumbnail && effectiveIframe) {
@@ -307,7 +307,6 @@ class LectureController {
       const lecture = await Lecture.create({
         topic_id: parseInt(topic_id),
         subtopic_id: parseInt(subtopic_id),
-        name,
         content_type,
         video_file,
         iframe_code: content_type === 'VIDEO' ? iframeStored : null,
@@ -389,7 +388,6 @@ class LectureController {
       const {
         topic_id,
         subtopic_id,
-        name,
         content_type,
         status,
         description,
@@ -400,17 +398,7 @@ class LectureController {
         thumbnail_filename,
       } = req.body;
 
-      // Check if name is being changed and if it already exists for this subtopic
       const subtopicId = subtopic_id ? parseInt(subtopic_id) : existingLecture.subtopic_id;
-      if (name && name !== existingLecture.name) {
-        const nameExists = await Lecture.findByNameAndSubtopicId(name, subtopicId);
-        if (nameExists && nameExists.id !== parseInt(id)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Lecture with this name already exists for this subtopic'
-          });
-        }
-      }
 
       // Validate content_type specific fields
       const finalContentType = content_type || existingLecture.content_type || 'VIDEO';
@@ -451,7 +439,6 @@ class LectureController {
       const updateData = {};
       if (topic_id !== undefined) updateData.topic_id = parseInt(topic_id);
       if (subtopic_id !== undefined) updateData.subtopic_id = parseInt(subtopic_id);
-      if (name !== undefined) updateData.name = name;
       if (content_type !== undefined) updateData.content_type = content_type;
       if (video_file !== undefined) updateData.video_file = video_file;
       // Handle iframe_code - if empty string is sent, clear it (set to null)
@@ -494,6 +481,16 @@ class LectureController {
         baseDesc
       );
       const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
+      const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+      if (finalContentType === 'VIDEO' && youtubeTitle) {
+        const titleExists = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId);
+        if (titleExists && titleExists.id !== parseInt(id, 10)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Lecture with this YouTube title already exists for this subtopic',
+          });
+        }
+      }
       if (finalContentType === 'VIDEO' && effectiveIframe) {
         updateData.youtube_title = youtubeMeta?.title || null;
         updateData.youtube_channel_name = youtubeMeta?.channelName || null;
@@ -731,7 +728,6 @@ class LectureController {
       const headers = [
         'topic_name',
         'subtopic_name',
-        'name',
         'key_topics_to_be_covered',
         'subject_names',
         'exam_names',
@@ -743,7 +739,6 @@ class LectureController {
         [
           'Algebra',
           'Linear Equation',
-          'Introduction video',
           'Variables, isolating x, checking solutions.',
           'Physics',
           'JEE Main',
@@ -752,7 +747,6 @@ class LectureController {
         [
           'Algebra',
           'Linear Equation',
-          'Hosted MP4 lecture',
           'Optional outline for non-YouTube URLs.',
           '',
           '',
@@ -780,7 +774,6 @@ class LectureController {
       const headers = [
         'topic_name',
         'subtopic_name',
-        'name',
         'content_type',
         'video_file',
         'youtube_video_link',
@@ -815,7 +808,6 @@ class LectureController {
         rows.push([
           excelCell(topic?.name),
           excelCell(sub?.name),
-          excelCell(lec.name),
           excelCell(lec.content_type),
           excelCell(lec.video_file),
           excelCell(exportYoutubeOrVideoLink(lec)),
@@ -889,7 +881,6 @@ class LectureController {
         const rowNum = i + 2;
         const topicName = getCell(row, 'topic_name', 'topic_Name');
         const subtopicName = getCell(row, 'subtopic_name', 'subtopic_Name');
-        const lecName = getCell(row, 'name');
         if (!topicName) {
           errors.push({ row: rowNum, message: 'topic_name is required' });
           continue;
@@ -898,11 +889,6 @@ class LectureController {
           errors.push({ row: rowNum, message: 'subtopic_name is required' });
           continue;
         }
-        if (!lecName) {
-          errors.push({ row: rowNum, message: 'name is required' });
-          continue;
-        }
-
         const topic = await Topic.findByName(topicName);
         if (!topic) {
           errors.push({ row: rowNum, message: `topic not found: "${topicName}"` });
@@ -913,18 +899,6 @@ class LectureController {
           errors.push({ row: rowNum, message: `subtopic not found under topic: "${subtopicName}"` });
           continue;
         }
-
-        const key = `${subtopic.id}:${lecName.toLowerCase()}`;
-        if (dupKey.has(key)) {
-          errors.push({ row: rowNum, message: `duplicate name "${lecName}" for this subtopic in file` });
-          continue;
-        }
-        const existing = await Lecture.findByNameAndSubtopicId(lecName, subtopic.id);
-        if (existing) {
-          errors.push({ row: rowNum, message: `lecture "${lecName}" already exists for this subtopic` });
-          continue;
-        }
-        dupKey.add(key);
 
         const content_type = 'VIDEO';
         const status = true;
@@ -999,6 +973,26 @@ class LectureController {
 
         const description = await enrichDescriptionFromYoutubeIframe(iframeNorm, null);
         const youtubeMeta = await getLectureYoutubeMetaFromIframe(iframeNorm);
+        const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+        if (youtubeTitle) {
+          const key = `${subtopic.id}:${youtubeTitle.toLowerCase()}`;
+          if (dupKey.has(key)) {
+            errors.push({
+              row: rowNum,
+              message: `duplicate youtube title "${youtubeTitle}" for this subtopic in file`,
+            });
+            continue;
+          }
+          const existing = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopic.id);
+          if (existing) {
+            errors.push({
+              row: rowNum,
+              message: `lecture "${youtubeTitle}" already exists for this subtopic`,
+            });
+            continue;
+          }
+          dupKey.add(key);
+        }
 
         let thumbnailFinal = thumbnail;
         if (!thumbnailFinal && iframeNorm) {
@@ -1009,7 +1003,6 @@ class LectureController {
           const lecture = await Lecture.create({
             topic_id: topic.id,
             subtopic_id: subtopic.id,
-            name: lecName,
             content_type,
             video_file,
             iframe_code: iframeNorm,
@@ -1064,7 +1057,7 @@ class LectureController {
           const lectureAfterHook = await Lecture.findById(lecture.id);
           created.push({
             id: lecture.id,
-            name: lecture.name,
+            name: lecture.youtube_title || lecture.name || 'Untitled lecture',
             hook_summary: lectureAfterHook?.hook_summary ?? null,
           });
         } catch (createErr) {
@@ -1112,7 +1105,7 @@ class LectureController {
         updateRecord: (id, data) => Lecture.update(id, data),
         toResultItem: (r) => ({
           id: r.id,
-          name: r.name,
+          name: r.youtube_title || 'Untitled lecture',
           thumbnail_filename: r.thumbnail_filename,
         }),
       });

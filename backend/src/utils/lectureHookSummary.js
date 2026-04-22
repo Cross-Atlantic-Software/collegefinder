@@ -94,7 +94,7 @@ async function generateAndPersistLectureHookSummary(lectureId) {
     lecture.subtopic_id ? Subtopic.findById(lecture.subtopic_id) : null,
   ]);
 
-  const title = (lecture.youtube_title && String(lecture.youtube_title).trim()) || lecture.name || '';
+  const title = (lecture.youtube_title && String(lecture.youtube_title).trim()) || '';
   const description = lecture.description || '';
   const subject = joinTaxonomyNames(lecture.subjects);
   const topic = topicRow?.name || '';

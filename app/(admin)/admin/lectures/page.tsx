@@ -44,7 +44,6 @@ export default function LecturesPage() {
   const [formData, setFormData] = useState({
     topic_id: '',
     subtopic_id: '',
-    name: '',
     content_type: 'VIDEO' as 'VIDEO' | 'ARTICLE',
     description: '',
     key_topics_to_be_covered: '',
@@ -100,6 +99,13 @@ export default function LecturesPage() {
   /** Avoid refetching YouTube metadata when opening edit with unchanged iframe */
   const lastFetchedIframeRef = useRef('');
   const [youtubeDescHint, setYoutubeDescHint] = useState<string | null>(null);
+  const getLectureLabel = useCallback(
+    (lecture: Pick<Lecture, 'name' | 'youtube_title'>) =>
+      (lecture.youtube_title && lecture.youtube_title.trim()) ||
+      (lecture.name && lecture.name.trim()) ||
+      'Untitled lecture',
+    []
+  );
 
   const applyYoutubeMetadata = useCallback(
     async (codeInput: string, force: boolean, toastOnSuccess = false) => {
@@ -296,14 +302,23 @@ export default function LecturesPage() {
         return;
       }
       const searchLower = searchQuery.toLowerCase();
-      const filtered = allLectures.filter(lecture =>
-        lecture.name.toLowerCase().includes(searchLower)
-      );
+      const filtered = allLectures.filter((lecture) => {
+        const subtopicData = allSubtopics.find((s) => s.id === lecture.subtopic_id);
+        const topic = subtopicData
+          ? availableTopics.find((t) => t.value === String(subtopicData.topic_id))
+          : null;
+        const subtopic = subtopicData?.name || '';
+        const topicName = topic?.label || '';
+        return (
+          topicName.toLowerCase().includes(searchLower) ||
+          subtopic.toLowerCase().includes(searchLower)
+        );
+      });
       setLectures(filtered);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, allLectures]);
+  }, [searchQuery, allLectures, allSubtopics, availableTopics]);
 
   const fetchLectures = async () => {
     try {
@@ -332,7 +347,6 @@ export default function LecturesPage() {
       const formDataToSend = new FormData();
       formDataToSend.append('topic_id', formData.topic_id);
       formDataToSend.append('subtopic_id', formData.subtopic_id);
-      formDataToSend.append('name', formData.name);
       formDataToSend.append('content_type', formData.content_type);
       formDataToSend.append(
         'status',
@@ -427,7 +441,6 @@ export default function LecturesPage() {
     setFormData({
       topic_id: topicId,
       subtopic_id: String(lecture.subtopic_id),
-      name: lecture.name,
       content_type: lecture.content_type || 'VIDEO',
       description: lecture.description || '',
       key_topics_to_be_covered: lecture.key_topics_to_be_covered?.trim() || '',
@@ -512,7 +525,6 @@ export default function LecturesPage() {
     setFormData({
       topic_id: '',
       subtopic_id: '',
-      name: '',
       content_type: 'VIDEO',
       description: '',
       key_topics_to_be_covered: '',
@@ -675,7 +687,7 @@ export default function LecturesPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by name"
+                  placeholder="Search by topic or subtopic"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
@@ -769,7 +781,6 @@ export default function LecturesPage() {
                   <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">THUMBNAIL</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TOPIC</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBTOPIC</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STREAMS</th>
@@ -784,7 +795,7 @@ export default function LecturesPage() {
                   <tbody className="divide-y divide-slate-200">
                     {lectures.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={10} className="px-4 py-4 text-center text-sm text-slate-500">
                           {lectures.length < allLectures.length ? 'No items match your search' : 'No items yet'}
                         </td>
                       </tr>
@@ -821,7 +832,7 @@ export default function LecturesPage() {
                               {lecture.thumbnail ? (
                                 <img
                                   src={lecture.thumbnail}
-                                  alt={lecture.name}
+                                  alt={getLectureLabel(lecture)}
                                   className="w-12 h-12 object-cover rounded"
                                 />
                               ) : (
@@ -829,9 +840,6 @@ export default function LecturesPage() {
                                   <FiImage className="h-5 w-5 text-slate-400" />
                                 </div>
                               )}
-                            </td>
-                            <td className="px-4 py-2">
-                              <span className="text-sm font-medium text-slate-900">{lecture.name}</span>
                             </td>
                             <td className="px-4 py-2">
                               <span className="text-sm text-slate-600">{topic?.label || '-'}</span>
@@ -945,20 +953,6 @@ export default function LecturesPage() {
                   {!formData.topic_id && (
                     <p className="text-xs text-slate-500 mt-1">Please select a topic first</p>
                   )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Name <span className="text-[#341050]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    placeholder="e.g., Introduction to Algebra, Solving Linear Equations"
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                  />
                 </div>
 
                 <div>
@@ -1290,12 +1284,12 @@ export default function LecturesPage() {
                 {viewingLecture.thumbnail && (
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Thumbnail</label>
-                    <img src={viewingLecture.thumbnail} alt={viewingLecture.name} className="w-48 h-32 object-cover rounded border border-slate-200" />
+                    <img src={viewingLecture.thumbnail} alt={getLectureLabel(viewingLecture)} className="w-48 h-32 object-cover rounded border border-slate-200" />
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
-                  <p className="text-sm text-slate-900">{viewingLecture.name}</p>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">YouTube title</label>
+                  <p className="text-sm text-slate-900">{getLectureLabel(viewingLecture)}</p>
                 </div>
                 {viewingLecture.key_topics_to_be_covered ? (
                   <div>
@@ -1505,7 +1499,7 @@ export default function LecturesPage() {
             </div>
             <p className="text-sm text-slate-600 mb-3">
               Template columns: <code className="bg-slate-100 px-1 rounded">topic_name</code>,{' '}
-              <code className="bg-slate-100 px-1 rounded">subtopic_name</code>, <code className="bg-slate-100 px-1 rounded">name</code>,{' '}
+              <code className="bg-slate-100 px-1 rounded">subtopic_name</code>,{' '}
               <code className="bg-slate-100 px-1 rounded">key_topics_to_be_covered</code>,{' '}
               <code className="bg-slate-100 px-1 rounded">subject_names</code>, <code className="bg-slate-100 px-1 rounded">exam_names</code>, and{' '}
               <code className="bg-slate-100 px-1 rounded">youtube_video_link</code> (YouTube URL or direct https video URL). New rows are created as active with sort order 0. Streams follow the subjects you list. Description and YouTube thumbnail are fetched automatically for YouTube links. Optional thumbnails ZIP still matches{' '}
