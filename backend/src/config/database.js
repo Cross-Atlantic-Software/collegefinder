@@ -163,6 +163,8 @@ const runMigrations = async () => {
     'add_branch_id_to_college_programs.sql',
     'add_institute_referral_contact_email.sql',
     'add_referral_uses_table.sql',
+    'add_referral_codes_table.sql',
+    'add_referral_codes_module.sql',
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',

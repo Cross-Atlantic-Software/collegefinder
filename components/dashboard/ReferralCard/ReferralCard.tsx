@@ -6,7 +6,12 @@ import {
   FiCopy, FiMail, FiCheck, FiX, FiSend, FiSearch,
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-import { getMyReferralCode, sendReferralInvite, getMyReferralUses } from "@/api/referral";
+import {
+  getMyReferralCode,
+  generateMyReferralCode,
+  sendReferralInvite,
+  getMyReferralUses,
+} from "@/api/referral";
 import type { ReferralUse } from "@/api/types";
 
 const PLATFORM = "UniTracko";
@@ -336,6 +341,7 @@ export default function ReferralCard() {
   const [shareUrl, setShareUrl] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [whatsappShareText, setWhatsappShareText] = useState("");
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -354,16 +360,23 @@ export default function ReferralCard() {
   useEffect(() => {
     getMyReferralCode().then((res) => {
       if (res.success && res.data) {
-        setCode(res.data.referralCode);
-        setShareUrl(res.data.shareUrl);
-        setEmailSubject(
-          res.data.emailSubject ||
-            `Your friend invited you to join ${PLATFORM}`
-        );
-        setWhatsappShareText(
-          res.data.whatsappShareText ||
-            `Join me on ${PLATFORM}!\n\nUse my referral code *${res.data.referralCode}* when signing up:\n${res.data.shareUrl}`
-        );
+        if (res.data.referralCode) {
+          setCode(res.data.referralCode);
+          setShareUrl(res.data.shareUrl || "");
+          setEmailSubject(
+            res.data.emailSubject ||
+              `Your friend invited you to join ${PLATFORM}`
+          );
+          setWhatsappShareText(
+            res.data.whatsappShareText ||
+              `Join me on ${PLATFORM}!\n\nUse my referral code *${res.data.referralCode}* when signing up:\n${res.data.shareUrl || ""}`
+          );
+        } else {
+          setCode(null);
+          setShareUrl("");
+          setEmailSubject(`Your friend invited you to join ${PLATFORM}`);
+          setWhatsappShareText("");
+        }
       } else {
         setError(res.message || "Could not load referral code");
       }
@@ -376,6 +389,29 @@ export default function ReferralCard() {
       }
     }).catch(() => {})
       .finally(() => setUsesLoading(false));
+  }, []);
+
+  const handleGenerateCode = useCallback(async () => {
+    setGeneratingCode(true);
+    setError(null);
+    try {
+      const res = await generateMyReferralCode();
+      if (res.success && res.data?.referralCode) {
+        setCode(res.data.referralCode);
+        setShareUrl(res.data.shareUrl || "");
+        setEmailSubject(res.data.emailSubject || `Your friend invited you to join ${PLATFORM}`);
+        setWhatsappShareText(
+          res.data.whatsappShareText ||
+            `Join me on ${PLATFORM}!\n\nUse my referral code *${res.data.referralCode}* when signing up:\n${res.data.shareUrl || ""}`
+        );
+      } else {
+        setError(res.message || "Could not generate referral code");
+      }
+    } catch {
+      setError("Failed to generate referral code");
+    } finally {
+      setGeneratingCode(false);
+    }
   }, []);
 
   const copy = useCallback(async () => {
@@ -456,73 +492,91 @@ export default function ReferralCard() {
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-8 lg:items-stretch">
           {/* ── Left: referral code + QR + share ── */}
           <div className="flex h-full min-h-0 flex-col items-center lg:items-stretch rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 p-5">
-            {/* Referral code */}
-            <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-3.5 mb-5">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">
-                  Your Referral Code
+            {!code ? (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                  Generate your referral code to start sharing with friends.
                 </p>
-                <p className="text-xl sm:text-2xl font-black tracking-[3px] sm:tracking-[4px] text-slate-900 dark:text-slate-100 font-mono leading-none truncate">
-                  {code}
+                <button
+                  type="button"
+                  onClick={handleGenerateCode}
+                  disabled={generatingCode}
+                  className="inline-flex items-center justify-center rounded-lg bg-brand-ink px-4 py-2 text-sm font-semibold text-white hover:bg-brand-ink/90 disabled:opacity-60"
+                >
+                  {generatingCode ? "Generating..." : "Generate my referral code"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Referral code */}
+                <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-3.5 mb-5">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">
+                      Your Referral Code
+                    </p>
+                    <p className="text-xl sm:text-2xl font-black tracking-[3px] sm:tracking-[4px] text-slate-900 dark:text-slate-100 font-mono leading-none truncate">
+                      {code}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copy}
+                    className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all ${
+                      copied
+                        ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {copied
+                      ? <><FiCheck className="h-3.5 w-3.5" />Copied</>
+                      : <><FiCopy className="h-3.5 w-3.5" />Copy</>}
+                  </button>
+                </div>
+
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center lg:text-left mb-3 w-full">
+                  Scan to sign up
                 </p>
-              </div>
-              <button
-                type="button"
-                onClick={copy}
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all ${
-                  copied
-                    ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                {copied
-                  ? <><FiCheck className="h-3.5 w-3.5" />Copied</>
-                  : <><FiCopy className="h-3.5 w-3.5" />Copy</>}
-              </button>
-            </div>
+                <div className="flex justify-center mb-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white p-4 shadow-sm">
+                    <QRCode value={shareUrl} size={176} fgColor="#0f172a" bgColor="#ffffff" level="M" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-xs mx-auto lg:mx-0 lg:max-w-none lg:text-left">
+                  Opens sign-up with your referral code pre-filled
+                </p>
 
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center lg:text-left mb-3 w-full">
-              Scan to sign up
-            </p>
-            <div className="flex justify-center mb-3">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white p-4 shadow-sm">
-                <QRCode value={shareUrl} size={176} fgColor="#0f172a" bgColor="#ffffff" level="M" />
-              </div>
-            </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-xs mx-auto lg:mx-0 lg:max-w-none lg:text-left">
-              Opens sign-up with your referral code pre-filled
-            </p>
+                {/* Grows so Share via stays at bottom when column matches right panel height */}
+                <div className="min-h-0 flex-1 w-full" aria-hidden />
 
-            {/* Grows so Share via stays at bottom when column matches right panel height */}
-            <div className="min-h-0 flex-1 w-full" aria-hidden />
+                <div className="flex items-center gap-3 mb-3 w-full shrink-0">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+                    Share via
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
 
-            <div className="flex items-center gap-3 mb-3 w-full shrink-0">
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
-                Share via
-              </span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 w-full shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <FiMail className="h-4 w-4 shrink-0" />
-                Send Email
-              </button>
-              <a
-                href={waHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <FaWhatsapp className="h-4 w-4 shrink-0 text-[#25D366]" />
-                WhatsApp
-              </a>
-            </div>
+                <div className="grid grid-cols-2 gap-3 w-full shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <FiMail className="h-4 w-4 shrink-0" />
+                    Send Email
+                  </button>
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <FaWhatsapp className="h-4 w-4 shrink-0 text-[#25D366]" />
+                    WhatsApp
+                  </a>
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Right: sign-ups (search + scroll) ── */}

@@ -103,6 +103,7 @@ export const API_ENDPOINTS = {
     COUNSELLOR_RESULTS: '/admin/counsellor/results',
     EXPERTS: '/admin/experts',
     BRANCHES: '/admin/branches',
+    REFERRAL_CODES: '/admin/referral-codes',
   },
 
   // Strength endpoints (user-facing)
@@ -116,6 +117,7 @@ export const API_ENDPOINTS = {
   // Referral endpoints (user-facing)
   REFERRAL: {
     MY_CODE: '/referral/my-code',
+    GENERATE_MY_CODE: '/referral/generate-my-code',
     SEND_INVITE: '/referral/send-invite',
     MY_USES: '/referral/my-uses',
   },

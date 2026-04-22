@@ -159,6 +159,7 @@ const navItems: NavItem[] = [
   { label: 'Blogs', href: '/admin/blogs', icon: <FiEdit3 className="h-4 w-4" />, moduleCode: 'blogs' },
   { label: 'Landing page', href: '/admin/landing-page', icon: <FiLayout className="h-4 w-4" />, moduleCode: 'landing_page' },
   { label: 'Self study material', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },
+  { label: 'Active referral codes', href: '/admin/referral-codes', icon: <FiMail className="h-4 w-4" />, moduleCode: 'referral_codes' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
   // { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
   { label: 'Add Experts', href: '/admin/experts', icon: <FiUserPlus className="h-4 w-4" /> },

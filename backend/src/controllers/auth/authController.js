@@ -502,18 +502,6 @@ class AuthController {
       console.log(`🔐 [OTP:verifyOTP] Marking email as verified for user ID: ${user.id}`);
       await User.markEmailAsVerified(user.id);
 
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          console.log(`🔐 [OTP:verifyOTP] Generating referral code for user ID: ${user.id}`);
-          await Referral.generateAndSaveUserCode(user.id);
-        } else {
-          console.log(`🔐 [OTP:verifyOTP] User already has referral code: ${user.referral_code}`);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
-      }
-
       // Update last login
       console.log(`🔐 [OTP:verifyOTP] Updating last login for user ID: ${user.id}`);
       await User.updateLastLogin(user.id);
@@ -927,15 +915,6 @@ class AuthController {
         user = await User.findById(user.id);
       }
 
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          await Referral.generateAndSaveUserCode(user.id);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
-      }
-
       if (pendingRef) {
         try {
           await Referral.updateReferredByCode(user.id, user.email, pendingRef, { silent: true });
@@ -1144,15 +1123,6 @@ class AuthController {
           profilePhoto: profilePhotoUrl,
         });
         user = await User.findById(user.id);
-      }
-
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          await Referral.generateAndSaveUserCode(user.id);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
       }
 
       if (pendingRef && user.email) {

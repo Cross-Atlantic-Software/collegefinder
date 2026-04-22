@@ -23,6 +23,7 @@ const InstitutesController = require('../../controllers/admin/institutesControll
 const ScholarshipsController = require('../../controllers/admin/scholarshipsController');
 const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
+const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
@@ -755,6 +756,30 @@ router.put('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), 
  * @access  Private (Admin)
  */
 router.delete('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), requireCanDelete, PurposeController.deletePurpose);
+
+/**
+ * Active Referral Codes (admin)
+ */
+router.get(
+  '/referral-codes',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  ReferralCodesController.getAll
+);
+router.patch(
+  '/referral-codes/:id/deactivate',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  requireCanEdit,
+  ReferralCodesController.deactivate
+);
+router.delete(
+  '/referral-codes/:id',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  requireCanDelete,
+  ReferralCodesController.delete
+);
 
 /**
  * @route   GET /api/admin/levels

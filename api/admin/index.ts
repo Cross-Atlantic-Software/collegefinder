@@ -228,3 +228,11 @@ export {
 
 // Landing page (home) CMS copy
 export { getAdminLandingPageContent, updateAdminLandingPageContent } from './landingPage';
+
+// Active referral codes (admin)
+export {
+  getAllActiveReferralCodes,
+  deactivateReferralCode,
+  deleteReferralCode,
+} from './referral-codes';
+export type { ActiveReferralCode } from './referral-codes';
