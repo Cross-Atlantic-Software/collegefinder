@@ -17,7 +17,14 @@ const {
 } = require('../../utils/youtubeMetadata');
 const multer = require('multer');
 const db = require('../../config/database');
-const { generateAndPersistLectureHookSummary } = require('../../utils/lectureHookSummary');
+const {
+  generateAndPersistLectureHookSummary,
+  scheduleLectureHookSummary,
+} = require('../../utils/lectureHookSummary');
+const {
+  enqueueLectureHookSummary,
+  getLectureHookSummaryQueue,
+} = require('../../jobs/queues/lectureHookSummaryQueue');
 
 /** Safe string for Excel cells (length cap; timestamps as ISO). */
 function excelCell(val, maxLen = 32000) {
@@ -91,6 +98,20 @@ const upload = multer({
 });
 
 class LectureController {
+  static async withTimeout(promise, timeoutMs, timeoutMessage) {
+    let timeoutId;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
   /**
    * Get all lectures
    * GET /api/admin/lectures
@@ -157,6 +178,106 @@ class LectureController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch lectures'
+      });
+    }
+  }
+
+  /**
+   * Queue health / progress for lecture hook summary jobs.
+   * GET /api/admin/lectures/hook-summary-queue-status
+   */
+  static async getHookSummaryQueueStatus(req, res) {
+    try {
+      let queueAvailable = true;
+      let counts = null;
+      try {
+        const queue = getLectureHookSummaryQueue();
+        counts = await queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed');
+      } catch (queueErr) {
+        queueAvailable = false;
+        counts = null;
+        console.warn('lecture hook summary queue status unavailable:', queueErr.message || queueErr);
+      }
+
+      const summaryResult = await db.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE content_type = 'VIDEO')::int AS total_video_lectures,
+           COUNT(*) FILTER (
+             WHERE content_type = 'VIDEO'
+               AND hook_summary IS NOT NULL
+               AND TRIM(hook_summary) <> ''
+           )::int AS completed_video_hook_summaries,
+           COUNT(*) FILTER (
+             WHERE content_type = 'VIDEO'
+               AND (hook_summary IS NULL OR TRIM(hook_summary) = '')
+           )::int AS pending_video_hook_summaries
+         FROM lectures`
+      );
+      const summary = summaryResult.rows[0] || {
+        total_video_lectures: 0,
+        completed_video_hook_summaries: 0,
+        pending_video_hook_summaries: 0,
+      };
+
+      res.json({
+        success: true,
+        data: {
+          queueAvailable,
+          queueCounts: counts,
+          totalVideoLectures: summary.total_video_lectures || 0,
+          completedVideoHookSummaries: summary.completed_video_hook_summaries || 0,
+          pendingVideoHookSummaries: summary.pending_video_hook_summaries || 0,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching lecture hook summary queue status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch lecture hook summary queue status',
+      });
+    }
+  }
+
+  /**
+   * Requeue all pending video lectures without hook_summary.
+   * POST /api/admin/lectures/hook-summary-queue/requeue-pending
+   */
+  static async requeuePendingHookSummaries(req, res) {
+    try {
+      const pendingResult = await db.query(
+        `SELECT id
+         FROM lectures
+         WHERE content_type = 'VIDEO'
+           AND (hook_summary IS NULL OR TRIM(hook_summary) = '')`
+      );
+      const ids = pendingResult.rows.map((r) => parseInt(r.id, 10)).filter((n) => !Number.isNaN(n) && n > 0);
+
+      let queued = 0;
+      let failed = 0;
+      for (const lectureId of ids) {
+        try {
+          await enqueueLectureHookSummary(lectureId, { force: true });
+          queued += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`Failed to requeue hook summary for lecture ${lectureId}:`, err.message || err);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `Requeued ${queued} pending lecture hook summary job(s).`,
+        data: {
+          totalPending: ids.length,
+          queued,
+          failed,
+        },
+      });
+    } catch (error) {
+      console.error('Error requeueing pending lecture hook summaries:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to requeue pending lecture hook summaries',
       });
     }
   }
@@ -1048,17 +1169,23 @@ class LectureController {
           if (subjectIds.length) await Lecture.setSubjects(lecture.id, subjectIds);
           if (examIds.length) await Lecture.setExams(lecture.id, examIds);
 
+          let hookSummaryQueued = false;
           try {
-            await generateAndPersistLectureHookSummary(lecture.id);
-          } catch (hookErr) {
-            console.error(`lectureHookSummary (bulk row ${rowNum}):`, hookErr.message || hookErr);
+            await enqueueLectureHookSummary(lecture.id);
+            hookSummaryQueued = true;
+          } catch (queueErr) {
+            console.warn(
+              `lectureHookSummary queue enqueue failed (bulk row ${rowNum}), using fallback scheduler:`,
+              queueErr.message || queueErr
+            );
+            scheduleLectureHookSummary(lecture.id);
           }
 
-          const lectureAfterHook = await Lecture.findById(lecture.id);
           created.push({
             id: lecture.id,
             name: lecture.youtube_title || lecture.name || 'Untitled lecture',
-            hook_summary: lectureAfterHook?.hook_summary ?? null,
+            hook_summary: null,
+            hook_summary_status: hookSummaryQueued ? 'queued' : 'scheduled',
           });
         } catch (createErr) {
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create row' });

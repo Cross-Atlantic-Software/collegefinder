@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -21,6 +21,9 @@ import {
   bulkUploadLectures,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
+  getLectureHookSummaryQueueStatus,
+  requeuePendingLectureHookSummaries,
+  type LectureHookSummaryQueueStatus,
   type Subject,
   type Exam,
 } from '@/api';
@@ -31,6 +34,7 @@ import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '
 import RichTextEditor from '@/components/shared/RichTextEditor';
 
 export default function LecturesPage() {
+  const PAGE_SIZE = 10;
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { canDownloadExcel, canDelete } = useAdminPermissions();
@@ -41,6 +45,7 @@ export default function LecturesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingLecture, setEditingLecture] = useState<Lecture | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     topic_id: '',
     subtopic_id: '',
@@ -95,6 +100,8 @@ export default function LecturesPage() {
   } | null>(null);
 
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [hookSummaryProgress, setHookSummaryProgress] = useState<LectureHookSummaryQueueStatus | null>(null);
+  const [requeueingHookSummaries, setRequeueingHookSummaries] = useState(false);
 
   /** Avoid refetching YouTube metadata when opening edit with unchanged iframe */
   const lastFetchedIframeRef = useRef('');
@@ -161,6 +168,12 @@ export default function LecturesPage() {
     [showError, showSuccess, thumbnailFile]
   );
 
+  const totalPages = Math.max(1, Math.ceil(lectures.length / PAGE_SIZE));
+  const paginatedLectures = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return lectures.slice(start, start + PAGE_SIZE);
+  }, [lectures, currentPage]);
+
   useEffect(() => {
     if (!showModal || formData.content_type !== 'VIDEO' || videoSourceType !== 'iframe') {
       setYoutubeDescHint(null);
@@ -193,10 +206,18 @@ export default function LecturesPage() {
     }
 
     fetchLectures();
+    fetchHookSummaryProgress();
     fetchTopics();
     fetchAllSubtopics();
     fetchTaxonomyOptions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchHookSummaryProgress();
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchTaxonomyOptions = async () => {
@@ -320,6 +341,16 @@ export default function LecturesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, allLectures, allSubtopics, availableTopics]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, allLectures.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const fetchLectures = async () => {
     try {
       setIsLoading(true);
@@ -335,6 +366,35 @@ export default function LecturesPage() {
       console.error('Error fetching lectures:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchHookSummaryProgress = async () => {
+    try {
+      const response = await getLectureHookSummaryQueueStatus();
+      if (response.success && response.data) {
+        setHookSummaryProgress(response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching lecture hook summary progress:', err);
+    }
+  };
+
+  const handleRequeuePendingHookSummaries = async () => {
+    try {
+      setRequeueingHookSummaries(true);
+      const response = await requeuePendingLectureHookSummaries();
+      if (response.success) {
+        showSuccess(response.message || 'Pending hook summary jobs requeued');
+        await fetchHookSummaryProgress();
+      } else {
+        showError(response.message || 'Failed to requeue pending hook summaries');
+      }
+    } catch (err) {
+      console.error('Error requeueing pending hook summaries:', err);
+      showError('Failed to requeue pending hook summaries');
+    } finally {
+      setRequeueingHookSummaries(false);
     }
   };
 
@@ -763,6 +823,35 @@ export default function LecturesPage() {
               )}
             </div>
           </div>
+          {hookSummaryProgress && hookSummaryProgress.totalVideoLectures > 0 ? (
+            <div className="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Hook summaries: <span className="font-semibold text-slate-900">{hookSummaryProgress.completedVideoHookSummaries}/{hookSummaryProgress.totalVideoLectures}</span>
+                {' '}done
+                {hookSummaryProgress.completedVideoHookSummaries >= hookSummaryProgress.totalVideoLectures ? (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700 border border-green-200">
+                    Completed
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-slate-500">
+                Pending: {hookSummaryProgress.pendingVideoHookSummaries}
+                {hookSummaryProgress.queueAvailable && hookSummaryProgress.queueCounts
+                  ? ` | Queue waiting: ${hookSummaryProgress.queueCounts.waiting || 0}, active: ${hookSummaryProgress.queueCounts.active || 0}`
+                  : ' | Queue unavailable'}
+              </span>
+              {hookSummaryProgress.pendingVideoHookSummaries > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRequeuePendingHookSummaries}
+                  disabled={requeueingHookSummaries}
+                  className="ml-auto inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {requeueingHookSummaries ? 'Requeueing…' : 'Requeue pending'}
+                </button>
+              )}
+            </div>
+          ) : null}
 
           {/* Error Message */}
           {error && (
@@ -800,7 +889,7 @@ export default function LecturesPage() {
                         </td>
                       </tr>
                     ) : (
-                      lectures.map((lecture) => {
+                      paginatedLectures.map((lecture) => {
                         const subtopicData = allSubtopics.find((s) => s.id === lecture.subtopic_id);
                         const topic = subtopicData ? availableTopics.find((t) => t.value === String(subtopicData.topic_id)) : null;
                         const subtopic = availableSubtopics.find((s) => s.value === String(lecture.subtopic_id)) || 
@@ -900,6 +989,35 @@ export default function LecturesPage() {
               </div>
             )}
           </div>
+          {lectures.length > 0 && (
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-600">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}-
+                {Math.min(currentPage * PAGE_SIZE, lectures.length)} of {lectures.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 text-xs border border-slate-300 rounded disabled:opacity-50 hover:bg-[#F6F8FA]"
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-slate-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-2.5 py-1 text-xs border border-slate-300 rounded disabled:opacity-50 hover:bg-[#F6F8FA]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

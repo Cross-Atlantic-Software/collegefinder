@@ -181,6 +181,36 @@ export interface LecturesBulkUploadResult {
   errorDetails: { row: number; message: string }[];
 }
 
+export interface LectureHookSummaryQueueStatus {
+  queueAvailable: boolean;
+  queueCounts: {
+    waiting?: number;
+    active?: number;
+    completed?: number;
+    failed?: number;
+    delayed?: number;
+  } | null;
+  totalVideoLectures: number;
+  completedVideoHookSummaries: number;
+  pendingVideoHookSummaries: number;
+}
+
+export async function getLectureHookSummaryQueueStatus(): Promise<ApiResponse<LectureHookSummaryQueueStatus>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue-status`, {
+    method: 'GET',
+  });
+}
+
+export async function requeuePendingLectureHookSummaries(): Promise<ApiResponse<{
+  totalPending: number;
+  queued: number;
+  failed: number;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/requeue-pending`, {
+    method: 'POST',
+  });
+}
+
 export async function downloadLecturesBulkTemplate(): Promise<void> {
   const adminToken = getBrowserAdminToken();
   if (!adminToken) {

@@ -670,6 +670,19 @@ router.post(
   requireModuleAccess('lectures'),
   LectureController.getYoutubeMetadata
 );
+router.get(
+  '/lectures/hook-summary-queue-status',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  LectureController.getHookSummaryQueueStatus
+);
+router.post(
+  '/lectures/hook-summary-queue/requeue-pending',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanEdit,
+  LectureController.requeuePendingHookSummaries
+);
 
 /**
  * @route   GET /api/admin/lectures/:id

@@ -130,12 +130,15 @@ export {
   downloadLecturesBulkTemplate,
   downloadLecturesAllExcel,
   bulkUploadLectures,
+  getLectureHookSummaryQueueStatus,
+  requeuePendingLectureHookSummaries,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
 } from './lectures';
 export type {
   Lecture,
   LectureTaxonomyRef,
+  LectureHookSummaryQueueStatus,
   LecturesBulkUploadResult,
   UploadMissingLectureThumbnailsResult,
   YoutubeLectureMetadata,
