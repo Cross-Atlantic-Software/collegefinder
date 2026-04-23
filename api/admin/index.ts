@@ -102,8 +102,10 @@ export {
   updateTopic,
   deleteTopic,
   uploadTopicThumbnail,
+  downloadTopicsBulkTemplate,
+  bulkUploadTopics,
 } from './topics';
-export type { Topic } from './topics';
+export type { Topic, TopicsBulkUploadResult } from './topics';
 
 // Export subtopics taxonomy management APIs
 export {
@@ -113,8 +115,10 @@ export {
   createSubtopic,
   updateSubtopic,
   deleteSubtopic,
+  downloadSubtopicsBulkTemplate,
+  bulkUploadSubtopics,
 } from './subtopics';
-export type { Subtopic } from './subtopics';
+export type { Subtopic, SubtopicsBulkUploadResult } from './subtopics';
 
 // Export lectures taxonomy management APIs
 export {
@@ -131,7 +135,7 @@ export {
   downloadLecturesAllExcel,
   bulkUploadLectures,
   getLectureHookSummaryQueueStatus,
-  requeuePendingLectureHookSummaries,
+  enqueuePendingLectureHookSummaries,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
 } from './lectures';

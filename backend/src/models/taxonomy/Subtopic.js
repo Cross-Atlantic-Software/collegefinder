@@ -60,6 +60,15 @@ class Subtopic {
     return result.rows[0] || null;
   }
 
+  /** All subtopics whose trimmed name matches case-insensitively (global uniqueness / bulk checks). */
+  static async findAllByTrimmedNameInsensitive(name) {
+    const result = await db.query(
+      `SELECT * FROM subtopics WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC`,
+      [name]
+    );
+    return result.rows;
+  }
+
   /**
    * Create a new subtopic
    */

@@ -4,16 +4,25 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, Topic } from '@/api';
+import {
+  getAllTopics,
+  createTopic,
+  updateTopic,
+  deleteTopic,
+  downloadTopicsBulkTemplate,
+  bulkUploadTopics,
+  Topic,
+} from '@/api';
 import { getAllSubjectsPublic } from '@/api';
-import { getAllExamsAdmin } from '@/api/admin/exams';
-import { FiPlus, FiSearch, FiX, FiImage } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
+import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function TopicsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const { canEdit } = useAdminPermissions();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,20 +30,22 @@ export default function TopicsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ 
-    sub_id: '', 
-    name: '', 
-    home_display: false, 
-    status: true,
-    description: '',
-    sort_order: 0,
-    exam_ids: [] as number[],
+  const [formData, setFormData] = useState({
+    sub_id: '',
+    name: '',
   });
   const [availableSubjects, setAvailableSubjects] = useState<SelectOption[]>([]);
-  const [availableExams, setAvailableExams] = useState<SelectOption[]>([]);
-  const MAX_EXAMS = 10;
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    created: number;
+    createdItems: { id: number; name: string }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  } | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,20 +63,8 @@ export default function TopicsPage() {
 
     fetchTopics();
     fetchSubjects();
-    fetchExams();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const fetchExams = async () => {
-    try {
-      const res = await getAllExamsAdmin();
-      if (res.success && res.data?.exams) {
-        setAvailableExams(res.data.exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` })));
-      }
-    } catch (err) {
-      console.error('Error fetching exams:', err);
-    }
-  };
 
   const fetchSubjects = async () => {
     try {
@@ -125,28 +124,27 @@ export default function TopicsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!formData.sub_id || !formData.name.trim()) {
+      setError('Subject and name are required');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('sub_id', formData.sub_id);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('home_display', String(formData.home_display));
-      formDataToSend.append('status', String(formData.status));
-      formDataToSend.append('description', formData.description || '');
-      formDataToSend.append('sort_order', String(formData.sort_order));
-      const examIds = (formData.exam_ids || []).slice(0, MAX_EXAMS);
-      formDataToSend.append('exam_ids', JSON.stringify(examIds));
-
-      if (thumbnailFile) {
-        formDataToSend.append('thumbnail', thumbnailFile);
-      }
-
       let response;
       if (editingTopic) {
-        response = await updateTopic(editingTopic.id, formDataToSend);
+        response = await updateTopic(editingTopic.id, {
+          sub_id: parseInt(formData.sub_id, 10),
+          name: formData.name.trim(),
+        });
       } else {
-        response = await createTopic(formDataToSend);
+        response = await createTopic({
+          sub_id: parseInt(formData.sub_id, 10),
+          name: formData.name.trim(),
+          home_display: false,
+          status: true,
+          sort_order: 0,
+        });
       }
 
       if (response.success) {
@@ -157,8 +155,8 @@ export default function TopicsPage() {
         setError(response.message || 'Failed to save topic');
         showError(response.message || 'Failed to save topic');
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'An error occurred while saving topic';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while saving topic';
       setError(errorMessage);
       showError(errorMessage);
     } finally {
@@ -172,28 +170,13 @@ export default function TopicsPage() {
     setShowModal(true);
   };
 
-  const handleEdit = async (topic: Topic) => {
+  const handleEdit = (topic: Topic) => {
     setEditingTopic(topic);
     setFormData({
       sub_id: String(topic.sub_id),
       name: topic.name,
-      home_display: topic.home_display,
-      status: topic.status,
-      description: topic.description || '',
-      sort_order: topic.sort_order,
-      exam_ids: topic.exam_ids ?? [],
     });
-    setThumbnailPreview(topic.thumbnail);
-    setThumbnailFile(null);
     setShowModal(true);
-    if (!topic.exam_ids && topic.id) {
-      try {
-        const res = await getTopicById(topic.id);
-        if (res.success && res.data?.topic?.exam_ids) {
-          setFormData((prev) => ({ ...prev, exam_ids: res.data!.topic.exam_ids ?? [] }));
-        }
-      } catch (_) {}
-    }
   };
 
   const handleView = (topic: Topic) => {
@@ -227,31 +210,58 @@ export default function TopicsPage() {
     }
   };
 
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setThumbnailFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const resetForm = () => {
+    setFormData({
+      sub_id: '',
+      name: '',
+    });
+    setError(null);
+  };
+
+  const handleDownloadTopicsTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadTopicsBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({ 
-      sub_id: '', 
-      name: '', 
-      home_display: false, 
-      status: true,
-      description: '',
-      sort_order: 0,
-      exam_ids: [],
-    });
-    setThumbnailFile(null);
-    setThumbnailPreview(null);
-    setError(null);
+  const handleBulkUploadTopics = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadTopics(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult({
+          created: response.data.created,
+          createdItems: response.data.createdItems || [],
+          errors: response.data.errors || 0,
+          errorDetails: response.data.errorDetails || [],
+        });
+        showSuccess(response.message || `Created ${response.data.created} topic(s)`);
+        fetchTopics();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
   };
 
   const handleModalClose = () => {
@@ -307,13 +317,41 @@ export default function TopicsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Topic
-            </button>
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTopicsTemplate}
+                    disabled={downloadingTemplate}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    {downloadingTemplate ? 'Downloading…' : 'Template'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBulkModal(true);
+                      setBulkResult(null);
+                      setBulkError(null);
+                      setBulkExcelFile(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
+                  >
+                    <FiUpload className="h-4 w-4" />
+                    Upload Excel
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Topic
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -332,7 +370,6 @@ export default function TopicsPage() {
                 <table className="w-full">
                   <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">THUMBNAIL</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBJECT</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">HOME DISPLAY</th>
@@ -344,7 +381,7 @@ export default function TopicsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {topics.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {topics.length < allTopics.length ? 'No topics found matching your search' : 'No topics found'}
                         </td>
                       </tr>
@@ -353,19 +390,6 @@ export default function TopicsPage() {
                         const subject = availableSubjects.find((s) => s.value === String(topic.sub_id));
                         return (
                           <tr key={topic.id} className="hover:bg-[#F6F8FA] transition-colors">
-                            <td className="px-4 py-2">
-                              {topic.thumbnail ? (
-                                <img
-                                  src={topic.thumbnail}
-                                  alt={topic.name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              ) : (
-                                <div className="w-12 h-12 bg-slate-100 rounded flex items-center justify-center">
-                                  <FiImage className="h-5 w-5 text-slate-400" />
-                                </div>
-                              )}
-                            </td>
                             <td className="px-4 py-2">
                               <span className="text-sm font-medium text-slate-900">{topic.name}</span>
                             </td>
@@ -468,87 +492,10 @@ export default function TopicsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Exams (optional, max {MAX_EXAMS})
-                  </label>
-                  <MultiSelect
-                    options={availableExams}
-                    value={(formData.exam_ids || []).slice(0, MAX_EXAMS).map(String)}
-                    onChange={(values) => setFormData({ ...formData, exam_ids: values.map(Number).slice(0, MAX_EXAMS) })}
-                    placeholder="Search and select exams..."
-                    isSearchable
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Thumbnail
-                  </label>
-                  {thumbnailPreview && (
-                    <div className="mb-2">
-                      <img
-                        src={thumbnailPreview}
-                        alt="Preview"
-                        className="w-32 h-32 object-cover rounded border border-slate-300"
-                      />
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleThumbnailChange}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Optional description"
-                    rows={3}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Sort Order
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.sort_order}
-                    onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                    min="0"
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                  />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.home_display}
-                      onChange={(e) => setFormData({ ...formData, home_display: e.target.checked })}
-                      className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
-                    />
-                    <span className="text-xs font-medium text-slate-700">Home Display</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
-                      className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
-                    />
-                    <span className="text-xs font-medium text-slate-700">Active</span>
-                  </label>
-                </div>
+                <p className="text-xs text-slate-500">
+                  Topic names must be unique in the whole system. Excel columns: <span className="font-mono">topic_name</span>,{' '}
+                  <span className="font-mono">subject_names</span> (one subject per row; name must match Subjects).
+                </p>
               </div>
 
               {/* Footer */}
@@ -612,12 +559,8 @@ export default function TopicsPage() {
                 )}
                 {(viewingTopic.exam_ids?.length ?? 0) > 0 && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Exams</label>
-                    <p className="text-sm text-slate-900">
-                      {viewingTopic.exam_ids!
-                        .map((id) => availableExams.find((e) => e.value === String(id))?.label ?? `Exam ${id}`)
-                        .join(', ')}
-                    </p>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Linked exam IDs (legacy)</label>
+                    <p className="text-sm text-slate-900">{viewingTopic.exam_ids!.join(', ')}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -641,6 +584,70 @@ export default function TopicsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bulk upload topics</h2>
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="text-slate-500 hover:text-slate-800"
+              >
+                <FiX className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto space-y-3 text-sm text-slate-700">
+              <p>
+                Use the template: columns <span className="font-mono">topic_name</span> and{' '}
+                <span className="font-mono">subject_names</span>. Each row is one topic; subject name must exist in the Subjects
+                table. Only one subject per row.
+              </p>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs"
+              />
+              {bulkError && <div className="text-red-600 text-xs">{bulkError}</div>}
+              {bulkResult && (
+                <div className="text-xs space-y-1 border border-slate-200 rounded p-2 bg-slate-50">
+                  <div>
+                    Created: <strong>{bulkResult.created}</strong>, errors: <strong>{bulkResult.errors}</strong>
+                  </div>
+                  {bulkResult.errorDetails.length > 0 && (
+                    <ul className="list-disc pl-4 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.slice(0, 30).map((e, i) => (
+                        <li key={i}>
+                          Row {e.row}: {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkUploadTopics}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading…' : 'Upload'}
+              </button>
             </div>
           </div>
         </div>

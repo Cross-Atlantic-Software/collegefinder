@@ -22,7 +22,7 @@ import {
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
   getLectureHookSummaryQueueStatus,
-  requeuePendingLectureHookSummaries,
+  enqueuePendingLectureHookSummaries,
   type LectureHookSummaryQueueStatus,
   type Subject,
   type Exam,
@@ -101,7 +101,7 @@ export default function LecturesPage() {
 
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [hookSummaryProgress, setHookSummaryProgress] = useState<LectureHookSummaryQueueStatus | null>(null);
-  const [requeueingHookSummaries, setRequeueingHookSummaries] = useState(false);
+  const [generatingHookSummaries, setGeneratingHookSummaries] = useState(false);
 
   /** Avoid refetching YouTube metadata when opening edit with unchanged iframe */
   const lastFetchedIframeRef = useRef('');
@@ -380,21 +380,21 @@ export default function LecturesPage() {
     }
   };
 
-  const handleRequeuePendingHookSummaries = async () => {
+  const handleEnqueuePendingHookSummaries = async () => {
     try {
-      setRequeueingHookSummaries(true);
-      const response = await requeuePendingLectureHookSummaries();
+      setGeneratingHookSummaries(true);
+      const response = await enqueuePendingLectureHookSummaries();
       if (response.success) {
-        showSuccess(response.message || 'Pending hook summary jobs requeued');
+        showSuccess(response.message || 'Hook summary jobs queued');
         await fetchHookSummaryProgress();
       } else {
-        showError(response.message || 'Failed to requeue pending hook summaries');
+        showError(response.message || 'Failed to queue hook summary jobs');
       }
     } catch (err) {
-      console.error('Error requeueing pending hook summaries:', err);
-      showError('Failed to requeue pending hook summaries');
+      console.error('Error queueing hook summary jobs:', err);
+      showError('Failed to queue hook summary jobs');
     } finally {
-      setRequeueingHookSummaries(false);
+      setGeneratingHookSummaries(false);
     }
   };
 
@@ -843,11 +843,11 @@ export default function LecturesPage() {
               {hookSummaryProgress.pendingVideoHookSummaries > 0 && (
                 <button
                   type="button"
-                  onClick={handleRequeuePendingHookSummaries}
-                  disabled={requeueingHookSummaries}
+                  onClick={handleEnqueuePendingHookSummaries}
+                  disabled={generatingHookSummaries}
                   className="ml-auto inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  {requeueingHookSummaries ? 'Requeueing…' : 'Requeue pending'}
+                  {generatingHookSummaries ? 'Queueing…' : 'Generate summaries'}
                 </button>
               )}
             </div>

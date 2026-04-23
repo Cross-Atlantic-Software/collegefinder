@@ -201,12 +201,13 @@ export async function getLectureHookSummaryQueueStatus(): Promise<ApiResponse<Le
   });
 }
 
-export async function requeuePendingLectureHookSummaries(): Promise<ApiResponse<{
+export async function enqueuePendingLectureHookSummaries(): Promise<ApiResponse<{
   totalPending: number;
   queued: number;
+  skipped: number;
   failed: number;
 }>> {
-  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/requeue-pending`, {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/generate-pending`, {
     method: 'POST',
   });
 }

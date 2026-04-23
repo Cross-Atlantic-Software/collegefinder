@@ -17,12 +17,10 @@ const {
 } = require('../../utils/youtubeMetadata');
 const multer = require('multer');
 const db = require('../../config/database');
-const {
-  generateAndPersistLectureHookSummary,
-  scheduleLectureHookSummary,
-} = require('../../utils/lectureHookSummary');
+const { generateAndPersistLectureHookSummary } = require('../../utils/lectureHookSummary');
 const {
   enqueueLectureHookSummary,
+  enqueueLectureHookSummaryIfPending,
   getLectureHookSummaryQueue,
 } = require('../../jobs/queues/lectureHookSummaryQueue');
 
@@ -98,20 +96,6 @@ const upload = multer({
 });
 
 class LectureController {
-  static async withTimeout(promise, timeoutMs, timeoutMessage) {
-    let timeoutId;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-        }),
-      ]);
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-    }
-  }
-
   /**
    * Get all lectures
    * GET /api/admin/lectures
@@ -239,10 +223,10 @@ class LectureController {
   }
 
   /**
-   * Requeue all pending video lectures without hook_summary.
-   * POST /api/admin/lectures/hook-summary-queue/requeue-pending
+   * Enqueue hook summary generation for all pending video lectures (manual trigger).
+   * POST /api/admin/lectures/hook-summary-queue/generate-pending
    */
-  static async requeuePendingHookSummaries(req, res) {
+  static async enqueuePendingHookSummaries(req, res) {
     try {
       const pendingResult = await db.query(
         `SELECT id
@@ -253,31 +237,34 @@ class LectureController {
       const ids = pendingResult.rows.map((r) => parseInt(r.id, 10)).filter((n) => !Number.isNaN(n) && n > 0);
 
       let queued = 0;
+      let skipped = 0;
       let failed = 0;
       for (const lectureId of ids) {
         try {
-          await enqueueLectureHookSummary(lectureId, { force: true });
-          queued += 1;
+          const outcome = await enqueueLectureHookSummaryIfPending(lectureId);
+          if (outcome.kind === 'queued') queued += 1;
+          else skipped += 1;
         } catch (err) {
           failed += 1;
-          console.warn(`Failed to requeue hook summary for lecture ${lectureId}:`, err.message || err);
+          console.warn(`Failed to enqueue hook summary for lecture ${lectureId}:`, err.message || err);
         }
       }
 
       return res.json({
         success: true,
-        message: `Requeued ${queued} pending lecture hook summary job(s).`,
+        message: `Queued ${queued} lecture hook summary job(s)${skipped ? ` (${skipped} already in queue)` : ''}.`,
         data: {
           totalPending: ids.length,
           queued,
+          skipped,
           failed,
         },
       });
     } catch (error) {
-      console.error('Error requeueing pending lecture hook summaries:', error);
+      console.error('Error enqueueing pending lecture hook summaries:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to requeue pending lecture hook summaries',
+        message: 'Failed to enqueue pending lecture hook summaries',
       });
     }
   }
@@ -1169,23 +1156,11 @@ class LectureController {
           if (subjectIds.length) await Lecture.setSubjects(lecture.id, subjectIds);
           if (examIds.length) await Lecture.setExams(lecture.id, examIds);
 
-          let hookSummaryQueued = false;
-          try {
-            await enqueueLectureHookSummary(lecture.id);
-            hookSummaryQueued = true;
-          } catch (queueErr) {
-            console.warn(
-              `lectureHookSummary queue enqueue failed (bulk row ${rowNum}), using fallback scheduler:`,
-              queueErr.message || queueErr
-            );
-            scheduleLectureHookSummary(lecture.id);
-          }
-
           created.push({
             id: lecture.id,
             name: lecture.youtube_title || lecture.name || 'Untitled lecture',
             hook_summary: null,
-            hook_summary_status: hookSummaryQueued ? 'queued' : 'scheduled',
+            hook_summary_status: 'pending_manual',
           });
         } catch (createErr) {
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create row' });

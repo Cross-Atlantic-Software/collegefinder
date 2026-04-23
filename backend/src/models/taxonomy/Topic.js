@@ -44,6 +44,15 @@ class Topic {
     return result.rows[0] || null;
   }
 
+  /** All topics whose trimmed name matches case-insensitively (for global uniqueness / Excel linking). */
+  static async findAllByTrimmedNameInsensitive(name) {
+    const result = await db.query(
+      `SELECT * FROM topics WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC`,
+      [name]
+    );
+    return result.rows;
+  }
+
   /**
    * Create a new topic
    */

@@ -1,4 +1,4 @@
-import { apiRequest } from '../../client';
+import { apiRequest, getApiBaseUrl } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -54,9 +54,7 @@ export async function createSubtopic(data: {
   topic_id: number;
   name: string;
   status?: boolean;
-  description?: string;
   sort_order?: number;
-  exam_ids?: number[];
 }): Promise<ApiResponse<{
   subtopic: Subtopic;
 }>> {
@@ -75,9 +73,7 @@ export async function updateSubtopic(
     topic_id?: number;
     name?: string;
     status?: boolean;
-    description?: string;
     sort_order?: number;
-    exam_ids?: number[];
   }
 ): Promise<ApiResponse<{
   subtopic: Subtopic;
@@ -95,5 +91,48 @@ export async function deleteSubtopic(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.SUBTOPICS}/${id}`, {
     method: 'DELETE',
   });
+}
+
+export interface SubtopicsBulkUploadResult {
+  created: number;
+  createdItems: { id: number; name: string; topic_id: number }[];
+  errors: number;
+  errorDetails: { row: number; message: string }[];
+}
+
+export async function downloadSubtopicsBulkTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.SUBTOPICS}/bulk-upload-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'subtopics-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function bulkUploadSubtopics(file: File): Promise<ApiResponse<SubtopicsBulkUploadResult>> {
+  const formData = new FormData();
+  formData.append('excel', file);
+  const adminToken = localStorage.getItem('admin_token');
+  if (!adminToken) throw new Error('Admin token not found');
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.SUBTOPICS}/bulk-upload`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+    credentials: 'include',
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || `Failed to bulk upload (${response.status})`);
+  return data;
 }
 

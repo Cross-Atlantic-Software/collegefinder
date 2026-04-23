@@ -16,7 +16,7 @@ function startLectureHookSummaryWorker() {
 
   const worker = new Worker('lecture-hook-summary', processLectureHookSummary, {
     connection: getRedisConnection(),
-    concurrency: 2,
+    concurrency: 3,
     lockDuration: 180000,
     stalledInterval: 30000,
     maxStalledCount: 5,
