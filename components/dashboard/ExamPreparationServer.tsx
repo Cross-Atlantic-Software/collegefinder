@@ -144,6 +144,7 @@ export default function ExamPreparationServer({
         mode === "self" ? (
           <SelfStudyTab
             subjects={initialSubjects}
+            prepLectures={[]}
             query={query}
             onQueryChange={setQuery}
             sortBy="latest"
