@@ -1,6 +1,10 @@
 const db = require('../../config/database');
 
 class Lecture {
+  static displayNameExpr(alias = 'l') {
+    return `COALESCE(NULLIF(TRIM(${alias}.youtube_title), ''), 'Untitled lecture')`;
+  }
+
   static normalizeJsonAgg(arr) {
     if (!arr || !Array.isArray(arr) || arr.length === 0) return [];
     if (arr[0] != null && arr[0].id != null) return arr;
@@ -8,16 +12,12 @@ class Lecture {
   }
 
   /**
-   * Find all lectures (with purposes, streams, subjects, exams)
+   * Find all lectures (with streams, subjects, exams)
    */
   static async findAll() {
     const result = await db.query(
       `SELECT l.*,
-       COALESCE(
-         json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
-         FILTER (WHERE p.id IS NOT NULL),
-         '[]'
-       ) as purposes,
+       ${Lecture.displayNameExpr('l')} AS name,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
          FILTER (WHERE st.id IS NOT NULL),
@@ -34,8 +34,6 @@ class Lecture {
          '[]'
        ) as exams
        FROM lectures l
-       LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
-       LEFT JOIN purposes p ON lp.purpose_id = p.id
        LEFT JOIN lecture_streams ls ON l.id = ls.lecture_id
        LEFT JOIN streams st ON ls.stream_id = st.id
        LEFT JOIN lecture_subjects lsub ON l.id = lsub.lecture_id
@@ -43,11 +41,10 @@ class Lecture {
        LEFT JOIN lecture_exams le ON l.id = le.lecture_id
        LEFT JOIN exams_taxonomies ex ON le.exam_id = ex.id
        GROUP BY l.id
-       ORDER BY l.sort_order ASC, l.name ASC`
+       ORDER BY l.sort_order ASC, ${Lecture.displayNameExpr('l')} ASC`
     );
     return result.rows.map((row) => ({
       ...row,
-      purposes: Lecture.normalizeJsonAgg(row.purposes),
       streams: Lecture.normalizeJsonAgg(row.streams),
       subjects: Lecture.normalizeJsonAgg(row.subjects),
       exams: Lecture.normalizeJsonAgg(row.exams),
@@ -55,16 +52,12 @@ class Lecture {
   }
 
   /**
-   * Find lecture by ID (with purposes)
+   * Find lecture by ID (with streams, subjects, exams)
    */
   static async findById(id) {
     const result = await db.query(
       `SELECT l.*,
-       COALESCE(
-         json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
-         FILTER (WHERE p.id IS NOT NULL),
-         '[]'
-       ) as purposes,
+       ${Lecture.displayNameExpr('l')} AS name,
        COALESCE(
          json_agg(DISTINCT jsonb_build_object('id', st.id, 'name', st.name))
          FILTER (WHERE st.id IS NOT NULL),
@@ -81,8 +74,6 @@ class Lecture {
          '[]'
        ) as exams
        FROM lectures l
-       LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
-       LEFT JOIN purposes p ON lp.purpose_id = p.id
        LEFT JOIN lecture_streams ls ON l.id = ls.lecture_id
        LEFT JOIN streams st ON ls.stream_id = st.id
        LEFT JOIN lecture_subjects lsub ON l.id = lsub.lecture_id
@@ -97,7 +88,6 @@ class Lecture {
       const row = result.rows[0];
       return {
         ...row,
-        purposes: Lecture.normalizeJsonAgg(row.purposes),
         streams: Lecture.normalizeJsonAgg(row.streams),
         subjects: Lecture.normalizeJsonAgg(row.subjects),
         exams: Lecture.normalizeJsonAgg(row.exams),
@@ -111,36 +101,27 @@ class Lecture {
    */
   static async findBySubtopicId(subtopicId) {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE subtopic_id = $1 ORDER BY sort_order ASC, name ASC',
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE subtopic_id = $1
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`,
       [subtopicId]
     );
     return result.rows;
   }
 
   /**
-   * Find lectures by subtopic ID with purposes
+   * Active lectures for a subtopic (used by topic detail / self-study)
    */
   static async findBySubtopicIdWithPurposes(subtopicId) {
     const result = await db.query(
-      `SELECT l.*, 
-       COALESCE(
-         json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'status', p.status))
-         FILTER (WHERE p.id IS NOT NULL),
-         '[]'
-       ) as purposes
-       FROM lectures l
-       LEFT JOIN lecture_purposes lp ON l.id = lp.lecture_id
-       LEFT JOIN purposes p ON lp.purpose_id = p.id
-       WHERE l.subtopic_id = $1 AND l.status = true
-       GROUP BY l.id
-       ORDER BY l.sort_order ASC, l.name ASC`,
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE subtopic_id = $1 AND status = true
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`,
       [subtopicId]
     );
-    // Parse purposes JSON
-    return result.rows.map(row => ({
-      ...row,
-      purposes: row.purposes && row.purposes.length > 0 && row.purposes[0].id ? row.purposes : []
-    }));
+    return result.rows;
   }
 
   /**
@@ -148,18 +129,23 @@ class Lecture {
    */
   static async findActive() {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE status = TRUE ORDER BY sort_order ASC, name ASC'
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE status = TRUE
+       ORDER BY sort_order ASC, ${Lecture.displayNameExpr('lectures')} ASC`
     );
     return result.rows;
   }
 
   /**
-   * Find lecture by name and subtopic ID
+   * Find lecture by youtube title and subtopic ID
    */
-  static async findByNameAndSubtopicId(name, subtopicId) {
+  static async findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId) {
     const result = await db.query(
-      'SELECT * FROM lectures WHERE name = $1 AND subtopic_id = $2',
-      [name, subtopicId]
+      `SELECT *, ${Lecture.displayNameExpr('lectures')} AS name
+       FROM lectures
+       WHERE LOWER(TRIM(youtube_title)) = LOWER(TRIM($1)) AND subtopic_id = $2`,
+      [youtubeTitle, subtopicId]
     );
     return result.rows[0] || null;
   }
@@ -171,7 +157,6 @@ class Lecture {
     const {
       topic_id,
       subtopic_id,
-      name,
       content_type = 'VIDEO',
       video_file,
       iframe_code,
@@ -180,17 +165,23 @@ class Lecture {
       thumbnail_filename,
       status = true,
       description,
+      key_topics_to_be_covered,
+      youtube_title,
+      youtube_channel_name,
+      youtube_channel_id,
+      youtube_channel_url,
+      youtube_like_count,
+      youtube_subscriber_count,
       sort_order = 0
     } = data;
 
     const result = await db.query(
-      `INSERT INTO lectures (topic_id, subtopic_id, name, content_type, video_file, iframe_code, article_content, thumbnail, thumbnail_filename, status, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO lectures (topic_id, subtopic_id, content_type, video_file, iframe_code, article_content, thumbnail, thumbnail_filename, status, description, key_topics_to_be_covered, youtube_title, youtube_channel_name, youtube_channel_id, youtube_channel_url, youtube_like_count, youtube_subscriber_count, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING *`,
       [
         topic_id,
         subtopic_id,
-        name,
         content_type,
         content_type === 'VIDEO' ? (video_file || null) : null,
         content_type === 'VIDEO' ? (iframe_code || null) : null,
@@ -199,10 +190,22 @@ class Lecture {
         thumbnail_filename != null ? String(thumbnail_filename).trim() || null : null,
         status,
         description || null,
+        key_topics_to_be_covered != null && String(key_topics_to_be_covered).trim() !== ''
+          ? String(key_topics_to_be_covered).trim()
+          : null,
+        youtube_title || null,
+        youtube_channel_name || null,
+        youtube_channel_id || null,
+        youtube_channel_url || null,
+        youtube_like_count != null ? Number(youtube_like_count) : null,
+        youtube_subscriber_count != null ? Number(youtube_subscriber_count) : null,
         sort_order
       ]
     );
-    return result.rows[0];
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   /**
@@ -212,7 +215,6 @@ class Lecture {
     const {
       topic_id,
       subtopic_id,
-      name,
       content_type,
       video_file,
       iframe_code,
@@ -221,6 +223,14 @@ class Lecture {
       thumbnail_filename,
       status,
       description,
+      key_topics_to_be_covered,
+      youtube_title,
+      youtube_channel_name,
+      youtube_channel_id,
+      youtube_channel_url,
+      youtube_like_count,
+      youtube_subscriber_count,
+      hook_summary,
       sort_order
     } = data;
 
@@ -235,10 +245,6 @@ class Lecture {
     if (subtopic_id !== undefined) {
       updates.push(`subtopic_id = $${paramCount++}`);
       values.push(subtopic_id);
-    }
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(name);
     }
     if (content_type !== undefined) {
       updates.push(`content_type = $${paramCount++}`);
@@ -282,6 +288,44 @@ class Lecture {
       updates.push(`description = $${paramCount++}`);
       values.push(description);
     }
+    if (key_topics_to_be_covered !== undefined) {
+      updates.push(`key_topics_to_be_covered = $${paramCount++}`);
+      values.push(
+        key_topics_to_be_covered != null && String(key_topics_to_be_covered).trim() !== ''
+          ? String(key_topics_to_be_covered).trim()
+          : null
+      );
+    }
+    if (youtube_title !== undefined) {
+      updates.push(`youtube_title = $${paramCount++}`);
+      values.push(youtube_title);
+    }
+    if (youtube_channel_name !== undefined) {
+      updates.push(`youtube_channel_name = $${paramCount++}`);
+      values.push(youtube_channel_name);
+    }
+    if (youtube_channel_id !== undefined) {
+      updates.push(`youtube_channel_id = $${paramCount++}`);
+      values.push(youtube_channel_id);
+    }
+    if (youtube_channel_url !== undefined) {
+      updates.push(`youtube_channel_url = $${paramCount++}`);
+      values.push(youtube_channel_url);
+    }
+    if (youtube_like_count !== undefined) {
+      updates.push(`youtube_like_count = $${paramCount++}`);
+      values.push(youtube_like_count);
+    }
+    if (youtube_subscriber_count !== undefined) {
+      updates.push(`youtube_subscriber_count = $${paramCount++}`);
+      values.push(youtube_subscriber_count);
+    }
+    if (hook_summary !== undefined) {
+      updates.push(`hook_summary = $${paramCount++}`);
+      values.push(
+        hook_summary != null && String(hook_summary).trim() !== '' ? String(hook_summary).trim() : null
+      );
+    }
     if (sort_order !== undefined) {
       updates.push(`sort_order = $${paramCount++}`);
       values.push(sort_order);
@@ -297,7 +341,11 @@ class Lecture {
        WHERE id = $${paramCount} RETURNING *`,
       values
     );
-    return result.rows[0] || null;
+    if (!result.rows[0]) return null;
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   /**
@@ -305,7 +353,11 @@ class Lecture {
    */
   static async delete(id) {
     const result = await db.query('DELETE FROM lectures WHERE id = $1 RETURNING *', [id]);
-    return result.rows[0] || null;
+    if (!result.rows[0]) return null;
+    return {
+      ...result.rows[0],
+      name: (result.rows[0]?.youtube_title || '').trim() || 'Untitled lecture',
+    };
   }
 
   static async setStreams(lectureId, streamIds) {
@@ -364,7 +416,10 @@ class Lecture {
        AND (thumbnail IS NULL OR thumbnail = '')`,
       [String(filename).trim()]
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      name: (row.youtube_title || '').trim() || 'Untitled lecture',
+    }));
   }
 }
 

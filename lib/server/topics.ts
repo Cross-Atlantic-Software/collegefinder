@@ -5,12 +5,6 @@
 import { cookies } from 'next/headers';
 import { serverApiRequest } from './api';
 
-type Purpose = {
-  id: number;
-  name: string;
-  status: boolean;
-};
-
 type Lecture = {
   id: number;
   name: string;
@@ -20,7 +14,6 @@ type Lecture = {
   article_content: string | null;
   thumbnail: string | null;
   description: string | null;
-  purposes: Purpose[];
   sort_order: number;
 };
 

@@ -163,6 +163,8 @@ const runMigrations = async () => {
     'add_branch_id_to_college_programs.sql',
     'add_institute_referral_contact_email.sql',
     'add_referral_uses_table.sql',
+    'add_referral_codes_table.sql',
+    'add_referral_codes_module.sql',
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',
@@ -174,7 +176,12 @@ const runMigrations = async () => {
     'add_college_institute_state_city.sql',
     'add_stream_id_to_career_goals_taxonomies.sql',
     'add_stream_interests_to_programs_branches.sql',
-    'add_password_reset_to_users.sql'
+    'add_password_reset_to_users.sql',
+    'add_referred_by_code_to_users.sql',
+    'add_youtube_meta_to_lectures.sql',
+    'add_key_topics_to_be_covered_to_lectures.sql',
+    'add_hook_summary_to_lectures.sql',
+    'remove_name_from_lectures_use_youtube_title.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

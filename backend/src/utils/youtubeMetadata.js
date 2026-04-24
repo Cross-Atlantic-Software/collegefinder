@@ -91,6 +91,79 @@ async function fetchYouTubeSnippet(videoId, apiKey) {
 }
 
 /**
+ * @param {string} channelId
+ * @param {string} apiKey
+ * @returns {Promise<{ subscriberCount: number|null }|null>}
+ */
+async function fetchYouTubeChannelStats(channelId, apiKey) {
+  if (!channelId || !apiKey) return null;
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(channelId)}&key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || `YouTube API HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  const stats = data.items?.[0]?.statistics;
+  if (!stats || typeof stats !== 'object') return { subscriberCount: null };
+  const rawSub = stats.subscriberCount;
+  return {
+    subscriberCount:
+      rawSub != null && rawSub !== '' && Number.isFinite(Number(rawSub))
+        ? Number(rawSub)
+        : null,
+  };
+}
+
+/**
+ * Get expanded lecture metadata from YouTube, including channel and stats.
+ * @param {string} videoId
+ * @param {string} apiKey
+ * @returns {Promise<{
+ *   title: string,
+ *   description: string,
+ *   thumbnails: object,
+ *   channelName: string|null,
+ *   channelId: string|null,
+ *   channelUrl: string|null,
+ *   likeCount: number|null,
+ *   subscriberCount: number|null
+ * }|null>}
+ */
+async function fetchYouTubeLectureMetadata(videoId, apiKey) {
+  if (!videoId || !apiKey) return null;
+  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || `YouTube API HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  const item = data.items?.[0];
+  const sn = item?.snippet;
+  const stats = item?.statistics;
+  if (!sn) return null;
+
+  const channelId = sn.channelId || null;
+  const channelStats = channelId ? await fetchYouTubeChannelStats(channelId, apiKey) : null;
+  const rawLike = stats?.likeCount;
+
+  return {
+    title: sn.title || '',
+    description: (sn.description || '').trim(),
+    thumbnails: sn.thumbnails && typeof sn.thumbnails === 'object' ? sn.thumbnails : {},
+    channelName: sn.channelTitle || null,
+    channelId,
+    channelUrl: channelId ? `https://www.youtube.com/channel/${channelId}` : null,
+    likeCount:
+      rawLike != null && rawLike !== '' && Number.isFinite(Number(rawLike))
+        ? Number(rawLike)
+        : null,
+    subscriberCount: channelStats?.subscriberCount ?? null,
+  };
+}
+
+/**
  * If existing thumbnail URL is non-empty, return it. Otherwise download YouTube default thumbnail and upload to S3.
  * @param {string|null|undefined} iframeCode
  * @param {string|null|undefined} existingThumbnail
@@ -176,6 +249,8 @@ async function enrichDescriptionFromYoutubeIframe(iframeCode, existingDescriptio
 module.exports = {
   extractYouTubeVideoId,
   fetchYouTubeSnippet,
+  fetchYouTubeLectureMetadata,
+  fetchYouTubeChannelStats,
   pickBestThumbnailUrl,
   enrichDescriptionFromYoutubeIframe,
   enrichThumbnailFromYoutubeIframe,

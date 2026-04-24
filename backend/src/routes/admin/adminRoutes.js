@@ -23,6 +23,7 @@ const InstitutesController = require('../../controllers/admin/institutesControll
 const ScholarshipsController = require('../../controllers/admin/scholarshipsController');
 const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
+const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
@@ -524,6 +525,30 @@ router.put('/mock-prompts/:examId', authenticateAdmin, MockPromptsController.upd
 router.get('/topics', authenticateAdmin, requireModuleAccess('topics'), TopicController.getAllTopics);
 
 /**
+ * @route   GET /api/admin/topics/bulk-upload-template
+ * @desc    Download Excel template (topic_name, subject_names)
+ */
+router.get(
+  '/topics/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('topics'),
+  TopicController.downloadBulkTemplate
+);
+
+/**
+ * @route   POST /api/admin/topics/bulk-upload
+ * @desc    Bulk create topics from Excel
+ */
+router.post(
+  '/topics/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('topics'),
+  requireCanEdit,
+  TopicController.uploadExcel.single('excel'),
+  TopicController.bulkUpload
+);
+
+/**
  * @route   GET /api/admin/topics/:id
  * @desc    Get topic by ID
  * @access  Private (Admin)
@@ -535,14 +560,14 @@ router.get('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), Topi
  * @desc    Create new topic
  * @access  Private (Admin)
  */
-router.post('/topics', authenticateAdmin, requireModuleAccess('topics'), TopicController.upload.single('thumbnail'), validateCreateTopic, TopicController.createTopic);
+router.post('/topics', authenticateAdmin, requireModuleAccess('topics'), validateCreateTopic, TopicController.createTopic);
 
 /**
  * @route   PUT /api/admin/topics/:id
  * @desc    Update topic
  * @access  Private (Admin)
  */
-router.put('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanEdit, TopicController.upload.single('thumbnail'), validateUpdateTopic, TopicController.updateTopic);
+router.put('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanEdit, validateUpdateTopic, TopicController.updateTopic);
 
 /**
  * @route   DELETE /api/admin/topics/:id
@@ -568,6 +593,30 @@ router.post('/topics/upload-thumbnail', authenticateAdmin, requireModuleAccess('
  * @access  Private (Admin)
  */
 router.get('/subtopics', authenticateAdmin, requireModuleAccess('subtopics'), SubtopicController.getAllSubtopics);
+
+/**
+ * @route   GET /api/admin/subtopics/bulk-upload-template
+ * @desc    Download Excel template (subtopic_name, topic_name)
+ */
+router.get(
+  '/subtopics/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('subtopics'),
+  SubtopicController.downloadBulkTemplate
+);
+
+/**
+ * @route   POST /api/admin/subtopics/bulk-upload
+ * @desc    Bulk create subtopics from Excel
+ */
+router.post(
+  '/subtopics/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('subtopics'),
+  requireCanEdit,
+  SubtopicController.uploadExcel.single('excel'),
+  SubtopicController.bulkUpload
+);
 
 /**
  * @route   GET /api/admin/subtopics/topic/:topicId
@@ -669,6 +718,27 @@ router.post(
   requireModuleAccess('lectures'),
   LectureController.getYoutubeMetadata
 );
+router.get(
+  '/lectures/hook-summary-queue-status',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  LectureController.getHookSummaryQueueStatus
+);
+router.post(
+  '/lectures/hook-summary-queue/generate-pending',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanEdit,
+  LectureController.enqueuePendingHookSummaries
+);
+// Back-compat alias (older admin builds / scripts)
+router.post(
+  '/lectures/hook-summary-queue/requeue-pending',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  requireCanEdit,
+  LectureController.enqueuePendingHookSummaries
+);
 
 /**
  * @route   GET /api/admin/lectures/:id
@@ -755,6 +825,30 @@ router.put('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), 
  * @access  Private (Admin)
  */
 router.delete('/purposes/:id', authenticateAdmin, requireModuleAccess('purposes'), requireCanDelete, PurposeController.deletePurpose);
+
+/**
+ * Active Referral Codes (admin)
+ */
+router.get(
+  '/referral-codes',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  ReferralCodesController.getAll
+);
+router.patch(
+  '/referral-codes/:id/deactivate',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  requireCanEdit,
+  ReferralCodesController.deactivate
+);
+router.delete(
+  '/referral-codes/:id',
+  authenticateAdmin,
+  requireModuleAccess('referral_codes'),
+  requireCanDelete,
+  ReferralCodesController.delete
+);
 
 /**
  * @route   GET /api/admin/levels

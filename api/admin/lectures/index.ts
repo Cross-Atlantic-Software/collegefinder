@@ -1,4 +1,4 @@
-import { apiRequest, getApiBaseUrl } from '../../client';
+import { apiRequest, getApiBaseUrl, getBrowserAdminToken } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -18,12 +18,21 @@ export interface Lecture {
   iframe_code: string | null;
   article_content: string | null;
   thumbnail: string | null;
+  youtube_title?: string | null;
+  youtube_channel_name?: string | null;
+  youtube_channel_id?: string | null;
+  youtube_channel_url?: string | null;
+  youtube_like_count?: number | null;
+  youtube_subscriber_count?: number | null;
   /** Filename for Excel/ZIP bulk thumbnail matching (optional). */
   thumbnail_filename?: string | null;
   description: string | null;
+  /** Optional outline from bulk Excel or admin form. */
+  key_topics_to_be_covered?: string | null;
+  /** Gemini-generated 2-line student hook (saved after create/update/bulk). */
+  hook_summary?: string | null;
   status: boolean;
   sort_order: number;
-  purposes?: Array<{ id: number; name: string; status: boolean }>;
   streams?: LectureTaxonomyRef[];
   subjects?: LectureTaxonomyRef[];
   exams?: Array<LectureTaxonomyRef & { code?: string }>;
@@ -114,6 +123,11 @@ export interface YoutubeLectureMetadata {
   description: string;
   /** YouTube CDN URL for preview; saved lecture thumbnail is uploaded to S3 on create/update. */
   thumbnailUrl: string | null;
+  channelName: string | null;
+  channelId: string | null;
+  channelUrl: string | null;
+  likeCount: number | null;
+  subscriberCount: number | null;
 }
 
 /**
@@ -162,18 +176,53 @@ export async function uploadLectureThumbnail(file: File): Promise<ApiResponse<{
 
 export interface LecturesBulkUploadResult {
   created: number;
-  createdItems: { id: number; name: string }[];
+  createdItems: { id: number; name: string; hook_summary?: string | null }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
 }
 
+export interface LectureHookSummaryQueueStatus {
+  queueAvailable: boolean;
+  queueCounts: {
+    waiting?: number;
+    active?: number;
+    completed?: number;
+    failed?: number;
+    delayed?: number;
+  } | null;
+  totalVideoLectures: number;
+  completedVideoHookSummaries: number;
+  pendingVideoHookSummaries: number;
+}
+
+export async function getLectureHookSummaryQueueStatus(): Promise<ApiResponse<LectureHookSummaryQueueStatus>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue-status`, {
+    method: 'GET',
+  });
+}
+
+export async function enqueuePendingLectureHookSummaries(): Promise<ApiResponse<{
+  totalPending: number;
+  queued: number;
+  skipped: number;
+  failed: number;
+}>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/generate-pending`, {
+    method: 'POST',
+  });
+}
+
 export async function downloadLecturesBulkTemplate(): Promise<void> {
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) {
+    throw new Error('Admin session missing. Please log in again at /admin/login.');
+  }
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/bulk-upload-template`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to download template');
   const blob = await res.blob();
@@ -185,12 +234,16 @@ export async function downloadLecturesBulkTemplate(): Promise<void> {
 }
 
 export async function downloadLecturesAllExcel(): Promise<void> {
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) {
+    throw new Error('Admin session missing. Please log in again at /admin/login.');
+  }
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/download-excel`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to download Excel');
   const blob = await res.blob();
@@ -213,12 +266,16 @@ export async function bulkUploadLectures(
   } else {
     thumbnailFiles.forEach((file) => formData.append('thumbnails', file));
   }
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) {
+    throw new Error('Admin session missing. Please log in again at /admin/login.');
+  }
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/bulk-upload`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
     body: formData,
   });
   const data = await res.json();
@@ -238,12 +295,16 @@ export async function uploadMissingLectureThumbnails(
 ): Promise<ApiResponse<UploadMissingLectureThumbnailsResult>> {
   const formData = new FormData();
   formData.append('thumbnails_zip', zipFile);
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) {
+    throw new Error('Admin session missing. Please log in again at /admin/login.');
+  }
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/upload-missing-thumbnails`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
     body: formData,
   });
   const data = await res.json();

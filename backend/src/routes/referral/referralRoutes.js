@@ -11,6 +11,13 @@ const ReferralController = require('../../controllers/referral/referralControlle
 router.get('/my-code', authenticate, ReferralController.getMyCode);
 
 /**
+ * @route   POST /api/referral/generate-my-code
+ * @desc    Explicitly generate/save authenticated user's referral code
+ * @access  Private (User)
+ */
+router.post('/generate-my-code', authenticate, ReferralController.generateMyCode);
+
+/**
  * @route   POST /api/referral/send-invite
  * @desc    Send referral invite email(s) via nodemailer to given recipient(s)
  * @body    { recipients: string[] }

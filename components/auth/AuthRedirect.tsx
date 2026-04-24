@@ -24,20 +24,20 @@ export function AuthRedirect({
   const pathname = usePathname();
 
   // Check if current route is an onboarding step
-  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-2a|step-2b|step-2c|step-3)/.test(pathname || '');
+  const isOnboardingRoute = /\/(step-[1-3]|step-1|step-2|step-2a|step-2b|step-2c|step-3|step-referral)/.test(pathname || '');
   
   // Check if user has completed onboarding
   const hasCompletedOnboarding = user?.onboarding_completed;
 
   useEffect(() => {
     if (!isLoading) {
-      // Allow step-3, step-2a, step-2b, and step-2c to show even if user has completed onboarding
-      // (they may need to complete these steps even after name is saved)
+      // Allow certain steps even if onboarding is already marked complete (multi-step flow)
       const isStep3 = pathname?.includes('/step-3');
       const isStep2A = pathname?.includes('/step-2a');
       const isStep2B = pathname?.includes('/step-2b');
       const isStep2C = pathname?.includes('/step-2c');
-      const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
+      const isStepReferral = pathname?.includes('/step-referral');
+      const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C || isStepReferral;
       
       // If authenticated and on onboarding route (but not allowed steps) and has completed onboarding, redirect to home
       if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
@@ -62,7 +62,8 @@ export function AuthRedirect({
   const isStep2A = pathname?.includes('/step-2a');
   const isStep2B = pathname?.includes('/step-2b');
   const isStep2C = pathname?.includes('/step-2c');
-  const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C;
+  const isStepReferral = pathname?.includes('/step-referral');
+  const isAllowedStep = isStep3 || isStep2A || isStep2B || isStep2C || isStepReferral;
   if (isAuthenticated && isOnboardingRoute && hasCompletedOnboarding && !isAllowedStep) {
     return <OnboardingLoader message="Taking you home..." />;
   }

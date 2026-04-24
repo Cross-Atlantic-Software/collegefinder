@@ -144,13 +144,14 @@ export interface GetAllEmailTemplatesResponse {
  * Referral Code types
  */
 export interface ReferralCodeResponse {
-  referralCode: string;
-  qrCodeDataUrl: string;
-  shareUrl: string;
+  hasCode: boolean;
+  referralCode: string | null;
+  qrCodeDataUrl: string | null;
+  shareUrl: string | null;
   /** Resolved from REFERRAL_INVITE row (Admin → Email Templates). */
-  emailSubject: string;
+  emailSubject: string | null;
   /** Resolved from REFERRAL_WHATSAPP row (plain text in CMS). */
-  whatsappShareText: string;
+  whatsappShareText: string | null;
 }
 
 export interface ReferralUse {

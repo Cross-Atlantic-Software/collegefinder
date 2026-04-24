@@ -6,7 +6,9 @@
 async function initJobs() {
   try {
     const { startMockGenerationWorker } = require('./workers/mockGenerationWorker');
+    const { startLectureHookSummaryWorker } = require('./workers/lectureHookSummaryWorker');
     startMockGenerationWorker();
+    startLectureHookSummaryWorker();
     console.log('✅ Background job workers started');
 
     // Recover any stuck/lost mock generation (e.g. after backend restart)

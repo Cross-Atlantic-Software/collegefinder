@@ -277,7 +277,17 @@ const validateUpdateBasicInfo = [
     .optional()
     .trim()
     .isLength({ max: 255 })
-    .withMessage('Guardian name must be less than 255 characters')
+    .withMessage('Guardian name must be less than 255 characters'),
+  body('referred_by_code')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === undefined) return true;
+      if (typeof value !== 'string') return false;
+      const t = value.trim();
+      if (t === '') return true;
+      return /^[A-Za-z0-9-]{1,32}$/.test(t);
+    })
+    .withMessage('Referral code must be 1–32 letters, numbers, or hyphens')
 ];
 
 /**
@@ -953,12 +963,6 @@ const validateCreateLecture = [
     .withMessage('Subtopic ID is required')
     .isInt({ min: 1 })
     .withMessage('Subtopic ID must be a positive integer'),
-  body('name')
-    .notEmpty()
-    .withMessage('Name is required')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
   body('content_type')
     .optional()
     .isIn(['VIDEO', 'ARTICLE'])
@@ -977,6 +981,11 @@ const validateCreateLecture = [
     .trim()
     .isLength({ max: 10000 })
     .withMessage('Description must be less than 10000 characters'),
+  body('key_topics_to_be_covered')
+    .optional()
+    .trim()
+    .isLength({ max: 50000 })
+    .withMessage('Key topics must be less than 50000 characters'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })
@@ -991,11 +1000,6 @@ const validateUpdateLecture = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('Subtopic ID must be a positive integer'),
-  body('name')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
   body('content_type')
     .optional()
     .isIn(['VIDEO', 'ARTICLE'])
@@ -1014,6 +1018,11 @@ const validateUpdateLecture = [
     .trim()
     .isLength({ max: 10000 })
     .withMessage('Description must be less than 10000 characters'),
+  body('key_topics_to_be_covered')
+    .optional()
+    .trim()
+    .isLength({ max: 50000 })
+    .withMessage('Key topics must be less than 50000 characters'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })

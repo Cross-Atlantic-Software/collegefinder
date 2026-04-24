@@ -1,25 +1,38 @@
 const XLSX = require('xlsx');
 const Lecture = require('../../models/taxonomy/Lecture');
-const Purpose = require('../../models/taxonomy/Purpose');
 const Topic = require('../../models/taxonomy/Topic');
 const Subtopic = require('../../models/taxonomy/Subtopic');
-const Stream = require('../../models/taxonomy/Stream');
 const Subject = require('../../models/taxonomy/Subject');
 const Exam = require('../../models/taxonomy/Exam');
 const { validationResult } = require('express-validator');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { buildLogoMapFromRequest, processMissingLogosFromZip, parseLogosFromZip } = require('../../utils/logoUploadUtils');
-const { splitList, parseBool, getCell } = require('../../utils/bulkUploadUtils');
+const { splitList, getCell } = require('../../utils/bulkUploadUtils');
 const {
   enrichDescriptionFromYoutubeIframe,
   enrichThumbnailFromYoutubeIframe,
   extractYouTubeVideoId,
-  fetchYouTubeSnippet,
+  fetchYouTubeLectureMetadata,
   pickBestThumbnailUrl,
-  MAX_LECTURE_DESCRIPTION_LENGTH,
 } = require('../../utils/youtubeMetadata');
 const multer = require('multer');
 const db = require('../../config/database');
+const { generateAndPersistLectureHookSummary } = require('../../utils/lectureHookSummary');
+const {
+  enqueueLectureHookSummary,
+  enqueueLectureHookSummaryIfPending,
+  getLectureHookSummaryQueue,
+} = require('../../jobs/queues/lectureHookSummaryQueue');
+
+/** Safe string for Excel cells (length cap; timestamps as ISO). */
+function excelCell(val, maxLen = 32000) {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+  if (val instanceof Date) return val.toISOString();
+  let s = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  if (s.length > maxLen) return `${s.slice(0, maxLen - 24)}…[truncated]`;
+  return s;
+}
 
 function parseIdArrayField(raw) {
   if (raw === undefined || raw === null || raw === '') return [];
@@ -29,6 +42,41 @@ function parseIdArrayField(raw) {
     return arr.map((x) => parseInt(x, 10)).filter((n) => !isNaN(n));
   } catch {
     return [];
+  }
+}
+
+function toStoredYoutubeIframe(rawValue) {
+  if (rawValue == null) return null;
+  const input = String(rawValue).trim();
+  if (!input) return null;
+
+  const videoId = extractYouTubeVideoId(input);
+  if (!videoId) return input;
+
+  return `<iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+}
+
+/** For Excel export: one column for the link admins paste in bulk upload. */
+function exportYoutubeOrVideoLink(lec) {
+  const id = extractYouTubeVideoId(String(lec.iframe_code || ''));
+  if (id) return `https://www.youtube.com/watch?v=${id}`;
+  return lec.video_file || '';
+}
+
+async function getLectureYoutubeMetaFromIframe(iframeCode) {
+  if (!iframeCode || !String(iframeCode).trim()) return null;
+  const apiKey =
+    process.env.YOUTUBE_API_KEY ||
+    process.env.GOOGLE_YOUTUBE_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+  if (!apiKey) return null;
+  const videoId = extractYouTubeVideoId(String(iframeCode));
+  if (!videoId) return null;
+  try {
+    return await fetchYouTubeLectureMetadata(videoId, apiKey);
+  } catch (e) {
+    console.error('getLectureYoutubeMetaFromIframe:', e.message || e);
+    return null;
   }
 }
 
@@ -119,6 +167,109 @@ class LectureController {
   }
 
   /**
+   * Queue health / progress for lecture hook summary jobs.
+   * GET /api/admin/lectures/hook-summary-queue-status
+   */
+  static async getHookSummaryQueueStatus(req, res) {
+    try {
+      let queueAvailable = true;
+      let counts = null;
+      try {
+        const queue = getLectureHookSummaryQueue();
+        counts = await queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed');
+      } catch (queueErr) {
+        queueAvailable = false;
+        counts = null;
+        console.warn('lecture hook summary queue status unavailable:', queueErr.message || queueErr);
+      }
+
+      const summaryResult = await db.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE content_type = 'VIDEO')::int AS total_video_lectures,
+           COUNT(*) FILTER (
+             WHERE content_type = 'VIDEO'
+               AND hook_summary IS NOT NULL
+               AND TRIM(hook_summary) <> ''
+           )::int AS completed_video_hook_summaries,
+           COUNT(*) FILTER (
+             WHERE content_type = 'VIDEO'
+               AND (hook_summary IS NULL OR TRIM(hook_summary) = '')
+           )::int AS pending_video_hook_summaries
+         FROM lectures`
+      );
+      const summary = summaryResult.rows[0] || {
+        total_video_lectures: 0,
+        completed_video_hook_summaries: 0,
+        pending_video_hook_summaries: 0,
+      };
+
+      res.json({
+        success: true,
+        data: {
+          queueAvailable,
+          queueCounts: counts,
+          totalVideoLectures: summary.total_video_lectures || 0,
+          completedVideoHookSummaries: summary.completed_video_hook_summaries || 0,
+          pendingVideoHookSummaries: summary.pending_video_hook_summaries || 0,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching lecture hook summary queue status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch lecture hook summary queue status',
+      });
+    }
+  }
+
+  /**
+   * Enqueue hook summary generation for all pending video lectures (manual trigger).
+   * POST /api/admin/lectures/hook-summary-queue/generate-pending
+   */
+  static async enqueuePendingHookSummaries(req, res) {
+    try {
+      const pendingResult = await db.query(
+        `SELECT id
+         FROM lectures
+         WHERE content_type = 'VIDEO'
+           AND (hook_summary IS NULL OR TRIM(hook_summary) = '')`
+      );
+      const ids = pendingResult.rows.map((r) => parseInt(r.id, 10)).filter((n) => !Number.isNaN(n) && n > 0);
+
+      let queued = 0;
+      let skipped = 0;
+      let failed = 0;
+      for (const lectureId of ids) {
+        try {
+          const outcome = await enqueueLectureHookSummaryIfPending(lectureId);
+          if (outcome.kind === 'queued') queued += 1;
+          else skipped += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`Failed to enqueue hook summary for lecture ${lectureId}:`, err.message || err);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `Queued ${queued} lecture hook summary job(s)${skipped ? ` (${skipped} already in queue)` : ''}.`,
+        data: {
+          totalPending: ids.length,
+          queued,
+          skipped,
+          failed,
+        },
+      });
+    } catch (error) {
+      console.error('Error enqueueing pending lecture hook summaries:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to enqueue pending lecture hook summaries',
+      });
+    }
+  }
+
+  /**
    * Preview YouTube title/description from iframe or URL (Data API v3).
    * POST /api/admin/lectures/youtube-metadata  JSON { iframe_code }
    */
@@ -149,7 +300,7 @@ class LectureController {
           message: 'Could not find a YouTube video id in iframe_code',
         });
       }
-      const meta = await fetchYouTubeSnippet(videoId, apiKey);
+      const meta = await fetchYouTubeLectureMetadata(videoId, apiKey);
       if (!meta) {
         return res.status(404).json({
           success: false,
@@ -164,6 +315,11 @@ class LectureController {
           title: meta.title,
           description: meta.description,
           thumbnailUrl: thumbnailUrl || null,
+          channelName: meta.channelName || null,
+          channelId: meta.channelId || null,
+          channelUrl: meta.channelUrl || null,
+          likeCount: meta.likeCount ?? null,
+          subscriberCount: meta.subscriberCount ?? null,
         },
       });
     } catch (error) {
@@ -193,24 +349,15 @@ class LectureController {
       const {
         topic_id,
         subtopic_id,
-        name,
         content_type = 'VIDEO',
         status,
         description,
+        key_topics_to_be_covered,
         sort_order,
         article_content,
         iframe_code,
         thumbnail_filename,
       } = req.body;
-
-      // Check if lecture with same name exists for this subtopic
-      const existing = await Lecture.findByNameAndSubtopicId(name, parseInt(subtopic_id));
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'Lecture with this name already exists for this subtopic'
-        });
-      }
 
       // Validate content_type specific fields
       if (content_type === 'ARTICLE') {
@@ -248,6 +395,17 @@ class LectureController {
         effectiveIframe,
         description
       );
+      const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
+      const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+      if (youtubeTitle) {
+        const existing = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, parseInt(subtopic_id, 10));
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: 'Lecture with this YouTube title already exists for this subtopic',
+          });
+        }
+      }
 
       let finalThumbnail = thumbnail;
       if (!finalThumbnail && effectiveIframe) {
@@ -257,7 +415,6 @@ class LectureController {
       const lecture = await Lecture.create({
         topic_id: parseInt(topic_id),
         subtopic_id: parseInt(subtopic_id),
-        name,
         content_type,
         video_file,
         iframe_code: content_type === 'VIDEO' ? iframeStored : null,
@@ -266,28 +423,18 @@ class LectureController {
         thumbnail_filename: thumbnail_filename != null ? String(thumbnail_filename).trim() || null : null,
         status: status !== undefined ? (status === 'true' || status === true) : true,
         description: finalDescription,
-        sort_order: sort_order ? parseInt(sort_order) : 0
+        key_topics_to_be_covered:
+          key_topics_to_be_covered != null && String(key_topics_to_be_covered).trim() !== ''
+            ? String(key_topics_to_be_covered).trim()
+            : null,
+        sort_order: sort_order ? parseInt(sort_order) : 0,
+        youtube_title: youtubeMeta?.title || null,
+        youtube_channel_name: youtubeMeta?.channelName || null,
+        youtube_channel_id: youtubeMeta?.channelId || null,
+        youtube_channel_url: youtubeMeta?.channelUrl || null,
+        youtube_like_count: youtubeMeta?.likeCount ?? null,
+        youtube_subscriber_count: youtubeMeta?.subscriberCount ?? null,
       });
-
-      // Handle purposes if provided
-      if (req.body.purposes) {
-        let purposeIds = [];
-        try {
-          // Parse purposes if it's a JSON string
-          if (typeof req.body.purposes === 'string') {
-            purposeIds = JSON.parse(req.body.purposes);
-          } else if (Array.isArray(req.body.purposes)) {
-            purposeIds = req.body.purposes;
-          }
-          // Ensure all are integers
-          purposeIds = purposeIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-        } catch (e) {
-          console.error('Error parsing purposes:', e);
-        }
-        if (purposeIds.length > 0) {
-          await Purpose.setLecturePurposes(lecture.id, purposeIds);
-        }
-      }
 
       if (req.body.stream_ids !== undefined) {
         await Lecture.setStreams(lecture.id, parseIdArrayField(req.body.stream_ids));
@@ -299,13 +446,18 @@ class LectureController {
         await Lecture.setExams(lecture.id, parseIdArrayField(req.body.exam_ids));
       }
 
-      // Fetch lecture with purposes
-      const lectureWithPurposes = await Lecture.findById(lecture.id);
+      try {
+        await generateAndPersistLectureHookSummary(lecture.id);
+      } catch (hookErr) {
+        console.error('lectureHookSummary (create):', hookErr.message || hookErr);
+      }
+
+      const lectureFull = await Lecture.findById(lecture.id);
 
       res.status(201).json({
         success: true,
         message: 'Lecture created successfully',
-        data: { lecture: lectureWithPurposes }
+        data: { lecture: lectureFull }
       });
     } catch (error) {
       console.error('Error creating lecture:', error);
@@ -344,27 +496,17 @@ class LectureController {
       const {
         topic_id,
         subtopic_id,
-        name,
         content_type,
         status,
         description,
+        key_topics_to_be_covered,
         sort_order,
         article_content,
         iframe_code,
         thumbnail_filename,
       } = req.body;
 
-      // Check if name is being changed and if it already exists for this subtopic
       const subtopicId = subtopic_id ? parseInt(subtopic_id) : existingLecture.subtopic_id;
-      if (name && name !== existingLecture.name) {
-        const nameExists = await Lecture.findByNameAndSubtopicId(name, subtopicId);
-        if (nameExists && nameExists.id !== parseInt(id)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Lecture with this name already exists for this subtopic'
-          });
-        }
-      }
 
       // Validate content_type specific fields
       const finalContentType = content_type || existingLecture.content_type || 'VIDEO';
@@ -405,7 +547,6 @@ class LectureController {
       const updateData = {};
       if (topic_id !== undefined) updateData.topic_id = parseInt(topic_id);
       if (subtopic_id !== undefined) updateData.subtopic_id = parseInt(subtopic_id);
-      if (name !== undefined) updateData.name = name;
       if (content_type !== undefined) updateData.content_type = content_type;
       if (video_file !== undefined) updateData.video_file = video_file;
       // Handle iframe_code - if empty string is sent, clear it (set to null)
@@ -419,6 +560,12 @@ class LectureController {
       if (article_content !== undefined) updateData.article_content = article_content;
       if (status !== undefined) updateData.status = status === 'true' || status === true;
       if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order);
+      if (key_topics_to_be_covered !== undefined) {
+        updateData.key_topics_to_be_covered =
+          key_topics_to_be_covered != null && String(key_topics_to_be_covered).trim() !== ''
+            ? String(key_topics_to_be_covered).trim()
+            : null;
+      }
 
       const mergedVideoFile =
         updateData.video_file !== undefined
@@ -441,6 +588,32 @@ class LectureController {
         effectiveIframe,
         baseDesc
       );
+      const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
+      const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+      if (finalContentType === 'VIDEO' && youtubeTitle) {
+        const titleExists = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId);
+        if (titleExists && titleExists.id !== parseInt(id, 10)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Lecture with this YouTube title already exists for this subtopic',
+          });
+        }
+      }
+      if (finalContentType === 'VIDEO' && effectiveIframe) {
+        updateData.youtube_title = youtubeMeta?.title || null;
+        updateData.youtube_channel_name = youtubeMeta?.channelName || null;
+        updateData.youtube_channel_id = youtubeMeta?.channelId || null;
+        updateData.youtube_channel_url = youtubeMeta?.channelUrl || null;
+        updateData.youtube_like_count = youtubeMeta?.likeCount ?? null;
+        updateData.youtube_subscriber_count = youtubeMeta?.subscriberCount ?? null;
+      } else if (finalContentType === 'ARTICLE') {
+        updateData.youtube_title = null;
+        updateData.youtube_channel_name = null;
+        updateData.youtube_channel_id = null;
+        updateData.youtube_channel_url = null;
+        updateData.youtube_like_count = null;
+        updateData.youtube_subscriber_count = null;
+      }
 
       const mergedThumbBefore =
         thumbnail !== undefined ? thumbnail : existingLecture.thumbnail;
@@ -456,24 +629,6 @@ class LectureController {
 
       const lecture = await Lecture.update(parseInt(id), updateData);
 
-      // Handle purposes if provided
-      if (req.body.purposes !== undefined) {
-        let purposeIds = [];
-        try {
-          // Parse purposes if it's a JSON string
-          if (typeof req.body.purposes === 'string') {
-            purposeIds = JSON.parse(req.body.purposes);
-          } else if (Array.isArray(req.body.purposes)) {
-            purposeIds = req.body.purposes;
-          }
-          // Ensure all are integers
-          purposeIds = purposeIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-        } catch (e) {
-          console.error('Error parsing purposes:', e);
-        }
-        await Purpose.setLecturePurposes(parseInt(id), purposeIds);
-      }
-
       if (req.body.stream_ids !== undefined) {
         await Lecture.setStreams(parseInt(id), parseIdArrayField(req.body.stream_ids));
       }
@@ -484,13 +639,18 @@ class LectureController {
         await Lecture.setExams(parseInt(id), parseIdArrayField(req.body.exam_ids));
       }
 
-      // Fetch lecture with purposes
-      const lectureWithPurposes = await Lecture.findById(parseInt(id));
+      try {
+        await generateAndPersistLectureHookSummary(parseInt(id, 10));
+      } catch (hookErr) {
+        console.error('lectureHookSummary (update):', hookErr.message || hookErr);
+      }
+
+      const lectureFull = await Lecture.findById(parseInt(id));
 
       res.json({
         success: true,
         message: 'Lecture updated successfully',
-        data: { lecture: lectureWithPurposes }
+        data: { lecture: lectureFull }
       });
     } catch (error) {
       console.error('Error updating lecture:', error);
@@ -676,19 +836,10 @@ class LectureController {
       const headers = [
         'topic_name',
         'subtopic_name',
-        'name',
-        'content_type',
-        'status',
-        'description',
-        'sort_order',
-        'thumbnail_filename',
-        'stream_names',
+        'key_topics_to_be_covered',
         'subject_names',
         'exam_names',
-        'purpose_names',
-        'video_file',
-        'iframe_code',
-        'article_content',
+        'youtube_video_link',
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
@@ -696,53 +847,18 @@ class LectureController {
         [
           'Algebra',
           'Linear Equation',
-          'Introduction video',
-          'VIDEO',
-          'TRUE',
-          '',
-          '0',
-          'intro-thumb.png',
-          'Science (PCM)',
+          'Variables, isolating x, checking solutions.',
           'Physics',
           'JEE Main',
-          'Revision',
-          '',
-          '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
-          '',
+          'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         ],
         [
           'Algebra',
           'Linear Equation',
-          'Hosted MP4 lecture',
-          'VIDEO',
-          'TRUE',
-          'Manual description when using video_file URL (not iframe).',
-          '0',
-          '',
-          'Science (PCM)',
-          '',
+          'Optional outline for non-YouTube URLs.',
           '',
           '',
           'https://example.com/lecture-video.mp4',
-          '',
-          '',
-        ],
-        [
-          'Algebra',
-          'Linear Equation',
-          'Notes article',
-          'ARTICLE',
-          'TRUE',
-          'Manual description for articles.',
-          '1',
-          '',
-          'Science (PCM)',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '<p>Article HTML here</p>',
         ],
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'SelfStudyMaterial');
@@ -759,47 +875,70 @@ class LectureController {
   static async downloadAllExcel(req, res) {
     try {
       const lectures = await Lecture.findAll();
+      const [topicsAll, subtopicsAll] = await Promise.all([Topic.findAll(), Subtopic.findAll()]);
+      const topicById = new Map(topicsAll.map((t) => [t.id, t]));
+      const subById = new Map(subtopicsAll.map((s) => [s.id, s]));
+
       const headers = [
         'topic_name',
         'subtopic_name',
-        'name',
         'content_type',
-        'status',
-        'description',
-        'sort_order',
+        'video_file',
+        'youtube_video_link',
+        'iframe_code',
+        'article_content',
+        'thumbnail',
         'thumbnail_filename',
+        'description',
+        'key_topics_to_be_covered',
+        'youtube_title',
+        'youtube_channel_name',
+        'youtube_channel_id',
+        'youtube_channel_url',
+        'youtube_like_count',
+        'youtube_subscriber_count',
+        'hook_summary',
+        'status',
+        'sort_order',
         'stream_names',
         'subject_names',
         'exam_names',
-        'purpose_names',
-        'video_file',
-        'iframe_code',
-        'article_content',
+        'created_at',
+        'updated_at',
       ];
       const rows = [headers];
       for (const lec of lectures) {
-        const topic = lec.topic_id ? await Topic.findById(lec.topic_id) : null;
-        const sub = lec.subtopic_id ? await Subtopic.findById(lec.subtopic_id) : null;
-        const streamsStr = (lec.streams || []).map((s) => s.name).join(', ');
-        const subjectsStr = (lec.subjects || []).map((s) => s.name).join(', ');
-        const examsStr = (lec.exams || []).map((e) => e.name).join(', ');
-        const purposesStr = (lec.purposes || []).map((p) => p.name).join(', ');
+        const topic = lec.topic_id ? topicById.get(lec.topic_id) : null;
+        const sub = lec.subtopic_id ? subById.get(lec.subtopic_id) : null;
+        const streams = lec.streams || [];
+        const subjects = lec.subjects || [];
+        const exams = lec.exams || [];
         rows.push([
-          topic?.name || '',
-          sub?.name || '',
-          lec.name || '',
-          lec.content_type || '',
-          lec.status ? 'TRUE' : 'FALSE',
-          lec.description || '',
-          lec.sort_order != null ? String(lec.sort_order) : '',
-          lec.thumbnail_filename || '',
-          streamsStr,
-          subjectsStr,
-          examsStr,
-          purposesStr,
-          lec.video_file || '',
-          lec.iframe_code || '',
-          lec.article_content || '',
+          excelCell(topic?.name),
+          excelCell(sub?.name),
+          excelCell(lec.content_type),
+          excelCell(lec.video_file),
+          excelCell(exportYoutubeOrVideoLink(lec)),
+          excelCell(lec.iframe_code),
+          excelCell(lec.article_content),
+          excelCell(lec.thumbnail),
+          excelCell(lec.thumbnail_filename),
+          excelCell(lec.description),
+          excelCell(lec.key_topics_to_be_covered),
+          excelCell(lec.youtube_title),
+          excelCell(lec.youtube_channel_name),
+          excelCell(lec.youtube_channel_id),
+          excelCell(lec.youtube_channel_url),
+          excelCell(lec.youtube_like_count),
+          excelCell(lec.youtube_subscriber_count),
+          excelCell(lec.hook_summary),
+          excelCell(lec.status),
+          excelCell(lec.sort_order),
+          excelCell(streams.map((s) => s.name).join(', ')),
+          excelCell(subjects.map((s) => s.name).join(', ')),
+          excelCell(exams.map((e) => e.name).join(', ')),
+          excelCell(lec.created_at),
+          excelCell(lec.updated_at),
         ]);
       }
       const wb = XLSX.utils.book_new();
@@ -850,7 +989,6 @@ class LectureController {
         const rowNum = i + 2;
         const topicName = getCell(row, 'topic_name', 'topic_Name');
         const subtopicName = getCell(row, 'subtopic_name', 'subtopic_Name');
-        const lecName = getCell(row, 'name');
         if (!topicName) {
           errors.push({ row: rowNum, message: 'topic_name is required' });
           continue;
@@ -859,11 +997,6 @@ class LectureController {
           errors.push({ row: rowNum, message: 'subtopic_name is required' });
           continue;
         }
-        if (!lecName) {
-          errors.push({ row: rowNum, message: 'name is required' });
-          continue;
-        }
-
         const topic = await Topic.findByName(topicName);
         if (!topic) {
           errors.push({ row: rowNum, message: `topic not found: "${topicName}"` });
@@ -875,49 +1008,57 @@ class LectureController {
           continue;
         }
 
-        const key = `${subtopic.id}:${lecName.toLowerCase()}`;
-        if (dupKey.has(key)) {
-          errors.push({ row: rowNum, message: `duplicate name "${lecName}" for this subtopic in file` });
-          continue;
-        }
-        const existing = await Lecture.findByNameAndSubtopicId(lecName, subtopic.id);
-        if (existing) {
-          errors.push({ row: rowNum, message: `lecture "${lecName}" already exists for this subtopic` });
-          continue;
-        }
-        dupKey.add(key);
+        const content_type = 'VIDEO';
+        const status = true;
+        const sort_order = 0;
 
-        const contentTypeRaw = (getCell(row, 'content_type', 'content_Type') || 'VIDEO').toUpperCase();
-        const content_type = contentTypeRaw === 'ARTICLE' ? 'ARTICLE' : 'VIDEO';
-        const status = parseBool(getCell(row, 'status'), true);
-        const descriptionRaw = getCell(row, 'description') || null;
-        const sortOrderRaw = getCell(row, 'sort_order', 'sort_Order');
-        const sort_order = sortOrderRaw !== '' ? parseInt(String(sortOrderRaw), 10) : 0;
-        const thumbFn = getCell(row, 'thumbnail_filename', 'thumbnail_Filename') || null;
-        const streamNames = getCell(row, 'stream_names', 'stream_Names');
+        const keyTopicsCell = getCell(
+          row,
+          'key_topics_to_be_covered',
+          'Key Topics To Be Covered',
+          'key_Topics_To_Be_Covered'
+        );
+        const key_topics_to_be_covered =
+          keyTopicsCell && String(keyTopicsCell).trim() ? String(keyTopicsCell).trim() : null;
+
         const subjectNames = getCell(row, 'subject_names', 'subject_Names');
         const examNames = getCell(row, 'exam_names', 'exam_Names');
-        const purposeNames = getCell(row, 'purpose_names', 'purpose_Names');
-        const video_file_raw = getCell(row, 'video_file', 'video_File');
-        const iframe_code = getCell(row, 'iframe_code', 'iframe_Code') || null;
-        const article_content = getCell(row, 'article_content', 'article_Content') || null;
 
-        let video_file = null;
-        if (content_type === 'VIDEO') {
-          const hasVideoUrl =
-            video_file_raw && /^https?:\/\//i.test(String(video_file_raw).trim());
-          const hasIframe = iframe_code && String(iframe_code).trim();
-          if (!hasVideoUrl && !hasIframe) {
-            errors.push({ row: rowNum, message: 'VIDEO row needs video_file (URL) or iframe_code' });
-            continue;
-          }
-          if (hasVideoUrl) {
-            video_file = String(video_file_raw).trim();
-          }
-        } else if (!article_content || !String(article_content).trim()) {
-          errors.push({ row: rowNum, message: 'ARTICLE row needs article_content' });
+        const linkRaw = getCell(
+          row,
+          'youtube_video_link',
+          'youtube_Video_Link',
+          'youtube_link',
+          'youtube_Link',
+          'youtube_url',
+          'youtube_Url',
+          'iframe_code',
+          'iframe_Code',
+          'video_file',
+          'video_File'
+        );
+
+        if (!linkRaw || !String(linkRaw).trim()) {
+          errors.push({
+            row: rowNum,
+            message:
+              'youtube_video_link is required (YouTube watch/embed URL or a direct https video URL)',
+          });
           continue;
         }
+        const linkTrimmed = String(linkRaw).trim();
+        let video_file = null;
+        let youtubeSource = null;
+        if (extractYouTubeVideoId(linkTrimmed)) {
+          youtubeSource = linkTrimmed;
+        } else if (/^https?:\/\//i.test(linkTrimmed)) {
+          video_file = linkTrimmed;
+        } else {
+          errors.push({ row: rowNum, message: 'youtube_video_link must be a valid http(s) URL' });
+          continue;
+        }
+
+        const thumbFn = getCell(row, 'thumbnail_filename', 'thumbnail_Filename') || null;
 
         let thumbnail = null;
         if (thumbFn && thumbnailMap.size > 0) {
@@ -932,26 +1073,33 @@ class LectureController {
           }
         }
 
+        const iframeInput = youtubeSource;
         const iframeNorm =
-          content_type === 'VIDEO' && iframe_code && String(iframe_code).trim()
-            ? String(iframe_code).trim()
+          iframeInput && String(iframeInput).trim()
+            ? toStoredYoutubeIframe(iframeInput)
             : null;
 
-        let description;
-        if (content_type === 'ARTICLE') {
-          const t =
-            descriptionRaw != null && String(descriptionRaw).trim() !== ''
-              ? String(descriptionRaw).trim()
-              : '';
-          description =
-            t.length > MAX_LECTURE_DESCRIPTION_LENGTH
-              ? t.slice(0, MAX_LECTURE_DESCRIPTION_LENGTH)
-              : t || null;
-        } else {
-          description = await enrichDescriptionFromYoutubeIframe(
-            iframeNorm,
-            descriptionRaw
-          );
+        const description = await enrichDescriptionFromYoutubeIframe(iframeNorm, null);
+        const youtubeMeta = await getLectureYoutubeMetaFromIframe(iframeNorm);
+        const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+        if (youtubeTitle) {
+          const key = `${subtopic.id}:${youtubeTitle.toLowerCase()}`;
+          if (dupKey.has(key)) {
+            errors.push({
+              row: rowNum,
+              message: `duplicate youtube title "${youtubeTitle}" for this subtopic in file`,
+            });
+            continue;
+          }
+          const existing = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopic.id);
+          if (existing) {
+            errors.push({
+              row: rowNum,
+              message: `lecture "${youtubeTitle}" already exists for this subtopic`,
+            });
+            continue;
+          }
+          dupKey.add(key);
         }
 
         let thumbnailFinal = thumbnail;
@@ -963,28 +1111,42 @@ class LectureController {
           const lecture = await Lecture.create({
             topic_id: topic.id,
             subtopic_id: subtopic.id,
-            name: lecName,
             content_type,
-            video_file: content_type === 'VIDEO' ? video_file : null,
-            iframe_code: content_type === 'VIDEO' ? iframe_code : null,
-            article_content: content_type === 'ARTICLE' ? article_content : null,
+            video_file,
+            iframe_code: iframeNorm,
+            article_content: null,
             thumbnail: thumbnailFinal,
             thumbnail_filename: thumbFn ? String(thumbFn).trim() : null,
             status,
             description,
+            key_topics_to_be_covered,
             sort_order: Number.isNaN(sort_order) ? 0 : sort_order,
+            youtube_title: youtubeMeta?.title || null,
+            youtube_channel_name: youtubeMeta?.channelName || null,
+            youtube_channel_id: youtubeMeta?.channelId || null,
+            youtube_channel_url: youtubeMeta?.channelUrl || null,
+            youtube_like_count: youtubeMeta?.likeCount ?? null,
+            youtube_subscriber_count: youtubeMeta?.subscriberCount ?? null,
           });
 
-          const streamIds = [];
-          for (const nm of splitList(streamNames)) {
-            const s = await Stream.findByName(nm);
-            if (s) streamIds.push(s.id);
-          }
           const subjectIds = [];
+          const subjectsResolved = [];
           for (const nm of splitList(subjectNames)) {
             const s = await Subject.findByName(nm);
-            if (s) subjectIds.push(s.id);
+            if (s) {
+              subjectIds.push(s.id);
+              subjectsResolved.push(s);
+            }
           }
+          const streamIdSet = new Set();
+          for (const s of subjectsResolved) {
+            const arr = Array.isArray(s.streams) ? s.streams : [];
+            for (const sid of arr) {
+              const n = typeof sid === 'number' ? sid : parseInt(String(sid), 10);
+              if (!Number.isNaN(n) && n > 0) streamIdSet.add(n);
+            }
+          }
+          const streamIds = [...streamIdSet];
           const examIds = [];
           for (const nm of splitList(examNames)) {
             const e = await Exam.findByName(nm);
@@ -994,14 +1156,12 @@ class LectureController {
           if (subjectIds.length) await Lecture.setSubjects(lecture.id, subjectIds);
           if (examIds.length) await Lecture.setExams(lecture.id, examIds);
 
-          const purposeIds = [];
-          for (const nm of splitList(purposeNames)) {
-            const p = await Purpose.findByNameInsensitive(nm);
-            if (p) purposeIds.push(p.id);
-          }
-          if (purposeIds.length) await Purpose.setLecturePurposes(lecture.id, purposeIds);
-
-          created.push({ id: lecture.id, name: lecture.name });
+          created.push({
+            id: lecture.id,
+            name: lecture.youtube_title || lecture.name || 'Untitled lecture',
+            hook_summary: null,
+            hook_summary_status: 'pending_manual',
+          });
         } catch (createErr) {
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create row' });
         }
@@ -1047,7 +1207,7 @@ class LectureController {
         updateRecord: (id, data) => Lecture.update(id, data),
         toResultItem: (r) => ({
           id: r.id,
-          name: r.name,
+          name: r.youtube_title || 'Untitled lecture',
           thumbnail_filename: r.thumbnail_filename,
         }),
       });

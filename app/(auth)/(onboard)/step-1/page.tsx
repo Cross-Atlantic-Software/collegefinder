@@ -11,13 +11,10 @@ export default function StepOne() {
   const { user, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect to home if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed) {
       queueMicrotask(() => setIsRedirecting(true));
-      // Prefetch home for faster loading
       router.prefetch('/');
-      // Small delay for smooth transition
       const timer = setTimeout(() => {
         router.replace('/');
       }, 100);
@@ -25,12 +22,10 @@ export default function StepOne() {
     }
   }, [user, isLoading, router]);
 
-  // Show smooth loader while checking auth or redirecting
   if (isLoading || isRedirecting) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
-  // Don't render if user has completed onboarding (will redirect)
   if (user?.onboarding_completed) {
     return <OnboardingLoader message="Taking you home..." />;
   }
@@ -39,10 +34,8 @@ export default function StepOne() {
     <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
       <WelcomeLayout progress={20}>
         <div className="flex items-center justify-center gap-20 w-full max-w-6xl">
-          {/* Robot */}
           <Robot variant="three" />
 
-          {/* Bubbles + Button */}
           <div className="flex flex-col gap-6 w-[500px]">
             <Bubble>
               Welcome!, I’m Support Agent

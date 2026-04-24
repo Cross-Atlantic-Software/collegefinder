@@ -102,8 +102,10 @@ export {
   updateTopic,
   deleteTopic,
   uploadTopicThumbnail,
+  downloadTopicsBulkTemplate,
+  bulkUploadTopics,
 } from './topics';
-export type { Topic } from './topics';
+export type { Topic, TopicsBulkUploadResult } from './topics';
 
 // Export subtopics taxonomy management APIs
 export {
@@ -113,8 +115,10 @@ export {
   createSubtopic,
   updateSubtopic,
   deleteSubtopic,
+  downloadSubtopicsBulkTemplate,
+  bulkUploadSubtopics,
 } from './subtopics';
-export type { Subtopic } from './subtopics';
+export type { Subtopic, SubtopicsBulkUploadResult } from './subtopics';
 
 // Export lectures taxonomy management APIs
 export {
@@ -130,12 +134,15 @@ export {
   downloadLecturesBulkTemplate,
   downloadLecturesAllExcel,
   bulkUploadLectures,
+  getLectureHookSummaryQueueStatus,
+  enqueuePendingLectureHookSummaries,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
 } from './lectures';
 export type {
   Lecture,
   LectureTaxonomyRef,
+  LectureHookSummaryQueueStatus,
   LecturesBulkUploadResult,
   UploadMissingLectureThumbnailsResult,
   YoutubeLectureMetadata,
@@ -228,3 +235,11 @@ export {
 
 // Landing page (home) CMS copy
 export { getAdminLandingPageContent, updateAdminLandingPageContent } from './landingPage';
+
+// Active referral codes (admin)
+export {
+  getAllActiveReferralCodes,
+  deactivateReferralCode,
+  deleteReferralCode,
+} from './referral-codes';
+export type { ActiveReferralCode } from './referral-codes';

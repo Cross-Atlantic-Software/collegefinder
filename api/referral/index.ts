@@ -11,6 +11,15 @@ export async function getMyReferralCode(): Promise<ApiResponse<ReferralCodeRespo
   );
 }
 
+/** Generate/save referral code on explicit user action. */
+export async function generateMyReferralCode(): Promise<ApiResponse<ReferralCodeResponse>> {
+  return apiRequest<ReferralCodeResponse>(
+    API_ENDPOINTS.REFERRAL.GENERATE_MY_CODE,
+    { method: 'POST' },
+    { timeout: 60000 }
+  );
+}
+
 /** Send referral invite email(s) via nodemailer. Max 10 recipients. */
 export async function sendReferralInvite(
   recipients: string[]

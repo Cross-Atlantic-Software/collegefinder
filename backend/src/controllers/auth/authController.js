@@ -502,30 +502,17 @@ class AuthController {
       console.log(`🔐 [OTP:verifyOTP] Marking email as verified for user ID: ${user.id}`);
       await User.markEmailAsVerified(user.id);
 
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          console.log(`🔐 [OTP:verifyOTP] Generating referral code for user ID: ${user.id}`);
-          await Referral.generateAndSaveUserCode(user.id);
-        } else {
-          console.log(`🔐 [OTP:verifyOTP] User already has referral code: ${user.referral_code}`);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
-      }
-
       // Update last login
       console.log(`🔐 [OTP:verifyOTP] Updating last login for user ID: ${user.id}`);
       await User.updateLastLogin(user.id);
 
-      // Record referral code use (non-blocking)
+      // Referral someone shared with this user (stores referred_by_code + referral_uses when valid)
       if (referralRef) {
         try {
-          console.log(`🔐 [OTP:verifyOTP] Recording referral code use: ${referralRef}`);
-          await Referral.recordUse(referralRef.trim().toUpperCase(), user.id, user.email);
-          console.log(`🔐 [OTP:verifyOTP] Referral recorded successfully`);
+          console.log(`🔐 [OTP:verifyOTP] Applying referral code: ${referralRef}`);
+          await Referral.updateReferredByCode(user.id, user.email, referralRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code', refErr);
         }
       } else {
         console.log(`🔐 [OTP:verifyOTP] No referral code provided`);
@@ -928,21 +915,11 @@ class AuthController {
         user = await User.findById(user.id);
       }
 
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          await Referral.generateAndSaveUserCode(user.id);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
-      }
-
-      // Record referral code use if one was passed via OAuth state (non-blocking)
       if (pendingRef) {
         try {
-          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+          await Referral.updateReferredByCode(user.id, user.email, pendingRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use (Google)', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code (Google)', refErr);
         }
       }
 
@@ -1148,21 +1125,11 @@ class AuthController {
         user = await User.findById(user.id);
       }
 
-      // Auto-generate referral code if the user doesn't have one yet
-      try {
-        if (!user.referral_code) {
-          await Referral.generateAndSaveUserCode(user.id);
-        }
-      } catch (refErr) {
-        console.error('⚠️ Non-blocking: failed to generate referral code', refErr);
-      }
-
-      // Record referral code use if one was passed via OAuth state (non-blocking)
       if (pendingRef && user.email) {
         try {
-          await Referral.recordUse(pendingRef.trim().toUpperCase(), user.id, user.email);
+          await Referral.updateReferredByCode(user.id, user.email, pendingRef, { silent: true });
         } catch (refErr) {
-          console.error('⚠️ Non-blocking: failed to record referral use (Facebook)', refErr);
+          console.error('⚠️ Non-blocking: failed to apply referred-by code (Facebook)', refErr);
         }
       }
 

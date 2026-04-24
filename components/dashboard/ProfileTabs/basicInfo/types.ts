@@ -14,6 +14,8 @@ export interface CoreIdentityFormData {
   mother_full_name: string;
   guardian_name: string;
   alternate_mobile_number: string;
+  /** Someone else's code you used (not your Refer & Earn code). */
+  referred_by_code: string;
 }
 
 export interface GovernmentIdentificationData {
