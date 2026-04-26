@@ -175,6 +175,7 @@ export {
   createProgram,
   updateProgram,
   deleteProgram,
+  deleteAllPrograms,
   downloadProgramsBulkTemplate,
   downloadAllProgramsExcel,
   bulkUploadPrograms,

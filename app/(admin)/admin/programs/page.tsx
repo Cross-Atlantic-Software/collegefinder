@@ -4,12 +4,20 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllPrograms, createProgram, updateProgram, deleteProgram, downloadProgramsBulkTemplate, downloadAllProgramsExcel, bulkUploadPrograms, Program } from '@/api/admin/programs';
-import { getAllStreams } from '@/api/admin/streams';
-import { getAllCareerGoals } from '@/api/admin/career-goals';
-import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
+import {
+  getAllPrograms,
+  createProgram,
+  updateProgram,
+  deleteProgram,
+  deleteAllPrograms,
+  downloadProgramsBulkTemplate,
+  downloadAllProgramsExcel,
+  bulkUploadPrograms,
+  Program,
+} from '@/api/admin/programs';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast, Dropdown, MultiSelect, type MultiSelectOption } from '@/components/shared';
+import { ConfirmationModal, useToast } from '@/components/shared';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function ProgramsPage() {
@@ -22,20 +30,25 @@ export default function ProgramsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true, streamId: '', interestIds: [] as string[] });
-  const [streams, setStreams] = useState<{ id: number; name: string; status?: boolean }[]>([]);
-  const [careerGoals, setCareerGoals] = useState<{ id: number; label: string; status?: boolean }[]>([]);
+  const [formData, setFormData] = useState({ name: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ created: number; createdPrograms: { id: number; name: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{
+    created: number;
+    createdPrograms: { id: number; name: string }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
-  const { canDownloadExcel } = useAdminPermissions();
+  const { canDownloadExcel, canDelete } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -46,39 +59,22 @@ export default function ProgramsPage() {
     }
 
     fetchPrograms();
-    (async () => {
-      try {
-        const [sr, cg] = await Promise.all([getAllStreams(), getAllCareerGoals()]);
-        if (sr.success && sr.data?.streams) setStreams(sr.data.streams.filter((s) => s.status !== false));
-        if (cg.success && cg.data?.careerGoals) setCareerGoals(cg.data.careerGoals.filter((g) => g.status !== false));
-      } catch {
-        /* taxonomy APIs may 403 if module disabled */
-      }
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const streamOptions = streams.map((s) => ({ value: String(s.id), label: s.name }));
-  const interestOptions: MultiSelectOption[] = careerGoals.map((g) => ({ value: String(g.id), label: g.label }));
 
   useEffect(() => {
     if (allPrograms.length === 0) {
       setPrograms([]);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       if (!searchQuery.trim()) {
         setPrograms(allPrograms);
         return;
       }
       const searchLower = searchQuery.toLowerCase();
-      const filtered = allPrograms.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          (p.stream_name && p.stream_name.toLowerCase().includes(searchLower)) ||
-          (p.interest_labels && p.interest_labels.toLowerCase().includes(searchLower))
-      );
+      const filtered = allPrograms.filter((p) => p.name.toLowerCase().includes(searchLower));
       setPrograms(filtered);
     }, 300);
 
@@ -112,13 +108,9 @@ export default function ProgramsPage() {
       return;
     }
 
+    const payload = { name: formData.name.trim() };
+
     try {
-      const payload = {
-        name: formData.name.trim(),
-        status: formData.status,
-        stream_id: formData.streamId ? parseInt(formData.streamId, 10) : null,
-        interest_ids: formData.interestIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n)),
-      };
       if (editingProgram) {
         const response = await updateProgram(editingProgram.id, payload);
         if (response.success) {
@@ -189,13 +181,7 @@ export default function ProgramsPage() {
 
   const handleEdit = (program: Program) => {
     setEditingProgram(program);
-    const iids = Array.isArray(program.interest_ids) ? program.interest_ids : [];
-    setFormData({
-      name: program.name,
-      status: program.status,
-      streamId: program.stream_id != null ? String(program.stream_id) : '',
-      interestIds: iids.map(String),
-    });
+    setFormData({ name: program.name });
     setShowModal(true);
   };
 
@@ -206,7 +192,7 @@ export default function ProgramsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true, streamId: '', interestIds: [] });
+    setFormData({ name: '' });
     setError(null);
   };
 
@@ -214,6 +200,26 @@ export default function ProgramsPage() {
     setShowModal(false);
     setEditingProgram(null);
     resetForm();
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllPrograms();
+      if (response.success) {
+        showSuccess(response.message || 'All programs deleted');
+        setShowDeleteAllConfirm(false);
+        fetchPrograms();
+      } else {
+        showError(response.message || 'Failed to delete all');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch {
+      showError('Failed to delete all programs');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
   };
 
   const handleDownloadTemplate = async () => {
@@ -266,7 +272,7 @@ export default function ProgramsPage() {
       } else {
         setBulkError(response.message || 'Bulk upload failed');
       }
-    } catch (err) {
+    } catch {
       setBulkError('An error occurred during bulk upload');
       showError('Bulk upload failed');
     } finally {
@@ -314,7 +320,7 @@ export default function ProgramsPage() {
                 <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search name, stream, interests"
+                  placeholder="Search by name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none w-64 transition-all duration-200"
@@ -335,7 +341,12 @@ export default function ProgramsPage() {
               )}
               <button
                 type="button"
-                onClick={() => { setShowBulkModal(true); setBulkResult(null); setBulkError(null); setBulkExcelFile(null); }}
+                onClick={() => {
+                  setShowBulkModal(true);
+                  setBulkResult(null);
+                  setBulkError(null);
+                  setBulkExcelFile(null);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
@@ -348,6 +359,17 @@ export default function ProgramsPage() {
                 <FiPlus className="h-4 w-4" />
                 Add Program
               </button>
+              {canDelete && allPrograms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete all
+                </button>
+              )}
             </div>
           </div>
 
@@ -367,34 +389,19 @@ export default function ProgramsPage() {
                 <table className="w-full">
                   <thead className="bg-[#F6F8FA] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        NAME
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        STREAM
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        INTERESTS
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        STATUS
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        CREATED
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        LAST UPDATED
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        ACTIONS
-                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CREATED</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LAST UPDATED</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {programs.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {programs.length < allPrograms.length ? 'No programs found matching your search' : 'No programs found'}
+                        <td colSpan={4} className="px-4 py-4 text-center text-sm text-slate-500">
+                          {programs.length < allPrograms.length
+                            ? 'No programs found matching your search'
+                            : 'No programs found'}
                         </td>
                       </tr>
                     ) : (
@@ -402,19 +409,6 @@ export default function ProgramsPage() {
                         <tr key={program.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{program.name}</span>
-                          </td>
-                          <td className="px-4 py-2 text-sm text-slate-600">{program.stream_name?.trim() || '—'}</td>
-                          <td className="px-4 py-2 text-sm text-slate-600 max-w-[220px] line-clamp-2" title={program.interest_labels || ''}>
-                            {program.interest_labels?.trim() ? program.interest_labels : '—'}
-                          </td>
-                          <td className="px-4 py-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              program.status 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {program.status ? 'Active' : 'Inactive'}
-                            </span>
                           </td>
                           <td className="px-4 py-2 text-xs text-slate-600">
                             {new Date(program.created_at).toLocaleDateString('en-US', {
@@ -451,7 +445,6 @@ export default function ProgramsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 {editingProgram ? 'Edit Program' : 'Create Program'}
@@ -464,10 +457,8 @@ export default function ProgramsPage() {
               </button>
             </div>
 
-            {/* Content */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4">
-              <div className="space-y-4">
-                {/* Name */}
+            <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4 flex flex-col">
+              <div className="space-y-4 flex-1">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     Name <span className="text-[#341050]">*</span>
@@ -481,84 +472,28 @@ export default function ProgramsPage() {
                     placeholder="Enter program name"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Stream</label>
-                  <Dropdown
-                    value={formData.streamId || null}
-                    onChange={(v) => setFormData({ ...formData, streamId: v ? String(v) : '' })}
-                    options={streamOptions}
-                    placeholder={streams.length ? 'Select stream (optional)' : 'No streams — add in Streams module'}
-                    disabled={!streams.length}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Interests</label>
-                  <MultiSelect
-                    options={interestOptions}
-                    value={formData.interestIds}
-                    onChange={(ids) => setFormData({ ...formData, interestIds: ids })}
-                    placeholder={careerGoals.length ? 'Select interests (optional)' : 'No interests — add in Interests module'}
-                    disabled={!careerGoals.length}
-                  />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Status
-                  </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        checked={formData.status === true}
-                        onChange={() => setFormData({ ...formData, status: true })}
-                        className="w-4 h-4 text-[#341050] border-slate-300 focus:ring-[#341050]/25"
-                      />
-                      <span className="text-sm text-slate-700">Active</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        checked={formData.status === false}
-                        onChange={() => setFormData({ ...formData, status: false })}
-                        className="w-4 h-4 text-[#341050] border-slate-300 focus:ring-[#341050]/25"
-                      />
-                      <span className="text-sm text-slate-700">Inactive</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Error Message */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">
                     {error}
                   </div>
                 )}
               </div>
+              <div className="border-t border-slate-200 pt-3 mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleModalClose}
+                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  {editingProgram ? 'Update Program' : 'Create Program'}
+                </button>
+              </div>
             </form>
-
-            {/* Footer */}
-            <div className="border-t border-slate-200 px-4 py-3 flex justify-end">
-              <button
-                type="button"
-                onClick={handleModalClose}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA] transition-colors mr-2"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-              >
-                {editingProgram ? 'Update Program' : 'Create Program'}
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -569,7 +504,15 @@ export default function ProgramsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Bulk Upload Programs</h2>
-              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-slate-500 hover:text-slate-800">
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="text-slate-500 hover:text-slate-800"
+              >
                 <FiX className="h-5 w-5" />
               </button>
             </div>
@@ -577,38 +520,24 @@ export default function ProgramsPage() {
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
                 <p className="text-xs text-slate-600 mb-3">
-                  Columns: <span className="font-mono">name</span>, <span className="font-mono">status</span>, optional{' '}
-                  <span className="font-mono">stream</span> (stream name from Streams taxonomy), optional{' '}
-                  <span className="font-mono">interests</span> (interest labels separated by comma or semicolon).
+                  One column: <span className="font-mono">name</span> (program name per row).
                 </p>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-100">
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">name</th>
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">status</th>
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">stream</th>
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">interests</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">name</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-b border-slate-200">
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">B.Tech</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCM</td>
-                        <td className="px-3 py-2 text-slate-800">Engineering; Technology</td>
+                        <td className="px-3 py-2 text-slate-800">B.Tech</td>
                       </tr>
                       <tr className="border-b border-slate-200">
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">MBBS</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">PCB</td>
-                        <td className="px-3 py-2 text-slate-800">Medicine</td>
+                        <td className="px-3 py-2 text-slate-800">MBBS</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">B.E.</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">TRUE</td>
-                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200" />
-                        <td className="px-3 py-2 text-slate-800" />
+                        <td className="px-3 py-2 text-slate-800">B.E.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -640,7 +569,9 @@ export default function ProgramsPage() {
                   {bulkResult.errorDetails?.length > 0 && (
                     <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
                       {bulkResult.errorDetails.map((err, i) => (
-                        <li key={i}>Row {err.row}: {err.message}</li>
+                        <li key={i}>
+                          Row {err.row}: {err.message}
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -648,10 +579,22 @@ export default function ProgramsPage() {
               )}
             </div>
             <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
-              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]">
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
+              >
                 Close
               </button>
-              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+              <button
+                onClick={handleBulkUpload}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
                 {bulkUploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
@@ -659,7 +602,6 @@ export default function ProgramsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -674,7 +616,18 @@ export default function ProgramsPage() {
         confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete all programs"
+        message={`Are you sure you want to delete all ${allPrograms.length} program(s)? This cannot be undone. Related links (e.g. college programs) will be removed where the database is configured to cascade.`}
+        confirmText="Delete all"
+        cancelText="Cancel"
+        isLoading={isDeletingAll}
+        confirmButtonStyle="danger"
+      />
     </div>
   );
 }
-

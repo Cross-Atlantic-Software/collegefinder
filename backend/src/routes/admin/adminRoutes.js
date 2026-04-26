@@ -897,6 +897,13 @@ router.get('/programs/download-excel', authenticateAdmin, requireModuleAccess('p
 router.post('/programs/bulk-upload', authenticateAdmin, requireModuleAccess('programs'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), ProgramController.bulkUpload);
 
 /**
+ * @route   DELETE /api/admin/programs/all
+ * @desc    Delete all programs
+ * @access  Private (Admin)
+ */
+router.delete('/programs/all', authenticateAdmin, requireModuleAccess('programs'), requireCanDelete, ProgramController.deleteAll);
+
+/**
  * @route   GET /api/admin/programs/:id
  * @desc    Get program by ID
  * @access  Private (Admin)
