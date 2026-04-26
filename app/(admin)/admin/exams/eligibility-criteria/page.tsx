@@ -28,13 +28,13 @@ export default function ExamEligibilityCriteriaPage() {
           <div className="mb-4">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Exam Eligibility Criteria</h1>
             <p className="text-sm text-slate-600">
-              Streams, subjects, age limits, and attempt limits are configured per exam.
+              Streams, subjects, age limit (text), and attempt limits are configured per exam.
             </p>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
             <p className="text-sm text-slate-700 mb-4">
-              To add or edit eligibility criteria (stream IDs, subject IDs, age/attempt limits), open an exam from the
-              Exams list and use the Eligibility Criteria section in the form.
+              To add or edit eligibility criteria, open an exam from the Exams list and use the Eligibility Criteria
+              section in the form.
             </p>
             <Link
               href="/admin/exams"

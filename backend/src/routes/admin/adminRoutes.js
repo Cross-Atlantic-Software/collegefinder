@@ -25,6 +25,7 @@ const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
 const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
+const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -884,6 +885,31 @@ router.put('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requ
  * @access  Private (Admin)
  */
 router.delete('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requireCanDelete, LevelController.deleteLevel);
+
+/**
+ * @route   GET|POST /api/admin/recommended-mappings
+ * @desc    Stream + interest -> recommended program / exam IDs (name resolution from Excel)
+ * @access  Private (Admin) — module: mapping
+ */
+router.get(
+  '/recommended-mappings',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  RecommendedMappingController.getAll
+);
+router.get(
+  '/recommended-mappings/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  RecommendedMappingController.downloadTemplate
+);
+router.post(
+  '/recommended-mappings/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
+  RecommendedMappingController.bulkUpload
+);
 
 /**
  * @route   GET /api/admin/programs

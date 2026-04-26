@@ -105,6 +105,8 @@ export const API_ENDPOINTS = {
     EXPERTS: '/admin/experts',
     BRANCHES: '/admin/branches',
     REFERRAL_CODES: '/admin/referral-codes',
+    /** Stream + interest → programs / exams recommendations (admin Excel) */
+    RECOMMENDED_MAPPINGS: '/admin/recommended-mappings',
   },
 
   // Strength endpoints (user-facing)

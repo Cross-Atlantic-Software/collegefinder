@@ -447,7 +447,7 @@ export default function TestModule() {
                         <div key={exam.id} className="group flex min-h-[200px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                           <div className="mb-3 flex items-start justify-between">
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{exam.name}</h3>
-                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code || '—'}</span>
                           </div>
                           <p className="mb-4 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
                             {exam.description || 'Practice with AI-generated questions tailored for this exam.'}
@@ -539,7 +539,7 @@ export default function TestModule() {
                           <div key={exam.id} className="group flex min-h-[200px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                             <div className="mb-3 flex items-start justify-between">
                               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{exam.name}</h3>
-                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code}</span>
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{exam.code || '—'}</span>
                             </div>
                             <p className="mb-3 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
                               {exam.description || 'View your test history and performance analytics.'}

@@ -244,3 +244,11 @@ export {
   deleteReferralCode,
 } from './referral-codes';
 export type { ActiveReferralCode } from './referral-codes';
+
+// Stream + interest → programs / exams (admin mapping)
+export {
+  getAllRecommendedMappings,
+  downloadRecommendedMappingTemplate,
+  bulkUploadRecommendedMappings,
+} from './recommended-mappings';
+export type { StreamInterestRecommendedMapping } from './recommended-mappings';

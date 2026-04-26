@@ -154,7 +154,9 @@ export default function ExamDirectoryPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{exam.name}</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{exam.code}</p>
+                        {exam.code && (
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{exam.code}</p>
+                        )}
                       </div>
                     </div>
                     <p className="mt-3 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">

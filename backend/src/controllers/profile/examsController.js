@@ -238,16 +238,17 @@ class ExamsTaxonomyController {
    */
   static async create(req, res) {
     try {
-      const { 
-        name, 
-        code, 
-        description, 
-        exam_logo, 
-        exam_type, 
+      const {
+        name,
+        code,
+        description,
+        exam_logo,
+        exam_type,
         conducting_authority,
-        format,
         number_of_papers,
         website,
+        documents_required,
+        counselling,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -256,15 +257,17 @@ class ExamsTaxonomyController {
         programIds
       } = req.body;
 
-      // Validate required fields
-      if (!name || !code) {
+      if (!name) {
         return res.status(400).json({
           success: false,
-          message: 'Name and code are required'
+          message: 'Name is required'
         });
       }
 
-      // Check if name or code already exists
+      const codeNorm = code != null && String(code).trim()
+        ? String(code).trim().toUpperCase().replace(/\s+/g, '_')
+        : null;
+
       const existingByName = await Exam.findByName(name);
       if (existingByName) {
         return res.status(400).json({
@@ -273,25 +276,27 @@ class ExamsTaxonomyController {
         });
       }
 
-      const existingByCode = await Exam.findByCode(code);
-      if (existingByCode) {
-        return res.status(400).json({
-          success: false,
-          message: 'Exam with this code already exists'
-        });
+      if (codeNorm) {
+        const existingByCode = await Exam.findByCode(codeNorm);
+        if (existingByCode) {
+          return res.status(400).json({
+            success: false,
+            message: 'Exam with this code already exists'
+          });
+        }
       }
 
-      // Create exam
-      const exam = await Exam.create({ 
-        name, 
-        code, 
+      const exam = await Exam.create({
+        name,
+        code: codeNorm,
         description,
         exam_logo,
         exam_type,
         conducting_authority,
-        format,
         number_of_papers,
-        website
+        website,
+        documents_required,
+        counselling
       });
 
       // Create related data if provided
@@ -314,11 +319,7 @@ class ExamsTaxonomyController {
       }
 
       if (examCutoff) {
-        const cutoffPayload = { ...examCutoff };
-        if (cutoffPayload.category_wise_cutoff != null && typeof cutoffPayload.category_wise_cutoff === 'object') {
-          cutoffPayload.category_wise_cutoff = JSON.stringify(cutoffPayload.category_wise_cutoff);
-        }
-        createdCutoff = await ExamCutoff.create({ exam_id: exam.id, ...cutoffPayload });
+        createdCutoff = await ExamCutoff.create({ exam_id: exam.id, ...examCutoff });
       }
 
       if (careerGoalIds && Array.isArray(careerGoalIds) && careerGoalIds.length > 0) {
@@ -357,16 +358,17 @@ class ExamsTaxonomyController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { 
-        name, 
-        code, 
+      const {
+        name,
+        code,
         description,
         exam_logo,
         exam_type,
         conducting_authority,
-        format,
         number_of_papers,
         website,
+        documents_required,
+        counselling,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -394,8 +396,11 @@ class ExamsTaxonomyController {
         }
       }
 
-      if (code && code !== existing.code) {
-        const duplicate = await Exam.findByCode(code);
+      const nextCode = code !== undefined
+        ? (code != null && String(code).trim() ? String(code).trim().toUpperCase().replace(/\s+/g, '_') : null)
+        : existing.code;
+      if (nextCode && nextCode !== (existing.code || null)) {
+        const duplicate = await Exam.findByCode(nextCode);
         if (duplicate) {
           return res.status(400).json({
             success: false,
@@ -409,17 +414,19 @@ class ExamsTaxonomyController {
         await deleteFromS3(existing.exam_logo);
       }
 
-      // Update exam
-      const exam = await Exam.update(parseInt(id), { 
-        name, 
-        code, 
+      const exam = await Exam.update(parseInt(id), {
+        name,
+        code: code !== undefined
+          ? (code != null && String(code).trim() ? String(code).trim().toUpperCase().replace(/\s+/g, '_') : null)
+          : undefined,
         description,
         exam_logo,
         exam_type,
         conducting_authority,
-        format,
         number_of_papers,
-        website
+        website,
+        documents_required: documents_required !== undefined ? documents_required : undefined,
+        counselling: counselling !== undefined ? counselling : undefined
       });
 
       // Update related data if provided
@@ -442,11 +449,7 @@ class ExamsTaxonomyController {
       }
 
       if (examCutoff !== undefined) {
-        const cutoffPayload = { ...examCutoff };
-        if (cutoffPayload.category_wise_cutoff != null && typeof cutoffPayload.category_wise_cutoff === 'object') {
-          cutoffPayload.category_wise_cutoff = JSON.stringify(cutoffPayload.category_wise_cutoff);
-        }
-        updatedCutoff = await ExamCutoff.upsert({ exam_id: parseInt(id), ...cutoffPayload });
+        updatedCutoff = await ExamCutoff.upsert({ exam_id: parseInt(id), ...examCutoff });
       }
 
       if (programIds !== undefined) {
@@ -724,214 +727,116 @@ class ExamsTaxonomyController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const jeeMainFormat = JSON.stringify({
-        default: {
-          name: 'JEE Main 2024',
-          rules: [
-            'Total duration: 3 hours (180 minutes)',
-            'Total questions: 90 (75 MCQs + 15 Numerical)',
-            'Maximum marks: 300',
-            'Marking: +4 for correct, -1 for incorrect, 0 for unattempted',
-            'Section A (MCQ): Choose one correct option',
-            'Section B (Numerical): Answer must be a number between 0-9999'
-          ],
-          sections: {
-            Physics: {
-              name: 'Physics',
-              marks: 120,
-              subsections: {
-                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
-                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
-              },
-              total_questions: 30
-            },
-            Chemistry: {
-              name: 'Chemistry',
-              marks: 120,
-              subsections: {
-                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
-                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
-              },
-              total_questions: 30
-            },
-            Mathematics: {
-              name: 'Mathematics',
-              marks: 120,
-              subsections: {
-                'Section A': { type: 'mcq_single', count: 20, required: 20, questions: 20, marks_per_question: 4 },
-                'Section B': { type: 'numerical', count: 10, required: 5, questions: 10, marks_per_question: 4 }
-              },
-              total_questions: 30
-            }
-          },
-          total_marks: 300,
-          marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
-          total_questions: 90,
-          duration_minutes: 180
-        }
-      });
-      const neetFormat = JSON.stringify({
-        default: {
-          name: 'NEET 2024',
-          rules: [
-            'Total duration: 3 hours (180 minutes)',
-            'Total questions: 200 (180 to be attempted)',
-            'Maximum marks: 720',
-            'Marking: +4 for correct, -1 for incorrect, 0 for unattempted',
-            'All questions are multiple choice with single correct answer'
-          ],
-          sections: {
-            Physics: {
-              name: 'Physics',
-              marks: 200,
-              subsections: {
-                'Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
-                'Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
-              },
-              total_questions: 50
-            },
-            Chemistry: {
-              name: 'Chemistry',
-              marks: 200,
-              subsections: {
-                'Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
-                'Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
-              },
-              total_questions: 50
-            },
-            Biology: {
-              name: 'Biology',
-              marks: 400,
-              subsections: {
-                'Botany - Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
-                'Botany - Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 },
-                'Zoology - Section A': { type: 'mcq_single', count: 35, required: 35, questions: 35, marks_per_question: 4 },
-                'Zoology - Section B': { type: 'mcq_single', count: 15, required: 10, questions: 15, marks_per_question: 4 }
-              },
-              total_questions: 100
-            }
-          },
-          total_marks: 720,
-          marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
-          total_questions: 200,
-          duration_minutes: 180
-        }
-      });
       const headers = [
-        // Basic Info
         'name',
         'code',
         'description',
         'exam_type',
         'conducting_authority',
-        'format',
+        'documents_required',
+        'counselling',
         'number_of_papers',
         'logo_filename',
-        // Exam Details
         'application_start_date',
         'application_close_date',
         'exam_date',
+        'result_date',
+        'application_fees',
         'mode',
         'domicile',
-        // Criteria
         'streams',
         'subjects',
-        'age_limit_min',
-        'age_limit_max',
+        'age_limit',
         'attempt_limit',
-        // Pattern
         'number_of_questions',
-        'marking_scheme',
+        'total_marks',
+        'negative_marking',
+        'weightage_of_subjects',
         'duration_minutes',
-        // Rank & Cutoff
-        'previous_year_cutoff',
-        'category_wise_cutoff',
-        'target_rank_range',
         'ranks_percentiles',
-        // Contact Details
+        'cutoff_general',
+        'cutoff_obc',
+        'cutoff_sc',
+        'cutoff_st',
+        'target_rank_range',
         'website',
-        // Others
         'interests',
         'programs'
       ];
+      const row1 = [
+        'JEE Main',
+        'JEE_MAIN',
+        'Engineering entrance exam for B.Tech admissions',
+        'National',
+        'NTA',
+        'ID proof, class 12 mark sheet',
+        'JoSAA / CSAB counselling',
+        '1',
+        'jee_main.png',
+        '2025-12-01',
+        '2026-01-15',
+        '2026-01-25',
+        '2026-02-15',
+        2000,
+        'Online',
+        'All India',
+        'Science (PCM), Science (PCB)',
+        'Physics, Chemistry, Mathematics',
+        '17–25 years',
+        '3',
+        '90',
+        '300',
+        '-1 per wrong answer, +4 correct',
+        'Physics 33%, Chemistry 33%, Maths 34%',
+        '180',
+        'Rank 1 = 99.99, Rank 1000 = 97.2',
+        '95.5',
+        '92.0',
+        '88.0',
+        '85.0',
+        'Top 10k',
+        'https://jeemain.nta.nic.in',
+        'Building Apps & Software, Designing Machines & Robots',
+        'B.Tech, B.E.'
+      ];
+      const row2 = [
+        'NEET',
+        'NEET',
+        'Medical entrance for MBBS/BDS',
+        'National',
+        'NTA',
+        'Photo, class 10 & 12 certificates',
+        'MCC / state counselling',
+        '1',
+        'neet.png',
+        '2025-11-01',
+        '2025-12-15',
+        '2026-05-05',
+        '2026-06-20',
+        2000,
+        'Offline',
+        'All India',
+        'Science (PCB)',
+        'Physics, Chemistry, Biology',
+        '17 years completed as of Dec 31',
+        '',
+        '200',
+        '720',
+        '-1 per wrong, +4 correct',
+        'Balanced across PCB',
+        '200',
+        'Rank 1 = 99.99',
+        '98.0',
+        '95.0',
+        '90.0',
+        '88.0',
+        'Top 50k',
+        'https://neet.nta.nic.in',
+        'Medicine & Healthcare',
+        'MBBS, BDS'
+      ];
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet([
-        headers,
-        [
-          // Basic Info
-          'JEE Main',
-          'JEE_MAIN',
-          'Engineering entrance exam for B.Tech admissions',
-          'National',
-          'NTA',
-          jeeMainFormat,
-          '1',
-          'jee_main.png',
-          // Exam Details
-          '2025-12-01',
-          '2026-01-15',
-          '2026-01-25',
-          'Online',
-          'All India',
-          // Criteria
-          'Science (PCM), Science (PCB)',
-          'Physics, Chemistry, Mathematics',
-          '17',
-          '25',
-          '3',
-          // Pattern
-          '90',
-          '4 marks correct, -1 wrong',
-          '180',
-          // Rank & Cutoff
-          'General 95.2, OBC 90.1, SC 85.3, ST 80.5',
-          'General 95, OBC 90, SC 85, ST 80',
-          'Top 10k',
-          'Rank 1 = 99.99, Rank 1000 = 97.2, Rank 10000 = 92.5',
-          // Contact Details
-          'https://jeemain.nta.nic.in',
-          // Others
-          'Building Apps & Software, Designing Machines & Robots',
-          'B.Tech, B.E.'
-        ],
-        [
-          // Basic Info
-          'NEET',
-          'NEET',
-          'Medical entrance exam for MBBS and BDS admissions',
-          'National',
-          'NTA',
-          neetFormat,
-          '1',
-          'neet.png',
-          // Exam Details
-          '2025-11-01',
-          '2025-12-15',
-          '2026-05-05',
-          'Offline',
-          'All India',
-          // Criteria
-          'Science (PCB)',
-          'Physics, Chemistry, Biology',
-          '17',
-          '25',
-          '',
-          // Pattern
-          '200',
-          '4 marks correct, -1 wrong',
-          '200',
-          // Rank & Cutoff
-          'General 98.1, OBC 95.2, SC 90.3, ST 85.5',
-          'General 98, OBC 95, SC 90, ST 85',
-          'Top 50k',
-          'Rank 1 = 99.99, Rank 5000 = 98.5, Rank 50000 = 92.0',
-          // Contact Details
-          'https://neet.nta.nic.in',
-          // Others
-          'Medicine & Healthcare, Biology & Lab Research',
-          'MBBS, BDS'
-        ]
-      ]);
+      const ws = XLSX.utils.aoa_to_sheet([headers, row1, row2]);
       XLSX.utils.book_append_sheet(wb, ws, 'Exams');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -965,19 +870,12 @@ class ExamsTaxonomyController {
       const programMap = new Map(allPrograms.map((p) => [p.id, p.name]));
 
       const headers = [
-        // Basic Info
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'format', 'number_of_papers', 'logo_filename', 'exam_logo',
-        // Exam Details
-        'application_start_date', 'application_close_date', 'exam_date', 'mode', 'domicile',
-        // Criteria
-        'Streams', 'Subjects', 'age_limit_min', 'age_limit_max', 'attempt_limit',
-        // Pattern
-        'number_of_questions', 'marking_scheme', 'duration_minutes',
-        // Rank & Cutoff
-        'previous_year_cutoff', 'category_wise_cutoff', 'target_rank_range', 'ranks_percentiles',
-        // Contact Details
+        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
+        'application_start_date', 'application_close_date', 'exam_date', 'result_date', 'application_fees', 'mode', 'domicile',
+        'Streams', 'Subjects', 'age_limit', 'attempt_limit',
+        'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_minutes',
+        'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
         'website',
-        // Others
         'programs', 'Interests'
       ];
       const rows = [headers];
@@ -999,43 +897,42 @@ class ExamsTaxonomyController {
         const interestNames = (Array.isArray(careerGoalIds) ? careerGoalIds : []).map((id) => careerGoalMap.get(id) ?? id).filter(Boolean).join(', ');
         const programNames = (Array.isArray(programIds) ? programIds : []).map((id) => programMap.get(id) ?? id).filter(Boolean).join(', ');
         const domicileStr = (eligibility && eligibility.domicile) ? String(eligibility.domicile).trim() : '';
-        const formatStr = exam.format && typeof exam.format === 'object' ? JSON.stringify(exam.format) : (exam.format ? String(exam.format) : '');
         const numPapers = exam.number_of_papers != null ? String(exam.number_of_papers) : '1';
+        const appFees = dates && dates.application_fees != null && dates.application_fees !== '' ? String(dates.application_fees) : '';
         rows.push([
-          // Basic Info
           exam.name || '',
           exam.code || '',
           exam.description || '',
           exam.exam_type || '',
           exam.conducting_authority || '',
-          formatStr,
+          exam.documents_required || '',
+          exam.counselling || '',
           numPapers,
           logoFilename,
           examLogoUrl,
-          // Exam Details
           (dates && dates.application_start_date) ? String(dates.application_start_date).slice(0, 10) : '',
           (dates && dates.application_close_date) ? String(dates.application_close_date).slice(0, 10) : '',
           (dates && dates.exam_date) ? String(dates.exam_date).slice(0, 10) : '',
+          (dates && dates.result_date) ? String(dates.result_date).slice(0, 10) : '',
+          appFees,
           (pattern && pattern.mode) ? pattern.mode : '',
           domicileStr,
-          // Criteria
           streamNames,
           subjectNames,
-          (eligibility && eligibility.age_limit_min != null) ? String(eligibility.age_limit_min) : '',
-          (eligibility && eligibility.age_limit_max != null) ? String(eligibility.age_limit_max) : '',
+          (eligibility && eligibility.age_limit) ? String(eligibility.age_limit) : '',
           (eligibility && eligibility.attempt_limit != null) ? String(eligibility.attempt_limit) : '',
-          // Pattern
           (pattern && pattern.number_of_questions != null) ? String(pattern.number_of_questions) : '',
-          (pattern && pattern.marking_scheme) || '',
+          (pattern && pattern.total_marks != null) ? String(pattern.total_marks) : '',
+          (pattern && pattern.negative_marking) || '',
+          (pattern && pattern.weightage_of_subjects) || '',
           (pattern && pattern.duration_minutes != null) ? String(pattern.duration_minutes) : '',
-          // Rank & Cutoff
-          (cutoff && cutoff.previous_year_cutoff) || '',
-          (cutoff && cutoff.category_wise_cutoff) ? (typeof cutoff.category_wise_cutoff === 'object' ? JSON.stringify(cutoff.category_wise_cutoff) : String(cutoff.category_wise_cutoff)) : '',
-          (cutoff && cutoff.target_rank_range) || '',
           (cutoff && cutoff.ranks_percentiles) || '',
-          // Contact Details
+          (cutoff && cutoff.cutoff_general) || '',
+          (cutoff && cutoff.cutoff_obc) || '',
+          (cutoff && cutoff.cutoff_sc) || '',
+          (cutoff && cutoff.cutoff_st) || '',
+          (cutoff && cutoff.target_rank_range) || '',
           exam.website || '',
-          // Others
           programNames,
           interestNames
         ]);
@@ -1213,21 +1110,6 @@ class ExamsTaxonomyController {
       }
       return null;
     };
-    const parseCategoryWiseCutoff = (val) => {
-      if (val == null || val === '') return null;
-      const s = String(val).trim();
-      if (!s) return null;
-      // Try JSON first (for backward compatibility)
-      if (s.startsWith('{')) {
-        try {
-          const parsed = JSON.parse(s);
-          return typeof parsed === 'object' ? JSON.stringify(parsed) : s;
-        } catch (_) { /* fall through */ }
-      }
-      // Plain text: "General 95, OBC 90" or "General: 95. OBC: 90" - store as-is
-      return s;
-    };
-
     try {
       const excelFile = req.files?.excel?.[0] || req.file;
       if (!excelFile || !excelFile.buffer) {
@@ -1272,16 +1154,17 @@ class ExamsTaxonomyController {
         const row = rows[i];
         const rowNum = i + 2;
         const name = (row.name ?? row.Name ?? '').toString().trim();
-        const code = (row.code ?? row.Code ?? '').toString().trim().toUpperCase().replace(/\s+/g, '_');
+        const codeRaw = (row.code ?? row.Code ?? '').toString().trim();
+        const codeNorm = codeRaw ? codeRaw.toUpperCase().replace(/\s+/g, '_') : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
 
-        if (!name || !code) {
-          errors.push({ row: rowNum, message: 'name and code are required' });
+        if (!name) {
+          errors.push({ row: rowNum, message: 'name is required' });
           continue;
         }
 
-        if (codesInFile.has(code)) {
-          errors.push({ row: rowNum, message: `duplicate code "${code}" in this file (use unique code per row)` });
+        if (codeNorm && codesInFile.has(codeNorm)) {
+          errors.push({ row: rowNum, message: `duplicate code "${codeNorm}" in this file (use unique code per row)` });
           continue;
         }
         if (namesInFile.has(name.toLowerCase())) {
@@ -1289,10 +1172,12 @@ class ExamsTaxonomyController {
           continue;
         }
 
-        const existingByCode = await Exam.findByCode(code);
-        if (existingByCode) {
-          errors.push({ row: rowNum, message: `exam with code "${code}" already exists in database` });
-          continue;
+        if (codeNorm) {
+          const existingByCode = await Exam.findByCode(codeNorm);
+          if (existingByCode) {
+            errors.push({ row: rowNum, message: `exam with code "${codeNorm}" already exists in database` });
+            continue;
+          }
         }
 
         const existingByName = await Exam.findByName(name);
@@ -1323,7 +1208,7 @@ class ExamsTaxonomyController {
           errors.push({ row: rowNum, message: `interests: not found: ${careerGoalRes.notFound.join(', ')}` });
         }
 
-        codesInFile.add(code);
+        if (codeNorm) codesInFile.add(codeNorm);
         namesInFile.add(name.toLowerCase());
       }
 
@@ -1349,21 +1234,14 @@ class ExamsTaxonomyController {
         const row = rows[i];
         const rowNum = i + 2;
         const name = (row.name ?? row.Name ?? '').toString().trim();
-        const code = (row.code ?? row.Code ?? '').toString().trim().toUpperCase().replace(/\s+/g, '_');
+        const codeRaw2 = (row.code ?? row.Code ?? '').toString().trim();
+        const codeNorm = codeRaw2 ? codeRaw2.toUpperCase().replace(/\s+/g, '_') : null;
         const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
         const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
         const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
-        const formatRaw = getCell(row, 'format', 'Format') || getCellByKeyword(row, 'format') || '';
-        let formatObj = null;
-        if (formatRaw && String(formatRaw).trim()) {
-          try {
-            const parsed = JSON.parse(String(formatRaw).trim());
-            formatObj = typeof parsed === 'object' && parsed !== null ? parsed : null;
-          } catch (_) {
-            formatObj = null;
-          }
-        }
+        const documentsRequired = (getCell(row, 'documents_required', 'Documents_Required') || '').toString().trim() || null;
+        const counsellingText = (getCell(row, 'counselling', 'Counselling', 'Counseling') || '').toString().trim() || null;
 
         const websiteRaw = getCell(row, 'website', 'Website') || getCellByKeyword(row, 'website');
         const websiteVal = websiteRaw ? websiteRaw.trim() : null;
@@ -1394,18 +1272,19 @@ class ExamsTaxonomyController {
         try {
           exam = await Exam.create({
             name,
-            code,
+            code: codeNorm,
             description,
             exam_logo: examLogoUrl,
             exam_type: finalExamType,
             conducting_authority: conductingAuthority,
             logo_file_name: logoFilename || null,
-            format: formatObj,
             number_of_papers: numberOfPapers,
-            website: websiteVal
+            website: websiteVal,
+            documents_required: documentsRequired,
+            counselling: counsellingText
           });
-          created.push({ id: exam.id, name: exam.name, code: exam.code });
-          codesInFile.add(code);
+          created.push({ id: exam.id, name: exam.name, code: exam.code || '' });
+          if (codeNorm) codesInFile.add(codeNorm);
           namesInFile.add(name.toLowerCase());
         } catch (createErr) {
           return res.status(500).json({
@@ -1421,12 +1300,17 @@ class ExamsTaxonomyController {
           const appStart = parseDate(row.application_start_date ?? row.Application_Start_Date);
           const appClose = parseDate(row.application_close_date ?? row.Application_Close_Date);
           const examDate = parseDate(row.exam_date ?? row.Exam_Date);
-          if (appStart || appClose || examDate) {
+          const resultDate = parseDate(row.result_date ?? row.Result_Date);
+          const feesRaw = row.application_fees ?? row.Application_Fees;
+          const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw), 10) : null;
+          if (appStart || appClose || examDate || resultDate || (application_fees != null && !Number.isNaN(application_fees))) {
             await ExamDates.create({
               exam_id: examId,
               application_start_date: appStart,
               application_close_date: appClose,
-              exam_date: examDate
+              exam_date: examDate,
+              result_date: resultDate,
+              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null
             });
           }
         } catch (e) {
@@ -1438,18 +1322,23 @@ class ExamsTaxonomyController {
           const subjectRes = await resolveSubjectIds(row);
           const streamIds = streamRes.ids;
           const subjectIds = subjectRes.ids;
-          const ageMin = row.age_limit_min != null && row.age_limit_min !== '' ? parseInt(String(row.age_limit_min), 10) : null;
-          const ageMax = row.age_limit_max != null && row.age_limit_max !== '' ? parseInt(String(row.age_limit_max), 10) : null;
+          let ageLimit = (getCell(row, 'age_limit', 'Age_Limit') || '').trim();
+          if (!ageLimit) {
+            const ageMin = row.age_limit_min != null && row.age_limit_min !== '' ? parseInt(String(row.age_limit_min), 10) : null;
+            const ageMax = row.age_limit_max != null && row.age_limit_max !== '' ? parseInt(String(row.age_limit_max), 10) : null;
+            if (ageMin != null || ageMax != null) {
+              ageLimit = [ageMin, ageMax].filter((x) => x != null && !Number.isNaN(x)).join(' – ') || null;
+            }
+          }
           const attemptLimit = row.attempt_limit != null && row.attempt_limit !== '' ? parseInt(String(row.attempt_limit), 10) : null;
           const domicileRaw = getCell(row, 'domicile', 'Domicile') || getCellByKeyword(row, 'domicile');
           const domicile = domicileRaw ? domicileRaw.trim() : null;
-          if (streamIds.length > 0 || subjectIds.length > 0 || ageMin != null || ageMax != null || attemptLimit != null || domicile) {
+          if (streamIds.length > 0 || subjectIds.length > 0 || ageLimit || (attemptLimit != null && !Number.isNaN(attemptLimit)) || domicile) {
             await ExamEligibilityCriteria.create({
               exam_id: examId,
               stream_ids: streamIds,
               subject_ids: subjectIds,
-              age_limit_min: !isNaN(ageMin) ? ageMin : null,
-              age_limit_max: !isNaN(ageMax) ? ageMax : null,
+              age_limit: ageLimit || null,
               attempt_limit: !isNaN(attemptLimit) ? attemptLimit : null,
               domicile
             });
@@ -1461,15 +1350,21 @@ class ExamsTaxonomyController {
         try {
           const mode = (row.mode ?? row.Mode ?? '').toString().trim();
           const numQ = row.number_of_questions != null && row.number_of_questions !== '' ? parseInt(String(row.number_of_questions), 10) : null;
-          const markingScheme = (row.marking_scheme ?? row.Marking_Scheme ?? '') ? (row.marking_scheme ?? row.Marking_Scheme).toString().trim() : null;
+          const totalMarks = row.total_marks != null && row.total_marks !== '' ? parseInt(String(row.total_marks), 10) : null;
+          const negRaw = getCell(row, 'negative_marking', 'Negative_Marking') || getCell(row, 'marking_scheme', 'Marking_Scheme');
+          const negative_marking = negRaw ? String(negRaw).trim() : null;
+          const wRaw = getCell(row, 'weightage_of_subjects', 'Weightage_Of_Subjects', 'weightage') || getCellByKeyword(row, 'weightage');
+          const weightage_of_subjects = wRaw ? String(wRaw).trim() : null;
           const duration = row.duration_minutes != null && row.duration_minutes !== '' ? parseInt(String(row.duration_minutes), 10) : null;
           const finalMode = validModes.find((m) => m.toLowerCase() === mode.toLowerCase()) || null;
-          if (finalMode || numQ != null || markingScheme || duration != null) {
+          if (finalMode || numQ != null || totalMarks != null || negative_marking || weightage_of_subjects || (duration != null && !isNaN(duration))) {
             await ExamPattern.create({
               exam_id: examId,
               mode: finalMode,
               number_of_questions: !isNaN(numQ) ? numQ : null,
-              marking_scheme: markingScheme,
+              total_marks: !isNaN(totalMarks) ? totalMarks : null,
+              negative_marking,
+              weightage_of_subjects,
               duration_minutes: !isNaN(duration) ? duration : null
             });
           }
@@ -1479,17 +1374,20 @@ class ExamsTaxonomyController {
 
         try {
           const toStr = (v) => (v == null || v === '') ? null : (typeof v === 'object' ? JSON.stringify(v) : String(v).trim() || null);
-          const prevCutoff = toStr(row.previous_year_cutoff ?? row.Previous_Year_Cutoff ?? getCellByKeyword(row, 'previous_year'));
           const ranks = toStr(row.ranks_percentiles ?? row.Ranks_Percentiles ?? getCellByKeyword(row, 'ranks_percentile'));
-          const rawCat = row.category_wise_cutoff ?? row.Category_Wise_Cutoff ?? getCellByKeyword(row, 'category_wise') ?? getCellByKeyword(row, 'category');
-          const catCutoff = parseCategoryWiseCutoff(rawCat);
+          const cg = toStr(getCell(row, 'cutoff_general', 'Cutoff_General') || getCellByKeyword(row, 'cutoff_general')) || toStr(getCellByKeyword(row, 'category_wise') || getCellByKeyword(row, 'category') || getCellByKeyword(row, 'previous_year'));
+          const co = toStr(getCell(row, 'cutoff_obc', 'Cutoff_Obc', 'cutoff_OBC') || getCellByKeyword(row, 'cutoff_obc'));
+          const cs = toStr(getCell(row, 'cutoff_sc', 'Cutoff_Sc') || getCellByKeyword(row, 'cutoff_sc'));
+          const cst = toStr(getCell(row, 'cutoff_st', 'Cutoff_St') || getCellByKeyword(row, 'cutoff_st'));
           const targetRank = toStr(row.target_rank_range ?? row.Target_Rank_Range ?? getCellByKeyword(row, 'target_rank'));
-          if (prevCutoff || ranks || catCutoff || targetRank) {
+          if (ranks || cg || co || cs || cst || targetRank) {
             await ExamCutoff.create({
               exam_id: examId,
-              previous_year_cutoff: prevCutoff,
               ranks_percentiles: ranks,
-              category_wise_cutoff: catCutoff,
+              cutoff_general: cg,
+              cutoff_obc: co,
+              cutoff_sc: cs,
+              cutoff_st: cst,
               target_rank_range: targetRank
             });
           }

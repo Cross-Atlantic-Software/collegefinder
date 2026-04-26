@@ -5,13 +5,14 @@ import { ApiResponse } from '../../types';
 export interface Exam {
   id: number;
   name: string;
-  code: string;
+  code: string | null;
   description: string | null;
   generation_prompt?: string | null;
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
-  format?: unknown;
+  documents_required?: string | null;
+  counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
   created_at: string;
@@ -24,6 +25,8 @@ export interface ExamDates {
   application_start_date: string | null;
   application_close_date: string | null;
   exam_date: string | null;
+  result_date: string | null;
+  application_fees: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,8 +36,7 @@ export interface ExamEligibilityCriteria {
   exam_id: number;
   stream_ids: number[];
   subject_ids: number[];
-  age_limit_min: number | null;
-  age_limit_max: number | null;
+  age_limit: string | null;
   attempt_limit: number | null;
   domicile?: string | null;
   created_at: string;
@@ -46,7 +48,9 @@ export interface ExamPattern {
   exam_id: number;
   mode: 'Offline' | 'Online' | 'Hybrid' | null;
   number_of_questions: number | null;
-  marking_scheme: string | null;
+  total_marks: number | null;
+  negative_marking: string | null;
+  weightage_of_subjects: string | null;
   duration_minutes: number | null;
   created_at: string;
   updated_at: string;
@@ -55,9 +59,11 @@ export interface ExamPattern {
 export interface ExamCutoff {
   id: number;
   exam_id: number;
-  previous_year_cutoff: string | null;
   ranks_percentiles: string | null;
-  category_wise_cutoff: string | null;
+  cutoff_general: string | null;
+  cutoff_obc: string | null;
+  cutoff_sc: string | null;
+  cutoff_st: string | null;
   target_rank_range: string | null;
   created_at: string;
   updated_at: string;
@@ -136,12 +142,13 @@ export async function uploadExamLogo(file: File): Promise<ApiResponse<{
  */
 export async function createExam(data: {
   name: string;
-  code: string;
+  code?: string | null;
   description?: string;
   exam_logo?: string | null;
   exam_type?: 'National' | 'State' | 'Institute' | null;
   conducting_authority?: string | null;
-  format?: unknown;
+  documents_required?: string | null;
+  counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
   examDates?: Partial<ExamDates>;
@@ -171,12 +178,13 @@ export async function updateExam(
   id: number,
   data: {
     name?: string;
-    code?: string;
+    code?: string | null;
     description?: string;
     exam_logo?: string | null;
     exam_type?: 'National' | 'State' | 'Institute' | null;
     conducting_authority?: string | null;
-    format?: unknown;
+    documents_required?: string | null;
+    counselling?: string | null;
     number_of_papers?: number;
     website?: string | null;
     examDates?: Partial<ExamDates>;

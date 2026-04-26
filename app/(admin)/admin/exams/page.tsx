@@ -64,32 +64,38 @@ export default function ExamsPage() {
     exam_logo: '',
     exam_type: '' as 'National' | 'State' | 'Institute' | '',
     conducting_authority: '',
-    format: '',
+    documents_required: '',
+    counselling: '',
     number_of_papers: '1',
     website: '',
     examDates: {
       application_start_date: '',
       application_close_date: '',
       exam_date: '',
+      result_date: '',
+      application_fees: '',
     },
     eligibilityCriteria: {
       stream_ids: [] as number[],
       subject_ids: [] as number[],
-      age_limit_min: '',
-      age_limit_max: '',
+      age_limit: '',
       attempt_limit: '',
       domicile: '',
     },
     examPattern: {
       mode: '' as 'Offline' | 'Online' | 'Hybrid' | '',
       number_of_questions: '',
-      marking_scheme: '',
+      total_marks: '',
+      negative_marking: '',
+      weightage_of_subjects: '',
       duration_minutes: '',
     },
     examCutoff: {
-      previous_year_cutoff: '',
       ranks_percentiles: '',
-      category_wise_cutoff: '',
+      cutoff_general: '',
+      cutoff_obc: '',
+      cutoff_sc: '',
+      cutoff_st: '',
       target_rank_range: '',
     },
     careerGoalIds: [] as number[],
@@ -148,9 +154,9 @@ export default function ExamsPage() {
         return;
       }
       const searchLower = searchQuery.toLowerCase();
-      const filtered = allExams.filter(exam =>
+      const filtered = allExams.filter((exam) =>
         exam.name.toLowerCase().includes(searchLower) ||
-        exam.code.toLowerCase().includes(searchLower) ||
+        (exam.code && exam.code.toLowerCase().includes(searchLower)) ||
         (exam.description && exam.description.toLowerCase().includes(searchLower)) ||
         (exam.conducting_authority && exam.conducting_authority.toLowerCase().includes(searchLower))
       );
@@ -251,50 +257,45 @@ export default function ExamsPage() {
     try {
       const submitData = {
         name: formData.name,
-        code: formData.code,
+        code: formData.code?.trim() ? formData.code.trim() : null,
         description: formData.description || undefined,
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
         conducting_authority: formData.conducting_authority || null,
-        format: (() => {
-          const v = formData.format?.trim();
-          if (!v) return undefined;
-          try {
-            return JSON.parse(v) as unknown;
-          } catch {
-            return undefined;
-          }
-        })(),
+        documents_required: formData.documents_required?.trim() || null,
+        counselling: formData.counselling?.trim() || null,
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         website: formData.website || null,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
           application_close_date: formData.examDates.application_close_date || null,
           exam_date: formData.examDates.exam_date || null,
+          result_date: formData.examDates.result_date || null,
+          application_fees: formData.examDates.application_fees?.trim()
+            ? parseFloat(formData.examDates.application_fees, 10)
+            : null,
         },
         eligibilityCriteria: {
           stream_ids: formData.eligibilityCriteria.stream_ids,
           subject_ids: formData.eligibilityCriteria.subject_ids,
-          age_limit_min: formData.eligibilityCriteria.age_limit_min ? parseInt(formData.eligibilityCriteria.age_limit_min) : null,
-          age_limit_max: formData.eligibilityCriteria.age_limit_max ? parseInt(formData.eligibilityCriteria.age_limit_max) : null,
-          attempt_limit: formData.eligibilityCriteria.attempt_limit ? parseInt(formData.eligibilityCriteria.attempt_limit) : null,
+          age_limit: formData.eligibilityCriteria.age_limit?.trim() || null,
+          attempt_limit: formData.eligibilityCriteria.attempt_limit ? parseInt(formData.eligibilityCriteria.attempt_limit, 10) : null,
           domicile: formData.eligibilityCriteria.domicile || null,
         },
         examPattern: {
           mode: formData.examPattern.mode || null,
-          number_of_questions: formData.examPattern.number_of_questions ? parseInt(formData.examPattern.number_of_questions) : null,
-          marking_scheme: formData.examPattern.marking_scheme || null,
-          duration_minutes: formData.examPattern.duration_minutes ? parseInt(formData.examPattern.duration_minutes) : null,
+          number_of_questions: formData.examPattern.number_of_questions ? parseInt(formData.examPattern.number_of_questions, 10) : null,
+          total_marks: formData.examPattern.total_marks ? parseInt(formData.examPattern.total_marks, 10) : null,
+          negative_marking: formData.examPattern.negative_marking?.trim() || null,
+          weightage_of_subjects: formData.examPattern.weightage_of_subjects?.trim() || null,
+          duration_minutes: formData.examPattern.duration_minutes ? parseInt(formData.examPattern.duration_minutes, 10) : null,
         },
         examCutoff: {
-          previous_year_cutoff: formData.examCutoff.previous_year_cutoff || null,
           ranks_percentiles: formData.examCutoff.ranks_percentiles || null,
-          category_wise_cutoff: (() => {
-            const v = formData.examCutoff.category_wise_cutoff;
-            if (v == null) return null;
-            const s = typeof v === 'string' ? v : String(v);
-            return s.trim() === '' ? null : s.trim();
-          })(),
+          cutoff_general: formData.examCutoff.cutoff_general?.trim() || null,
+          cutoff_obc: formData.examCutoff.cutoff_obc?.trim() || null,
+          cutoff_sc: formData.examCutoff.cutoff_sc?.trim() || null,
+          cutoff_st: formData.examCutoff.cutoff_st?.trim() || null,
           target_rank_range: formData.examCutoff.target_rank_range || null,
         },
         careerGoalIds: formData.careerGoalIds || [],
@@ -383,32 +384,41 @@ export default function ExamsPage() {
           exam_logo: e?.exam_logo ?? '',
           exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
           conducting_authority: e?.conducting_authority ?? '',
-          format: e?.format != null ? (typeof e.format === 'object' ? JSON.stringify(e.format, null, 2) : String(e.format)) : '',
+          documents_required: e?.documents_required ?? '',
+          counselling: e?.counselling ?? '',
           number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
           website: e?.website ?? '',
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
             exam_date: toDateInputValue(data.examDates?.exam_date),
+            result_date: toDateInputValue(data.examDates?.result_date),
+            application_fees:
+              data.examDates?.application_fees != null && !Number.isNaN(Number(data.examDates.application_fees))
+                ? String(data.examDates.application_fees)
+                : '',
           },
           eligibilityCriteria: {
             stream_ids: toNumArray(data.eligibilityCriteria?.stream_ids),
             subject_ids: toNumArray(data.eligibilityCriteria?.subject_ids),
-            age_limit_min: data.eligibilityCriteria?.age_limit_min != null ? String(data.eligibilityCriteria.age_limit_min) : '',
-            age_limit_max: data.eligibilityCriteria?.age_limit_max != null ? String(data.eligibilityCriteria.age_limit_max) : '',
+            age_limit: data.eligibilityCriteria?.age_limit != null ? String(data.eligibilityCriteria.age_limit) : '',
             attempt_limit: data.eligibilityCriteria?.attempt_limit != null ? String(data.eligibilityCriteria.attempt_limit) : '',
             domicile: data.eligibilityCriteria?.domicile ?? '',
           },
           examPattern: {
             mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid') ?? '',
             number_of_questions: data.examPattern?.number_of_questions != null ? String(data.examPattern.number_of_questions) : '',
-            marking_scheme: data.examPattern?.marking_scheme ?? '',
+            total_marks: data.examPattern?.total_marks != null ? String(data.examPattern.total_marks) : '',
+            negative_marking: data.examPattern?.negative_marking ?? '',
+            weightage_of_subjects: data.examPattern?.weightage_of_subjects ?? '',
             duration_minutes: data.examPattern?.duration_minutes != null ? String(data.examPattern.duration_minutes) : '',
           },
           examCutoff: {
-            previous_year_cutoff: data.examCutoff?.previous_year_cutoff ?? '',
             ranks_percentiles: data.examCutoff?.ranks_percentiles ?? '',
-            category_wise_cutoff: data.examCutoff?.category_wise_cutoff ?? '',
+            cutoff_general: data.examCutoff?.cutoff_general ?? '',
+            cutoff_obc: data.examCutoff?.cutoff_obc ?? '',
+            cutoff_sc: data.examCutoff?.cutoff_sc ?? '',
+            cutoff_st: data.examCutoff?.cutoff_st ?? '',
             target_rank_range: data.examCutoff?.target_rank_range ?? '',
           },
           careerGoalIds: toNumArray(data.careerGoalIds),
@@ -471,32 +481,38 @@ export default function ExamsPage() {
       exam_logo: '',
       exam_type: '',
       conducting_authority: '',
-      format: '',
+      documents_required: '',
+      counselling: '',
       number_of_papers: '1',
       website: '',
       examDates: {
         application_start_date: '',
         application_close_date: '',
         exam_date: '',
+        result_date: '',
+        application_fees: '',
       },
       eligibilityCriteria: {
         stream_ids: [],
         subject_ids: [],
-        age_limit_min: '',
-        age_limit_max: '',
+        age_limit: '',
         attempt_limit: '',
         domicile: '',
       },
       examPattern: {
         mode: '',
         number_of_questions: '',
-        marking_scheme: '',
+        total_marks: '',
+        negative_marking: '',
+        weightage_of_subjects: '',
         duration_minutes: '',
       },
       examCutoff: {
-        previous_year_cutoff: '',
         ranks_percentiles: '',
-        category_wise_cutoff: '',
+        cutoff_general: '',
+        cutoff_obc: '',
+        cutoff_sc: '',
+        cutoff_st: '',
         target_rank_range: '',
       },
       careerGoalIds: [],
@@ -781,7 +797,7 @@ export default function ExamsPage() {
                             <span className="text-sm font-medium text-slate-900">{exam.name}</span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="text-sm text-slate-600 font-mono">{exam.code}</span>
+                            <span className="text-sm text-slate-600 font-mono">{exam.code || '—'}</span>
                           </td>
                           <td className="px-4 py-2">
                             {exam.exam_type && (
@@ -871,14 +887,11 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Code <span className="text-[#341050]">*</span>
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Code (optional)</label>
                       <input
                         type="text"
                         value={formData.code}
                         onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
-                        required
                         placeholder="e.g., JEE_MAIN, NEET"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
                       />
@@ -975,17 +988,25 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Format (JSON)
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Documents required</label>
                       <textarea
-                        value={formData.format}
-                        onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                        placeholder='e.g. {"Physics": {"marks": 100}, "Chemistry": {"marks": 100}}'
-                        rows={4}
-                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono"
+                        value={formData.documents_required}
+                        onChange={(e) => setFormData({ ...formData, documents_required: e.target.value })}
+                        placeholder="List required documents (text)"
+                        rows={3}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Optional. JSON object describing exam format/structure. Same as in bulk template.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Counselling</label>
+                      <textarea
+                        value={formData.counselling}
+                        onChange={(e) => setFormData({ ...formData, counselling: e.target.value })}
+                        placeholder="Counselling / admission process (text)"
+                        rows={3}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
+                      />
                     </div>
                   </>
                 )}
@@ -1025,7 +1046,7 @@ export default function ExamsPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Exam Date(s)
+                        Exam date
                       </label>
                       <input
                         type="date"
@@ -1034,6 +1055,35 @@ export default function ExamsPage() {
                           ...formData,
                           examDates: { ...formData.examDates, exam_date: e.target.value }
                         })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Result date</label>
+                      <input
+                        type="date"
+                        value={formData.examDates.result_date}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examDates: { ...formData.examDates, result_date: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Application fee (₹)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={formData.examDates.application_fees}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examDates: { ...formData.examDates, application_fees: e.target.value }
+                        })}
+                        placeholder="e.g., 2000"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1115,38 +1165,18 @@ export default function ExamsPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Minimum Age
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.eligibilityCriteria.age_limit_min}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            eligibilityCriteria: { ...formData.eligibilityCriteria, age_limit_min: e.target.value }
-                          })}
-                          placeholder="e.g., 17"
-                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Maximum Age
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.eligibilityCriteria.age_limit_max}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            eligibilityCriteria: { ...formData.eligibilityCriteria, age_limit_max: e.target.value }
-                          })}
-                          placeholder="e.g., 25"
-                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Age limit</label>
+                      <input
+                        type="text"
+                        value={formData.eligibilityCriteria.age_limit}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          eligibilityCriteria: { ...formData.eligibilityCriteria, age_limit: e.target.value }
+                        })}
+                        placeholder="e.g., 17–25 years on Dec 31, or 17+"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
                     </div>
 
                     <div>
@@ -1184,9 +1214,7 @@ export default function ExamsPage() {
                 {activeTab === 'pattern' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Number of Questions
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Number of questions</label>
                       <input
                         type="number"
                         value={formData.examPattern.number_of_questions}
@@ -1200,25 +1228,49 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Marking Scheme
-                      </label>
-                      <textarea
-                        value={formData.examPattern.marking_scheme}
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Total marks</label>
+                      <input
+                        type="number"
+                        value={formData.examPattern.total_marks}
                         onChange={(e) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, marking_scheme: e.target.value }
+                          examPattern: { ...formData.examPattern, total_marks: e.target.value }
                         })}
-                        placeholder="e.g., +4 for correct, -1 for incorrect"
+                        placeholder="e.g., 300"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Negative marking</label>
+                      <textarea
+                        value={formData.examPattern.negative_marking}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examPattern: { ...formData.examPattern, negative_marking: e.target.value }
+                        })}
+                        placeholder="e.g., −1 per wrong answer, no negative in numeric"
                         rows={3}
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Duration (minutes)
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Weightage of subject</label>
+                      <textarea
+                        value={formData.examPattern.weightage_of_subjects}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examPattern: { ...formData.examPattern, weightage_of_subjects: e.target.value }
+                        })}
+                        placeholder="e.g., PCM 33% each, or per-section description"
+                        rows={3}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Duration (minutes)</label>
                       <input
                         type="number"
                         value={formData.examPattern.duration_minutes}
@@ -1237,25 +1289,7 @@ export default function ExamsPage() {
                 {activeTab === 'cutoff' && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Previous Year Cutoff
-                      </label>
-                      <textarea
-                        value={formData.examCutoff.previous_year_cutoff}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          examCutoff: { ...formData.examCutoff, previous_year_cutoff: e.target.value }
-                        })}
-                        placeholder="Enter previous year cutoff details (JSON or text)"
-                        rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Ranks/Percentiles
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Ranks/percentiles</label>
                       <textarea
                         value={formData.examCutoff.ranks_percentiles}
                         onChange={(e) => setFormData({
@@ -1269,20 +1303,53 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Category-wise Cutoff
-                      </label>
-                      <textarea
-                        value={formData.examCutoff.category_wise_cutoff ?? ''}
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Cutoff — General</label>
+                      <input
+                        type="text"
+                        value={formData.examCutoff.cutoff_general}
                         onChange={(e) => setFormData({
                           ...formData,
-                          examCutoff: { ...formData.examCutoff, category_wise_cutoff: e.target.value }
+                          examCutoff: { ...formData.examCutoff, cutoff_general: e.target.value }
                         })}
-                        placeholder='e.g. {"General": 95, "OBC": 90, "SC": 85, "ST": 80} (use double quotes in JSON)'
-                        rows={3}
-                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none font-mono text-xs"
+                        placeholder="e.g., 95.5%ile or 360 marks"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Enter as JSON object or plain text. Stored as text.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Cutoff — OBC</label>
+                      <input
+                        type="text"
+                        value={formData.examCutoff.cutoff_obc}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examCutoff: { ...formData.examCutoff, cutoff_obc: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Cutoff — SC</label>
+                      <input
+                        type="text"
+                        value={formData.examCutoff.cutoff_sc}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examCutoff: { ...formData.examCutoff, cutoff_sc: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Cutoff — ST</label>
+                      <input
+                        type="text"
+                        value={formData.examCutoff.cutoff_st}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examCutoff: { ...formData.examCutoff, cutoff_st: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg"
+                      />
                     </div>
 
                     <div>
@@ -1365,7 +1432,7 @@ export default function ExamsPage() {
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={isSaving || uploading || !formData.name || !formData.code}
+                disabled={isSaving || uploading || !formData.name}
                 className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Saving...' : editingExam ? 'Update' : 'Create'}
@@ -1410,8 +1477,24 @@ export default function ExamsPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Code</label>
-                <p className="text-sm text-slate-900 font-mono">{viewingExamData.exam.code}</p>
+                <p className="text-sm text-slate-900 font-mono">{viewingExamData.exam.code || '—'}</p>
               </div>
+              {(viewingExamData.exam.documents_required || viewingExamData.exam.counselling) && (
+                <div className="space-y-2 text-sm text-slate-900">
+                  {viewingExamData.exam.documents_required && (
+                    <div>
+                      <span className="text-xs font-medium text-slate-700">Documents required</span>
+                      <p className="whitespace-pre-wrap mt-0.5">{viewingExamData.exam.documents_required}</p>
+                    </div>
+                  )}
+                  {viewingExamData.exam.counselling && (
+                    <div>
+                      <span className="text-xs font-medium text-slate-700">Counselling</span>
+                      <p className="whitespace-pre-wrap mt-0.5">{viewingExamData.exam.counselling}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {viewingExamData.exam.description && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
@@ -1436,13 +1519,15 @@ export default function ExamsPage() {
                   <p className="text-sm text-slate-900">{viewingExamData.exam.number_of_papers}</p>
                 </div>
               )}
-              {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date) && (
+              {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date || viewingExamData.examDates.result_date || viewingExamData.examDates.application_fees != null) && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Exam Details</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Dates &amp; mode</label>
                   <div className="text-sm text-slate-900 space-y-1">
-                    {viewingExamData.examDates.application_start_date && <p>Application start: {viewingExamData.examDates.application_start_date}</p>}
-                    {viewingExamData.examDates.application_close_date && <p>Application close: {viewingExamData.examDates.application_close_date}</p>}
-                    {viewingExamData.examDates.exam_date && <p>Exam date: {viewingExamData.examDates.exam_date}</p>}
+                    {viewingExamData.examDates.application_start_date && <p>Application start: {String(viewingExamData.examDates.application_start_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.application_close_date && <p>Application close: {String(viewingExamData.examDates.application_close_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.exam_date && <p>Exam date: {String(viewingExamData.examDates.exam_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.result_date && <p>Result date: {String(viewingExamData.examDates.result_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.application_fees != null && <p>Application fee: ₹{viewingExamData.examDates.application_fees}</p>}
                     {viewingExamData.examPattern?.mode && <p>Mode: {viewingExamData.examPattern.mode}</p>}
                     {viewingExamData.eligibilityCriteria?.domicile && <p>Domicile: {viewingExamData.eligibilityCriteria.domicile}</p>}
                   </div>
@@ -1454,30 +1539,34 @@ export default function ExamsPage() {
                   <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.eligibilityCriteria.stream_ids?.length > 0 && <p>Required Streams: {viewingExamData.eligibilityCriteria.stream_ids.map((id) => streams.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
                     {viewingExamData.eligibilityCriteria.subject_ids?.length > 0 && <p>Subject Requirements: {viewingExamData.eligibilityCriteria.subject_ids.map((id) => subjects.find((s) => s.id === id)?.name ?? id).join(', ')}</p>}
-                    {(viewingExamData.eligibilityCriteria.age_limit_min != null || viewingExamData.eligibilityCriteria.age_limit_max != null) && (
-                      <p>Age Limits: {viewingExamData.eligibilityCriteria.age_limit_min ?? '–'} – {viewingExamData.eligibilityCriteria.age_limit_max ?? '–'}</p>
+                    {viewingExamData.eligibilityCriteria.age_limit && (
+                      <p className="whitespace-pre-wrap">Age limit: {viewingExamData.eligibilityCriteria.age_limit}</p>
                     )}
                     {viewingExamData.eligibilityCriteria.attempt_limit != null && <p>Attempt Limits: {viewingExamData.eligibilityCriteria.attempt_limit}</p>}
                   </div>
                 </div>
               )}
-              {viewingExamData.examPattern && (viewingExamData.examPattern.number_of_questions || viewingExamData.examPattern.duration_minutes || viewingExamData.examPattern.marking_scheme) && (
+              {viewingExamData.examPattern && (viewingExamData.examPattern.number_of_questions != null || viewingExamData.examPattern.total_marks != null || viewingExamData.examPattern.negative_marking || viewingExamData.examPattern.weightage_of_subjects || viewingExamData.examPattern.duration_minutes != null) && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Pattern</label>
                   <div className="text-sm text-slate-900 space-y-1">
-                    {viewingExamData.examPattern.number_of_questions != null && <p>Number of Questions: {viewingExamData.examPattern.number_of_questions}</p>}
-                    {viewingExamData.examPattern.marking_scheme && <p className="whitespace-pre-wrap">Marking Scheme: {viewingExamData.examPattern.marking_scheme}</p>}
+                    {viewingExamData.examPattern.number_of_questions != null && <p>Number of questions: {viewingExamData.examPattern.number_of_questions}</p>}
+                    {viewingExamData.examPattern.total_marks != null && <p>Total marks: {viewingExamData.examPattern.total_marks}</p>}
+                    {viewingExamData.examPattern.negative_marking && <p className="whitespace-pre-wrap">Negative marking: {viewingExamData.examPattern.negative_marking}</p>}
+                    {viewingExamData.examPattern.weightage_of_subjects && <p className="whitespace-pre-wrap">Weightage of subject: {viewingExamData.examPattern.weightage_of_subjects}</p>}
                     {viewingExamData.examPattern.duration_minutes != null && <p>Duration: {viewingExamData.examPattern.duration_minutes} min</p>}
                   </div>
                 </div>
               )}
-              {viewingExamData.examCutoff && (viewingExamData.examCutoff.previous_year_cutoff || viewingExamData.examCutoff.ranks_percentiles || viewingExamData.examCutoff.category_wise_cutoff) && (
+              {viewingExamData.examCutoff && (viewingExamData.examCutoff.ranks_percentiles || viewingExamData.examCutoff.cutoff_general || viewingExamData.examCutoff.cutoff_obc || viewingExamData.examCutoff.cutoff_sc || viewingExamData.examCutoff.cutoff_st || viewingExamData.examCutoff.target_rank_range) && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Rank & Cutoff</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Rank &amp; cutoff</label>
                   <div className="text-sm text-slate-900 space-y-1">
-                    {viewingExamData.examCutoff.previous_year_cutoff && <p className="whitespace-pre-wrap">Previous year: {viewingExamData.examCutoff.previous_year_cutoff}</p>}
-                    {viewingExamData.examCutoff.ranks_percentiles && <p className="whitespace-pre-wrap">Ranks: {viewingExamData.examCutoff.ranks_percentiles}</p>}
-                    {viewingExamData.examCutoff.category_wise_cutoff && <p className="whitespace-pre-wrap">Category: {viewingExamData.examCutoff.category_wise_cutoff}</p>}
+                    {viewingExamData.examCutoff.ranks_percentiles && <p className="whitespace-pre-wrap">Ranks/percentiles: {viewingExamData.examCutoff.ranks_percentiles}</p>}
+                    {viewingExamData.examCutoff.cutoff_general && <p className="whitespace-pre-wrap">General: {viewingExamData.examCutoff.cutoff_general}</p>}
+                    {viewingExamData.examCutoff.cutoff_obc && <p className="whitespace-pre-wrap">OBC: {viewingExamData.examCutoff.cutoff_obc}</p>}
+                    {viewingExamData.examCutoff.cutoff_sc && <p className="whitespace-pre-wrap">SC: {viewingExamData.examCutoff.cutoff_sc}</p>}
+                    {viewingExamData.examCutoff.cutoff_st && <p className="whitespace-pre-wrap">ST: {viewingExamData.examCutoff.cutoff_st}</p>}
                     {viewingExamData.examCutoff.target_rank_range && <p className="whitespace-pre-wrap">Target rank: {viewingExamData.examCutoff.target_rank_range}</p>}
                   </div>
                 </div>
@@ -1504,12 +1593,6 @@ export default function ExamsPage() {
                   <p className="text-sm text-slate-900">
                     {viewingExamData.programIds.map((id) => programs.find((p) => p.id === id)?.name ?? id).join(', ')}
                   </p>
-                </div>
-              )}
-              {viewingExamData.exam.format != null && typeof viewingExamData.exam.format === 'object' && Object.keys(viewingExamData.exam.format as object).length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Format</label>
-                  <pre className="text-xs text-slate-900 bg-[#F6F8FA] p-2 rounded overflow-auto max-h-40">{JSON.stringify(viewingExamData.exam.format, null, 2)}</pre>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200">
@@ -1774,7 +1857,7 @@ export default function ExamsPage() {
                   {missingLogosResult.updated.length > 0 && (
                     <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
                       {missingLogosResult.updated.map((u, i) => (
-                        <li key={i}>{u.name} ({u.code})</li>
+                        <li key={i}>{u.name}{u.code ? ` (${u.code})` : ''}</li>
                       ))}
                     </ul>
                   )}
