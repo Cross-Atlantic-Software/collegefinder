@@ -185,6 +185,26 @@ class StreamController {
       });
     }
   }
+
+  /**
+   * Delete all streams
+   * DELETE /api/admin/streams/all
+   */
+  static async deleteAllStreams(req, res) {
+    try {
+      const deletedCount = await Stream.deleteAll();
+      res.json({
+        success: true,
+        message: `Deleted ${deletedCount} stream(s) successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all streams:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all streams'
+      });
+    }
+  }
 }
 
 module.exports = StreamController;

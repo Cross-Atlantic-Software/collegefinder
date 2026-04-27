@@ -9,12 +9,13 @@ import {
   createTopic,
   updateTopic,
   deleteTopic,
+  deleteAllTopics,
   downloadTopicsBulkTemplate,
   bulkUploadTopics,
   Topic,
 } from '@/api';
 import { getAllSubjectsPublic } from '@/api';
-import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -22,7 +23,7 @@ import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 export default function TopicsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
-  const { canEdit } = useAdminPermissions();
+  const { canEdit, canDelete } = useAdminPermissions();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +50,8 @@ export default function TopicsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -210,6 +213,24 @@ export default function TopicsPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllTopics();
+      if (response.success) {
+        showSuccess(response.message || 'All topics deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchTopics();
+      } else {
+        showError(response.message || 'Failed to delete all topics');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete all topics');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       sub_id: '',
@@ -351,6 +372,17 @@ export default function TopicsPage() {
                 <FiPlus className="h-4 w-4" />
                 Add Topic
               </button>
+              {canDelete && allTopics.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
             </div>
           </div>
 
@@ -666,6 +698,18 @@ export default function TopicsPage() {
         confirmText="Delete"
         cancelText="Cancel"
         isLoading={isDeleting}
+        confirmButtonStyle="danger"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAll}
+        title="Delete All Topics"
+        message={`Are you sure you want to delete all ${allTopics.length} topic(s)? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        isLoading={isDeletingAll}
         confirmButtonStyle="danger"
       />
     </div>

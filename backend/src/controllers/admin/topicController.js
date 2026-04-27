@@ -236,6 +236,26 @@ class TopicController {
   }
 
   /**
+   * Delete all topics
+   * DELETE /api/admin/topics/all
+   */
+  static async deleteAllTopics(req, res) {
+    try {
+      await Topic.deleteAll();
+      res.json({
+        success: true,
+        message: 'All topics deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting all topics:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all topics'
+      });
+    }
+  }
+
+  /**
    * Upload thumbnail for topic
    * POST /api/admin/topics/upload-thumbnail
    */

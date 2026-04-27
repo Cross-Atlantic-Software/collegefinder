@@ -112,6 +112,14 @@ class Stream {
     );
     return result.rows[0] || null;
   }
+
+  /**
+   * Delete all streams
+   */
+  static async deleteAll() {
+    const result = await db.query('DELETE FROM streams');
+    return result.rowCount || 0;
+  }
 }
 
 module.exports = Stream;

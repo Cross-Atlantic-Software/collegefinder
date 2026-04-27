@@ -270,6 +270,7 @@ router.get('/subjects', authenticateAdmin, requireModuleAccess('subjects'), Subj
 router.get('/subjects/bulk-upload-template', authenticateAdmin, requireModuleAccess('subjects'), SubjectController.downloadBulkTemplate);
 router.get('/subjects/download-excel', authenticateAdmin, requireModuleAccess('subjects'), requireCanDownloadExcel, SubjectController.downloadAllExcel);
 router.post('/subjects/bulk-upload', authenticateAdmin, requireModuleAccess('subjects'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), SubjectController.bulkUpload);
+router.delete('/subjects/all', authenticateAdmin, requireModuleAccess('subjects'), requireCanDelete, SubjectController.deleteAllSubjects);
 
 /**
  * @route   GET /api/admin/subjects/:id
@@ -330,6 +331,7 @@ router.post('/streams', authenticateAdmin, requireModuleAccess('streams'), valid
  * @access  Private (Admin)
  */
 router.put('/streams/:id', authenticateAdmin, requireModuleAccess('streams'), requireCanEdit, validateUpdateStream, StreamController.updateStream);
+router.delete('/streams/all', authenticateAdmin, requireModuleAccess('streams'), requireCanDelete, StreamController.deleteAllStreams);
 
 /**
  * @route   DELETE /api/admin/streams/:id
@@ -569,6 +571,7 @@ router.post('/topics', authenticateAdmin, requireModuleAccess('topics'), validat
  * @access  Private (Admin)
  */
 router.put('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanEdit, validateUpdateTopic, TopicController.updateTopic);
+router.delete('/topics/all', authenticateAdmin, requireModuleAccess('topics'), requireCanDelete, TopicController.deleteAllTopics);
 
 /**
  * @route   DELETE /api/admin/topics/:id
@@ -646,6 +649,7 @@ router.post('/subtopics', authenticateAdmin, requireModuleAccess('subtopics'), v
  * @access  Private (Admin)
  */
 router.put('/subtopics/:id', authenticateAdmin, requireModuleAccess('subtopics'), requireCanEdit, validateUpdateSubtopic, SubtopicController.updateSubtopic);
+router.delete('/subtopics/all', authenticateAdmin, requireModuleAccess('subtopics'), requireCanDelete, SubtopicController.deleteAllSubtopics);
 
 /**
  * @route   DELETE /api/admin/subtopics/:id

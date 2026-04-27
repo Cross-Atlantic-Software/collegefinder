@@ -381,6 +381,26 @@ class SubtopicController {
       });
     }
   }
+
+  /**
+   * Delete all subtopics
+   * DELETE /api/admin/subtopics/all
+   */
+  static async deleteAllSubtopics(req, res) {
+    try {
+      await Subtopic.deleteAll();
+      res.json({
+        success: true,
+        message: 'All subtopics deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting all subtopics:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all subtopics'
+      });
+    }
+  }
 }
 
 module.exports = SubtopicController;

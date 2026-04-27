@@ -76,3 +76,12 @@ export async function deleteStream(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Delete all streams
+ */
+export async function deleteAllStreams(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.STREAMS}/all`, {
+    method: 'DELETE',
+  });
+}
+

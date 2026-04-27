@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllStreams, createStream, updateStream, deleteStream, Stream } from '@/api';
+import { getAllStreams, createStream, updateStream, deleteStream, deleteAllStreams, Stream } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function StreamsPage() {
   const router = useRouter();
@@ -23,8 +24,11 @@ export default function StreamsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [viewingStream, setViewingStream] = useState<Stream | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const { canDelete } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -183,6 +187,29 @@ export default function StreamsPage() {
     resetForm();
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllStreams();
+      if (response.success) {
+        showSuccess(response.message || 'All streams deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchStreams();
+      } else {
+        const errorMsg = response.message || 'Failed to delete all streams';
+        setError(errorMsg);
+        showError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = 'An error occurred while deleting all streams';
+      setError(errorMsg);
+      showError(errorMsg);
+      console.error('Error deleting all streams:', err);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
@@ -230,13 +257,25 @@ export default function StreamsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Stream
-            </button>
+            <div className="flex items-center gap-2">
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Stream
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -441,6 +480,18 @@ export default function StreamsPage() {
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Streams"
+        message="Are you sure you want to delete all streams? This action cannot be undone."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
 
       {/* View Stream Modal */}

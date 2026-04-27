@@ -207,6 +207,14 @@ class Subject {
     );
     return result.rows[0] || null;
   }
+
+  /**
+   * Delete all subjects
+   */
+  static async deleteAll() {
+    const result = await db.query('DELETE FROM subjects');
+    return result.rowCount || 0;
+  }
 }
 
 module.exports = Subject;

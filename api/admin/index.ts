@@ -64,6 +64,7 @@ export {
   createSubject,
   updateSubject,
   deleteSubject,
+  deleteAllSubjects,
   downloadSubjectsBulkTemplate,
   downloadAllSubjectsExcel,
   bulkUploadSubjects,
@@ -77,6 +78,7 @@ export {
   createStream,
   updateStream,
   deleteStream,
+  deleteAllStreams,
 } from './streams';
 export type { Stream } from './streams';
 
@@ -101,6 +103,7 @@ export {
   createTopic,
   updateTopic,
   deleteTopic,
+  deleteAllTopics,
   uploadTopicThumbnail,
   downloadTopicsBulkTemplate,
   bulkUploadTopics,
@@ -115,6 +118,7 @@ export {
   createSubtopic,
   updateSubtopic,
   deleteSubtopic,
+  deleteAllSubtopics,
   downloadSubtopicsBulkTemplate,
   bulkUploadSubtopics,
 } from './subtopics';
