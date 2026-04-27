@@ -190,7 +190,7 @@ function createFallbackRow(exam: Exam, sourceLabel: string): ExamRow {
         rowKey,
         examId: String(exam.id),
         name: exam.name,
-        subtitle: exam.code,
+        subtitle: exam.code || "",
         description: exam.description || "Exam details, key dates, and next-step guidance.",
         date: "TBA",
         fee: "TBA",

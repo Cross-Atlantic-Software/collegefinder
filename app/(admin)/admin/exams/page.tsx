@@ -272,7 +272,7 @@ export default function ExamsPage() {
           exam_date: formData.examDates.exam_date || null,
           result_date: formData.examDates.result_date || null,
           application_fees: formData.examDates.application_fees?.trim()
-            ? parseFloat(formData.examDates.application_fees, 10)
+            ? parseFloat(formData.examDates.application_fees)
             : null,
         },
         eligibilityCriteria: {

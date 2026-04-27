@@ -272,7 +272,7 @@ export default function TestModule() {
     const examNumberOfPapers = selectedExam.number_of_papers ?? 1;
     return (
       <TestInterface 
-        exam={{ id: selectedExam.id, name: selectedExam.name, description: selectedExam.description ?? '', code: selectedExam.code }}
+        exam={{ id: selectedExam.id, name: selectedExam.name, description: selectedExam.description ?? '', code: selectedExam.code ?? '' }}
         format={selectedFormat ?? undefined}
         numberOfPapers={examNumberOfPapers}
         formats={examNumberOfPapers > 1 ? availableFormats : undefined}

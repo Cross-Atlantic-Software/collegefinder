@@ -67,7 +67,7 @@ export default function ExamDirectoryPage() {
     return exams.filter(
       (item) =>
         item.name.toLowerCase().includes(value) ||
-        item.code.toLowerCase().includes(value) ||
+        (item.code || "").toLowerCase().includes(value) ||
         (item.description || "").toLowerCase().includes(value)
     );
   }, [exams, query]);
