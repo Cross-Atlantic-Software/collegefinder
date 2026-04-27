@@ -1142,100 +1142,69 @@ class ExamsTaxonomyController {
       }
 
       const allStreams = await Stream.findAll();
+      const allCareerGoals = await CareerGoal.findAll();
 
-      const errors = [];
+      const allErrors = [];
       const validTypes = ['National', 'State', 'Institute'];
       const validModes = ['Offline', 'Online', 'Hybrid'];
       const codesInFile = new Set();
       const namesInFile = new Set();
+      const created = [];
 
-      // Pass 1: Validate all rows. If any errors, return early without creating anything.
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
         const name = (row.name ?? row.Name ?? '').toString().trim();
         const codeRaw = (row.code ?? row.Code ?? '').toString().trim();
         const codeNorm = codeRaw ? codeRaw.toUpperCase().replace(/\s+/g, '_') : null;
-        const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
 
         if (!name) {
-          errors.push({ row: rowNum, message: 'name is required' });
+          allErrors.push({ row: rowNum, message: 'name is required' });
           continue;
         }
-
         if (codeNorm && codesInFile.has(codeNorm)) {
-          errors.push({ row: rowNum, message: `duplicate code "${codeNorm}" in this file (use unique code per row)` });
+          allErrors.push({ row: rowNum, message: `duplicate code "${codeNorm}" in this file (use unique code per row)` });
           continue;
         }
         if (namesInFile.has(name.toLowerCase())) {
-          errors.push({ row: rowNum, message: `duplicate name "${name}" in this file (use unique name per row)` });
+          allErrors.push({ row: rowNum, message: `duplicate name "${name}" in this file (use unique name per row)` });
           continue;
         }
-
         if (codeNorm) {
           const existingByCode = await Exam.findByCode(codeNorm);
           if (existingByCode) {
-            errors.push({ row: rowNum, message: `exam with code "${codeNorm}" already exists in database` });
+            allErrors.push({ row: rowNum, message: `exam with code "${codeNorm}" already exists in database` });
             continue;
           }
         }
-
         const existingByName = await Exam.findByName(name);
         if (existingByName) {
-          errors.push({ row: rowNum, message: `exam with name "${name}" already exists in database` });
+          allErrors.push({ row: rowNum, message: `exam with name "${name}" already exists in database` });
+          continue;
+        }
+        const streamResVal = await resolveStreamIds(row, allStreams);
+        const subjectResVal = await resolveSubjectIds(row);
+        const eligNotFound = [...streamResVal.notFound, ...subjectResVal.notFound];
+        if (eligNotFound.length > 0) {
+          allErrors.push({ row: rowNum, message: `eligibility: not found: ${eligNotFound.join(', ')}` });
+          continue;
+        }
+        const programResVal = await resolveProgramIds(row);
+        if (programResVal.notFound.length > 0) {
+          allErrors.push({ row: rowNum, message: `programs: not found: ${programResVal.notFound.join(', ')}` });
+          continue;
+        }
+        const collegeResVal = await resolveCollegeIds(row);
+        if (collegeResVal.notFound.length > 0) {
+          allErrors.push({ row: rowNum, message: `recommended colleges: not found: ${collegeResVal.notFound.join(', ')}` });
+          continue;
+        }
+        const careerGoalResVal = await resolveCareerGoalIds(row, allCareerGoals);
+        if (careerGoalResVal.notFound.length > 0) {
+          allErrors.push({ row: rowNum, message: `interests: not found: ${careerGoalResVal.notFound.join(', ')}` });
           continue;
         }
 
-        const streamRes = await resolveStreamIds(row);
-        const subjectRes = await resolveSubjectIds(row);
-        const allNotFound = [...streamRes.notFound, ...subjectRes.notFound];
-        if (allNotFound.length > 0) {
-          errors.push({ row: rowNum, message: `eligibility: not found: ${allNotFound.join(', ')}` });
-        }
-
-        const programRes = await resolveProgramIds(row);
-        if (programRes.notFound.length > 0) {
-          errors.push({ row: rowNum, message: `programs: not found: ${programRes.notFound.join(', ')}` });
-        }
-
-        const collegeRes = await resolveCollegeIds(row);
-        if (collegeRes.notFound.length > 0) {
-          errors.push({ row: rowNum, message: `recommended colleges: not found: ${collegeRes.notFound.join(', ')}` });
-        }
-
-        const careerGoalRes = await resolveCareerGoalIds(row);
-        if (careerGoalRes.notFound.length > 0) {
-          errors.push({ row: rowNum, message: `interests: not found: ${careerGoalRes.notFound.join(', ')}` });
-        }
-
-        if (codeNorm) codesInFile.add(codeNorm);
-        namesInFile.add(name.toLowerCase());
-      }
-
-      if (errors.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation failed. Fix errors before uploading. No data was created.',
-          data: {
-            created: 0,
-            createdExams: [],
-            errors: errors.length,
-            errorDetails: errors
-          }
-        });
-      }
-
-      // Pass 2: All validation passed. Create all exams and related data.
-      const created = [];
-      codesInFile.clear();
-      namesInFile.clear();
-
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const rowNum = i + 2;
-        const name = (row.name ?? row.Name ?? '').toString().trim();
-        const codeRaw2 = (row.code ?? row.Code ?? '').toString().trim();
-        const codeNorm = codeRaw2 ? codeRaw2.toUpperCase().replace(/\s+/g, '_') : null;
         const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
         const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
         const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
@@ -1258,11 +1227,8 @@ class ExamsTaxonomyController {
             try {
               examLogoUrl = await uploadToS3(logoFile.buffer, logoFile.originalname || logoFilename, 'exam-logos');
             } catch (uploadErr) {
-              return res.status(500).json({
-                success: false,
-                message: `Logo upload failed for row ${rowNum}: ${uploadErr.message}`,
-                data: { created: created.length, createdExams: created, errors: 1, errorDetails: [{ row: rowNum, message: `logo upload failed: ${uploadErr.message}` }] }
-              });
+              allErrors.push({ row: rowNum, message: `logo upload failed: ${uploadErr.message}` });
+              continue;
             }
           }
         }
@@ -1287,11 +1253,8 @@ class ExamsTaxonomyController {
           if (codeNorm) codesInFile.add(codeNorm);
           namesInFile.add(name.toLowerCase());
         } catch (createErr) {
-          return res.status(500).json({
-            success: false,
-            message: `Failed to create exam at row ${rowNum}: ${createErr.message}`,
-            data: { created: created.length, createdExams: created, errors: 1, errorDetails: [{ row: rowNum, message: createErr.message }] }
-          });
+          allErrors.push({ row: rowNum, message: createErr.message || 'Failed to create exam' });
+          continue;
         }
 
         const examId = exam.id;
@@ -1302,7 +1265,7 @@ class ExamsTaxonomyController {
           const examDate = parseDate(row.exam_date ?? row.Exam_Date);
           const resultDate = parseDate(row.result_date ?? row.Result_Date);
           const feesRaw = row.application_fees ?? row.Application_Fees;
-          const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw), 10) : null;
+          const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw)) : null;
           if (appStart || appClose || examDate || resultDate || (application_fees != null && !Number.isNaN(application_fees))) {
             await ExamDates.create({
               exam_id: examId,
@@ -1314,11 +1277,11 @@ class ExamsTaxonomyController {
             });
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `dates: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `dates: ${e.message}` });
         }
 
         try {
-          const streamRes = await resolveStreamIds(row);
+          const streamRes = await resolveStreamIds(row, allStreams);
           const subjectRes = await resolveSubjectIds(row);
           const streamIds = streamRes.ids;
           const subjectIds = subjectRes.ids;
@@ -1344,7 +1307,7 @@ class ExamsTaxonomyController {
             });
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `eligibility: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `eligibility: ${e.message}` });
         }
 
         try {
@@ -1369,7 +1332,7 @@ class ExamsTaxonomyController {
             });
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `pattern: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `pattern: ${e.message}` });
         }
 
         try {
@@ -1392,7 +1355,7 @@ class ExamsTaxonomyController {
             });
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `cutoff: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `cutoff: ${e.message}` });
         }
 
         try {
@@ -1401,16 +1364,16 @@ class ExamsTaxonomyController {
             await ExamProgram.setProgramsForExam(examId, programRes.ids);
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `programs: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `programs: ${e.message}` });
         }
 
         try {
-          const careerGoalRes = await resolveCareerGoalIds(row);
+          const careerGoalRes = await resolveCareerGoalIds(row, allCareerGoals);
           if (careerGoalRes.ids.length > 0) {
             await ExamCareerGoal.setCareerGoalsForExam(examId, careerGoalRes.ids);
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `interests: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `interests: ${e.message}` });
         }
 
         try {
@@ -1419,19 +1382,31 @@ class ExamsTaxonomyController {
             await CollegeRecommendedExam.addCollegesForExam(examId, collegeRes.ids);
           }
         } catch (e) {
-          errors.push({ row: rowNum, message: `recommended colleges: ${e.message}` });
+          allErrors.push({ row: rowNum, message: `recommended colleges: ${e.message}` });
         }
       }
 
+      const errCount = allErrors.length;
+      const hasCreated = created.length > 0;
+      let message;
+      if (hasCreated && errCount === 0) {
+        message = `Created ${created.length} exam(s) successfully.`;
+      } else if (hasCreated && errCount > 0) {
+        message = `Created ${created.length} exam(s). ${errCount} row(s) skipped (see error details).`;
+      } else if (!hasCreated && errCount > 0) {
+        message = `No new exams were created. ${errCount} row(s) had errors.`;
+      } else {
+        message = 'No rows to process.';
+      }
       res.json({
-        success: true,
+        success: hasCreated,
         data: {
           created: created.length,
           createdExams: created,
-          errors: 0,
-          errorDetails: []
+          errors: errCount,
+          errorDetails: allErrors
         },
-        message: `Created ${created.length} exam(s) successfully.`
+        message
       });
     } catch (error) {
       console.error('Error in bulk upload:', error);

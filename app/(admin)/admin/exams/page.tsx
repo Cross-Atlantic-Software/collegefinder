@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -32,6 +32,8 @@ import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 
+const EXAMS_PAGE_SIZE = 10;
+
 export default function ExamsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
@@ -56,6 +58,7 @@ export default function ExamsPage() {
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals'>('basic');
   const [formData, setFormData] = useState({
     name: '',
@@ -165,6 +168,25 @@ export default function ExamsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, allExams]);
+
+  const totalPages = useMemo(
+    () => (exams.length === 0 ? 1 : Math.max(1, Math.ceil(exams.length / EXAMS_PAGE_SIZE))),
+    [exams.length]
+  );
+
+  const paginatedExams = useMemo(() => {
+    const start = (currentPage - 1) * EXAMS_PAGE_SIZE;
+    return exams.slice(start, start + EXAMS_PAGE_SIZE);
+  }, [exams, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const max = exams.length === 0 ? 1 : Math.max(1, Math.ceil(exams.length / EXAMS_PAGE_SIZE));
+    if (currentPage > max) setCurrentPage(max);
+  }, [exams.length, currentPage]);
 
   const fetchData = async (silent = false) => {
     try {
@@ -775,7 +797,7 @@ export default function ExamsPage() {
                         </td>
                       </tr>
                     ) : (
-                      exams.map((exam) => (
+                      paginatedExams.map((exam) => (
                         <tr key={exam.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
@@ -822,6 +844,34 @@ export default function ExamsPage() {
                     )}
                   </tbody>
                 </table>
+                {exams.length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-[#F6F8FA] text-sm text-slate-600">
+                    <span>
+                      Showing {(currentPage - 1) * EXAMS_PAGE_SIZE + 1}–{Math.min(currentPage * EXAMS_PAGE_SIZE, exams.length)} of {exams.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                        className="px-3 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-slate-700">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="px-3 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
