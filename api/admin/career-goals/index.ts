@@ -171,6 +171,53 @@ export async function deleteAllCareerGoals(): Promise<ApiResponse<{ message: str
 }
 
 /**
+ * Download interests bulk upload template
+ */
+export async function downloadCareerGoalsBulkTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/bulk-upload-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'interests-bulk-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Bulk upload interests from Excel
+ */
+export async function bulkUploadCareerGoals(file: File): Promise<ApiResponse<{
+  created: number;
+  createdInterests: { id: number; label: string; stream: string }[];
+  errors: number;
+  errorDetails: { row: number; message: string }[];
+}>> {
+  const formData = new FormData();
+  formData.append('excel', file);
+
+  const adminToken = localStorage.getItem('admin_token');
+  if (!adminToken) throw new Error('Admin token not found');
+
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.CAREER_GOALS}/bulk-upload`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || `Failed to bulk upload (${response.status})`);
+  return data;
+}
+
+/**
  * Upload missing logos from a ZIP file.
  * Matches files by logo_filename; updates interests where logo is null.
  */

@@ -34,6 +34,8 @@ export {
   deleteCareerGoal,
   downloadAllDataExcel as downloadAllCareerGoalsExcel,
   deleteAllCareerGoals,
+  downloadCareerGoalsBulkTemplate,
+  bulkUploadCareerGoals,
   uploadMissingLogosCareerGoals,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
@@ -79,6 +81,8 @@ export {
   updateStream,
   deleteStream,
   deleteAllStreams,
+  downloadStreamsBulkTemplate,
+  bulkUploadStreams,
 } from './streams';
 export type { Stream } from './streams';
 

@@ -247,9 +247,11 @@ router.delete('/admins/:id', authenticateAdmin, requireSuperAdmin, AdminControll
  * Career Goals Taxonomy Routes (module: career_goals; Data Entry: add only; Admin: add+edit; Super Admin: full+delete)
  */
 router.get('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getAllAdmin);
+router.get('/career-goals/bulk-upload-template', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.downloadBulkTemplate);
 router.get('/career-goals/download-excel', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDownloadExcel, CareerGoalsController.downloadAllExcel);
 router.post('/career-goals/upload-image', authenticateAdmin, requireModuleAccess('career_goals'), upload.single('image'), CareerGoalsController.uploadImage);
 router.post('/career-goals/upload-missing-logos', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CareerGoalsController.uploadMissingLogos);
+router.post('/career-goals/bulk-upload', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), CareerGoalsController.bulkUpload);
 router.post('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.create);
 router.get('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getById);
 router.put('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanEdit, CareerGoalsController.update);
@@ -310,6 +312,8 @@ router.delete('/subjects/:id', authenticateAdmin, requireModuleAccess('subjects'
  * @access  Private (Admin)
  */
 router.get('/streams', authenticateAdmin, requireModuleAccess('streams'), StreamController.getAllStreams);
+router.get('/streams/bulk-upload-template', authenticateAdmin, requireModuleAccess('streams'), StreamController.downloadBulkTemplate);
+router.post('/streams/bulk-upload', authenticateAdmin, requireModuleAccess('streams'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), StreamController.bulkUpload);
 
 /**
  * @route   GET /api/admin/streams/:id
