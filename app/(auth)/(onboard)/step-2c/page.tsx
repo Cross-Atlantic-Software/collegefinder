@@ -1,8 +1,8 @@
 'use client'
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button, Select } from "@/components/shared";
+import { WelcomeLayout } from "@/components/auth/onboard";
+import { Select } from "@/components/shared";
 import { getAllCities } from "@/lib/data/indianStatesDistricts";
 import { upsertUserAddress, getUserAddress } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,12 +22,7 @@ export default function StepTwoC() {
 
   useEffect(() => {
     queueMicrotask(() => {
-        setCityOptions(
-      cities.map((c) => ({
-          value: c,
-          label: c,
-        }))
-    );
+      setCityOptions(cities.map((c) => ({ value: c, label: c })));
     });
   }, [cities]);
 
@@ -38,23 +33,16 @@ export default function StepTwoC() {
         if (response.success && response.data?.city_town_village) {
           setSelectedCity(response.data.city_town_village);
         }
-      } catch (err) {
-        console.error("Error loading city:", err);
-      }
+      } catch (err) { console.error("Error loading city:", err); }
     };
-
-    if (!isLoading && user) {
-      loadCity();
-    }
+    if (!isLoading && user) loadCity();
   }, [isLoading, user]);
 
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToHome && !saving) {
       setIsRedirecting(true);
       router.prefetch('/');
-      const timer = setTimeout(() => {
-        router.replace('/');
-      }, 100);
+      const timer = setTimeout(() => { router.replace('/'); }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToHome, saving]);
@@ -62,45 +50,24 @@ export default function StepTwoC() {
   if (isLoading || (isRedirecting && !saving && !isNavigatingToHome)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
-
   if (user?.onboarding_completed && !saving && !isNavigatingToHome) {
     return <OnboardingLoader message="Taking you home..." />;
   }
 
-  if (saving || isNavigatingToHome) {
-    return <OnboardingLoader message="Saving your city..." />;
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedCity) {
-      setError("Please select your city");
-      return;
-    }
-
-    if (!user) {
-      setError("You must be logged in to save your city");
-      return;
-    }
+    if (!selectedCity) { setError("Please select your city"); return; }
+    if (!user)         { setError("You must be logged in to save your city"); return; }
 
     setSaving(true);
     setError(null);
     setIsNavigatingToHome(true);
 
     try {
-      const response = await upsertUserAddress({
-        city_town_village: selectedCity,
-        country: "India",
-      });
-
+      const response = await upsertUserAddress({ city_town_village: selectedCity, country: "India" });
       if (response.success) {
         await refreshUser();
-        try {
-          sessionStorage.setItem("cf_onboarding_referral_step", "1");
-        } catch {
-          /* ignore */
-        }
+        try { sessionStorage.setItem("cf_onboarding_referral_step", "1"); } catch { /* ignore */ }
         router.prefetch("/step-referral");
         router.replace("/step-referral");
       } else {
@@ -116,46 +83,57 @@ export default function StepTwoC() {
     }
   };
 
+  const isBusy = saving || isNavigatingToHome;
+
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
-      <WelcomeLayout progress={90}>
-        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
-          <div className="flex-shrink-0">
-            <Robot variant="five" />
-          </div>
+    <WelcomeLayout
+      progress={90}
+      isLoading={isBusy}
+      scribbleTitle="Your"
+      scribbleSuffix="city"
+    >
+      {!isBusy && (
+        <>
+          <p className="mb-5 text-sm text-slate-500 -mt-1">
+            We&apos;ll connect you with nearby opportunities.
+          </p>
 
-          <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble className="w-full max-w-none">Which city are you in?</Bubble>
+          {error && (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-            {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <Select
-                options={cityOptions}
-                value={selectedCity}
-                onChange={(value) => setSelectedCity(value || "")}
-                placeholder="Search and select your city"
-                isSearchable={true}
-                isClearable={false}
-              />
-
-              <Button
-                type="submit"
-                variant="DarkGradient"
-                size="lg"
-                className="w-full rounded-full min-h-[48px]"
-                disabled={saving || !selectedCity}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Select
+              options={cityOptions}
+              value={selectedCity}
+              onChange={(value) => setSelectedCity(value || "")}
+              placeholder="Search and select your city"
+              isSearchable={true}
+              isClearable={false}
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
-                {saving ? "Saving..." : "Continue"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </WelcomeLayout>
-    </div>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !selectedCity}
+                className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </WelcomeLayout>
   );
 }

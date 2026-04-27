@@ -29,14 +29,10 @@ type SubjectSection = {
   allTopics: Topic[];
 };
 
-type ExamPreparationProps = {
-  initialMode?: PrepMode;
-};
-
-export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
+export default function ExamPreparation() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<PrepMode>(initialMode ?? "self");
+  const [mode, setMode] = useState<PrepMode>("self");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);

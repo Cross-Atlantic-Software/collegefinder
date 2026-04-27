@@ -1,83 +1,89 @@
 'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button } from "@/components/shared";
+import { WelcomeLayout } from "@/components/auth/onboard";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 export default function StepThree() {
   const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
   const userName = user?.name || "there";
 
-  // Refresh user data when component mounts to get the updated name
   useEffect(() => {
     if (!isLoading && !hasLoadedUser) {
-      refreshUser().then(() => {
-        queueMicrotask(() => setHasLoadedUser(true));
-      }).catch(err => {
-        console.error("Error refreshing user:", err);
-        queueMicrotask(() => setHasLoadedUser(true));
-      });
+      refreshUser()
+        .then(() => { queueMicrotask(() => setHasLoadedUser(true)); })
+        .catch(err => {
+          console.error("Error refreshing user:", err);
+          queueMicrotask(() => setHasLoadedUser(true));
+        });
     }
   }, [isLoading, hasLoadedUser, refreshUser]);
 
-  // Only redirect if user hasn't completed onboarding (shouldn't be here - they need to complete previous steps first)
   useEffect(() => {
     if (!isLoading && hasLoadedUser && !user?.onboarding_completed) {
-      queueMicrotask(() => setIsRedirecting(true));
-      if (!user?.name) {
-        router.replace('/step-2');
-      } else {
-        router.replace('/step-2a');
-      }
+      if (!user?.name) { router.replace('/step-2'); }
+      else             { router.replace('/step-2a'); }
     }
   }, [user, isLoading, router, hasLoadedUser]);
 
-  // Show smooth loader while checking auth or loading user data
   if (isLoading || !hasLoadedUser) {
     return <OnboardingLoader message="Loading..." />;
   }
-
-  // If user hasn't completed onboarding after loading, show loader while redirecting
   if (!user?.onboarding_completed) {
     return <OnboardingLoader message="Redirecting to complete onboarding..." />;
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
-      <WelcomeLayout progress={100}>
-        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
-          {/* Robot */}
-          <div className="flex-shrink-0">
-            <Robot variant="four" />
-          </div>
-
-          {/* Bubbles + Button */}
-          <div className="flex flex-col gap-4 w-[500px]">
-            <Bubble>
-              Hey, {userName}!<br />
-              I'll guide you step by step through theory and practice.
-            </Bubble>
-
-            <Bubble>I’ll also help you build a reading habit.</Bubble>
-
-            <div className="flex justify-end mt-2">
-              <Button
-                variant="DarkGradient"
-                size="lg"
-                href="/"
-                className="px-10 rounded-full"
-              >
-                Lets go to Home
-              </Button>
-            </div>
-          </div>
+    <WelcomeLayout progress={100}>
+      {/* Animated check circle */}
+      <div className="flex flex-col items-center text-center mb-6">
+        <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f0c544] shadow-[0_0_0_8px_rgba(240,197,68,0.18)]">
+          <svg
+            className="h-8 w-8 text-slate-900 animate-tick-pop"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
-      </WelcomeLayout>
-    </div>
+
+        <h1 className="text-2xl font-extrabold text-slate-900">
+          You&apos;re all set{userName !== "there" ? `, ${userName}` : ""}!
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 max-w-[280px] leading-relaxed">
+          Your profile is ready. Let&apos;s kick off your study journey.
+        </p>
+      </div>
+
+      {/* Feature recap */}
+      <ul className="mb-7 flex flex-col gap-3">
+        {[
+          "Personalised prep path activated",
+          "Reading habit tracker enabled",
+          "Step-by-step guidance ready",
+        ].map((feat) => (
+          <li key={feat} className="flex items-start gap-2.5 text-sm text-slate-700">
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#f0c544]/30">
+              <svg className="h-2.5 w-2.5 text-slate-800" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            {feat}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={() => router.replace("/")}
+        className="landing-cta w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
+      >
+        Go to Dashboard
+      </button>
+    </WelcomeLayout>
   );
 }

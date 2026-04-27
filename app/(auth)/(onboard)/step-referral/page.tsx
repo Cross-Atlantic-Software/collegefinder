@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button } from "@/components/shared";
+import { WelcomeLayout } from "@/components/auth/onboard";
 import { getBasicInfo, updateBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
@@ -21,18 +20,10 @@ export default function StepReferral() {
   useEffect(() => {
     if (isLoading || !user) return;
     let fromCityStep = false;
-    try {
-      fromCityStep = sessionStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      /* sessionStorage unavailable */
-    }
+    try { fromCityStep = sessionStorage.getItem(STORAGE_KEY) === "1"; } catch { /* ignore */ }
     if (!fromCityStep) {
       queueMicrotask(() => setIsRedirecting(true));
-      if (user.onboarding_completed) {
-        router.replace("/");
-      } else {
-        router.replace("/step-1");
-      }
+      if (user.onboarding_completed) { router.replace("/"); } else { router.replace("/step-1"); }
     }
   }, [user, isLoading, router]);
 
@@ -44,21 +35,13 @@ export default function StepReferral() {
         if (!cancelled && res.success && res.data?.referred_by_code) {
           setReferralInput(res.data.referred_by_code);
         }
-      } catch {
-        /* non-blocking */
-      }
+      } catch { /* non-blocking */ }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const goHome = () => {
-    try {
-      sessionStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     router.prefetch("/");
     router.replace("/");
   };
@@ -89,63 +72,67 @@ export default function StepReferral() {
   if (isLoading || (isRedirecting && !continueLoading)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
-
-  if (!user) {
-    return <OnboardingLoader message="Loading..." />;
-  }
+  if (!user) return <OnboardingLoader message="Loading..." />;
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
-      <WelcomeLayout progress={95}>
-        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
-          <div className="flex-shrink-0">
-            <Robot variant="five" />
+    <WelcomeLayout
+      progress={95}
+      isLoading={continueLoading}
+      scribbleTitle="Got a"
+      scribbleSuffix="referral code?"
+    >
+      {!continueLoading && (
+        <>
+          <p className="mb-5 text-sm text-slate-500 -mt-1">
+            Enter it below — or skip and go straight to your dashboard.
+          </p>
+
+          {referralError && (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+              {referralError}
+            </div>
+          )}
+
+          <div className="mb-5">
+            <input
+              type="text"
+              value={referralInput}
+              onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+              placeholder="e.g. FRIEND2025"
+              maxLength={32}
+              className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 font-mono text-sm tracking-widest text-slate-900 outline-none transition duration-300 placeholder:text-slate-400 placeholder:tracking-normal focus:border-slate-900"
+              spellCheck={false}
+              autoCapitalize="characters"
+            />
           </div>
 
-          <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble>Do you have a referral code?</Bubble>
-
-            <div className="flex flex-col gap-3">
-              <input
-                type="text"
-                value={referralInput}
-                onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
-                placeholder="Enter code (optional)"
-                maxLength={32}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tracking-wide text-slate-900 outline-none ring-slate-300 placeholder:text-slate-400 focus:ring-2"
-                spellCheck={false}
-                autoCapitalize="characters"
-              />
-              {referralError && (
-                <p className="text-xs font-medium text-red-600">{referralError}</p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="lg"
-                className="w-full rounded-full sm:w-auto"
-                onClick={goHome}
-                disabled={continueLoading}
-              >
-                Skip
-              </Button>
-              <Button
-                type="button"
-                variant="DarkGradient"
-                size="lg"
-                className="w-full rounded-full px-10 sm:w-auto"
-                onClick={handleContinue}
-                disabled={continueLoading}
-              >
-                {continueLoading ? "Saving…" : "Continue"}
-              </Button>
-            </div>
+          <div className="flex items-center gap-3 mb-2.5">
+            <button
+              onClick={() => router.back()}
+              disabled={continueLoading}
+              className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleContinue}
+              disabled={continueLoading}
+              className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {referralInput.trim() ? "Apply & Continue" : "Continue"}
+            </button>
           </div>
-        </div>
-      </WelcomeLayout>
-    </div>
+          <button
+            onClick={goHome}
+            disabled={continueLoading}
+            className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Skip
+          </button>
+        </>
+      )}
+    </WelcomeLayout>
   );
 }
