@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
     PROFILE_BASIC: '/auth/profile/basic',
     PROFILE_ACADEMICS: '/auth/profile/academics',
     PROFILE_SUBJECTS: '/auth/profile/subjects',
+    PROFILE_EXAM_PREP_LECTURES: '/auth/profile/exam-prep-lectures',
     PROFILE_TOPICS: '/auth/profile/topics',
     PROFILE_CAREER_GOALS: '/auth/profile/career-goals',
     PROFILE_PASSWORD: '/auth/profile/password',
@@ -104,6 +105,8 @@ export const API_ENDPOINTS = {
     EXPERTS: '/admin/experts',
     BRANCHES: '/admin/branches',
     REFERRAL_CODES: '/admin/referral-codes',
+    /** Stream + interest → programs / exams recommendations (admin Excel) */
+    RECOMMENDED_MAPPINGS: '/admin/recommended-mappings',
   },
 
   // Strength endpoints (user-facing)

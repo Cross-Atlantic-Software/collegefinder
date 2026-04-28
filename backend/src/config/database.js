@@ -181,7 +181,9 @@ const runMigrations = async () => {
     'add_youtube_meta_to_lectures.sql',
     'add_key_topics_to_be_covered_to_lectures.sql',
     'add_hook_summary_to_lectures.sql',
-    'remove_name_from_lectures_use_youtube_title.sql'
+    'remove_name_from_lectures_use_youtube_title.sql',
+    'restructure_exams_module_fields_2026.sql',
+    'add_stream_interest_recommendation_mappings_2026.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

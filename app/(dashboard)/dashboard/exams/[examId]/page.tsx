@@ -305,7 +305,7 @@ export default function ExamDetailPage() {
     return (
       allExams.find((item) => String(item.id) === examId) ||
       allExams.find((item) => slugify(item.name) === normalized) ||
-      allExams.find((item) => slugify(item.code) === normalized) ||
+      allExams.find((item) => slugify(item.code || "") === normalized) ||
       null
     );
   }, [allExams, examId]);

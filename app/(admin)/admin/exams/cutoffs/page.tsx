@@ -28,13 +28,12 @@ export default function ExamCutoffsPage() {
           <div className="mb-4">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Exam Cutoffs</h1>
             <p className="text-sm text-slate-600">
-              Previous year cutoffs, ranks/percentiles, and category-wise cutoffs are configured per exam.
+              Ranks/percentiles and category cutoffs (General, OBC, SC, ST) are configured per exam.
             </p>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
             <p className="text-sm text-slate-700 mb-4">
-              To add or edit exam cutoffs (previous year cutoff, ranks, category-wise cutoff, target rank range), open an
-              exam from the Exams list and use the Exam Cutoff section in the form.
+              To add or edit exam cutoffs, open an exam from the Exams list and use the Exam Cutoff section in the form.
             </p>
             <Link
               href="/admin/exams"

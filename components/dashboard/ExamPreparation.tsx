@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/shared";
-import { getSubjectsByStream } from "@/api/auth/profile";
+import { getSubjectsByStream, getExamPrepLectures, type ExamPrepLectureDto } from "@/api/auth/profile";
 import { getStrengthResults } from "@/api/strength";
 import { FiAlertCircle } from "react-icons/fi";
 
@@ -40,6 +40,7 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);
+  const [prepLectures, setPrepLectures] = useState<ExamPrepLectureDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,39 +55,48 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
   }, [searchParams]);
 
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchSubjectsAndLectures = async () => {
       try {
         setLoading(true);
-        // Client-side API call, but filtering happens SERVER-SIDE in the backend
-        // Backend only returns subjects matching user's stream_id - no client-side filtering
-        const response = await getSubjectsByStream();
-        if (response.success && response.data) {
-          if (response.data.requiresStreamSelection) {
-            setRequiresStreamSelection(true);
-            setSubjects([]);
-          } else {
-            setRequiresStreamSelection(false);
-            // Map API response to component format
-            const mappedSubjects: SubjectSection[] = (response.data.subjects || []).map((subj: { id: string; name: string; topics: Topic[]; allTopics: Topic[] }) => ({
+        const [subResponse, lecResponse] = await Promise.all([getSubjectsByStream(), getExamPrepLectures()]);
+
+        if (!subResponse.success || !subResponse.data) {
+          setError(subResponse.message || "Failed to load subjects");
+          setSubjects([]);
+          setPrepLectures([]);
+        } else if (subResponse.data.requiresStreamSelection) {
+          setRequiresStreamSelection(true);
+          setSubjects([]);
+          setPrepLectures([]);
+        } else {
+          setRequiresStreamSelection(false);
+          const mappedSubjects: SubjectSection[] = (subResponse.data.subjects || []).map(
+            (subj: { id: string; name: string; topics: Topic[]; allTopics: Topic[] }) => ({
               id: String(subj.id),
               name: subj.name,
               topics: subj.topics || [],
-              allTopics: subj.allTopics || []
-            }));
-            setSubjects(mappedSubjects);
+              allTopics: subj.allTopics || [],
+            })
+          );
+          setSubjects(mappedSubjects);
+
+          const streamLocked = lecResponse.success && lecResponse.data?.requiresStreamSelection;
+          if (lecResponse.success && lecResponse.data && !streamLocked) {
+            setPrepLectures(lecResponse.data.lectures || []);
+          } else {
+            setPrepLectures([]);
           }
-        } else {
-          setError(response.message || 'Failed to load subjects');
         }
       } catch (err) {
-        console.error('Error fetching subjects:', err);
-        setError('Failed to load subjects');
+        console.error("Error fetching exam prep data:", err);
+        setError("Failed to load subjects");
+        setPrepLectures([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSubjects();
+    fetchSubjectsAndLectures();
   }, []);
 
   useEffect(() => {
@@ -184,6 +194,7 @@ export default function ExamPreparation({ initialMode }: ExamPreparationProps) {
         mode === "self" ? (
           <SelfStudyTab
             subjects={subjects}
+            prepLectures={prepLectures}
             query={query}
             onQueryChange={setQuery}
             sortBy={sortBy}

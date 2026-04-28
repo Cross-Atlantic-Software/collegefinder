@@ -93,6 +93,15 @@ export async function deleteSubtopic(id: number): Promise<ApiResponse<null>> {
   });
 }
 
+/**
+ * Delete all subtopics
+ */
+export async function deleteAllSubtopics(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.SUBTOPICS}/all`, {
+    method: 'DELETE',
+  });
+}
+
 export interface SubtopicsBulkUploadResult {
   created: number;
   createdItems: { id: number; name: string; topic_id: number }[];

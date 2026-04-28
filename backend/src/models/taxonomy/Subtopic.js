@@ -193,6 +193,14 @@ class Subtopic {
     const result = await db.query('DELETE FROM subtopics WHERE id = $1 RETURNING *', [id]);
     return result.rows[0] || null;
   }
+
+  /**
+   * Delete all subtopics
+   */
+  static async deleteAll() {
+    const result = await db.query('DELETE FROM subtopics');
+    return result.rowCount || 0;
+  }
 }
 
 module.exports = Subtopic;

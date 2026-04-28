@@ -39,12 +39,7 @@ export async function getProgramById(id: number): Promise<ApiResponse<{
 /**
  * Create new program
  */
-export async function createProgram(data: {
-  name: string;
-  status?: boolean;
-  stream_id?: number | null;
-  interest_ids?: number[];
-}): Promise<ApiResponse<{
+export async function createProgram(data: { name: string }): Promise<ApiResponse<{
   program: Program;
 }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.PROGRAMS, {
@@ -58,12 +53,7 @@ export async function createProgram(data: {
  */
 export async function updateProgram(
   id: number,
-  data: {
-    name?: string;
-    status?: boolean;
-    stream_id?: number | null;
-    interest_ids?: number[];
-  }
+  data: { name: string }
 ): Promise<ApiResponse<{
   program: Program;
 }>> {
@@ -78,6 +68,15 @@ export async function updateProgram(
  */
 export async function deleteProgram(id: number): Promise<ApiResponse<null>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.PROGRAMS}/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Delete all programs
+ */
+export async function deleteAllPrograms(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.PROGRAMS}/all`, {
     method: 'DELETE',
   });
 }

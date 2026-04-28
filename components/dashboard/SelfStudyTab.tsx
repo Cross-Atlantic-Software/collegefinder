@@ -1,8 +1,8 @@
-// src/components/exams/SelfStudyTab.tsx
 "use client";
 
 import React, { useMemo } from "react";
 import { FiExternalLink, FiPlayCircle } from "react-icons/fi";
+import type { ExamPrepLectureDto } from "@/api/auth/profile";
 
 type Topic = {
   id: number;
@@ -22,6 +22,8 @@ type SubjectSection = {
 
 type Props = {
   subjects: SubjectSection[];
+  /** Admin lectures for the user's stream; empty when none or stream not set */
+  prepLectures: ExamPrepLectureDto[];
   query: string;
   onQueryChange: (v: string) => void;
   sortBy: "latest" | "popular";
@@ -42,181 +44,48 @@ type VideoItem = {
   recencyScore: number;
   tags: string[];
   youtubeUrl: string;
+  hookSummary?: string | null;
 };
 
-type VideoSeed = Omit<VideoItem, "id" | "youtubeId" | "youtubeUrl"> & {
-  youtubeId: string;
-};
+function formatCompact(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "0";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(Math.round(n));
+}
 
-const SUBJECT_VIDEO_LIBRARY: Record<string, VideoSeed[]> = {
-  physics: [
-    {
-      youtubeId: "3fumBcKC6RE",
-      title: "Current Electricity - One Shot Revision",
-      channel: "Unacademy JEE",
-      duration: "24:13",
-      views: "780K views",
-      viewsCount: 780000,
-      published: "1 month ago",
-      recencyScore: 7,
-      tags: ["physics", "jee", "current electricity", "revision"],
-    },
-    {
-      youtubeId: "x8SGzV5ZthE",
-      title: "Thermodynamics High-Yield Problems",
-      channel: "Physics Wallah",
-      duration: "28:55",
-      views: "2.1M views",
-      viewsCount: 2100000,
-      published: "4 months ago",
-      recencyScore: 4,
-      tags: ["physics", "thermodynamics", "problem solving"],
-    },
-    {
-      youtubeId: "8hly31xKli0",
-      title: "Complete Physics Practice Session",
-      channel: "Physics Wallah",
-      duration: "42:10",
-      views: "1.2M views",
-      viewsCount: 1200000,
-      published: "2 months ago",
-      recencyScore: 6,
-      tags: ["physics", "practice", "concepts"],
-    },
-  ],
-  chemistry: [
-    {
-      youtubeId: "Q33KBiDriJY",
-      title: "Organic Chemistry Concepts in 20 Minutes",
-      channel: "Allen Kota",
-      duration: "19:20",
-      views: "890K views",
-      viewsCount: 890000,
-      published: "6 months ago",
-      recencyScore: 2,
-      tags: ["chemistry", "organic", "jee"],
-    },
-    {
-      youtubeId: "mU6anWqZJcc",
-      title: "Atomic Structure - Quick Revision",
-      channel: "Aakash Institute",
-      duration: "22:44",
-      views: "670K views",
-      viewsCount: 670000,
-      published: "7 months ago",
-      recencyScore: 1,
-      tags: ["chemistry", "atomic structure", "revision"],
-    },
-    {
-      youtubeId: "HGTJBPNC-Gw",
-      title: "Chemistry Mock-Test Attempt Strategy",
-      channel: "Khan Academy",
-      duration: "16:48",
-      views: "510K views",
-      viewsCount: 510000,
-      published: "3 weeks ago",
-      recencyScore: 8,
-      tags: ["chemistry", "strategy", "mock test"],
-    },
-  ],
-  mathematics: [
-    {
-      youtubeId: "rfscVS0vtbw",
-      title: "Coordinate Geometry One Shot",
-      channel: "Vedantu JEE",
-      duration: "35:22",
-      views: "940K views",
-      viewsCount: 940000,
-      published: "5 months ago",
-      recencyScore: 3,
-      tags: ["mathematics", "coordinate geometry", "jee"],
-    },
-    {
-      youtubeId: "qz0aGYrrlhU",
-      title: "Limits and Continuity Crash Revision",
-      channel: "Vedantu JEE",
-      duration: "31:09",
-      views: "1.5M views",
-      viewsCount: 1500000,
-      published: "2 weeks ago",
-      recencyScore: 9,
-      tags: ["mathematics", "calculus", "limits"],
-    },
-    {
-      youtubeId: "HGTJBPNC-Gw",
-      title: "Math Mock-Test Tactics and Time Split",
-      channel: "Khan Academy",
-      duration: "16:48",
-      views: "510K views",
-      viewsCount: 510000,
-      published: "3 weeks ago",
-      recencyScore: 8,
-      tags: ["mathematics", "strategy", "mock test"],
-    },
-  ],
-  default: [
-    {
-      youtubeId: "8hly31xKli0",
-      title: "Study Sprint: Focused Revision Session",
-      channel: "Exam Prep Hub",
-      duration: "42:10",
-      views: "1.2M views",
-      viewsCount: 1200000,
-      published: "2 months ago",
-      recencyScore: 6,
-      tags: ["revision", "exam prep", "self study"],
-    },
-    {
-      youtubeId: "rfscVS0vtbw",
-      title: "Problem Solving Techniques for Fast Accuracy",
-      channel: "Exam Prep Hub",
-      duration: "35:22",
-      views: "940K views",
-      viewsCount: 940000,
-      published: "5 months ago",
-      recencyScore: 3,
-      tags: ["problem solving", "speed", "accuracy"],
-    },
-    {
-      youtubeId: "3fumBcKC6RE",
-      title: "Weekly Self Study Roadmap",
-      channel: "Exam Prep Hub",
-      duration: "24:13",
-      views: "780K views",
-      viewsCount: 780000,
-      published: "1 month ago",
-      recencyScore: 7,
-      tags: ["roadmap", "planning", "self study"],
-    },
-  ],
-};
+function formatRelativeTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const day = 86400000;
+  if (diff < day) return "Today";
+  if (diff < day * 2) return "Yesterday";
+  if (diff < day * 7) return `${Math.floor(diff / day)} days ago`;
+  if (diff < day * 60) return `${Math.floor(diff / (day * 7))} wk ago`;
+  return `${Math.floor(diff / (day * 30))} mo ago`;
+}
 
-const getSubjectLibraryKey = (subjectName: string): string => {
-  const normalized = subjectName.toLowerCase();
-
-  if (normalized.includes("physics")) return "physics";
-  if (normalized.includes("chemistry")) return "chemistry";
-  if (normalized.includes("math")) return "mathematics";
-  if (normalized.includes("biology") || normalized.includes("bio")) return "default";
-
-  return "default";
-};
-
-const toVideoItem = (seed: VideoSeed, subjectId: string, index: number): VideoItem => {
+function prepLectureToVideoItem(lec: ExamPrepLectureDto): VideoItem {
+  const viewsCount = Math.floor(lec.likes + lec.subscribers / 1000);
+  const recencyScore = new Date(lec.updatedAt).getTime();
+  const likesStr = formatCompact(lec.likes);
+  const subsStr = formatCompact(lec.subscribers);
   return {
-    id: `${subjectId}-${seed.youtubeId}-${index}`,
-    youtubeId: seed.youtubeId,
-    title: seed.title,
-    channel: seed.channel,
-    duration: seed.duration,
-    views: seed.views,
-    published: seed.published,
-    viewsCount: seed.viewsCount,
-    recencyScore: seed.recencyScore,
-    tags: seed.tags,
-    youtubeUrl: `https://www.youtube.com/watch?v=${seed.youtubeId}`,
+    id: `lec-${lec.id}-${lec.youtubeId}`,
+    youtubeId: lec.youtubeId,
+    title: `${lec.topicName} • ${lec.title}`,
+    channel: lec.channel || "YouTube",
+    duration: "—",
+    views: `${likesStr} likes · ${subsStr} subs`,
+    published: formatRelativeTime(lec.updatedAt),
+    viewsCount,
+    recencyScore,
+    tags: [lec.subjectName.toLowerCase(), lec.topicName.toLowerCase()],
+    youtubeUrl: `https://www.youtube.com/watch?v=${lec.youtubeId}`,
+    hookSummary: lec.hookSummary,
   };
-};
+}
 
 const matchesQuery = (video: VideoItem, queryText: string, subjectName: string, topicNames: string[]): boolean => {
   if (!queryText) return true;
@@ -227,6 +96,7 @@ const matchesQuery = (video: VideoItem, queryText: string, subjectName: string, 
     video.tags.join(" "),
     subjectName,
     topicNames.join(" "),
+    video.hookSummary || "",
   ]
     .join(" ")
     .toLowerCase();
@@ -242,54 +112,86 @@ const sortVideos = (videos: VideoItem[], sortBy: "latest" | "popular"): VideoIte
   return items.sort((a, b) => b.recencyScore - a.recencyScore);
 };
 
-const VIDEO_CONTEXT_LABELS = [
-  "one shot",
-  "quick revision",
-  "pyq strategy",
-  "concept builder",
-  "mistake analysis",
-  "exam sprint",
-];
-
 const toEmbedUrl = (youtubeId: string, startSeconds = 12, endSeconds = 20): string => {
   return `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeId}&start=${startSeconds}&end=${endSeconds}&playsinline=1&modestbranding=1&rel=0`;
 };
 
-const buildTopicVideoRow = (
-  subject: SubjectSection,
-  topicName: string,
-  rowSeed: number,
-  sortBy: "latest" | "popular",
-  queryText: string
-): VideoItem[] => {
-  const key = getSubjectLibraryKey(subject.name);
-  const baseLibrary = SUBJECT_VIDEO_LIBRARY[key] || SUBJECT_VIDEO_LIBRARY.default;
-  const feedCount = 12;
+type RowModel = { id: string; title: string; videos: VideoItem[] };
+type SubjectWithRows = SubjectSection & { rows: RowModel[] };
 
-  const feed = Array.from({ length: feedCount }, (_, index) => {
-    const itemIndex = index + rowSeed;
-    const seed = baseLibrary[itemIndex % baseLibrary.length];
-    const contextLabel = VIDEO_CONTEXT_LABELS[itemIndex % VIDEO_CONTEXT_LABELS.length];
+function buildSubjectsWithVideosFromPrep(
+  subjectsTaxonomy: SubjectSection[],
+  prepLectures: ExamPrepLectureDto[],
+  queryText: string,
+  sortBy: "latest" | "popular"
+): SubjectWithRows[] {
+  const q = queryText.toLowerCase().trim();
 
-    return toVideoItem(
-      {
-        ...seed,
-        title: `${topicName} • ${seed.title}`,
-        tags: [...seed.tags, topicName.toLowerCase(), contextLabel],
-      },
-      subject.id,
-      index
-    );
-  });
+  const matchesLecture = (lec: ExamPrepLectureDto) => {
+    if (!q) return true;
+    const hay = [lec.title, lec.channel, lec.subjectName, lec.topicName, lec.hookSummary || ""].join(" ").toLowerCase();
+    return hay.includes(q);
+  };
 
-  return sortVideos(
-    feed.filter((video) => matchesQuery(video, queryText, subject.name, [topicName])),
-    sortBy
-  );
-};
+  const filtered = prepLectures.filter(matchesLecture);
+  const bucket = new Map<string, Map<number, ExamPrepLectureDto[]>>();
+
+  for (const lec of filtered) {
+    if (!bucket.has(lec.subjectId)) bucket.set(lec.subjectId, new Map());
+    const tm = bucket.get(lec.subjectId)!;
+    if (!tm.has(lec.topicId)) tm.set(lec.topicId, []);
+    tm.get(lec.topicId)!.push(lec);
+  }
+
+  const subjectNameById = new Map(subjectsTaxonomy.map((s) => [s.id, s.name]));
+  const subjectOrder = subjectsTaxonomy.map((s) => s.id);
+  const seen = new Set<string>();
+  const sections: SubjectWithRows[] = [];
+
+  const pushSubject = (sid: string, topicMap: Map<number, ExamPrepLectureDto[]>) => {
+    const rows: RowModel[] = [...topicMap.entries()]
+      .map(([topicId, lecs]) => {
+        const topicTitle = lecs[0]?.topicName || `Topic ${topicId}`;
+        const videos = sortVideos(
+          lecs
+            .map((l) => prepLectureToVideoItem(l))
+            .filter((v) => matchesQuery(v, q, subjectNameById.get(sid) || lecs[0]?.subjectName || "", [topicTitle])),
+          sortBy
+        );
+        return { id: `${sid}-topic-${topicId}`, title: topicTitle, videos };
+      })
+      .filter((r) => r.videos.length > 0)
+      .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+
+    if (rows.length === 0) return;
+
+    sections.push({
+      id: sid,
+      name: subjectNameById.get(sid) || topicMap.values().next().value?.[0]?.subjectName || "Subject",
+      topics: [],
+      allTopics: [],
+      rows,
+    });
+  };
+
+  for (const sid of subjectOrder) {
+    const topicMap = bucket.get(sid);
+    if (!topicMap || topicMap.size === 0) continue;
+    seen.add(sid);
+    pushSubject(sid, topicMap);
+  }
+
+  for (const [sid, topicMap] of bucket) {
+    if (seen.has(sid)) continue;
+    pushSubject(sid, topicMap);
+  }
+
+  return sections;
+}
 
 export default function SelfStudyTab({
   subjects,
+  prepLectures,
   query,
   onQueryChange,
   sortBy,
@@ -301,38 +203,15 @@ export default function SelfStudyTab({
     const q = query.toLowerCase().trim();
     if (!q) return subjects;
 
-    return subjects
-      .filter((s) => {
-        if (s.name.toLowerCase().includes(q)) return true;
-        return [...s.topics, ...s.allTopics].some((topic) =>
-          topic.name.toLowerCase().includes(q)
-        );
-      });
+    return subjects.filter((s) => {
+      if (s.name.toLowerCase().includes(q)) return true;
+      return [...s.topics, ...s.allTopics].some((topic) => topic.name.toLowerCase().includes(q));
+    });
   }, [query, subjects]);
 
   const subjectsWithVideos = useMemo(() => {
-    const q = query.toLowerCase().trim();
-
-    return filteredSubjects
-      .map((subject) => {
-        const topicNames = (subject.topics.length > 0 ? subject.topics : subject.allTopics).map((topic) =>
-          topic.name
-        );
-        const rows = (topicNames.length > 0 ? topicNames : [subject.name])
-          .map((topicName, rowIndex) => ({
-            id: `${subject.id}-topic-row-${rowIndex}`,
-            title: topicName,
-            videos: buildTopicVideoRow(subject, topicName, rowIndex * 2, sortBy, q),
-          }))
-          .filter((row) => row.videos.length > 0);
-
-        return {
-          ...subject,
-          rows,
-        };
-      })
-      .filter((subject) => subject.rows.length > 0);
-  }, [filteredSubjects, query, sortBy]);
+    return buildSubjectsWithVideosFromPrep(filteredSubjects, prepLectures, query, sortBy);
+  }, [filteredSubjects, prepLectures, query, sortBy]);
 
   const allVideos = useMemo(() => {
     return subjectsWithVideos.flatMap((subject) => subject.rows.flatMap((row) => row.videos));
@@ -350,7 +229,7 @@ export default function SelfStudyTab({
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recommended Videos</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Curated YouTube playlists by subject and topic</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">From your stream — sorted by engagement</p>
             </div>
 
             <div className="flex w-full items-center gap-2 md:w-auto">
@@ -375,6 +254,7 @@ export default function SelfStudyTab({
               href={recommendedVideo.youtubeUrl}
               target="_blank"
               rel="noreferrer"
+              title={recommendedVideo.hookSummary || undefined}
               className="group overflow-hidden rounded-2xl bg-gradient-to-r from-slate-100 to-slate-50 p-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:from-slate-800/80 dark:to-slate-900/80 md:grid md:grid-cols-[300px,1fr] md:items-center md:gap-4"
             >
               <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
@@ -391,7 +271,12 @@ export default function SelfStudyTab({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-center p-2 md:p-0">
+              <div className="relative flex flex-col justify-center p-2 md:p-0">
+                {recommendedVideo.hookSummary ? (
+                  <div className="pointer-events-none absolute bottom-full left-0 right-0 z-20 mb-2 hidden max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-lg group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 md:max-w-xl">
+                    {recommendedVideo.hookSummary}
+                  </div>
+                ) : null}
                 <p className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-black px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FAD53C]">
                   <FiPlayCircle className="text-[11px]" /> Recommended
                 </p>
@@ -450,7 +335,9 @@ export default function SelfStudyTab({
 
       {subjectsWithVideos.length === 0 ? (
         <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-white text-sm text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-          No videos found for this search.
+          {prepLectures.length === 0
+            ? "No videos yet for your stream. Admins can tag lectures with your stream in Lecture Manager."
+            : "No videos found for this search."}
         </div>
       ) : (
         <>
@@ -478,36 +365,43 @@ export default function SelfStudyTab({
                       <div className="w-full min-w-0 pb-1">
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                           {row.videos.map((video, index) => (
-                          <a
-                            key={video.id}
-                            href={video.youtubeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group min-w-0 overflow-hidden rounded-xl bg-slate-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/70"
-                          >
-                            <div className="relative aspect-video overflow-hidden bg-black">
-                              <iframe
-                                src={toEmbedUrl(video.youtubeId, 8 + (index % 6), 14 + (index % 6))}
-                                title={video.title}
-                                loading="lazy"
-                                className="h-full w-full"
-                                allow="autoplay; encrypted-media; picture-in-picture"
-                                referrerPolicy="strict-origin-when-cross-origin"
-                              />
-                              <span className="absolute right-1.5 top-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                {video.duration}
-                              </span>
-                            </div>
+                            <div key={video.id} className="group relative min-w-0">
+                              <a
+                                href={video.youtubeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={video.hookSummary || undefined}
+                                className="block min-w-0 overflow-hidden rounded-xl bg-slate-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/70"
+                              >
+                                <div className="relative aspect-video overflow-hidden bg-black">
+                                  <iframe
+                                    src={toEmbedUrl(video.youtubeId, 8 + (index % 6), 14 + (index % 6))}
+                                    title={video.title}
+                                    loading="lazy"
+                                    className="h-full w-full"
+                                    allow="autoplay; encrypted-media; picture-in-picture"
+                                    referrerPolicy="strict-origin-when-cross-origin"
+                                  />
+                                  <span className="absolute right-1.5 top-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                    {video.duration}
+                                  </span>
+                                </div>
 
-                            <div className="space-y-1 p-2.5">
-                              <p className="line-clamp-2 text-xs font-semibold leading-4 text-slate-900 dark:text-slate-100">{video.title}</p>
-                              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{video.channel}</p>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400">{video.views}</p>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-[#FAD53C]">
-                                View <FiExternalLink className="text-[10px]" />
-                              </span>
+                                <div className="space-y-1 p-2.5">
+                                  <p className="line-clamp-2 text-xs font-semibold leading-4 text-slate-900 dark:text-slate-100">{video.title}</p>
+                                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{video.channel}</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{video.views}</p>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-[#FAD53C]">
+                                    View <FiExternalLink className="text-[10px]" />
+                                  </span>
+                                </div>
+                              </a>
+                              {video.hookSummary ? (
+                                <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 hidden w-[min(100%,280px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-700 shadow-xl group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                  {video.hookSummary}
+                                </div>
+                              ) : null}
                             </div>
-                          </a>
                           ))}
                         </div>
                       </div>

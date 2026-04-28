@@ -1,9 +1,6 @@
 const db = require('../../config/database');
 
 class ExamDates {
-  /**
-   * Find exam dates by exam ID
-   */
   static async findByExamId(examId) {
     const result = await db.query(
       'SELECT * FROM exam_dates WHERE exam_id = $1',
@@ -12,9 +9,6 @@ class ExamDates {
     return result.rows[0] || null;
   }
 
-  /**
-   * Find exam dates by ID
-   */
   static async findById(id) {
     const result = await db.query(
       'SELECT * FROM exam_dates WHERE id = $1',
@@ -23,24 +17,26 @@ class ExamDates {
     return result.rows[0] || null;
   }
 
-  /**
-   * Create exam dates
-   */
   static async create(data) {
-    const { exam_id, application_start_date, application_close_date, exam_date } = data;
+    const { exam_id, application_start_date, application_close_date, exam_date, result_date, application_fees } = data;
     const result = await db.query(
-      'INSERT INTO exam_dates (exam_id, application_start_date, application_close_date, exam_date) VALUES ($1, $2, $3, $4) RETURNING *',
-      [exam_id, application_start_date || null, application_close_date || null, exam_date || null]
+      `INSERT INTO exam_dates (exam_id, application_start_date, application_close_date, exam_date, result_date, application_fees)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        exam_id,
+        application_start_date || null,
+        application_close_date || null,
+        exam_date || null,
+        result_date || null,
+        application_fees != null && application_fees !== '' ? parseFloat(String(application_fees)) : null
+      ]
     );
     return result.rows[0];
   }
 
-  /**
-   * Update exam dates
-   */
   static async update(examId, data) {
-    const { application_start_date, application_close_date, exam_date } = data;
-    
+    const { application_start_date, application_close_date, exam_date, result_date, application_fees } = data;
+
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -57,6 +53,15 @@ class ExamDates {
       updates.push(`exam_date = $${paramCount++}`);
       values.push(exam_date);
     }
+    if (result_date !== undefined) {
+      updates.push(`result_date = $${paramCount++}`);
+      values.push(result_date);
+    }
+    if (application_fees !== undefined) {
+      const v = application_fees == null || application_fees === '' ? null : parseFloat(String(application_fees));
+      updates.push(`application_fees = $${paramCount++}`);
+      values.push(v != null && !Number.isNaN(v) ? v : null);
+    }
 
     if (updates.length === 0) {
       return null;
@@ -66,7 +71,7 @@ class ExamDates {
     values.push(examId);
 
     const query = `
-      UPDATE exam_dates 
+      UPDATE exam_dates
       SET ${updates.join(', ')}
       WHERE exam_id = $${paramCount}
       RETURNING *
@@ -76,23 +81,16 @@ class ExamDates {
     return result.rows[0] || null;
   }
 
-  /**
-   * Upsert exam dates (create or update)
-   */
   static async upsert(data) {
-    const { exam_id, application_start_date, application_close_date, exam_date } = data;
+    const { exam_id, application_start_date, application_close_date, exam_date, result_date, application_fees } = data;
     const existing = await this.findByExamId(exam_id);
-    
+
     if (existing) {
-      return await this.update(exam_id, { application_start_date, application_close_date, exam_date });
-    } else {
-      return await this.create({ exam_id, application_start_date, application_close_date, exam_date });
+      return await this.update(exam_id, { application_start_date, application_close_date, exam_date, result_date, application_fees });
     }
+    return await this.create({ exam_id, application_start_date, application_close_date, exam_date, result_date, application_fees });
   }
 
-  /**
-   * Delete exam dates
-   */
   static async delete(examId) {
     const result = await db.query(
       'DELETE FROM exam_dates WHERE exam_id = $1 RETURNING *',

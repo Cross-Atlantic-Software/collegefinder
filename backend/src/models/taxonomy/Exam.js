@@ -34,12 +34,15 @@ class Exam {
   }
 
   /**
-   * Find exam taxonomy by code
+   * Find exam taxonomy by code (skips null/empty codes in DB; caller should pass non-empty)
    */
   static async findByCode(code) {
+    if (code == null || String(code).trim() === '') {
+      return null;
+    }
     const result = await db.query(
       'SELECT * FROM exams_taxonomies WHERE LOWER(code) = LOWER($1)',
-      [code]
+      [String(code).trim()]
     );
     return result.rows[0] || null;
   }
@@ -48,12 +51,13 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website } = data;
-    const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling } = data;
+    const codeVal = code != null && String(code).trim() ? String(code).trim() : null;
     const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
     const result = await db.query(
-      'INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10) RETURNING *',
-      [name, code, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, formatJson || '{}', papers, website || null]
+      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [name, codeVal, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, papers, website || null, documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null, counselling != null && String(counselling).trim() ? String(counselling).trim() : null]
     );
     return result.rows[0];
   }
@@ -62,8 +66,8 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, format, number_of_papers, website } = data;
-    
+    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling } = data;
+
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -73,8 +77,9 @@ class Exam {
       values.push(name);
     }
     if (code !== undefined) {
+      const codeVal = code != null && String(code).trim() ? String(code).trim() : null;
       updates.push(`code = $${paramCount++}`);
-      values.push(code);
+      values.push(codeVal);
     }
     if (description !== undefined) {
       updates.push(`description = $${paramCount++}`);
@@ -96,11 +101,6 @@ class Exam {
       updates.push(`logo_file_name = $${paramCount++}`);
       values.push(logo_file_name);
     }
-    if (format !== undefined) {
-      const formatJson = format != null && typeof format === 'object' ? JSON.stringify(format) : (format && String(format).trim() ? String(format).trim() : null);
-      updates.push(`format = $${paramCount++}::jsonb`);
-      values.push(formatJson || '{}');
-    }
     if (number_of_papers !== undefined) {
       const papers = Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1));
       updates.push(`number_of_papers = $${paramCount++}`);
@@ -109,6 +109,16 @@ class Exam {
     if (website !== undefined) {
       updates.push(`website = $${paramCount++}`);
       values.push(website || null);
+    }
+    if (documents_required !== undefined) {
+      const v = documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null;
+      updates.push(`documents_required = $${paramCount++}`);
+      values.push(v);
+    }
+    if (counselling !== undefined) {
+      const v = counselling != null && String(counselling).trim() ? String(counselling).trim() : null;
+      updates.push(`counselling = $${paramCount++}`);
+      values.push(v);
     }
 
     if (updates.length === 0) {
@@ -119,7 +129,7 @@ class Exam {
     values.push(id);
 
     const query = `
-      UPDATE exams_taxonomies 
+      UPDATE exams_taxonomies
       SET ${updates.join(', ')}
       WHERE id = $${paramCount}
       RETURNING *
@@ -135,8 +145,8 @@ class Exam {
   static async findMissingLogosByFilename(filename) {
     if (!filename || !String(filename).trim()) return [];
     const result = await db.query(
-      `SELECT * FROM exams_taxonomies 
-       WHERE LOWER(TRIM(logo_file_name)) = LOWER(TRIM($1)) 
+      `SELECT * FROM exams_taxonomies
+       WHERE LOWER(TRIM(logo_file_name)) = LOWER(TRIM($1))
        AND (exam_logo IS NULL OR exam_logo = '')`,
       [String(filename).trim()]
     );
@@ -155,67 +165,31 @@ class Exam {
   }
 
   /**
-   * Get available formats for an exam
+   * Legacy: format JSON was removed from DB; always no structural format from row.
    */
   static async getFormats(examId) {
-    const result = await db.query(
-      'SELECT format FROM exams_taxonomies WHERE id = $1',
-      [examId]
-    );
-    
-    if (!result.rows[0]) {
-      return null;
-    }
-    
-    const format = result.rows[0].format;
-    if (!format || Object.keys(format).length === 0) {
-      return null;
-    }
-    
-    return format;
+    return null;
   }
 
   /**
-   * Get specific format configuration for an exam
+   * @deprecated no longer stored
    */
   static async getFormatConfig(examId, formatId) {
-    const result = await db.query(
-      'SELECT format FROM exams_taxonomies WHERE id = $1',
-      [examId]
-    );
-    
-    if (!result.rows[0]) {
-      return null;
-    }
-    
-    const format = result.rows[0].format;
-    if (!format || !format[formatId]) {
-      return null;
-    }
-    
-    return format[formatId];
+    return null;
   }
 
   /**
-   * Update format configuration for an exam
+   * @deprecated no longer stored
    */
   static async updateFormat(examId, formatData) {
-    const result = await db.query(
-      'UPDATE exams_taxonomies SET format = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [JSON.stringify(formatData), examId]
-    );
-    return result.rows[0] || null;
+    return this.findById(examId);
   }
 
   /**
-   * Get exam with format information
+   * @deprecated
    */
   static async findByIdWithFormat(id) {
-    const result = await db.query(
-      'SELECT * FROM exams_taxonomies WHERE id = $1',
-      [id]
-    );
-    return result.rows[0] || null;
+    return this.findById(id);
   }
 
   /**
@@ -229,10 +203,6 @@ class Exam {
     return result.rows[0] ? result.rows[0].generation_prompt : null;
   }
 
-  /**
-   * Update generation prompt for an exam (persisted in exams_taxonomies.generation_prompt).
-   * Pass a non-empty string to save, or null/empty to clear.
-   */
   static async updateGenerationPrompt(examId, generationPrompt) {
     const value = (generationPrompt && String(generationPrompt).trim()) ? String(generationPrompt).trim() : null;
     const result = await db.query(
@@ -242,23 +212,9 @@ class Exam {
     return result.rows[0] || null;
   }
 
-  /**
-   * Check if exam has format configuration
-   */
   static async hasFormat(examId) {
-    const result = await db.query(
-      'SELECT format FROM exams_taxonomies WHERE id = $1',
-      [examId]
-    );
-    
-    if (!result.rows[0]) {
-      return false;
-    }
-    
-    const format = result.rows[0].format;
-    return format && Object.keys(format).length > 0;
+    return false;
   }
 }
 
 module.exports = Exam;
-

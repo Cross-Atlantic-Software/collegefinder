@@ -25,6 +25,7 @@ const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
 const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
+const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -246,9 +247,11 @@ router.delete('/admins/:id', authenticateAdmin, requireSuperAdmin, AdminControll
  * Career Goals Taxonomy Routes (module: career_goals; Data Entry: add only; Admin: add+edit; Super Admin: full+delete)
  */
 router.get('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getAllAdmin);
+router.get('/career-goals/bulk-upload-template', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.downloadBulkTemplate);
 router.get('/career-goals/download-excel', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDownloadExcel, CareerGoalsController.downloadAllExcel);
 router.post('/career-goals/upload-image', authenticateAdmin, requireModuleAccess('career_goals'), upload.single('image'), CareerGoalsController.uploadImage);
 router.post('/career-goals/upload-missing-logos', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CareerGoalsController.uploadMissingLogos);
+router.post('/career-goals/bulk-upload', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), CareerGoalsController.bulkUpload);
 router.post('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.create);
 router.get('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getById);
 router.put('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanEdit, CareerGoalsController.update);
@@ -269,6 +272,7 @@ router.get('/subjects', authenticateAdmin, requireModuleAccess('subjects'), Subj
 router.get('/subjects/bulk-upload-template', authenticateAdmin, requireModuleAccess('subjects'), SubjectController.downloadBulkTemplate);
 router.get('/subjects/download-excel', authenticateAdmin, requireModuleAccess('subjects'), requireCanDownloadExcel, SubjectController.downloadAllExcel);
 router.post('/subjects/bulk-upload', authenticateAdmin, requireModuleAccess('subjects'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), SubjectController.bulkUpload);
+router.delete('/subjects/all', authenticateAdmin, requireModuleAccess('subjects'), requireCanDelete, SubjectController.deleteAllSubjects);
 
 /**
  * @route   GET /api/admin/subjects/:id
@@ -308,6 +312,8 @@ router.delete('/subjects/:id', authenticateAdmin, requireModuleAccess('subjects'
  * @access  Private (Admin)
  */
 router.get('/streams', authenticateAdmin, requireModuleAccess('streams'), StreamController.getAllStreams);
+router.get('/streams/bulk-upload-template', authenticateAdmin, requireModuleAccess('streams'), StreamController.downloadBulkTemplate);
+router.post('/streams/bulk-upload', authenticateAdmin, requireModuleAccess('streams'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), StreamController.bulkUpload);
 
 /**
  * @route   GET /api/admin/streams/:id
@@ -329,6 +335,7 @@ router.post('/streams', authenticateAdmin, requireModuleAccess('streams'), valid
  * @access  Private (Admin)
  */
 router.put('/streams/:id', authenticateAdmin, requireModuleAccess('streams'), requireCanEdit, validateUpdateStream, StreamController.updateStream);
+router.delete('/streams/all', authenticateAdmin, requireModuleAccess('streams'), requireCanDelete, StreamController.deleteAllStreams);
 
 /**
  * @route   DELETE /api/admin/streams/:id
@@ -568,6 +575,7 @@ router.post('/topics', authenticateAdmin, requireModuleAccess('topics'), validat
  * @access  Private (Admin)
  */
 router.put('/topics/:id', authenticateAdmin, requireModuleAccess('topics'), requireCanEdit, validateUpdateTopic, TopicController.updateTopic);
+router.delete('/topics/all', authenticateAdmin, requireModuleAccess('topics'), requireCanDelete, TopicController.deleteAllTopics);
 
 /**
  * @route   DELETE /api/admin/topics/:id
@@ -645,6 +653,7 @@ router.post('/subtopics', authenticateAdmin, requireModuleAccess('subtopics'), v
  * @access  Private (Admin)
  */
 router.put('/subtopics/:id', authenticateAdmin, requireModuleAccess('subtopics'), requireCanEdit, validateUpdateSubtopic, SubtopicController.updateSubtopic);
+router.delete('/subtopics/all', authenticateAdmin, requireModuleAccess('subtopics'), requireCanDelete, SubtopicController.deleteAllSubtopics);
 
 /**
  * @route   DELETE /api/admin/subtopics/:id
@@ -886,6 +895,31 @@ router.put('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requ
 router.delete('/levels/:id', authenticateAdmin, requireModuleAccess('levels'), requireCanDelete, LevelController.deleteLevel);
 
 /**
+ * @route   GET|POST /api/admin/recommended-mappings
+ * @desc    Stream + interest -> recommended program / exam IDs (name resolution from Excel)
+ * @access  Private (Admin) — module: mapping
+ */
+router.get(
+  '/recommended-mappings',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  RecommendedMappingController.getAll
+);
+router.get(
+  '/recommended-mappings/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  RecommendedMappingController.downloadTemplate
+);
+router.post(
+  '/recommended-mappings/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
+  RecommendedMappingController.bulkUpload
+);
+
+/**
  * @route   GET /api/admin/programs
  * @desc    Get all programs (for admin)
  * @access  Private (Admin)
@@ -895,6 +929,13 @@ router.get('/programs', authenticateAdmin, requireModuleAccess('programs'), Prog
 router.get('/programs/bulk-upload-template', authenticateAdmin, requireModuleAccess('programs'), ProgramController.downloadBulkTemplate);
 router.get('/programs/download-excel', authenticateAdmin, requireModuleAccess('programs'), requireCanDownloadExcel, ProgramController.downloadAllExcel);
 router.post('/programs/bulk-upload', authenticateAdmin, requireModuleAccess('programs'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), ProgramController.bulkUpload);
+
+/**
+ * @route   DELETE /api/admin/programs/all
+ * @desc    Delete all programs
+ * @access  Private (Admin)
+ */
+router.delete('/programs/all', authenticateAdmin, requireModuleAccess('programs'), requireCanDelete, ProgramController.deleteAll);
 
 /**
  * @route   GET /api/admin/programs/:id

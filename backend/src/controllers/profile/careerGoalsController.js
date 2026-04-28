@@ -5,6 +5,7 @@ const UserAcademics = require('../../models/user/UserAcademics');
 const User = require('../../models/user/User');
 const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const XLSX = require('xlsx');
 
 class CareerGoalsTaxonomyController {
   /**
@@ -387,6 +388,131 @@ class CareerGoalsTaxonomyController {
     } catch (error) {
       console.error('Error generating interests export:', error);
       res.status(500).json({ success: false, message: 'Failed to export interests data' });
+    }
+  }
+
+  /**
+   * Download interests bulk upload template (label + stream)
+   * GET /api/admin/career-goals/bulk-upload-template
+   */
+  static async downloadBulkTemplate(req, res) {
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([
+        ['label', 'stream'],
+        ['Computer Science', 'Engineering'],
+        ['Medical Sciences', 'Science']
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Interests');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=interests-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating interests bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Bulk upload interests from Excel (label + stream)
+   * POST /api/admin/career-goals/bulk-upload
+   */
+  static async bulkUpload(req, res) {
+    try {
+      const excelFile = req.files?.excel?.[0] || req.file;
+      if (!excelFile || !excelFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No Excel file uploaded. Use field name "excel".'
+        });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
+      } catch {
+        return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
+      }
+
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      if (!rows.length) {
+        return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
+      }
+
+      const created = [];
+      const errors = [];
+      const labelsInFile = new Set();
+      const allStreams = await Stream.findAll();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const labelRaw = (row.label ?? row.Label ?? '').toString().trim();
+        const streamRaw = (row.stream ?? row.Stream ?? '').toString().trim();
+
+        if (!labelRaw) {
+          errors.push({ row: rowNum, message: 'label is required' });
+          continue;
+        }
+        if (!streamRaw) {
+          errors.push({ row: rowNum, message: 'stream is required' });
+          continue;
+        }
+
+        const normalizedLabel = labelRaw.toLowerCase();
+        if (labelsInFile.has(normalizedLabel)) {
+          errors.push({ row: rowNum, message: `duplicate label "${labelRaw}" in this file` });
+          continue;
+        }
+
+        const existing = await CareerGoal.findByLabel(labelRaw);
+        if (existing) {
+          errors.push({ row: rowNum, message: `interest "${labelRaw}" already exists` });
+          continue;
+        }
+
+        const stream = allStreams.find((s) => s.name && s.name.toLowerCase() === streamRaw.toLowerCase());
+        if (!stream) {
+          errors.push({ row: rowNum, message: `stream "${streamRaw}" not found` });
+          continue;
+        }
+
+        try {
+          const careerGoal = await CareerGoal.create({
+            label: labelRaw,
+            stream_id: stream.id,
+            logo: null,
+            logo_filename: null,
+            description: null,
+            status: true,
+            updated_by: req.admin?.id || null
+          });
+          created.push({ id: careerGoal.id, label: careerGoal.label, stream: stream.name });
+          labelsInFile.add(normalizedLabel);
+        } catch (createErr) {
+          errors.push({ row: rowNum, message: createErr.message || 'Failed to create interest' });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          created: created.length,
+          createdInterests: created,
+          errors: errors.length,
+          errorDetails: errors
+        },
+        message: `Created ${created.length} interest(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+      });
+    } catch (error) {
+      console.error('Error in interests bulk upload:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Bulk upload failed'
+      });
     }
   }
 
