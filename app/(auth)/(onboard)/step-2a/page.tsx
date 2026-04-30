@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { WelcomeLayout } from "@/components/auth/onboard";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { Select, SelectOption } from "@/components/shared";
 import { updateAcademics, getAllStreamsPublic } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,13 +88,10 @@ export default function StepTwoA() {
 
   const isBusy = saving || isNavigatingToStep2B;
 
+  if (isBusy) return <CardShimmer />;
+
   return (
-    <WelcomeLayout
-      progress={60}
-      isLoading={isBusy}
-      scribbleTitle="Your"
-      scribbleSuffix="academic stream"
-    >
+    <>
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
@@ -107,23 +104,40 @@ export default function StepTwoA() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {loadingStreams ? (
-              /* Inline shimmer while streams load */
-              <div className="h-12 w-full rounded-2xl shimmer-skeleton" />
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[72px] rounded-2xl shimmer-skeleton" />
+                ))}
+              </div>
             ) : streamOptions.length === 0 ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 No streams available. Please contact support.
               </div>
             ) : (
-              <Select
-                options={streamOptions}
-                value={selectedStream}
-                onChange={(value) => setSelectedStream(value || "")}
-                placeholder="Select your stream"
-                isSearchable={true}
-                isClearable={false}
-              />
+              <div className="max-h-[280px] overflow-y-auto scrollbar-hide -mx-1 px-1">
+                <div className="grid grid-cols-2 gap-3">
+                  {streamOptions.map((opt) => {
+                    const active = selectedStream === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSelectedStream(opt.value)}
+                        className={[
+                          "flex flex-col items-center justify-center rounded-2xl p-4 text-center transition-all duration-200 min-h-[76px] border",
+                          active
+                            ? "bg-[#f0c544] border-[#f0c544] text-slate-900 shadow-sm"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm hover:text-slate-800",
+                        ].join(" ")}
+                      >
+                        <span className="text-[13px] font-bold leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             <div className="flex items-center gap-3">
@@ -147,6 +161,6 @@ export default function StepTwoA() {
           </form>
         </>
       )}
-    </WelcomeLayout>
+    </>
   );
 }

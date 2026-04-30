@@ -102,7 +102,7 @@ export default function Header() {
                             aria-label="UniTracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/landing-page/black-logo.svg" : "/landing-page/Logo-white.svg"}
+                                src={isSolidHeader ? "/UniTracko logo 2/logo-2.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={170}
                                 height={38}
@@ -201,7 +201,7 @@ export default function Header() {
                             aria-label="Unitracko"
                         >
                             <Image
-                                src={isSolidHeader ? "/landing-page/logos.svg" : "/landing-page/Logo-white.svg"}
+                                src={isSolidHeader ? "/UniTracko logo 2/logo-2.svg" : "/landing-page/Logo-white.svg"}
                                 alt="Unitracko logo"
                                 width={150}
                                 height={34}

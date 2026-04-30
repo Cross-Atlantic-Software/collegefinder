@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { WelcomeLayout } from "@/components/auth/onboard";
+// Remove WelcomeLayout import
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -37,7 +37,7 @@ export default function StepThree() {
   }
 
   return (
-    <WelcomeLayout progress={100}>
+    <>
       {/* Animated check circle */}
       <div className="flex flex-col items-center text-center mb-6">
         <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f0c544] shadow-[0_0_0_8px_rgba(240,197,68,0.18)]">
@@ -84,6 +84,6 @@ export default function StepThree() {
       >
         Go to Dashboard
       </button>
-    </WelcomeLayout>
+    </>
   );
 }

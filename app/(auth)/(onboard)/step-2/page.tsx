@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { WelcomeLayout } from "@/components/auth/onboard";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { updateProfile } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
@@ -60,13 +60,10 @@ export default function StepTwo() {
     }
   };
 
+  if (isBusy) return <CardShimmer />;
+
   return (
-    <WelcomeLayout
-      progress={40}
-      isLoading={isBusy}
-      scribbleTitle="What's"
-      scribbleSuffix="your name?"
-    >
+    <>
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
@@ -112,6 +109,6 @@ export default function StepTwo() {
           </form>
         </>
       )}
-    </WelcomeLayout>
+    </>
   );
 }

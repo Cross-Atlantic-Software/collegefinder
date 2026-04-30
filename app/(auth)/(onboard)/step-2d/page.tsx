@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { WelcomeLayout } from "@/components/auth/onboard";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { Select } from "@/components/shared";
 import { upsertUserAddress, getUserAddress } from "@/api";
 import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
@@ -103,13 +103,10 @@ export default function StepTwoD() {
 
   const isBusy = saving || isNavigatingToStep3;
 
+  if (isBusy) return <CardShimmer />;
+
   return (
-    <WelcomeLayout
-      progress={95}
-      isLoading={isBusy}
-      scribbleTitle="Your"
-      scribbleSuffix="location"
-    >
+    <>
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
@@ -161,6 +158,6 @@ export default function StepTwoD() {
           </form>
         </>
       )}
-    </WelcomeLayout>
+    </>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { WelcomeLayout } from "@/components/auth/onboard";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { getBasicInfo, updateBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
@@ -74,13 +74,10 @@ export default function StepReferral() {
   }
   if (!user) return <OnboardingLoader message="Loading..." />;
 
+  if (continueLoading) return <CardShimmer />;
+  
   return (
-    <WelcomeLayout
-      progress={95}
-      isLoading={continueLoading}
-      scribbleTitle="Got a"
-      scribbleSuffix="referral code?"
-    >
+    <>
       {!continueLoading && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
@@ -133,6 +130,6 @@ export default function StepReferral() {
           </button>
         </>
       )}
-    </WelcomeLayout>
+    </>
   );
 }

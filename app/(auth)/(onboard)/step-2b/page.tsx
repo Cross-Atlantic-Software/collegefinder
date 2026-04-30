@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { WelcomeLayout } from "@/components/auth/onboard";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { useToast } from "@/components/shared";
 import { updateCareerGoals, getAllCareerGoalsPublic, getAcademics } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -134,13 +134,10 @@ export default function StepTwoB() {
 
   const isBusy = saving || isNavigatingToStep3;
 
+  if (isBusy) return <CardShimmer />;
+
   return (
-    <WelcomeLayout
-      progress={80}
-      isLoading={isBusy}
-      scribbleTitle="Your"
-      scribbleSuffix="interests"
-    >
+    <>
       {!isBusy && (
         <>
           <p className="mb-1 text-sm text-slate-500 -mt-1">Select what excites you most.</p>
@@ -233,6 +230,6 @@ export default function StepTwoB() {
           </form>
         </>
       )}
-    </WelcomeLayout>
+    </>
   );
 }
