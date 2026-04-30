@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllStreams, createStream, updateStream, deleteStream, Stream } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { getAllStreams, createStream, updateStream, deleteStream, deleteAllStreams, downloadStreamsBulkTemplate, bulkUploadStreams, Stream } from '@/api';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiUpload, FiDownload } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function StreamsPage() {
   const router = useRouter();
@@ -23,8 +24,22 @@ export default function StreamsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    created: number;
+    createdStreams: { id: number; name: string }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  } | null>(null);
   const [viewingStream, setViewingStream] = useState<Stream | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const { canDelete } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -183,6 +198,70 @@ export default function StreamsPage() {
     resetForm();
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllStreams();
+      if (response.success) {
+        showSuccess(response.message || 'All streams deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchStreams();
+      } else {
+        const errorMsg = response.message || 'Failed to delete all streams';
+        setError(errorMsg);
+        showError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = 'An error occurred while deleting all streams';
+      setError(errorMsg);
+      showError(errorMsg);
+      console.error('Error deleting all streams:', err);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadStreamsBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadStreams(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult(response.data);
+        showSuccess(response.message || `Created ${response.data.created} stream(s)`);
+        fetchStreams();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
@@ -230,13 +309,38 @@ export default function StreamsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Stream
-            </button>
+            <div className="flex items-center gap-2">
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBulkModal(true);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
+              >
+                <FiUpload className="h-4 w-4" />
+                Upload Excel
+              </button>
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Stream
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -442,6 +546,101 @@ export default function StreamsPage() {
         confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Streams"
+        message="Are you sure you want to delete all streams? This action cannot be undone."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
+      />
+
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bulk Upload Streams</h2>
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="text-slate-500 hover:text-slate-800"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
+                <p className="text-xs text-slate-600 mb-3">
+                  Use columns: <span className="font-mono">name</span> and optional <span className="font-mono">status</span> (TRUE/FALSE).
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
+                </button>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
+              {bulkResult && (
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.map((err, i) => (
+                        <li key={i}>
+                          Row {err.row}: {err.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleBulkUpload}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View Stream Modal */}
       {showViewModal && viewingStream && (

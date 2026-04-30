@@ -121,6 +121,14 @@ class Program {
     const result = await db.query('DELETE FROM programs WHERE id = $1 RETURNING *', [id]);
     return result.rows[0] || null;
   }
+
+  /**
+   * Delete all programs (junction rows with ON DELETE CASCADE are cleared)
+   */
+  static async deleteAll() {
+    const result = await db.query('DELETE FROM programs');
+    return result.rowCount ?? 0;
+  }
 }
 
 module.exports = Program;

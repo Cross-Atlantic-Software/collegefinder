@@ -212,6 +212,26 @@ class SubjectController {
   }
 
   /**
+   * Delete all subjects
+   * DELETE /api/admin/subjects/all
+   */
+  static async deleteAllSubjects(req, res) {
+    try {
+      const deletedCount = await Subject.deleteAll();
+      res.json({
+        success: true,
+        message: `Deleted ${deletedCount} subject(s) successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all subjects:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all subjects'
+      });
+    }
+  }
+
+  /**
    * Download bulk upload template
    * GET /api/admin/subjects/bulk-upload-template
    */

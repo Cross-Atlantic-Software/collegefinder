@@ -9,6 +9,7 @@ const ExamsController = require('../../controllers/profile/examsController');
 const ProfileCollegesController = require('../../controllers/profile/collegesController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
 const SubjectsController = require('../../controllers/profile/subjectsController');
+const ExamPrepLecturesController = require('../../controllers/profile/examPrepLecturesController');
 const TopicsController = require('../../controllers/profile/topicsController');
 const GovernmentIdentificationController = require('../../controllers/profile/governmentIdentificationController');
 const CategoryAndReservationController = require('../../controllers/profile/categoryAndReservationController');
@@ -241,6 +242,13 @@ router.put('/profile/academics', authenticate, validateUpdateAcademics, Academic
  * @access  Private
  */
 router.get('/profile/subjects', authenticate, SubjectsController.getByUserStream);
+
+/**
+ * @route   GET /api/auth/profile/exam-prep-lectures
+ * @desc    Video lectures for user's stream (exam prep self-study)
+ * @access  Private
+ */
+router.get('/profile/exam-prep-lectures', authenticate, ExamPrepLecturesController.getLecturesByUserStream);
 
 /**
  * @route   GET /api/auth/profile/topics/:topicName

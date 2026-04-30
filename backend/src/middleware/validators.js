@@ -1136,23 +1136,7 @@ const validateCreateProgram = [
     .withMessage('Name is required')
     .trim()
     .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
-  body('status')
-    .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean'),
-  body('stream_id')
-    .optional({ nullable: true })
-    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
-    .withMessage('stream_id must be null or a positive integer'),
-  body('interest_ids')
-    .optional()
-    .isArray()
-    .withMessage('interest_ids must be an array'),
-  body('interest_ids.*')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Each interest_ids entry must be a positive integer')
+    .withMessage('Name must be between 1 and 255 characters')
 ];
 
 /**
@@ -1160,28 +1144,11 @@ const validateCreateProgram = [
  */
 const validateUpdateProgram = [
   body('name')
-    .optional()
     .notEmpty()
-    .withMessage('Name cannot be empty')
+    .withMessage('Name is required')
     .trim()
     .isLength({ min: 1, max: 255 })
-    .withMessage('Name must be between 1 and 255 characters'),
-  body('status')
-    .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean'),
-  body('stream_id')
-    .optional({ nullable: true })
-    .custom((value) => value === null || value === undefined || value === '' || (Number.isInteger(Number(value)) && Number(value) >= 1))
-    .withMessage('stream_id must be null or a positive integer'),
-  body('interest_ids')
-    .optional()
-    .isArray()
-    .withMessage('interest_ids must be an array'),
-  body('interest_ids.*')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Each interest_ids entry must be a positive integer')
+    .withMessage('Name must be between 1 and 255 characters')
 ];
 
 /**

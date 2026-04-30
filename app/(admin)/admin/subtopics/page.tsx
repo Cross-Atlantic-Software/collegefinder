@@ -9,12 +9,13 @@ import {
   createSubtopic,
   updateSubtopic,
   deleteSubtopic,
+  deleteAllSubtopics,
   downloadSubtopicsBulkTemplate,
   bulkUploadSubtopics,
   Subtopic,
 } from '@/api';
 import { getAllTopics } from '@/api';
-import { FiPlus, FiSearch, FiX, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -22,7 +23,7 @@ import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 export default function SubtopicsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
-  const { canEdit } = useAdminPermissions();
+  const { canEdit, canDelete } = useAdminPermissions();
   const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +50,8 @@ export default function SubtopicsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [viewingSubtopic, setViewingSubtopic] = useState<Subtopic | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -209,6 +212,24 @@ export default function SubtopicsPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllSubtopics();
+      if (response.success) {
+        showSuccess(response.message || 'All subtopics deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchSubtopics();
+      } else {
+        showError(response.message || 'Failed to delete all subtopics');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete all subtopics');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       topic_id: '',
@@ -350,6 +371,17 @@ export default function SubtopicsPage() {
                 <FiPlus className="h-4 w-4" />
                 Add Subtopic
               </button>
+              {canDelete && allSubtopics.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
             </div>
           </div>
 
@@ -635,6 +667,18 @@ export default function SubtopicsPage() {
         confirmText="Delete"
         cancelText="Cancel"
         isLoading={isDeleting}
+        confirmButtonStyle="danger"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAll}
+        title="Delete All Subtopics"
+        message={`Are you sure you want to delete all ${allSubtopics.length} subtopic(s)? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        isLoading={isDeletingAll}
         confirmButtonStyle="danger"
       />
     </div>

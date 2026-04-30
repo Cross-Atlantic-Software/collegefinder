@@ -38,6 +38,7 @@ import {
   FiVideo,
   FiFile,
   FiLayout,
+  FiLink2,
 } from 'react-icons/fi';
 const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 
@@ -143,6 +144,18 @@ const navGroups: NavGroup[] = [
     icon: <FiAward className="h-4 w-4" />,
     children: [
       { label: 'Scholarships', href: '/admin/scholarships', icon: <FiTag className="h-4 w-4" />, moduleCode: 'scholarships' },
+    ],
+  },
+  {
+    label: 'Mapping',
+    icon: <FiLink2 className="h-4 w-4" />,
+    children: [
+      {
+        label: 'Recommended Exams',
+        href: '/admin/mapping/recommended-exams',
+        icon: <FiClipboard className="h-4 w-4" />,
+        moduleCode: 'mapping',
+      },
     ],
   },
   // {

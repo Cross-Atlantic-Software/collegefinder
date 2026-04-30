@@ -4,7 +4,7 @@ import { ApiResponse } from '../types';
 export interface Exam {
   id: number;
   name: string;
-  code: string;
+  code: string | null;
   description: string | null;
   number_of_papers?: number;
   created_at: string;

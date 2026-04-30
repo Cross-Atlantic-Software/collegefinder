@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllSubjects, createSubject, updateSubject, deleteSubject, downloadSubjectsBulkTemplate, downloadAllSubjectsExcel, bulkUploadSubjects, Subject } from '@/api';
+import { getAllSubjects, createSubject, updateSubject, deleteSubject, deleteAllSubjects, downloadSubjectsBulkTemplate, downloadAllSubjectsExcel, bulkUploadSubjects, Subject } from '@/api';
 import { getAllStreamsPublic } from '@/api';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiUpload, FiDownload } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, SelectOption } from '@/components/shared';
@@ -36,7 +36,9 @@ export default function SubjectsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
-  const { canEdit, canDownloadExcel } = useAdminPermissions();
+  const { canEdit, canDelete, canDownloadExcel } = useAdminPermissions();
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -278,6 +280,29 @@ export default function SubjectsPage() {
     }
   };
 
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllSubjects();
+      if (response.success) {
+        showSuccess(response.message || 'All subjects deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchSubjects();
+      } else {
+        const errorMsg = response.message || 'Failed to delete all subjects';
+        setError(errorMsg);
+        showError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = 'An error occurred while deleting all subjects';
+      setError(errorMsg);
+      showError(errorMsg);
+      console.error('Error deleting all subjects:', err);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
@@ -345,6 +370,16 @@ export default function SubjectsPage() {
                 <FiUpload className="h-4 w-4" />
                 Upload Excel
               </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
               <button
                 onClick={handleCreate}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
@@ -680,6 +715,18 @@ export default function SubjectsPage() {
         cancelText="Cancel"
         confirmButtonStyle="danger"
         isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Subjects"
+        message="Are you sure you want to delete all subjects? This action cannot be undone."
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
 
       {/* View Subject Modal */}

@@ -130,6 +130,15 @@ export async function deleteTopic(id: number): Promise<ApiResponse<null>> {
 }
 
 /**
+ * Delete all topics
+ */
+export async function deleteAllTopics(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.TOPICS}/all`, {
+    method: 'DELETE',
+  });
+}
+
+/**
  * Upload topic thumbnail
  */
 export async function uploadTopicThumbnail(file: File): Promise<ApiResponse<{

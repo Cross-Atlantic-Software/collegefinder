@@ -181,6 +181,14 @@ class Topic {
     );
     return result.rows[0] || null;
   }
+
+  /**
+   * Delete all topics
+   */
+  static async deleteAll() {
+    const result = await db.query('DELETE FROM topics');
+    return result.rowCount || 0;
+  }
 }
 
 module.exports = Topic;

@@ -28,13 +28,12 @@ export default function ExamDatesPage() {
           <div className="mb-4">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Exam Dates</h1>
             <p className="text-sm text-slate-600">
-              Application and exam dates are configured per exam.
+              Application window, exam date, result date, and application fee are configured per exam.
             </p>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
             <p className="text-sm text-slate-700 mb-4">
-              To add or edit exam dates (application start/close, exam date), open an exam from the
-              Exams list and use the Exam Dates section in the form.
+              To add or edit these, open an exam from the Exams list and use the Exam Details section in the form.
             </p>
             <Link
               href="/admin/exams"

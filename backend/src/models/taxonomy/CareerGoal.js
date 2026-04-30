@@ -69,6 +69,18 @@ class CareerGoal {
   }
 
   /**
+   * Find interest by stream + label (for mappings where the same label may exist on another stream)
+   */
+  static async findByStreamIdAndLabel(streamId, label) {
+    const result = await db.query(
+      `SELECT * FROM career_goals_taxonomies
+       WHERE stream_id = $1 AND LOWER(TRIM(label)) = LOWER(TRIM($2))`,
+      [streamId, label]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Create a new career goal taxonomy
    */
   static async create(data) {

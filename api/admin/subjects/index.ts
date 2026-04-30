@@ -78,6 +78,15 @@ export async function deleteSubject(id: number): Promise<ApiResponse<null>> {
 }
 
 /**
+ * Delete all subjects
+ */
+export async function deleteAllSubjects(): Promise<ApiResponse<{ message: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.SUBJECTS}/all`, {
+    method: 'DELETE',
+  });
+}
+
+/**
  * Download subjects bulk upload template
  */
 export async function downloadSubjectsBulkTemplate(): Promise<void> {

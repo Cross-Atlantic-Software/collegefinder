@@ -1,5 +1,6 @@
 const Stream = require('../../models/taxonomy/Stream');
 const { validationResult } = require('express-validator');
+const XLSX = require('xlsx');
 
 class StreamController {
   /**
@@ -182,6 +183,137 @@ class StreamController {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to delete stream'
+      });
+    }
+  }
+
+  /**
+   * Delete all streams
+   * DELETE /api/admin/streams/all
+   */
+  static async deleteAllStreams(req, res) {
+    try {
+      const deletedCount = await Stream.deleteAll();
+      res.json({
+        success: true,
+        message: `Deleted ${deletedCount} stream(s) successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all streams:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all streams'
+      });
+    }
+  }
+
+  /**
+   * Download bulk upload template
+   * GET /api/admin/streams/bulk-upload-template
+   */
+  static async downloadBulkTemplate(req, res) {
+    try {
+      const headers = ['name', 'status'];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([
+        headers,
+        ['Science', 'TRUE'],
+        ['Commerce', 'TRUE'],
+        ['Arts', 'TRUE']
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Streams');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=streams-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating streams bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Bulk upload streams from Excel
+   * POST /api/admin/streams/bulk-upload
+   */
+  static async bulkUpload(req, res) {
+    try {
+      const excelFile = req.files?.excel?.[0] || req.file;
+      if (!excelFile || !excelFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No Excel file uploaded. Use field name "excel".'
+        });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
+      } catch {
+        return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
+      }
+
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      if (!rows.length) {
+        return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
+      }
+
+      const created = [];
+      const errors = [];
+      const namesInFile = new Set();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const nameRaw = (row.name ?? row.Name ?? '').toString().trim();
+
+        if (!nameRaw) {
+          errors.push({ row: rowNum, message: 'name is required' });
+          continue;
+        }
+        if (namesInFile.has(nameRaw.toLowerCase())) {
+          errors.push({ row: rowNum, message: `duplicate name "${nameRaw}" in this file` });
+          continue;
+        }
+        const existing = await Stream.findByName(nameRaw);
+        if (existing) {
+          errors.push({ row: rowNum, message: `stream "${nameRaw}" already exists` });
+          continue;
+        }
+
+        const statusRaw = (row.status ?? '').toString().trim();
+        const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
+
+        try {
+          const stream = await Stream.create({
+            name: nameRaw,
+            status,
+            updated_by: req.admin?.id || null
+          });
+          created.push({ id: stream.id, name: stream.name });
+          namesInFile.add(nameRaw.toLowerCase());
+        } catch (createErr) {
+          errors.push({ row: rowNum, message: createErr.message || 'Failed to create stream' });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          created: created.length,
+          createdStreams: created,
+          errors: errors.length,
+          errorDetails: errors
+        },
+        message: `Created ${created.length} stream(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+      });
+    } catch (error) {
+      console.error('Error in streams bulk upload:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Bulk upload failed'
       });
     }
   }

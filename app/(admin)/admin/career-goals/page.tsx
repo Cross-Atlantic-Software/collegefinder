@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, CareerGoalAdmin } from '@/api';
+import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, downloadCareerGoalsBulkTemplate, bulkUploadCareerGoals, CareerGoalAdmin } from '@/api';
 import { getAllStreams } from '@/api/admin/streams';
 import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
@@ -39,6 +39,17 @@ export default function CareerGoalsPage() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    created: number;
+    createdInterests: { id: number; label: string; stream: string }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  } | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
 
   useEffect(() => {
@@ -313,6 +324,47 @@ export default function CareerGoalsPage() {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadCareerGoalsBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadCareerGoals(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult(response.data);
+        showSuccess(response.message || `Created ${response.data.created} interest(s)`);
+        fetchCareerGoals();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
@@ -372,6 +424,19 @@ export default function CareerGoalsPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBulkModal(true);
+                  setBulkExcelFile(null);
+                  setBulkError(null);
+                  setBulkResult(null);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
+              >
+                <FiUpload className="h-4 w-4" />
+                Upload Excel
+              </button>
               {currentAdmin?.type === 'super_admin' && allCareerGoals.length > 0 && (
                 <button
                   type="button"
@@ -708,6 +773,91 @@ export default function CareerGoalsPage() {
         confirmButtonStyle="danger"
         isLoading={isDeleting}
       />
+
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bulk Upload Interests</h2>
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="text-slate-500 hover:text-slate-800"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
+                <p className="text-xs text-slate-600 mb-3">
+                  Use only two columns: <span className="font-mono">label</span> and <span className="font-mono">stream</span>.
+                  Label must be unique in the system. Stream name must already exist.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
+                </button>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
+              {bulkResult && (
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.map((err, i) => (
+                        <li key={i}>
+                          Row {err.row}: {err.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkExcelFile(null);
+                  setBulkResult(null);
+                  setBulkError(null);
+                }}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleBulkUpload}
+                disabled={!bulkExcelFile || bulkUploading}
+                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete All Confirmation Modal */}
       <ConfirmationModal

@@ -34,6 +34,8 @@ export {
   deleteCareerGoal,
   downloadAllDataExcel as downloadAllCareerGoalsExcel,
   deleteAllCareerGoals,
+  downloadCareerGoalsBulkTemplate,
+  bulkUploadCareerGoals,
   uploadMissingLogosCareerGoals,
 } from './career-goals';
 export type { CareerGoal as CareerGoalAdmin } from './career-goals';
@@ -64,6 +66,7 @@ export {
   createSubject,
   updateSubject,
   deleteSubject,
+  deleteAllSubjects,
   downloadSubjectsBulkTemplate,
   downloadAllSubjectsExcel,
   bulkUploadSubjects,
@@ -77,6 +80,9 @@ export {
   createStream,
   updateStream,
   deleteStream,
+  deleteAllStreams,
+  downloadStreamsBulkTemplate,
+  bulkUploadStreams,
 } from './streams';
 export type { Stream } from './streams';
 
@@ -101,6 +107,7 @@ export {
   createTopic,
   updateTopic,
   deleteTopic,
+  deleteAllTopics,
   uploadTopicThumbnail,
   downloadTopicsBulkTemplate,
   bulkUploadTopics,
@@ -115,6 +122,7 @@ export {
   createSubtopic,
   updateSubtopic,
   deleteSubtopic,
+  deleteAllSubtopics,
   downloadSubtopicsBulkTemplate,
   bulkUploadSubtopics,
 } from './subtopics';
@@ -175,6 +183,7 @@ export {
   createProgram,
   updateProgram,
   deleteProgram,
+  deleteAllPrograms,
   downloadProgramsBulkTemplate,
   downloadAllProgramsExcel,
   bulkUploadPrograms,
@@ -243,3 +252,11 @@ export {
   deleteReferralCode,
 } from './referral-codes';
 export type { ActiveReferralCode } from './referral-codes';
+
+// Stream + interest → programs / exams (admin mapping)
+export {
+  getAllRecommendedMappings,
+  downloadRecommendedMappingTemplate,
+  bulkUploadRecommendedMappings,
+} from './recommended-mappings';
+export type { StreamInterestRecommendedMapping } from './recommended-mappings';

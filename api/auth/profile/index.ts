@@ -185,6 +185,36 @@ export async function getSubjectsByStream(): Promise<ApiResponse<{
   });
 }
 
+export type ExamPrepLectureDto = {
+  id: number;
+  youtubeId: string;
+  title: string;
+  channel: string;
+  hookSummary: string | null;
+  likes: number;
+  subscribers: number;
+  rankScore: number;
+  updatedAt: string;
+  subjectId: string;
+  subjectName: string;
+  topicId: number;
+  topicName: string;
+};
+
+/**
+ * Video lectures for Exam Prep (user's stream, admin-managed content).
+ */
+export async function getExamPrepLectures(): Promise<ApiResponse<{
+  lectures: ExamPrepLectureDto[];
+  requiresStreamSelection: boolean;
+  message?: string;
+  stream_id?: number;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_EXAM_PREP_LECTURES, {
+    method: 'GET',
+  });
+}
+
 /**
  * Get topic by name with subtopics and lectures
  */
