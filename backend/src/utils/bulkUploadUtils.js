@@ -59,6 +59,27 @@ function getCell(row, ...keys) {
 }
 
 /**
+ * Split one Excel cell into one string per program for seat matrix / cutoff columns.
+ * - One program: entire cell is one block (may contain ";" inside for multiple exams/rows).
+ * - Several programs: use " || " between program blocks when a block contains ";".
+ *   Otherwise ";" alone can separate blocks if each block has no internal ";".
+ */
+function splitProgramBlocks(raw, programCount) {
+  if (!programCount || programCount < 1) return [];
+  if (raw == null || String(raw).trim() === '') {
+    return Array.from({ length: programCount }, () => '');
+  }
+  const s = String(raw).trim();
+  if (programCount === 1) return [s];
+  if (s.includes('||')) {
+    const parts = s.split(/\s*\|\|\s*/).map((p) => p.trim());
+    return Array.from({ length: programCount }, (_, i) => parts[i] || '');
+  }
+  const parts = s.split(';').map((p) => p.trim());
+  return Array.from({ length: programCount }, (_, i) => parts[i] || '');
+}
+
+/**
  * Normalize institute/college names for cross-file map keys (trim, lowercase, collapse whitespace).
  */
 function normalizeEntityKey(name) {
@@ -78,4 +99,4 @@ function countMapArrayValues(map) {
   return n;
 }
 
-module.exports = { splitList, parseDate, parseBool, getCell, normalizeEntityKey, countMapArrayValues };
+module.exports = { splitList, parseDate, parseBool, getCell, splitProgramBlocks, normalizeEntityKey, countMapArrayValues };

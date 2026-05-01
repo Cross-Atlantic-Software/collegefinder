@@ -70,6 +70,7 @@ const init = async () => {
       'topics.sql',           // Topics table (depends on subjects)
       'subtopics.sql',        // Subtopics table (depends on topics)
       'lectures.sql',         // Lectures table (depends on subtopics)
+      'upload_jobs.sql',      // Bulk upload jobs + per-row results (references lectures, admin_users)
       'purposes.sql',         // Purposes table and lecture_purposes junction table
       'levels.sql',           // Levels taxonomy table
       'programs.sql',         // Programs taxonomy table
@@ -183,7 +184,11 @@ const runMigrations = async () => {
     'add_hook_summary_to_lectures.sql',
     'remove_name_from_lectures_use_youtube_title.sql',
     'restructure_exams_module_fields_2026.sql',
-    'add_stream_interest_recommendation_mappings_2026.sql'
+    'add_stream_interest_recommendation_mappings_2026.sql',
+    'remove_colleges_google_map_link.sql',
+    'add_parent_university_to_colleges.sql',
+    'rename_colleges_logo_filename_to_logo_url.sql',
+    'add_upload_job_rows_college_id.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

@@ -1,5 +1,12 @@
 const db = require('../../config/database');
 
+function ilikeContains(term) {
+  const s = term != null ? String(term).trim() : '';
+  if (!s) return null;
+  const escaped = s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  return `%${escaped}%`;
+}
+
 class Exam {
   /**
    * Find all exams taxonomies
@@ -9,6 +16,45 @@ class Exam {
       'SELECT * FROM exams_taxonomies ORDER BY name ASC'
     );
     return result.rows;
+  }
+
+  /**
+   * Paginated admin list with optional search (aligned with admin UI filter fields).
+   */
+  static async findPaginatedAdmin({ page = 1, perPage = 10, q = '' } = {}) {
+    const limit = Math.min(Math.max(parseInt(perPage, 10) || 10, 1), 100);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const offset = (pageNum - 1) * limit;
+    const pattern = ilikeContains(q);
+
+    let whereClause = '';
+    const params = [];
+    if (pattern) {
+      whereClause = `WHERE (
+        name ILIKE $1 ESCAPE '\\' OR
+        COALESCE(code, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(description, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(conducting_authority, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(exam_type, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(website, '') ILIKE $1 ESCAPE '\\'
+      )`;
+      params.push(pattern);
+    }
+
+    const countSql = `SELECT COUNT(*)::int AS n FROM exams_taxonomies ${whereClause}`;
+    const countResult = await db.query(countSql, params);
+    const total = countResult.rows[0].n;
+
+    const limitIdx = params.length + 1;
+    const offsetIdx = params.length + 2;
+    const dataSql = `
+      SELECT * FROM exams_taxonomies
+      ${whereClause}
+      ORDER BY name ASC
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
+    `;
+    const dataResult = await db.query(dataSql, [...params, limit, offset]);
+    return { rows: dataResult.rows, total };
   }
 
   /**

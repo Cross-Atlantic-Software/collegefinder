@@ -1,11 +1,57 @@
 const db = require('../../config/database');
 
+function ilikeContains(term) {
+  const s = term != null ? String(term).trim() : '';
+  if (!s) return null;
+  const escaped = s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  return `%${escaped}%`;
+}
+
 class College {
   static async findAll() {
     const result = await db.query(
       'SELECT * FROM colleges ORDER BY college_name ASC'
     );
     return result.rows;
+  }
+
+  /**
+   * Paginated admin list with optional search across the same fields as the admin UI filter.
+   */
+  static async findPaginatedAdmin({ page = 1, perPage = 10, q = '' } = {}) {
+    const limit = Math.min(Math.max(parseInt(perPage, 10) || 10, 1), 100);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const offset = (pageNum - 1) * limit;
+    const pattern = ilikeContains(q);
+
+    let whereClause = '';
+    const params = [];
+    if (pattern) {
+      whereClause = `WHERE (
+        college_name ILIKE $1 ESCAPE '\\' OR
+        COALESCE(college_location, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(state, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(city, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(college_type, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(parent_university, '') ILIKE $1 ESCAPE '\\'
+      )`;
+      params.push(pattern);
+    }
+
+    const countSql = `SELECT COUNT(*)::int AS n FROM colleges ${whereClause}`;
+    const countResult = await db.query(countSql, params);
+    const total = countResult.rows[0].n;
+
+    const limitIdx = params.length + 1;
+    const offsetIdx = params.length + 2;
+    const dataSql = `
+      SELECT * FROM colleges
+      ${whereClause}
+      ORDER BY college_name ASC
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
+    `;
+    const dataResult = await db.query(dataSql, [...params, limit, offset]);
+    return { rows: dataResult.rows, total };
   }
 
   static async findById(id) {
@@ -41,39 +87,28 @@ class College {
       college_location,
       college_type,
       college_logo,
-      logo_filename,
-      google_map_link,
+      logo_url,
       website,
       state,
       city,
+      parent_university,
     } = data;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_filename, google_map_link, website, state, city)
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, website, state, city, parent_university)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         college_name,
         college_location || null,
         college_type || null,
         college_logo || null,
-        logo_filename || null,
-        google_map_link || null,
+        logo_url || null,
         website || null,
         state != null ? String(state).trim() || null : null,
         city != null ? String(city).trim() || null : null,
+        parent_university != null ? String(parent_university).trim() || null : null,
       ]
     );
     return result.rows[0];
-  }
-
-  static async findMissingLogosByFilename(filename) {
-    if (!filename || !String(filename).trim()) return [];
-    const result = await db.query(
-      `SELECT * FROM colleges
-       WHERE LOWER(TRIM(logo_filename)) = LOWER(TRIM($1))
-       AND (college_logo IS NULL OR college_logo = '')`,
-      [String(filename).trim()]
-    );
-    return result.rows;
   }
 
   static async update(id, data) {
@@ -82,11 +117,11 @@ class College {
       college_location,
       college_type,
       college_logo,
-      logo_filename,
-      google_map_link,
+      logo_url,
       website,
       state,
       city,
+      parent_university,
     } = data;
     const updates = [];
     const values = [];
@@ -107,13 +142,9 @@ class College {
       updates.push(`college_logo = $${paramCount++}`);
       values.push(college_logo);
     }
-    if (logo_filename !== undefined) {
-      updates.push(`logo_filename = $${paramCount++}`);
-      values.push(logo_filename);
-    }
-    if (google_map_link !== undefined) {
-      updates.push(`google_map_link = $${paramCount++}`);
-      values.push(google_map_link);
+    if (logo_url !== undefined) {
+      updates.push(`logo_url = $${paramCount++}`);
+      values.push(logo_url);
     }
     if (website !== undefined) {
       updates.push(`website = $${paramCount++}`);
@@ -126,6 +157,10 @@ class College {
     if (city !== undefined) {
       updates.push(`city = $${paramCount++}`);
       values.push(city != null ? String(city).trim() || null : null);
+    }
+    if (parent_university !== undefined) {
+      updates.push(`parent_university = $${paramCount++}`);
+      values.push(parent_university != null ? String(parent_university).trim() || null : null);
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

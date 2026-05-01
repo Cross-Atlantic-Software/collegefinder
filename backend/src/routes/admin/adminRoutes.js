@@ -715,6 +715,18 @@ router.post(
   ]),
   LectureController.bulkUpload
 );
+router.get(
+  '/lectures/upload-jobs/:id/status',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  LectureController.getBulkUploadJobStatus
+);
+router.get(
+  '/lectures/upload-jobs/:id/failures.csv',
+  authenticateAdmin,
+  requireModuleAccess('lectures'),
+  LectureController.downloadBulkUploadFailuresCsv
+);
 
 /**
  * @route   POST /api/admin/lectures/youtube-metadata
@@ -1052,20 +1064,18 @@ router.put('/categories/:id', authenticateAdmin, requireModuleAccess('categories
 router.delete('/categories/:id', authenticateAdmin, requireModuleAccess('categories'), requireCanDelete, CategoryController.deleteCategory);
 
 /**
- * Colleges Routes (CRUD + upload logo + bulk Excel + logos ZIP, same pattern as Exams)
+ * Colleges Routes (CRUD + upload logo + bulk Excel; Excel uses logo_url column for image links)
  */
 router.get('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getAllAdmin);
 router.post('/colleges/upload-logo', authenticateAdmin, requireModuleAccess('colleges'), upload.single('image'), CollegesController.uploadLogo);
 router.get('/colleges/bulk-upload-template', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadBulkTemplate);
 router.get('/colleges/programs-excel-template', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadProgramsExcelTemplate);
 router.get('/colleges/download-excel', authenticateAdmin, requireModuleAccess('colleges'), requireCanDownloadExcel, CollegesController.downloadAllExcel);
-router.post('/colleges/upload-missing-logos', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CollegesController.uploadMissingLogos);
 router.post('/colleges/bulk-upload', authenticateAdmin, requireModuleAccess('colleges'), uploadBulkExams.fields([
   { name: 'excel', maxCount: 1 },
-  { name: 'programs_excel', maxCount: 1 },
-  { name: 'logos', maxCount: 100 },
-  { name: 'logos_zip', maxCount: 1 },
 ]), CollegesController.bulkUpload);
+router.get('/colleges/upload-jobs/:id/status', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getBulkUploadJobStatus);
+router.get('/colleges/upload-jobs/:id/failures.csv', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.downloadBulkUploadFailuresCsv);
 router.post('/colleges', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.create);
 router.delete('/colleges/all', authenticateAdmin, requireModuleAccess('colleges'), requireCanDelete, CollegesController.deleteAll);
 router.get('/colleges/:id', authenticateAdmin, requireModuleAccess('colleges'), CollegesController.getById);

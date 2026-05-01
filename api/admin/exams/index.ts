@@ -77,13 +77,31 @@ export interface ExamWithDetails extends Exam {
   careerGoalIds: number[];
 }
 
-/**
- * Get all exams (for admin)
- */
-export async function getAllExamsAdmin(): Promise<ApiResponse<{
+/** Included on GET /admin/exams (full list and paginated responses). */
+export interface AdminListPagination {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
+export type ExamsAdminListPayload = {
   exams: Exam[];
-}>> {
-  return apiRequest(API_ENDPOINTS.ADMIN.EXAMS, {
+  pagination: AdminListPagination;
+};
+
+/**
+ * Get exams for admin. Omit params for the full list (dropdowns). Pass page/perPage for server-side pagination.
+ */
+export async function getAllExamsAdmin(
+  params?: { page?: number; perPage?: number; q?: string }
+): Promise<ApiResponse<ExamsAdminListPayload>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set('page', String(params.page));
+  if (params?.perPage != null) searchParams.set('perPage', String(params.perPage));
+  if (params?.q != null && params.q.trim() !== '') searchParams.set('q', params.q.trim());
+  const qs = searchParams.toString();
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAMS}${qs ? `?${qs}` : ''}`, {
     method: 'GET',
   });
 }

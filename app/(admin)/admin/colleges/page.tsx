@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -12,33 +12,43 @@ import {
   deleteCollege,
   uploadCollegeLogo,
   downloadCollegesBulkTemplate,
-  downloadCollegesProgramsExcelTemplate,
   downloadAllDataExcel,
   bulkUploadColleges,
-  uploadMissingLogosColleges,
+  getCollegeBulkUploadJobStatus,
+  downloadCollegeBulkUploadFailuresCsv,
   deleteAllColleges,
   type College,
   type CollegeWithDetails,
-  type BulkUploadResult,
+  type CollegesBulkUploadJobStatus,
 } from '@/api/admin/colleges';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { getAllBranches, type Branch } from '@/api/admin/branches';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile, FiImage } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiFile } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { getAllStates, getDistrictsForState } from '@/lib/data/indianStatesDistricts';
 import Image from 'next/image';
 
+const COLLEGES_PAGE_SIZE = 10;
+
 export default function CollegesPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [colleges, setColleges] = useState<College[]>([]);
-  const [allColleges, setAllColleges] = useState<College[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
+  const [totalDbCount, setTotalDbCount] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingCollege, setEditingCollege] = useState<College | null>(null);
   const [viewingData, setViewingData] = useState<CollegeWithDetails | null>(null);
@@ -72,8 +82,8 @@ export default function CollegesPage() {
     college_type: [] as string[],
     major_program_ids: [] as number[],
     website: '',
+    parent_university: '',
     college_logo: '',
-    logo_filename: '',
     college_description: '',
     collegePrograms: [{ ...emptyProgram }] as (typeof emptyProgram)[],
   });
@@ -106,22 +116,17 @@ export default function CollegesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
-  const [bulkProgramsExcelFile, setBulkProgramsExcelFile] = useState<File | null>(null);
-  const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
-  const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<BulkUploadResult | null>(null);
+  const [bulkJobId, setBulkJobId] = useState<string | null>(null);
+  const [bulkJobStatus, setBulkJobStatus] = useState<CollegesBulkUploadJobStatus | null>(null);
+  const bulkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bulkTerminalNotifiedRef = useRef(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { canDownloadExcel } = useAdminPermissions();
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
-  const [showMissingLogosModal, setShowMissingLogosModal] = useState(false);
-  const [missingLogosZipFile, setMissingLogosZipFile] = useState<File | null>(null);
-  const [missingLogosUploading, setMissingLogosUploading] = useState(false);
-  const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
-  const [missingLogosResult, setMissingLogosResult] = useState<{ updated: { id: number; college_name: string }[]; skipped: string[]; summary: { logosAdded: number; filesSkipped: number; uploadErrors: number } } | null>(null);
 
   // Run once on mount: auth check and load list + dropdowns. Empty deps prevent re-running and continuous API calls.
   useEffect(() => {
@@ -137,7 +142,6 @@ export default function CollegesPage() {
         setCurrentAdmin(JSON.parse(adminUserStr));
       } catch (_) {}
     }
-    fetchData();
     (async () => {
       try {
         const [progRes, branchesRes, examRes] = await Promise.all([getAllPrograms(), getAllBranches(), getAllExamsAdmin()]);
@@ -153,42 +157,62 @@ export default function CollegesPage() {
   }, []);
 
   useEffect(() => {
-    if (allColleges.length === 0) {
-      setColleges([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (!searchQuery.trim()) {
-        setColleges(allColleges);
-        return;
-      }
-      const q = searchQuery.toLowerCase();
-      setColleges(allColleges.filter((c) =>
-        c.college_name.toLowerCase().includes(q) ||
-        (c.college_location && c.college_location.toLowerCase().includes(q)) ||
-        (c.state && c.state.toLowerCase().includes(q)) ||
-        (c.city && c.city.toLowerCase().includes(q)) ||
-        (c.college_type && c.college_type.toLowerCase().includes(q))
-      ));
+    const t = setTimeout(() => {
+      const nextQ = searchQuery.trim();
+      setDebouncedSearch((prevQ) => {
+        if (prevQ !== nextQ) setCurrentPage(1);
+        return nextQ;
+      });
     }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, allColleges]);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const fetchData = async (silent = false) => {
-    try {
-      if (!silent) setIsLoading(true);
-      const res = await getAllCollegesAdmin();
-      if (res.success && res.data) {
-        setAllColleges(res.data.colleges);
-        setColleges(res.data.colleges);
+  const loadColleges = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setIsLoading(true);
+        const res = await getAllCollegesAdmin({
+          page: currentPage,
+          perPage: COLLEGES_PAGE_SIZE,
+          q: debouncedSearch,
+        });
+        if (res.success && res.data) {
+          setColleges(res.data.colleges);
+          if (res.data.pagination) {
+            setPagination(res.data.pagination);
+            if (!debouncedSearch) setTotalDbCount(res.data.pagination.total);
+          }
+          setError(null);
+        } else {
+          setError(res.message || 'Failed to load colleges');
+        }
+      } catch (err) {
+        setError('Failed to fetch colleges');
+        console.error(err);
+      } finally {
+        if (!silent) setIsLoading(false);
       }
-    } catch (err) {
-      setError('Failed to fetch colleges');
-      console.error(err);
-    } finally {
-      if (!silent) setIsLoading(false);
+    },
+    [currentPage, debouncedSearch]
+  );
+
+  useEffect(() => {
+    void loadColleges(false);
+  }, [loadColleges]);
+
+  useEffect(() => {
+    if (!pagination) return;
+    if (pagination.totalPages === 0 && currentPage !== 1) setCurrentPage(1);
+    else if (pagination.totalPages > 0 && currentPage > pagination.totalPages) {
+      setCurrentPage(pagination.totalPages);
     }
-  };
+  }, [pagination, currentPage]);
+
+  const totalPages = pagination?.totalPages ?? 1;
+  const totalListed = pagination?.total ?? 0;
+  const pageSize = pagination?.perPage ?? COLLEGES_PAGE_SIZE;
+  const rangeStart = totalListed === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, totalListed);
 
   const handleLogoUpload = async (file: File) => {
     try {
@@ -235,8 +259,8 @@ export default function CollegesPage() {
         college_type: formData.college_type.length > 0 ? formData.college_type.join(',') : null,
         major_program_ids: formData.major_program_ids,
         website: formData.website.trim() || null,
-        college_logo: formData.college_logo || null,
-        logo_filename: formData.logo_filename.trim() || null,
+        parent_university: formData.parent_university.trim() || null,
+        college_logo: formData.college_logo.trim() || null,
         college_description: formData.college_description.trim() || null,
         collegePrograms: formData.collegePrograms.filter((p) => p.program_id).map((p) => ({
           program_id: p.program_id,
@@ -265,9 +289,7 @@ export default function CollegesPage() {
         const response = await updateCollege(editingCollege.id, payload);
         if (response.success && response.data) {
           showSuccess('College updated');
-          setAllColleges((prev) => prev.map((c) => (c.id === editingCollege.id ? response.data!.college : c)));
-          setColleges((prev) => prev.map((c) => (c.id === editingCollege.id ? response.data!.college : c)));
-          fetchData(true);
+          void loadColleges(true);
           handleModalClose();
         } else {
           setError(response.message || 'Update failed');
@@ -277,7 +299,7 @@ export default function CollegesPage() {
         const response = await createCollege(payload);
         if (response.success && response.data) {
           showSuccess('College created');
-          fetchData(true);
+          void loadColleges(true);
           handleModalClose();
         } else {
           setError(response.message || 'Create failed');
@@ -334,8 +356,8 @@ export default function CollegesPage() {
           college_type: typeArr,
           major_program_ids: majorIds,
           website: d.college.website ?? '',
+          parent_university: d.college.parent_university ?? '',
           college_logo: d.college.college_logo ?? '',
-          logo_filename: d.college.logo_filename ?? '',
           college_description: d.collegeDetails?.college_description ?? '',
           collegePrograms: (d.collegePrograms || []).length > 0 ? (d.collegePrograms || []).map((p) => ({
             program_id: p.program_id,
@@ -385,7 +407,7 @@ export default function CollegesPage() {
       const response = await deleteCollege(deletingId);
       if (response.success) {
         showSuccess('College deleted');
-        fetchData();
+        void loadColleges(false);
       } else {
         showError(response.message || 'Delete failed');
       }
@@ -407,8 +429,8 @@ export default function CollegesPage() {
       college_type: [],
       major_program_ids: [],
       website: '',
+      parent_university: '',
       college_logo: '',
-      logo_filename: '',
       college_description: '',
       collegePrograms: [{ ...emptyProgram }],
     });
@@ -422,47 +444,12 @@ export default function CollegesPage() {
     setEditingCollege(null);
   };
 
-  const handleMissingLogosSubmit = async () => {
-    if (!missingLogosZipFile) {
-      showError('Please select a ZIP file');
-      return;
-    }
-    setMissingLogosUploading(true);
-    setMissingLogosError(null);
-    setMissingLogosResult(null);
-    try {
-      const res = await uploadMissingLogosColleges(missingLogosZipFile);
-      if (res.success && res.data) {
-        setMissingLogosResult(res.data);
-        showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
-        fetchData(true);
-      } else {
-        setMissingLogosError(res.message || 'Upload failed');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
-      setMissingLogosError(msg);
-      showError(msg);
-    } finally {
-      setMissingLogosUploading(false);
-    }
-  };
-
   const handleBulkTemplateDownload = async () => {
     try {
       await downloadCollegesBulkTemplate();
       showSuccess('Colleges template downloaded');
     } catch {
       showError('Failed to download template');
-    }
-  };
-
-  const handleProgramsExcelTemplateDownload = async () => {
-    try {
-      await downloadCollegesProgramsExcelTemplate();
-      showSuccess('Programs Excel template downloaded');
-    } catch {
-      showError('Failed to download programs template');
     }
   };
 
@@ -478,6 +465,75 @@ export default function CollegesPage() {
     }
   };
 
+  const stopBulkPoll = useCallback(() => {
+    if (bulkPollRef.current) {
+      clearInterval(bulkPollRef.current);
+      bulkPollRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => stopBulkPoll(), [stopBulkPoll]);
+
+  useEffect(() => {
+    if (!bulkJobId) {
+      stopBulkPoll();
+      return;
+    }
+    bulkTerminalNotifiedRef.current = false;
+
+    const poll = async () => {
+      try {
+        const res = await getCollegeBulkUploadJobStatus(bulkJobId);
+        if (res.success && res.data) {
+          setBulkJobStatus(res.data);
+          const st = res.data.status;
+          if ((st === 'completed' || st === 'failed') && !bulkTerminalNotifiedRef.current) {
+            bulkTerminalNotifiedRef.current = true;
+            stopBulkPoll();
+            void loadColleges(true);
+            if (st === 'completed') {
+              showSuccess(
+                `Import finished: ${res.data.success} created, ${res.data.failed} failed (of ${res.data.total} rows).`
+              );
+            } else {
+              showError(res.data.errorMessage || 'Bulk import job failed');
+            }
+          }
+        }
+      } catch {
+        /* transient poll errors */
+      }
+    };
+
+    void poll();
+    bulkPollRef.current = setInterval(poll, 2000);
+    return () => stopBulkPoll();
+  }, [bulkJobId, stopBulkPoll, showSuccess, showError, loadColleges]);
+
+  const handleDownloadBulkFailuresCsv = async () => {
+    if (!bulkJobId) return;
+    try {
+      await downloadCollegeBulkUploadFailuresCsv(bulkJobId);
+      showSuccess('Failures CSV downloaded');
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'Download failed');
+    }
+  };
+
+  const handleStartNewBulkUploadSession = () => {
+    if (bulkJobStatus?.status === 'pending' || bulkJobStatus?.status === 'processing') {
+      const ok = window.confirm(
+        'This import is still running on the server. Clear this screen to choose a new file? You can reopen “View import progress” anytime until you start a new upload.'
+      );
+      if (!ok) return;
+    }
+    setBulkJobId(null);
+    setBulkJobStatus(null);
+    bulkTerminalNotifiedRef.current = false;
+    setBulkExcelFile(null);
+    setBulkError(null);
+  };
+
   const handleBulkSubmit = async () => {
     if (!bulkExcelFile) {
       showError('Select an Excel file');
@@ -485,13 +541,13 @@ export default function CollegesPage() {
     }
     setBulkUploading(true);
     setBulkError(null);
-    setBulkResult(null);
     try {
-      const res = await bulkUploadColleges(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkProgramsExcelFile);
-      if (res.success && res.data) {
-        setBulkResult(res.data);
-        showSuccess(res.message || `Created ${res.data.created} college(s)`);
-        fetchData(true);
+      const res = await bulkUploadColleges(bulkExcelFile);
+      if (res.success && res.data?.jobId) {
+        setBulkJobId(res.data.jobId);
+        setBulkJobStatus(null);
+        bulkTerminalNotifiedRef.current = false;
+        showSuccess(res.message || 'Bulk upload queued — processing in the background.');
       } else {
         setBulkError(res.message || 'Bulk upload failed');
       }
@@ -511,7 +567,7 @@ export default function CollegesPage() {
       if (response.success) {
         showSuccess(response.message || 'All colleges deleted successfully');
         setShowDeleteAllConfirm(false);
-        fetchData(true);
+        void loadColleges(true);
       } else {
         showError(response.message || 'Failed to delete all colleges');
         setShowDeleteAllConfirm(false);
@@ -545,14 +601,14 @@ export default function CollegesPage() {
         <main className="flex-1 p-4 overflow-auto">
           <div className="mb-3">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Colleges Manager</h1>
-            <p className="text-sm text-slate-600">Manage colleges (CRUD and bulk upload, same pattern as Exams).</p>
+            <p className="text-sm text-slate-600">Manage colleges (CRUD and bulk Excel). Logos in bulk sheets use image URLs only; use file upload in the form for S3.</p>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button type="button" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">
                 <span className="text-xs font-medium text-slate-700">All colleges</span>
-                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">{allColleges.length}</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">{totalDbCount}</span>
               </button>
               <div className="relative">
                 <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -577,32 +633,41 @@ export default function CollegesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowBulkModal(true);
-                  setBulkResult(null);
                   setBulkError(null);
-                  setBulkExcelFile(null);
-                  setBulkProgramsExcelFile(null);
-                  setBulkLogoFiles([]);
-                  setBulkLogosZipFile(null);
+                  setShowBulkModal(true);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
               >
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {allColleges.length > 0 && (
+              {bulkJobId && (
                 <button
                   type="button"
                   onClick={() => {
-                    setShowMissingLogosModal(true);
-                    setMissingLogosZipFile(null);
-                    setMissingLogosResult(null);
-                    setMissingLogosError(null);
+                    setBulkError(null);
+                    setShowBulkModal(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-amber-50 border border-amber-200 text-amber-950 rounded-lg hover:bg-amber-100/90"
                 >
-                  <FiUpload className="h-4 w-4" />
-                  Upload missing logos
+                  {bulkJobStatus?.status === 'pending' || bulkJobStatus?.status === 'processing' ? (
+                    <>
+                      <span
+                        className="inline-block h-3.5 w-3.5 rounded-full border-2 border-amber-700/30 border-t-amber-800 animate-spin"
+                        aria-hidden
+                      />
+                      Import{' '}
+                      {bulkJobStatus
+                        ? `${bulkJobStatus.processed}/${bulkJobStatus.total}`
+                        : '…'}
+                    </>
+                  ) : (
+                    <>
+                      <FiDownload className="h-4 w-4 text-amber-900/90" />
+                      View import
+                      {bulkJobStatus?.failed ? ` · ${bulkJobStatus.failed} failed` : ''}
+                    </>
+                  )}
                 </button>
               )}
               {canDownloadExcel && (
@@ -616,7 +681,7 @@ export default function CollegesPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
-              {currentAdmin?.type === 'super_admin' && allColleges.length > 0 && (
+              {currentAdmin?.type === 'super_admin' && totalDbCount > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowDeleteAllConfirm(true)}
@@ -644,6 +709,7 @@ export default function CollegesPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PARENT UNIVERSITY</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOCATION</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
@@ -652,8 +718,12 @@ export default function CollegesPage() {
                   <tbody className="divide-y divide-slate-200">
                     {colleges.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {colleges.length < allColleges.length ? 'No colleges match your search' : 'No colleges yet'}
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
+                          {debouncedSearch.trim()
+                            ? 'No colleges match your search'
+                            : totalDbCount === 0
+                              ? 'No colleges yet'
+                              : 'No colleges on this page'}
                         </td>
                       </tr>
                     ) : (
@@ -670,6 +740,9 @@ export default function CollegesPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{college.college_name}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="text-sm text-slate-600">{college.parent_university || '-'}</span>
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm text-slate-600">{college.college_location || '-'}</span>
@@ -694,6 +767,34 @@ export default function CollegesPage() {
                     )}
                   </tbody>
                 </table>
+                {totalListed > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-[#F6F8FA] text-sm text-slate-600">
+                    <span>
+                      Showing {rangeStart}–{rangeEnd} of {totalListed}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                        className="px-3 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-slate-700">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="px-3 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -718,6 +819,8 @@ export default function CollegesPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">College Name *</label>
                 <input type="text" value={formData.college_name} onChange={(e) => setFormData({ ...formData, college_name: e.target.value })} required placeholder="e.g. IIT Delhi" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Parent university</label>
+                <input type="text" value={formData.parent_university} onChange={(e) => setFormData({ ...formData, parent_university: e.target.value })} placeholder="e.g. Mumbai University (affiliating university)" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
@@ -740,11 +843,6 @@ export default function CollegesPage() {
                   className="w-full"
                 />
               </div>
-              <p className="text-xs text-slate-500">
-                The Google Maps link is filled automatically from the college name and location when you save (Places API on the server). Add{' '}
-                <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_PLACES_API_KEY</code> or{' '}
-                <code className="px-0.5 rounded bg-slate-100 text-[11px]">GOOGLE_MAPS_API_KEY</code> to the backend env for best results.
-              </p>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">College Type (multiple)</label>
                 <MultiSelect
@@ -773,7 +871,18 @@ export default function CollegesPage() {
                 <input type="url" value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} placeholder="https://www.college.ac.in" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Logo</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Logo image URL</label>
+                <input
+                  type="url"
+                  value={formData.college_logo}
+                  onChange={(e) => setFormData({ ...formData, college_logo: e.target.value })}
+                  placeholder="https://… (direct link to image)"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Paste a public image URL, or upload a file below to store the logo on S3.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Upload logo file (S3)</label>
                 {logoPreview && (
                   <div className="relative h-24 w-24 rounded-md overflow-hidden bg-slate-100 border border-slate-300 mb-2">
                     <Image src={logoPreview} alt="Logo" fill className="object-contain" unoptimized />
@@ -781,21 +890,10 @@ export default function CollegesPage() {
                 )}
                 <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer">
                   <FiUpload className="h-4 w-4" />
-                  <span>{logoPreview ? 'Change Logo' : 'Upload Logo'}</span>
+                  <span>{logoPreview ? 'Change file upload' : 'Choose image file'}</span>
                   <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" disabled={uploading} />
                 </label>
-                {uploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Logo file name</label>
-                <input
-                  type="text"
-                  value={formData.logo_filename}
-                  onChange={(e) => setFormData({ ...formData, logo_filename: e.target.value })}
-                  placeholder="e.g. iit_delhi.png"
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                />
-                <p className="text-xs text-slate-500 mt-1">Used to match files when using &quot;Upload missing logos&quot; (ZIP file names must match this).</p>
+                {uploading && <p className="text-xs text-slate-500 mt-1">Uploading to S3...</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
@@ -1003,9 +1101,16 @@ export default function CollegesPage() {
                     </p>
                   )}
                   <p className="text-sm text-slate-600"><strong>Type:</strong> {viewingData.college_type || '-'}</p>
-                  {viewingData.google_map_link && <p className="text-sm text-slate-600"><strong>Map:</strong> <a href={viewingData.google_map_link} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">View on Google Maps</a></p>}
+                  {viewingData.parent_university && (
+                    <p className="text-sm text-slate-600"><strong>Parent university:</strong> {viewingData.parent_university}</p>
+                  )}
                   {viewingData.website && <p className="text-sm text-slate-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.website}</a></p>}
-                  {viewingData.logo_filename && <p className="text-sm text-slate-600"><strong>Logo file name:</strong> <code className="px-1 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-xs">{viewingData.logo_filename}</code></p>}
+                  {viewingData.college_logo && (
+                    <p className="text-sm text-slate-600 break-all">
+                      <strong>Logo URL:</strong>{' '}
+                      <a href={viewingData.college_logo} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.college_logo}</a>
+                    </p>
+                  )}
                 </div>
               </div>
               <button type="button" onClick={() => setViewingData(null)} className="text-slate-500 hover:text-slate-700 flex-shrink-0">
@@ -1088,7 +1193,7 @@ export default function CollegesPage() {
       {/* Bulk Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col ring-1 ring-black/5">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col ring-1 ring-black/5">
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="h-9 w-9 rounded-lg bg-highlight-100 flex items-center justify-center text-[#341050]">
@@ -1096,7 +1201,7 @@ export default function CollegesPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Bulk upload colleges</h2>
-                  <p className="text-xs text-slate-500">Excel + optional logos</p>
+                  <p className="text-xs text-slate-500">One Excel + optional logos ZIP</p>
                 </div>
               </div>
               <button
@@ -1110,13 +1215,17 @@ export default function CollegesPage() {
             </div>
             <div className="p-5 overflow-auto space-y-5">
               <p className="text-xs text-slate-600 leading-relaxed">
-                Download <strong>two</strong> files: <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">colleges-bulk-template.xlsx</code> (Colleges sheet only) and{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">colleges-programs-excel-template.xlsx</code> (CollegePrograms example + <strong>Programs_catalog</strong> with every{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name</code> from your taxonomy). On the <strong>Colleges</strong> sheet, use{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> (no manual Google Maps column). Each program row lists{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">college_name</code> matching the college row and                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name</code> exactly as in Programs. On the <strong>Colleges</strong> sheet, only{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_names</code> is used to choose which program rows attach (comma or semicolon; optional{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_name|branch_course</code> tokens); leave it empty to attach every program row for that college. If there is no programs file, legacy inline columns in the colleges workbook are still read when present.
+                Download <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">colleges-bulk-template.xlsx</code>: <strong>Colleges</strong> is one row per college. List multiple programs in{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_names</code> separated by comma or semicolon; for each program,{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">intake_capacities</code> and{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">program_durations</code> use the same order (comma or semicolon between values).{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">previous_year_cutoff</code>,{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">expected_cutoff</code>, and{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">seat_matrix</code> are one block per program: separate programs with <strong>;</strong> when each block has no inner semicolons, or with <strong>||</strong> when a block needs semicolons inside (see template examples).{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">key_dates</code> is college-level (not per program).{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">logo_url</code> must be a direct link to an image (no ZIP upload). Other columns from exports still import.{' '}
+                <strong>Programs_catalog</strong> is reference-only. Use{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> on each row.
               </p>
               {canDownloadExcel && (
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
@@ -1125,28 +1234,12 @@ export default function CollegesPage() {
                       <FiDownload className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900">Colleges template</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Main sheet only</p>
+                      <p className="text-sm font-medium text-slate-900">Bulk template</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Colleges + Programs_catalog</p>
                     </div>
                     <button
                       type="button"
                       onClick={handleBulkTemplateDownload}
-                      className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                      Download
-                    </button>
-                  </div>
-                  <div className="flex flex-1 min-w-[200px] items-center gap-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-100">
-                    <div className="h-10 w-10 rounded-lg bg-[#341050] hover:bg-[#2a0c40] flex items-center justify-center text-white shrink-0">
-                      <FiDownload className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900">Programs Excel template</p>
-                      <p className="text-xs text-slate-500 mt-0.5">CollegePrograms + program names list</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleProgramsExcelTemplateDownload}
                       className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity"
                     >
                       Download
@@ -1184,268 +1277,98 @@ export default function CollegesPage() {
                 </label>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-slate-900">
-                  Programs Excel <span className="text-xs font-normal text-slate-500">(optional)</span>
-                </p>
-                <label className="block w-full">
-                  <div
-                    className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[88px] ${bulkProgramsExcelFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}
-                  >
-                    <FiFile className={`h-8 w-8 ${bulkProgramsExcelFile ? 'text-[#341050]' : 'text-slate-400'}`} />
-                    <span className="text-sm font-medium text-slate-700 text-center px-2">
-                      {bulkProgramsExcelFile ? bulkProgramsExcelFile.name : 'Use CollegePrograms sheet layout (see colleges-programs-excel-template.xlsx)'}
-                    </span>
-                    {bulkProgramsExcelFile ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setBulkProgramsExcelFile(null);
-                        }}
-                        className="text-xs text-red-600 hover:text-red-700 font-medium"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => setBulkProgramsExcelFile(e.target.files?.[0] ?? null)}
-                    className="sr-only"
-                  />
-                </label>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-slate-900">
-                  Logos ZIP <span className="text-xs font-normal text-slate-500">(optional)</span>
-                </p>
-                <label className="block w-full">
-                  <div className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[120px] ${bulkLogosZipFile ? 'border-[#341050]/40 bg-[#341050]/5' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}>
-                    <FiImage className={`h-10 w-10 ${bulkLogosZipFile ? 'text-[#341050]' : 'text-slate-400'}`} />
-                    <span className="text-sm font-medium text-slate-700">
-                      {bulkLogosZipFile ? bulkLogosZipFile.name : 'Choose ZIP file'}
-                    </span>
-                    {bulkLogosZipFile ? (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBulkLogosZipFile(null); setBulkLogoFiles([]); }}
-                        className="text-xs text-red-600 hover:text-red-700 font-medium"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                  <input
-                    type="file"
-                    accept=".zip,application/zip,application/x-zip-compressed"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file?.name.toLowerCase().endsWith('.zip')) {
-                        setBulkLogosZipFile(file);
-                        setBulkLogoFiles([]);
-                      }
-                      e.target.value = '';
-                    }}
-                    className="sr-only"
-                  />
-                </label>
-              </div>
-
               {bulkError && (
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
                   <FiX className="h-4 w-4 shrink-0 mt-0.5" />
                   {bulkError}
                 </div>
               )}
-              {bulkResult && (
-                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-2">
-                  <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
-                  {bulkResult.errors > 0 && (
-                    <p className="text-amber-700">Errors: {bulkResult.errors} row(s)</p>
-                  )}
-                  {bulkResult.errorDetails?.length > 0 && (
-                    <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-32 overflow-y-auto">
-                      {bulkResult.errorDetails.map((e, i) => (
-                        <li key={i}>Row {e.row}: {e.message}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {bulkResult.programSheetWarnings && bulkResult.programSheetWarnings.length > 0 && (
-                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
-                      <p className="font-medium text-xs mb-1">Program sheet notices</p>
-                      <ul className="text-xs list-disc list-inside space-y-0.5">
-                        {bulkResult.programSheetWarnings.map((w, i) => (
-                          <li key={i}>{w}</li>
-                        ))}
-                      </ul>
-                    </div>
+              {bulkJobId && !bulkJobStatus && (
+                <p className="text-sm text-slate-600">Job queued — loading progress…</p>
+              )}
+              {bulkJobStatus && (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-[#F6F8FA]/80 p-3 text-sm">
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>
+                      Status:{' '}
+                      <strong className="capitalize text-slate-900">{bulkJobStatus.status}</strong>
+                    </span>
+                    <span>
+                      {bulkJobStatus.processed} / {bulkJobStatus.total} rows
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full bg-[#341050] transition-[width] duration-300"
+                      style={{
+                        width: `${bulkJobStatus.total ? Math.min(100, (bulkJobStatus.processed / bulkJobStatus.total) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    Success: <span className="font-medium text-slate-900">{bulkJobStatus.success}</span>
+                    {' · '}
+                    Failed: <span className="font-medium text-slate-900">{bulkJobStatus.failed}</span>
+                  </div>
+                  {bulkJobStatus.failed > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadBulkFailuresCsv}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[#341050] underline hover:no-underline"
+                    >
+                      <FiDownload className="h-3.5 w-3.5" />
+                      Download failed rows (CSV)
+                    </button>
                   )}
                 </div>
               )}
-              <p className="text-xs text-slate-500 pt-1">
-                File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
-              </p>
             </div>
-            <div className="px-5 py-4 border-t border-slate-200 flex justify-end gap-3 bg-[#F6F8FA]/50">
-              <button
-                type="button"
-                onClick={() => setShowBulkModal(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkSubmit}
-                disabled={!bulkExcelFile || bulkUploading}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {bulkUploading ? (
-                  <>
-                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Uploading…
-                  </>
+            <div className="px-5 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-[#F6F8FA]/50">
+              <div className="min-w-0">
+                {bulkJobId ? (
+                  <button
+                    type="button"
+                    onClick={handleStartNewBulkUploadSession}
+                    className="text-sm font-medium text-slate-600 hover:text-slate-900 underline underline-offset-2"
+                  >
+                    Start new upload
+                  </button>
                 ) : (
-                  <>
-                    <FiUpload className="h-4 w-4" />
-                    Upload
-                  </>
+                  <span className="text-xs text-slate-400">Upload a new file after choosing Excel above.</span>
                 )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Upload Missing Logos Modal */}
-      {showMissingLogosModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col ring-1 ring-black/5">
-            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-highlight-100 text-[#341050]">
-                  <FiUpload className="h-5 w-5" />
-                </div>
-                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Upload missing logos</h2>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowMissingLogosModal(false)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80 transition-colors"
-                aria-label="Close"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-5 overflow-auto space-y-5">
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Upload a ZIP containing logo images. File names must match the <code className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-mono text-xs">logo_filename</code> stored for colleges that have no logo yet.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-2">ZIP file (required)</label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[120px] rounded-xl border-2 border-dashed border-slate-300 hover:border-[#341050]/40 hover:bg-[#341050]/5 transition-all cursor-pointer group">
-                  <input
-                    type="file"
-                    accept=".zip,application/zip,application/x-zip-compressed"
-                    className="hidden"
-                    onChange={(e) => {
-                      setMissingLogosZipFile(e.target.files?.[0] ?? null);
-                      setMissingLogosResult(null);
-                      setMissingLogosError(null);
-                      e.target.value = '';
-                    }}
-                  />
-                  {missingLogosZipFile ? (
-                    <div className="flex flex-col items-center gap-2 p-4">
-                      <div className="p-2 rounded-full bg-green-100 text-green-600">
-                        <FiUpload className="h-5 w-5" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-800 truncate max-w-[240px]">{missingLogosZipFile.name}</span>
-                      <button
-                        type="button"
-                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMissingLogosZipFile(null); setMissingLogosResult(null); setMissingLogosError(null); }}
-                        className="text-xs text-slate-500 hover:text-red-600 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
+              <div className="flex justify-end gap-3 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkSubmit}
+                  disabled={
+                    !bulkExcelFile ||
+                    bulkUploading ||
+                    bulkJobStatus?.status === 'pending' ||
+                    bulkJobStatus?.status === 'processing'
+                  }
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {bulkUploading ? (
+                    <>
+                      <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Uploading…
+                    </>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 p-4 text-slate-500 group-hover:text-slate-600">
-                      <FiUpload className="h-8 w-8 opacity-60" />
-                      <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
-                      <span className="text-xs">.zip only</span>
-                    </div>
+                    <>
+                      <FiUpload className="h-4 w-4" />
+                      Upload
+                    </>
                   )}
-                </label>
+                </button>
               </div>
-              {missingLogosError && (
-                <div className="bg-red-50 border border-red-200/80 text-red-700 px-4 py-3 text-sm rounded-xl">
-                  {missingLogosError}
-                </div>
-              )}
-              {missingLogosResult && (
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
-                  <p className="font-semibold text-slate-900">
-                    ✓ Logos added: {missingLogosResult.summary.logosAdded}
-                  </p>
-                  {missingLogosResult.summary.filesSkipped > 0 && (
-                    <p className="text-sm text-amber-700">Files skipped (no matching college): {missingLogosResult.summary.filesSkipped}</p>
-                  )}
-                  {missingLogosResult.summary.uploadErrors > 0 && (
-                    <p className="text-sm text-red-700">Upload errors: {missingLogosResult.summary.uploadErrors}</p>
-                  )}
-                  {missingLogosResult.updated.length > 0 && (
-                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-24 overflow-y-auto space-y-0.5">
-                      {missingLogosResult.updated.map((u, i) => (
-                        <li key={i}>{u.college_name}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {missingLogosResult.skipped.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 mb-1">Skipped files:</p>
-                      <ul className="text-xs text-slate-500 list-disc list-inside max-h-16 overflow-y-auto space-y-0.5">
-                        {missingLogosResult.skipped.map((f, i) => (
-                          <li key={i}>{f}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowMissingLogosModal(false)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleMissingLogosSubmit}
-                disabled={!missingLogosZipFile || missingLogosUploading}
-                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {missingLogosUploading ? (
-                  <>
-                    <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Uploading…
-                  </>
-                ) : (
-                  <>
-                    <FiUpload className="h-4 w-4" />
-                    Upload
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -1467,7 +1390,7 @@ export default function CollegesPage() {
         onClose={() => setShowDeleteAllConfirm(false)}
         onConfirm={handleDeleteAllConfirm}
         title="Delete All Colleges"
-        message={`Are you sure you want to delete all ${allColleges.length} colleges? This action cannot be undone.`}
+        message={`Are you sure you want to delete all ${totalDbCount} colleges? This action cannot be undone.`}
         confirmText="Delete All"
         cancelText="Cancel"
         confirmButtonStyle="danger"

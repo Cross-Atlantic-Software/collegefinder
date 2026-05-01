@@ -10,9 +10,10 @@ export interface College {
   city?: string | null;
   college_type: string | null;
   college_logo: string | null;
-  logo_filename: string | null;
-  google_map_link: string | null;
+  /** External / spreadsheet image URL; null when logo is S3-only */
+  logo_url: string | null;
   website: string | null;
+  parent_university?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,8 +86,28 @@ export interface CollegeWithDetails extends College {
   recommendedExamIds: number[];
 }
 
-export async function getAllCollegesAdmin(): Promise<ApiResponse<{ colleges: College[] }>> {
-  return apiRequest(API_ENDPOINTS.ADMIN.COLLEGES, { method: 'GET' });
+/** Included on GET /admin/colleges (full list and paginated responses). */
+export interface AdminListPagination {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
+export type CollegesAdminListPayload = {
+  colleges: College[];
+  pagination: AdminListPagination;
+};
+
+export async function getAllCollegesAdmin(
+  params?: { page?: number; perPage?: number; q?: string }
+): Promise<ApiResponse<CollegesAdminListPayload>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set('page', String(params.page));
+  if (params?.perPage != null) searchParams.set('perPage', String(params.perPage));
+  if (params?.q != null && params.q.trim() !== '') searchParams.set('q', params.q.trim());
+  const qs = searchParams.toString();
+  return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}${qs ? `?${qs}` : ''}`, { method: 'GET' });
 }
 
 export async function getCollegeById(id: number): Promise<ApiResponse<{
@@ -142,13 +163,30 @@ export async function deleteAllColleges(): Promise<ApiResponse<{ message: string
   return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/all`, { method: 'DELETE' });
 }
 
+/** @deprecated Sync bulk response; colleges bulk upload is now async — use {@link CollegesBulkUploadQueued}. */
 export interface BulkUploadResult {
+  /** Total data rows in the Excel sheet (excluding header). */
+  totalRows: number;
   created: number;
   createdColleges: { id: number; name: string }[];
   errors: number;
   errorDetails: { row: number; message: string }[];
-  /** CollegePrograms sheet/file rows referencing a college name not created in this run. */
-  programSheetWarnings?: string[];
+}
+
+/** Response from POST /colleges/bulk-upload (202 Accepted). */
+export interface CollegesBulkUploadQueued {
+  jobId: string;
+}
+
+export interface CollegesBulkUploadJobStatus {
+  total: number;
+  processed: number;
+  success: number;
+  failed: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  hookSummariesQueued: number;
+  errorMessage: string | null;
+  originalFilename: string | null;
 }
 
 export async function downloadCollegesBulkTemplate(): Promise<void> {
@@ -168,7 +206,7 @@ export async function downloadCollegesBulkTemplate(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
-/** Optional programs_excel: CollegePrograms layout + programs taxonomy from DB. */
+/** Legacy: same workbook as bulk template (three sheets). Prefer downloadCollegesBulkTemplate. */
 export async function downloadCollegesProgramsExcelTemplate(): Promise<void> {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
   const base = getApiBaseUrl();
@@ -204,45 +242,12 @@ export async function downloadAllDataExcel(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
-export interface UploadMissingLogosResult {
-  updated: { id: number; college_name: string; logo_filename?: string }[];
-  skipped: string[];
-  errors: { file: string; message: string }[];
-  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
-}
-
-export async function uploadMissingLogosColleges(logosZipFile: File): Promise<ApiResponse<UploadMissingLogosResult>> {
-  const formData = new FormData();
-  formData.append('logos_zip', logosZipFile);
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  const base = getApiBaseUrl();
-  const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/upload-missing-logos`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}` },
-    body: formData,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to upload missing logos');
-  return data;
-}
-
+/** Queue async bulk upload; poll {@link getCollegeBulkUploadJobStatus} with returned jobId. */
 export async function bulkUploadColleges(
-  excelFile: File,
-  logoFiles: File[] = [],
-  logosZipFile: File | null = null,
-  programsExcelFile: File | null = null
-): Promise<ApiResponse<BulkUploadResult>> {
+  excelFile: File
+): Promise<ApiResponse<{ jobId: string }>> {
   const formData = new FormData();
   formData.append('excel', excelFile);
-  if (programsExcelFile) {
-    formData.append('programs_excel', programsExcelFile);
-  }
-  if (logosZipFile) {
-    formData.append('logos_zip', logosZipFile);
-  } else {
-    logoFiles.forEach((file) => formData.append('logos', file));
-  }
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/bulk-upload`;
@@ -254,4 +259,33 @@ export async function bulkUploadColleges(
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
   return data;
+}
+
+export async function getCollegeBulkUploadJobStatus(
+  jobId: string | number
+): Promise<ApiResponse<CollegesBulkUploadJobStatus>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.COLLEGES}/upload-jobs/${jobId}/status`, {
+    method: 'GET',
+  });
+}
+
+export async function downloadCollegeBulkUploadFailuresCsv(jobId: string | number): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.COLLEGES}/upload-jobs/${jobId}/failures.csv`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { message?: string }).message || 'Failed to download failures CSV');
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `college-bulk-job-${jobId}-failures.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }

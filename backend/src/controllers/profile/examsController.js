@@ -46,10 +46,49 @@ class ExamsTaxonomyController {
    */
   static async getAllAdmin(req, res) {
     try {
-      const exams = await Exam.findAll();
+      const wantsPagination =
+        req.query.page !== undefined ||
+        req.query.perPage !== undefined ||
+        req.query.limit !== undefined ||
+        req.query.q !== undefined ||
+        req.query.search !== undefined;
+
+      if (!wantsPagination) {
+        const exams = await Exam.findAll();
+        const total = exams.length;
+        return res.json({
+          success: true,
+          data: {
+            exams,
+            pagination: {
+              page: 1,
+              perPage: total,
+              total,
+              totalPages: total === 0 ? 0 : 1,
+            },
+          },
+        });
+      }
+
+      const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+      const rawPer = req.query.perPage ?? req.query.limit;
+      const perPage = Math.min(Math.max(parseInt(rawPer, 10) || 10, 1), 100);
+      const q = (req.query.q ?? req.query.search ?? '').trim();
+
+      const { rows, total } = await Exam.findPaginatedAdmin({ page, perPage, q });
+      const totalPages = total === 0 ? 0 : Math.ceil(total / perPage);
+
       res.json({
         success: true,
-        data: { exams }
+        data: {
+          exams: rows,
+          pagination: {
+            page,
+            perPage,
+            total,
+            totalPages,
+          },
+        },
       });
     } catch (error) {
       console.error('Error fetching exams:', error);
