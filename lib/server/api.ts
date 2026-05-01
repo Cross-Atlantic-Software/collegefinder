@@ -3,8 +3,9 @@
  * Uses API_INTERNAL_URL for server-to-server calls (avoids NAT hairpinning on EC2)
  */
 
-const API_BASE_URL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+import { nodeFetchableApiBaseUrl } from './nodeFetchableApiUrl';
+
+const API_BASE_URL = nodeFetchableApiBaseUrl();
 
 /**
  * Make authenticated API request on the server
