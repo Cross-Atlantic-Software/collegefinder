@@ -245,17 +245,13 @@ export default function CollegesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.state.trim() || !formData.city.trim()) {
-      showError('Please select state and city');
-      return;
-    }
     setIsSaving(true);
     setError(null);
     try {
       const payload = {
         college_name: formData.college_name.trim(),
-        state: formData.state.trim(),
-        city: formData.city.trim(),
+        state: formData.state.trim() || null,
+        city: formData.city.trim() || null,
         college_type: formData.college_type.length > 0 ? formData.college_type.join(',') : null,
         major_program_ids: formData.major_program_ids,
         website: formData.website.trim() || null,
@@ -1224,8 +1220,8 @@ export default function CollegesPage() {
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">seat_matrix</code> are one block per program: separate programs with <strong>;</strong> when each block has no inner semicolons, or with <strong>||</strong> when a block needs semicolons inside (see template examples).{' '}
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">key_dates</code> is college-level (not per program).{' '}
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">logo_url</code> must be a direct link to an image (no ZIP upload). Other columns from exports still import.{' '}
-                <strong>Programs_catalog</strong> is reference-only. Use{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> on each row.
+                <strong>Programs_catalog</strong> is reference-only.{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> are optional on each row.
               </p>
               {canDownloadExcel && (
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">

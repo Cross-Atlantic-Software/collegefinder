@@ -373,9 +373,6 @@ class CollegesController {
 
       const stateTrim = state != null ? String(state).trim() : '';
       const cityTrim = city != null ? String(city).trim() : '';
-      if (!stateTrim || !cityTrim) {
-        return res.status(400).json({ success: false, message: 'State and city are required' });
-      }
 
       const existing = await College.findByName(college_name.trim());
       if (existing) {
@@ -393,8 +390,8 @@ class CollegesController {
         logo_url: logoFields.logo_url,
         website: website ? website.trim() : null,
         parent_university: parent_university != null ? String(parent_university).trim() || null : null,
-        state: stateTrim,
-        city: cityTrim
+        state: stateTrim || null,
+        city: cityTrim || null
       });
 
       const majorProgramIdsStr = Array.isArray(major_program_ids) && major_program_ids.length > 0
@@ -517,14 +514,11 @@ class CollegesController {
       };
 
       if (hasStateKey || hasCityKey) {
-        const stateTrim = hasStateKey ? String(state ?? '').trim() : '';
-        const cityTrim = hasCityKey ? String(city ?? '').trim() : '';
-        if (!stateTrim || !cityTrim) {
-          return res.status(400).json({ success: false, message: 'State and city are both required' });
-        }
-        updatePayload.state = stateTrim;
-        updatePayload.city = cityTrim;
-        updatePayload.college_location = formatLocationLine(cityTrim, stateTrim);
+        const nextState = hasStateKey ? String(state ?? '').trim() : String(existing.state ?? '').trim();
+        const nextCity = hasCityKey ? String(city ?? '').trim() : String(existing.city ?? '').trim();
+        updatePayload.state = nextState || null;
+        updatePayload.city = nextCity || null;
+        updatePayload.college_location = formatLocationLine(nextCity, nextState);
       }
 
       await College.update(collegeId, updatePayload);

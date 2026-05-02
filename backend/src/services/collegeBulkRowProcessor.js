@@ -194,9 +194,6 @@ async function processCollegeBulkRow({ row, rowNum }) {
 
   const stateTrim = getCell(row, 'state', 'State');
   const cityTrim = getCell(row, 'city', 'City');
-  if (!stateTrim || !cityTrim) {
-    return { ok: false, error: 'state and city are required' };
-  }
   const location = formatLocationLine(cityTrim, stateTrim);
   const typeRaw = (row.college_type ?? row.college_Type ?? '').toString().trim();
   const typeParts = typeRaw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -293,8 +290,8 @@ async function processCollegeBulkRow({ row, rowNum }) {
       logo_url: logoFields.logo_url,
       website: websiteVal,
       parent_university: parentUniversityVal || null,
-      state: stateTrim,
-      city: cityTrim,
+      state: stateTrim || null,
+      city: cityTrim || null,
     });
     let majorProgramIdsStr = null;
     if (majorProgramNamesRaw) {
