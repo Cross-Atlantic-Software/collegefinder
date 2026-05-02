@@ -36,19 +36,10 @@ pool.on('error', (err) => {
 const init = async () => {
   try {
     const dbDir = path.join(__dirname, '../database/schema');
-    const migrationsDir = path.join(__dirname, '../database/migrations');
 
-    // Run schema fixes first (for existing DBs with older schema)
-    const fixCollegesPath = path.join(migrationsDir, 'fix_colleges_college_name.sql');
-    if (fs.existsSync(fixCollegesPath)) {
-      try {
-        const sql = fs.readFileSync(fixCollegesPath, 'utf8');
-        await pool.query(sql);
-        console.log('✅ Applied schema fix: fix_colleges_college_name.sql');
-      } catch (e) {
-        if (e.code !== '42P07') console.log('ℹ️  Schema fix skipped:', e.message);
-      }
-    }
+    // NOTE: Do not run destructive college DROP scripts on startup — that wiped all college
+    // data on every server restart. One-time fixes live under migrations/archive/ and must
+    // be run manually only when intentionally resetting college tables in dev.
 
     // Define schema files in execution order
     const schemaFiles = [
