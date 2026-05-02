@@ -301,7 +301,7 @@ router.put('/profile/exam-preferences', authenticate, ExamsController.updateExam
 
 /**
  * @route   GET /api/auth/profile/recommended-exams
- * @desc    Get recommended exams for user (by career goals + stream eligibility)
+ * @desc    Get recommended exams for user (admin stream+interest → exam mapping)
  * @access  Private
  */
 router.get('/profile/recommended-exams', authenticate, ExamsController.getRecommendedExams);

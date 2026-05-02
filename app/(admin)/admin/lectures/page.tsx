@@ -19,11 +19,14 @@ import {
   downloadLecturesBulkTemplate,
   downloadLecturesAllExcel,
   bulkUploadLectures,
+  getLectureBulkUploadJobStatus,
+  downloadLectureBulkUploadFailuresCsv,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
   getLectureHookSummaryQueueStatus,
   enqueuePendingLectureHookSummaries,
   type LectureHookSummaryQueueStatus,
+  type LecturesBulkUploadJobStatus,
   type Subject,
   type Exam,
 } from '@/api';
@@ -83,11 +86,10 @@ export default function LecturesPage() {
   const [bulkThumbnailsZip, setBulkThumbnailsZip] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
-  const [bulkResult, setBulkResult] = useState<{
-    created: number;
-    errors: number;
-    errorDetails: { row: number; message: string }[];
-  } | null>(null);
+  const [bulkJobId, setBulkJobId] = useState<string | null>(null);
+  const [bulkJobStatus, setBulkJobStatus] = useState<LecturesBulkUploadJobStatus | null>(null);
+  const bulkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bulkTerminalNotifiedRef = useRef(false);
 
   const [showMissingThumbsModal, setShowMissingThumbsModal] = useState(false);
   const [missingThumbsZip, setMissingThumbsZip] = useState<File | null>(null);
@@ -380,6 +382,77 @@ export default function LecturesPage() {
     }
   };
 
+  const stopBulkPoll = useCallback(() => {
+    if (bulkPollRef.current) {
+      clearInterval(bulkPollRef.current);
+      bulkPollRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => stopBulkPoll(), [stopBulkPoll]);
+
+  useEffect(() => {
+    if (!bulkJobId) {
+      stopBulkPoll();
+      return;
+    }
+    bulkTerminalNotifiedRef.current = false;
+
+    const poll = async () => {
+      try {
+        const res = await getLectureBulkUploadJobStatus(bulkJobId);
+        if (res.success && res.data) {
+          setBulkJobStatus(res.data);
+          void fetchHookSummaryProgress();
+          const st = res.data.status;
+          if ((st === 'completed' || st === 'failed') && !bulkTerminalNotifiedRef.current) {
+            bulkTerminalNotifiedRef.current = true;
+            stopBulkPoll();
+            void fetchLectures();
+            if (st === 'completed') {
+              showSuccess(
+                `Import finished: ${res.data.success} created, ${res.data.failed} failed (of ${res.data.total} rows).`
+              );
+            } else {
+              showError(res.data.errorMessage || 'Bulk import job failed');
+            }
+          }
+        }
+      } catch {
+        /* transient poll errors */
+      }
+    };
+
+    void poll();
+    bulkPollRef.current = setInterval(poll, 2000);
+    return () => stopBulkPoll();
+  }, [bulkJobId, stopBulkPoll, showSuccess, showError]);
+
+  const handleDownloadBulkFailuresCsv = async () => {
+    if (!bulkJobId) return;
+    try {
+      await downloadLectureBulkUploadFailuresCsv(bulkJobId);
+      showSuccess('Failures CSV downloaded');
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'Download failed');
+    }
+  };
+
+  const handleStartNewBulkUploadSession = () => {
+    if (bulkJobStatus?.status === 'pending' || bulkJobStatus?.status === 'processing') {
+      const ok = window.confirm(
+        'This import is still running on the server. Clear this screen to choose a new file? You can reopen “View import progress” anytime until you start a new upload.'
+      );
+      if (!ok) return;
+    }
+    setBulkJobId(null);
+    setBulkJobStatus(null);
+    bulkTerminalNotifiedRef.current = false;
+    setBulkExcelFile(null);
+    setBulkThumbnailsZip(null);
+    setBulkError(null);
+  };
+
   const handleEnqueuePendingHookSummaries = async () => {
     try {
       setGeneratingHookSummaries(true);
@@ -633,17 +706,13 @@ export default function LecturesPage() {
     if (!bulkExcelFile) return;
     setBulkUploading(true);
     setBulkError(null);
-    setBulkResult(null);
     try {
       const res = await bulkUploadLectures(bulkExcelFile, [], bulkThumbnailsZip);
-      if (res.success && res.data) {
-        setBulkResult({
-          created: res.data.created,
-          errors: res.data.errors,
-          errorDetails: res.data.errorDetails || [],
-        });
-        showSuccess(res.message || 'Bulk upload finished');
-        fetchLectures();
+      if (res.success && res.data?.jobId) {
+        setBulkJobId(res.data.jobId);
+        setBulkJobStatus(null);
+        bulkTerminalNotifiedRef.current = false;
+        showSuccess(res.message || 'Bulk upload queued — processing in the background.');
       } else {
         setBulkError(res.message || 'Upload failed');
         showError(res.message || 'Upload failed');
@@ -779,10 +848,7 @@ export default function LecturesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setBulkExcelFile(null);
-                  setBulkThumbnailsZip(null);
                   setBulkError(null);
-                  setBulkResult(null);
                   setShowBulkModal(true);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-300 bg-white rounded-lg hover:bg-[#F6F8FA]"
@@ -790,6 +856,35 @@ export default function LecturesPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload
               </button>
+              {bulkJobId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkError(null);
+                    setShowBulkModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-amber-50 border border-amber-200 text-amber-950 rounded-lg hover:bg-amber-100/90"
+                >
+                  {bulkJobStatus?.status === 'pending' || bulkJobStatus?.status === 'processing' ? (
+                    <>
+                      <span
+                        className="inline-block h-3.5 w-3.5 rounded-full border-2 border-amber-700/30 border-t-amber-800 animate-spin"
+                        aria-hidden
+                      />
+                      Import{' '}
+                      {bulkJobStatus
+                        ? `${bulkJobStatus.processed}/${bulkJobStatus.total}`
+                        : '…'}
+                    </>
+                  ) : (
+                    <>
+                      <FiDownload className="h-4 w-4 text-amber-900/90" />
+                      View import
+                      {bulkJobStatus?.failed ? ` · ${bulkJobStatus.failed} failed` : ''}
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -1660,28 +1755,95 @@ export default function LecturesPage() {
               </div>
             </div>
             {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
-            {bulkResult && (
-              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
-                Created: {bulkResult.created}.
-                {bulkResult.errors > 0 && ` Errors: ${bulkResult.errors} row(s).`}
+            {bulkJobId && !bulkJobStatus && (
+              <p className="mt-3 text-sm text-slate-600">Job queued — loading progress…</p>
+            )}
+            {bulkJobStatus && (
+              <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>
+                    Status:{' '}
+                    <strong className="capitalize text-slate-900">{bulkJobStatus.status}</strong>
+                  </span>
+                  <span>
+                    {bulkJobStatus.processed} / {bulkJobStatus.total} rows
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full bg-[#341050] transition-[width] duration-300"
+                    style={{
+                      width: `${bulkJobStatus.total ? Math.min(100, (bulkJobStatus.processed / bulkJobStatus.total) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-slate-600">
+                  Success: <span className="font-medium text-slate-900">{bulkJobStatus.success}</span>
+                  {' · '}
+                  Failed: <span className="font-medium text-slate-900">{bulkJobStatus.failed}</span>
+                </div>
+                {bulkJobStatus.hookSummariesQueued > 0 && (
+                  <p className="text-xs text-slate-600">
+                    Hook summaries queued (this import):{' '}
+                    <span className="font-medium text-slate-900">{bulkJobStatus.hookSummariesQueued}</span>
+                  </p>
+                )}
+                {hookSummaryProgress && hookSummaryProgress.queueAvailable && (
+                  <div className="border-t border-slate-200 pt-2 text-xs text-slate-500">
+                    Summary queue: waiting {hookSummaryProgress.queueCounts?.waiting ?? 0}, active{' '}
+                    {hookSummaryProgress.queueCounts?.active ?? 0} · Video lectures with hook done{' '}
+                    {hookSummaryProgress.completedVideoHookSummaries}/
+                    {hookSummaryProgress.totalVideoLectures}
+                  </div>
+                )}
+                {bulkJobStatus.failed > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadBulkFailuresCsv}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#341050] underline hover:no-underline"
+                  >
+                    <FiDownload className="h-3.5 w-3.5" />
+                    Download failed rows (CSV)
+                  </button>
+                )}
               </div>
             )}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => setShowBulkModal(false)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkSubmit}
-                disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-              >
-                {bulkUploading ? 'Uploading…' : 'Upload'}
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+              <div className="min-w-0">
+                {bulkJobId ? (
+                  <button
+                    type="button"
+                    onClick={handleStartNewBulkUploadSession}
+                    className="text-sm font-medium text-slate-600 hover:text-slate-900 underline underline-offset-2"
+                  >
+                    Start new upload
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-400">Select Excel (and optional ZIP) above.</span>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkModal(false)}
+                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkSubmit}
+                  disabled={
+                    !bulkExcelFile ||
+                    bulkUploading ||
+                    bulkJobStatus?.status === 'pending' ||
+                    bulkJobStatus?.status === 'processing'
+                  }
+                  className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                >
+                  {bulkUploading ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

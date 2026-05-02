@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+const { randomUUID } = require('crypto');
 const XLSX = require('xlsx');
 const Lecture = require('../../models/taxonomy/Lecture');
 const Topic = require('../../models/taxonomy/Topic');
@@ -23,6 +26,10 @@ const {
   enqueueLectureHookSummaryIfPending,
   getLectureHookSummaryQueue,
 } = require('../../jobs/queues/lectureHookSummaryQueue');
+const UploadJob = require('../../models/UploadJob');
+const { enqueueLectureBulkUploadJob } = require('../../jobs/queues/lectureBulkUploadQueue');
+
+const LECTURE_BULK_UPLOAD_DIR = path.join(__dirname, '../../../uploads/lecture-bulk');
 
 /** Safe string for Excel cells (length cap; timestamps as ISO). */
 function excelCell(val, maxLen = 32000) {
@@ -954,6 +961,10 @@ class LectureController {
     }
   }
 
+  /**
+   * Queue async bulk upload — stores Excel + optional thumbnails ZIP on disk, returns job id immediately.
+   * POST /api/admin/lectures/bulk-upload
+   */
   static async bulkUpload(req, res) {
     try {
       const excelFile = req.files?.excel?.[0] || req.file;
@@ -963,8 +974,6 @@ class LectureController {
           message: 'No Excel file uploaded. Use field name "excel".',
         });
       }
-
-      const thumbnailMap = buildLogoMapFromRequest(req.files || {}, 'thumbnails_zip', 'thumbnails');
 
       let workbook;
       try {
@@ -980,206 +989,124 @@ class LectureController {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
       }
 
-      const created = [];
-      const errors = [];
-      const dupKey = new Set();
-
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i];
-        const rowNum = i + 2;
-        const topicName = getCell(row, 'topic_name', 'topic_Name');
-        const subtopicName = getCell(row, 'subtopic_name', 'subtopic_Name');
-        if (!topicName) {
-          errors.push({ row: rowNum, message: 'topic_name is required' });
-          continue;
-        }
-        if (!subtopicName) {
-          errors.push({ row: rowNum, message: 'subtopic_name is required' });
-          continue;
-        }
-        const topic = await Topic.findByName(topicName);
-        if (!topic) {
-          errors.push({ row: rowNum, message: `topic not found: "${topicName}"` });
-          continue;
-        }
-        const subtopic = await Subtopic.findByTopicIdAndNameInsensitive(topic.id, subtopicName);
-        if (!subtopic) {
-          errors.push({ row: rowNum, message: `subtopic not found under topic: "${subtopicName}"` });
-          continue;
-        }
-
-        const content_type = 'VIDEO';
-        const status = true;
-        const sort_order = 0;
-
-        const keyTopicsCell = getCell(
-          row,
-          'key_topics_to_be_covered',
-          'Key Topics To Be Covered',
-          'key_Topics_To_Be_Covered'
-        );
-        const key_topics_to_be_covered =
-          keyTopicsCell && String(keyTopicsCell).trim() ? String(keyTopicsCell).trim() : null;
-
-        const subjectNames = getCell(row, 'subject_names', 'subject_Names');
-        const examNames = getCell(row, 'exam_names', 'exam_Names');
-
-        const linkRaw = getCell(
-          row,
-          'youtube_video_link',
-          'youtube_Video_Link',
-          'youtube_link',
-          'youtube_Link',
-          'youtube_url',
-          'youtube_Url',
-          'iframe_code',
-          'iframe_Code',
-          'video_file',
-          'video_File'
-        );
-
-        if (!linkRaw || !String(linkRaw).trim()) {
-          errors.push({
-            row: rowNum,
-            message:
-              'youtube_video_link is required (YouTube watch/embed URL or a direct https video URL)',
-          });
-          continue;
-        }
-        const linkTrimmed = String(linkRaw).trim();
-        let video_file = null;
-        let youtubeSource = null;
-        if (extractYouTubeVideoId(linkTrimmed)) {
-          youtubeSource = linkTrimmed;
-        } else if (/^https?:\/\//i.test(linkTrimmed)) {
-          video_file = linkTrimmed;
-        } else {
-          errors.push({ row: rowNum, message: 'youtube_video_link must be a valid http(s) URL' });
-          continue;
-        }
-
-        const thumbFn = getCell(row, 'thumbnail_filename', 'thumbnail_Filename') || null;
-
-        let thumbnail = null;
-        if (thumbFn && thumbnailMap.size > 0) {
-          const tf = thumbnailMap.get(String(thumbFn).toLowerCase());
-          if (tf?.buffer) {
-            try {
-              thumbnail = await uploadToS3(tf.buffer, tf.originalname || thumbFn, 'lecture_thumbnails');
-            } catch (e) {
-              errors.push({ row: rowNum, message: `thumbnail upload failed: ${e.message}` });
-              continue;
-            }
-          }
-        }
-
-        const iframeInput = youtubeSource;
-        const iframeNorm =
-          iframeInput && String(iframeInput).trim()
-            ? toStoredYoutubeIframe(iframeInput)
-            : null;
-
-        const description = await enrichDescriptionFromYoutubeIframe(iframeNorm, null);
-        const youtubeMeta = await getLectureYoutubeMetaFromIframe(iframeNorm);
-        const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
-        if (youtubeTitle) {
-          const key = `${subtopic.id}:${youtubeTitle.toLowerCase()}`;
-          if (dupKey.has(key)) {
-            errors.push({
-              row: rowNum,
-              message: `duplicate youtube title "${youtubeTitle}" for this subtopic in file`,
-            });
-            continue;
-          }
-          const existing = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopic.id);
-          if (existing) {
-            errors.push({
-              row: rowNum,
-              message: `lecture "${youtubeTitle}" already exists for this subtopic`,
-            });
-            continue;
-          }
-          dupKey.add(key);
-        }
-
-        let thumbnailFinal = thumbnail;
-        if (!thumbnailFinal && iframeNorm) {
-          thumbnailFinal = await enrichThumbnailFromYoutubeIframe(iframeNorm, null);
-        }
-
-        try {
-          const lecture = await Lecture.create({
-            topic_id: topic.id,
-            subtopic_id: subtopic.id,
-            content_type,
-            video_file,
-            iframe_code: iframeNorm,
-            article_content: null,
-            thumbnail: thumbnailFinal,
-            thumbnail_filename: thumbFn ? String(thumbFn).trim() : null,
-            status,
-            description,
-            key_topics_to_be_covered,
-            sort_order: Number.isNaN(sort_order) ? 0 : sort_order,
-            youtube_title: youtubeMeta?.title || null,
-            youtube_channel_name: youtubeMeta?.channelName || null,
-            youtube_channel_id: youtubeMeta?.channelId || null,
-            youtube_channel_url: youtubeMeta?.channelUrl || null,
-            youtube_like_count: youtubeMeta?.likeCount ?? null,
-            youtube_subscriber_count: youtubeMeta?.subscriberCount ?? null,
-          });
-
-          const subjectIds = [];
-          const subjectsResolved = [];
-          for (const nm of splitList(subjectNames)) {
-            const s = await Subject.findByName(nm);
-            if (s) {
-              subjectIds.push(s.id);
-              subjectsResolved.push(s);
-            }
-          }
-          const streamIdSet = new Set();
-          for (const s of subjectsResolved) {
-            const arr = Array.isArray(s.streams) ? s.streams : [];
-            for (const sid of arr) {
-              const n = typeof sid === 'number' ? sid : parseInt(String(sid), 10);
-              if (!Number.isNaN(n) && n > 0) streamIdSet.add(n);
-            }
-          }
-          const streamIds = [...streamIdSet];
-          const examIds = [];
-          for (const nm of splitList(examNames)) {
-            const e = await Exam.findByName(nm);
-            if (e) examIds.push(e.id);
-          }
-          if (streamIds.length) await Lecture.setStreams(lecture.id, streamIds);
-          if (subjectIds.length) await Lecture.setSubjects(lecture.id, subjectIds);
-          if (examIds.length) await Lecture.setExams(lecture.id, examIds);
-
-          created.push({
-            id: lecture.id,
-            name: lecture.youtube_title || lecture.name || 'Untitled lecture',
-            hook_summary: null,
-            hook_summary_status: 'pending_manual',
-          });
-        } catch (createErr) {
-          errors.push({ row: rowNum, message: createErr.message || 'Failed to create row' });
-        }
+      if (!fs.existsSync(LECTURE_BULK_UPLOAD_DIR)) {
+        fs.mkdirSync(LECTURE_BULK_UPLOAD_DIR, { recursive: true });
       }
 
-      res.json({
+      const fileKey = randomUUID();
+      const excelPath = path.join(LECTURE_BULK_UPLOAD_DIR, `${fileKey}.xlsx`);
+      fs.writeFileSync(excelPath, excelFile.buffer);
+
+      let zipPath = null;
+      const zipFile = req.files?.thumbnails_zip?.[0];
+      if (zipFile?.buffer) {
+        zipPath = path.join(LECTURE_BULK_UPLOAD_DIR, `${fileKey}-thumbnails.zip`);
+        fs.writeFileSync(zipPath, zipFile.buffer);
+      }
+
+      const adminId = req.admin?.id ?? null;
+      const uploadJob = await UploadJob.create({
+        module: 'lectures',
+        file_path: excelPath,
+        thumbnails_zip_path: zipPath,
+        original_filename: excelFile.originalname || null,
+        total_rows: dataRows.length,
+        created_by_admin_id: adminId,
+      });
+
+      try {
+        await enqueueLectureBulkUploadJob(uploadJob.id);
+      } catch (queueErr) {
+        console.error('[lectures bulkUpload] queue error:', queueErr);
+        try {
+          if (fs.existsSync(excelPath)) fs.unlinkSync(excelPath);
+          if (zipPath && fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+        } catch (_) {}
+        await UploadJob.update(uploadJob.id, {
+          status: 'failed',
+          error_message: queueErr.message || 'Queue unavailable',
+        });
+        return res.status(503).json({
+          success: false,
+          message:
+            'Background job queue unavailable (Redis). Start Redis or configure REDIS_HOST / REDIS_PORT. ' +
+            (queueErr.message || ''),
+        });
+      }
+
+      return res.status(202).json({
         success: true,
         data: {
-          created: created.length,
-          createdItems: created,
-          errors: errors.length,
-          errorDetails: errors,
+          jobId: String(uploadJob.id),
         },
-        message: `Created ${created.length} row(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`,
+        message: 'Bulk upload job queued. Poll GET /api/admin/lectures/upload-jobs/:id/status for progress.',
       });
     } catch (error) {
-      console.error('Error in lectures bulk upload:', error);
+      console.error('Error starting lectures bulk upload job:', error);
       res.status(500).json({ success: false, message: error.message || 'Bulk upload failed' });
+    }
+  }
+
+  /**
+   * GET /api/admin/lectures/upload-jobs/:id/status
+   */
+  static async getBulkUploadJobStatus(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid job id' });
+      }
+      const job = await UploadJob.findById(id);
+      if (!job || job.module !== 'lectures') {
+        return res.status(404).json({ success: false, message: 'Job not found' });
+      }
+      return res.json({
+        success: true,
+        data: {
+          total: job.total_rows,
+          processed: job.processed_rows,
+          success: job.success_count,
+          failed: job.failed_count,
+          status: job.status,
+          hookSummariesQueued: job.hook_summaries_queued,
+          errorMessage: job.error_message || null,
+          originalFilename: job.original_filename,
+        },
+      });
+    } catch (error) {
+      console.error('getBulkUploadJobStatus:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to load job status' });
+    }
+  }
+
+  /**
+   * GET /api/admin/lectures/upload-jobs/:id/failures.csv
+   */
+  static async downloadBulkUploadFailuresCsv(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid job id' });
+      }
+      const job = await UploadJob.findById(id);
+      if (!job || job.module !== 'lectures') {
+        return res.status(404).json({ success: false, message: 'Job not found' });
+      }
+      const rows = await UploadJob.listFailedRowsForCsv(id);
+      const lines = ['row_number,error_message'];
+      for (const r of rows) {
+        const msg = String(r.error_message || '').replace(/"/g, '""');
+        lines.push(`${r.row_number},"${msg}"`);
+      }
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=lecture-bulk-job-${id}-failures.csv`
+      );
+      res.send(lines.join('\n'));
+    } catch (error) {
+      console.error('downloadBulkUploadFailuresCsv:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to export CSV' });
     }
   }
 

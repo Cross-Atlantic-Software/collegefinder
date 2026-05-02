@@ -44,14 +44,5 @@ COMMENT ON TABLE streams IS 'Taxonomy table for stream options that can be selec
 COMMENT ON COLUMN streams.name IS 'Display name for the stream (e.g., PCM, PCB, Commerce, Arts)';
 COMMENT ON COLUMN streams.status IS 'Active status of the stream (true = active, false = inactive)';
 
--- Seed default streams (safe to run multiple times)
-INSERT INTO streams (name, status) VALUES
-  ('Science (PCM)', true),
-  ('Science (PCB)', true),
-  ('Commerce', true),
-  ('Arts/Humanities', true),
-  ('Computer Science', true),
-  ('Agriculture', true),
-  ('Vocational', true)
-ON CONFLICT (name) DO NOTHING;
+-- Streams are created only via admin / imports — no default seed rows on server init.
 

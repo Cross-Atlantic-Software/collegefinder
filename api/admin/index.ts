@@ -142,6 +142,8 @@ export {
   downloadLecturesBulkTemplate,
   downloadLecturesAllExcel,
   bulkUploadLectures,
+  getLectureBulkUploadJobStatus,
+  downloadLectureBulkUploadFailuresCsv,
   getLectureHookSummaryQueueStatus,
   enqueuePendingLectureHookSummaries,
   uploadMissingLectureThumbnails,
@@ -151,7 +153,8 @@ export type {
   Lecture,
   LectureTaxonomyRef,
   LectureHookSummaryQueueStatus,
-  LecturesBulkUploadResult,
+  LecturesBulkUploadQueued,
+  LecturesBulkUploadJobStatus,
   UploadMissingLectureThumbnailsResult,
   YoutubeLectureMetadata,
 } from './lectures';

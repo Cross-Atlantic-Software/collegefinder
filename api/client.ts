@@ -1,12 +1,24 @@
 /**
  * Shared API client - handles all HTTP requests
  * In browser: always use relative /api so requests go to same origin (nginx proxies to backend)
- * On server: use env or localhost for SSR
+ * On server: prefer 127.0.0.1 over localhost (Windows + Docker IPv4 publish vs ::1 resolution).
  */
+function serverSideApiBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5001/api';
+  try {
+    const u = new URL(raw);
+    if (u.hostname === 'localhost' || u.hostname === '[::1]' || u.hostname === '::1') {
+      u.hostname = '127.0.0.1';
+    }
+    const path = u.pathname.replace(/\/$/, '');
+    return `${u.origin}${path}`;
+  } catch {
+    return raw;
+  }
+}
+
 export function getApiBaseUrl(): string {
-  return typeof window !== 'undefined'
-    ? '/api'
-    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api');
+  return typeof window !== 'undefined' ? '/api' : serverSideApiBaseUrl();
 }
 
 /**

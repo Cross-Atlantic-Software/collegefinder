@@ -174,11 +174,20 @@ export async function uploadLectureThumbnail(file: File): Promise<ApiResponse<{
   });
 }
 
-export interface LecturesBulkUploadResult {
-  created: number;
-  createdItems: { id: number; name: string; hook_summary?: string | null }[];
-  errors: number;
-  errorDetails: { row: number; message: string }[];
+/** Response from POST /lectures/bulk-upload (202 Accepted) */
+export interface LecturesBulkUploadQueued {
+  jobId: string;
+}
+
+export interface LecturesBulkUploadJobStatus {
+  total: number;
+  processed: number;
+  success: number;
+  failed: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  hookSummariesQueued: number;
+  errorMessage: string | null;
+  originalFilename: string | null;
 }
 
 export interface LectureHookSummaryQueueStatus {
@@ -254,11 +263,12 @@ export async function downloadLecturesAllExcel(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
+/** Queue async bulk upload; poll {@link getLectureBulkUploadJobStatus} with returned jobId. */
 export async function bulkUploadLectures(
   excelFile: File,
   thumbnailFiles: File[] = [],
   thumbnailsZipFile: File | null = null
-): Promise<ApiResponse<LecturesBulkUploadResult>> {
+): Promise<ApiResponse<{ jobId: string }>> {
   const formData = new FormData();
   formData.append('excel', excelFile);
   if (thumbnailsZipFile) {
@@ -281,6 +291,39 @@ export async function bulkUploadLectures(
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
   return data;
+}
+
+export async function getLectureBulkUploadJobStatus(
+  jobId: string | number
+): Promise<ApiResponse<LecturesBulkUploadJobStatus>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/upload-jobs/${jobId}/status`, {
+    method: 'GET',
+  });
+}
+
+/** Download CSV of failed rows for a bulk upload job. */
+export async function downloadLectureBulkUploadFailuresCsv(jobId: string | number): Promise<void> {
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) {
+    throw new Error('Admin session missing. Please log in again at /admin/login.');
+  }
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.LECTURES}/upload-jobs/${jobId}/failures.csv`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { message?: string }).message || 'Failed to download failures CSV');
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `lecture-bulk-job-${jobId}-failures.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 export interface UploadMissingLectureThumbnailsResult {

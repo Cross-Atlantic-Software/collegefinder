@@ -64,8 +64,7 @@ export async function updateExamPreferences(data: {
 
 /**
  * Get recommended exams for the current user.
- * Based on user's career goals and stream (from academics); returns exam IDs.
- * Frontend can fetch full exam details by ID for the recommended exams section.
+ * Uses admin stream+interest mappings; returns exam IDs. Requires stream + interests on profile.
  */
 export async function getRecommendedExams(): Promise<ApiResponse<{
   examIds: string[];

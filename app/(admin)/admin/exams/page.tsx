@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -38,7 +38,6 @@ export default function ExamsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [exams, setExams] = useState<Exam[]>([]);
-  const [allExams, setAllExams] = useState<Exam[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -58,7 +57,15 @@ export default function ExamsPage() {
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
+  const [totalDbCount, setTotalDbCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals'>('basic');
   const [formData, setFormData] = useState({
     name: '',
@@ -133,86 +140,29 @@ export default function ExamsPage() {
   } | null>(null);
   const [missingLogosError, setMissingLogosError] = useState<string | null>(null);
 
-  // Run once on mount to prevent continuous API calls
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem('admin_authenticated');
-    const adminToken = localStorage.getItem('admin_token');
-    if (!isAuthenticated || !adminToken) {
-      router.replace('/admin/login');
-      return;
-    }
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (allExams.length === 0) {
-      setExams([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      if (!searchQuery.trim()) {
-        setExams(allExams);
-        return;
-      }
-      const searchLower = searchQuery.toLowerCase();
-      const filtered = allExams.filter((exam) =>
-        exam.name.toLowerCase().includes(searchLower) ||
-        (exam.code && exam.code.toLowerCase().includes(searchLower)) ||
-        (exam.description && exam.description.toLowerCase().includes(searchLower)) ||
-        (exam.conducting_authority && exam.conducting_authority.toLowerCase().includes(searchLower))
-      );
-      setExams(filtered);
+    const t = setTimeout(() => {
+      const nextQ = searchQuery.trim();
+      setDebouncedSearch((prevQ) => {
+        if (prevQ !== nextQ) setCurrentPage(1);
+        return nextQ;
+      });
     }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, allExams]);
-
-  const totalPages = useMemo(
-    () => (exams.length === 0 ? 1 : Math.max(1, Math.ceil(exams.length / EXAMS_PAGE_SIZE))),
-    [exams.length]
-  );
-
-  const paginatedExams = useMemo(() => {
-    const start = (currentPage - 1) * EXAMS_PAGE_SIZE;
-    return exams.slice(start, start + EXAMS_PAGE_SIZE);
-  }, [exams, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
+    return () => clearTimeout(t);
   }, [searchQuery]);
 
-  useEffect(() => {
-    const max = exams.length === 0 ? 1 : Math.max(1, Math.ceil(exams.length / EXAMS_PAGE_SIZE));
-    if (currentPage > max) setCurrentPage(max);
-  }, [exams.length, currentPage]);
-
-  const fetchData = async (silent = false) => {
+  const loadDropdownData = useCallback(async () => {
     try {
-      if (!silent) setIsLoading(true);
-      // Fetch exams (required for this module). Dropdowns (streams, subjects, career goals) are optional
-      // and may 403 if user doesn't have those modules — use allSettled so one 403 doesn't break the page.
-      const [examsRes, streamsRes, subjectsRes, programsRes, careerGoalsRes] = await Promise.allSettled([
-        getAllExamsAdmin(),
+      const [streamsRes, subjectsRes, programsRes, careerGoalsRes] = await Promise.allSettled([
         getAllStreams(),
         getAllSubjects(),
         getAllPrograms(),
         getAllCareerGoalsAdmin(),
       ]);
-
-      const examsData = examsRes.status === 'fulfilled' ? examsRes.value : null;
       const streamsData = streamsRes.status === 'fulfilled' ? streamsRes.value : null;
       const subjectsData = subjectsRes.status === 'fulfilled' ? subjectsRes.value : null;
       const programsData = programsRes.status === 'fulfilled' ? programsRes.value : null;
       const careerGoalsData = careerGoalsRes.status === 'fulfilled' ? careerGoalsRes.value : null;
-
-      if (examsData?.success && examsData?.data) {
-        setAllExams(examsData.data.exams);
-        setExams(examsData.data.exams);
-      } else if (examsData && !examsData.success) {
-        setError(examsData.message || 'Failed to load exams');
-      }
       if (streamsData?.success && streamsData?.data) {
         setStreams(streamsData.data.streams.filter((s: Stream) => s.status));
       }
@@ -226,12 +176,67 @@ export default function ExamsPage() {
         setCareerGoals(careerGoalsData.data.careerGoals.filter((cg: CareerGoalAdmin) => cg.status !== false));
       }
     } catch (err) {
-      setError('An error occurred while fetching data');
-      console.error('Error fetching data:', err);
-    } finally {
-      if (!silent) setIsLoading(false);
+      console.error('Error loading exam form dropdowns:', err);
     }
-  };
+  }, []);
+
+  // Run once on mount: auth + form dropdowns (exams list loads via loadExams).
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem('admin_authenticated');
+    const adminToken = localStorage.getItem('admin_token');
+    if (!isAuthenticated || !adminToken) {
+      router.replace('/admin/login');
+      return;
+    }
+    void loadDropdownData();
+  }, [loadDropdownData]);
+
+  const loadExams = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setIsLoading(true);
+        const res = await getAllExamsAdmin({
+          page: currentPage,
+          perPage: EXAMS_PAGE_SIZE,
+          q: debouncedSearch,
+        });
+        if (res.success && res.data) {
+          setExams(res.data.exams);
+          if (res.data.pagination) {
+            setPagination(res.data.pagination);
+            if (!debouncedSearch) setTotalDbCount(res.data.pagination.total);
+          }
+          setError(null);
+        } else {
+          setError(res.message || 'Failed to load exams');
+        }
+      } catch (err) {
+        setError('An error occurred while fetching exams');
+        console.error('Error fetching exams:', err);
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    },
+    [currentPage, debouncedSearch]
+  );
+
+  useEffect(() => {
+    void loadExams(false);
+  }, [loadExams]);
+
+  useEffect(() => {
+    if (!pagination) return;
+    if (pagination.totalPages === 0 && currentPage !== 1) setCurrentPage(1);
+    else if (pagination.totalPages > 0 && currentPage > pagination.totalPages) {
+      setCurrentPage(pagination.totalPages);
+    }
+  }, [pagination, currentPage]);
+
+  const totalPages = pagination?.totalPages ?? 1;
+  const totalListed = pagination?.total ?? 0;
+  const pageSize = pagination?.perPage ?? EXAMS_PAGE_SIZE;
+  const rangeStart = totalListed === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, totalListed);
 
   const handleLogoUpload = async (file: File) => {
     try {
@@ -328,11 +333,7 @@ export default function ExamsPage() {
         const response = await updateExam(editingExam.id, submitData);
         if (response.success && response.data) {
           showSuccess('Exam updated successfully');
-          // Update list immediately with server response so UI reflects changes
-          const updatedExam = response.data.exam;
-          setAllExams((prev) => prev.map((e) => (e.id === editingExam.id ? updatedExam : e)));
-          setExams((prev) => prev.map((e) => (e.id === editingExam.id ? updatedExam : e)));
-          await fetchData(true);
+          await loadExams(true);
           handleModalClose();
         } else {
           setError(response.message || 'Failed to update exam');
@@ -342,7 +343,7 @@ export default function ExamsPage() {
         const response = await createExam(submitData);
         if (response.success && response.data) {
           showSuccess('Exam created successfully');
-          await fetchData(true);
+          await loadExams(true);
           handleModalClose();
         } else {
           setError(response.message || 'Failed to create exam');
@@ -474,7 +475,7 @@ export default function ExamsPage() {
       const response = await deleteExam(deletingId);
       if (response.success) {
         showSuccess('Exam deleted successfully');
-        fetchData();
+        void loadExams(false);
       } else {
         showError(response.message || 'Failed to delete exam');
       }
@@ -580,7 +581,7 @@ export default function ExamsPage() {
       if (response.success) {
         showSuccess(response.message || 'All exams deleted successfully');
         setShowDeleteAllConfirm(false);
-        fetchData(true);
+        void loadExams(true);
       } else {
         showError(response.message || 'Failed to delete all exams');
         setShowDeleteAllConfirm(false);
@@ -606,7 +607,7 @@ export default function ExamsPage() {
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} exam(s)`);
-        fetchData(true);
+        void loadExams(true);
       } else {
         setBulkError(res.message || 'Bulk upload failed');
       }
@@ -636,7 +637,7 @@ export default function ExamsPage() {
       if (res.success && res.data) {
         setMissingLogosResult(res.data);
         showSuccess(res.message || `Added ${res.data.summary.logosAdded} logo(s)`);
-        fetchData(true);
+        void loadExams(true);
       } else {
         setMissingLogosError(res.message || 'Upload failed');
       }
@@ -690,7 +691,7 @@ export default function ExamsPage() {
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-[#F6F8FA] transition-colors">
                 <span className="text-xs font-medium text-slate-700">All exams</span>
                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
-                  {allExams.length}
+                  {totalDbCount}
                 </span>
               </button>
               <div className="relative">
@@ -727,7 +728,7 @@ export default function ExamsPage() {
                 <FiUpload className="h-4 w-4" />
                 Bulk upload (Excel)
               </button>
-              {allExams.length > 0 && (
+              {totalDbCount > 0 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -742,7 +743,7 @@ export default function ExamsPage() {
                   Upload missing logos
                 </button>
               )}
-              {isSuperAdmin && allExams.length > 0 && (
+              {isSuperAdmin && totalDbCount > 0 && (
                 <button
                   type="button"
                   onClick={handleDownloadAllExcel}
@@ -753,7 +754,7 @@ export default function ExamsPage() {
                   {downloadingExcel ? 'Downloading...' : 'Download Excel'}
                 </button>
               )}
-              {isSuperAdmin && allExams.length > 0 && (
+              {isSuperAdmin && totalDbCount > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowDeleteAllConfirm(true)}
@@ -793,11 +794,15 @@ export default function ExamsPage() {
                     {exams.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {exams.length < allExams.length ? 'No exams found matching your search' : 'No exams found'}
+                          {debouncedSearch.trim()
+                            ? 'No exams found matching your search'
+                            : totalDbCount === 0
+                              ? 'No exams found'
+                              : 'No exams on this page'}
                         </td>
                       </tr>
                     ) : (
-                      paginatedExams.map((exam) => (
+                      exams.map((exam) => (
                         <tr key={exam.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
@@ -844,10 +849,10 @@ export default function ExamsPage() {
                     )}
                   </tbody>
                 </table>
-                {exams.length > 0 && (
+                {totalListed > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-[#F6F8FA] text-sm text-slate-600">
                     <span>
-                      Showing {(currentPage - 1) * EXAMS_PAGE_SIZE + 1}–{Math.min(currentPage * EXAMS_PAGE_SIZE, exams.length)} of {exams.length}
+                      Showing {rangeStart}–{rangeEnd} of {totalListed}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
@@ -1966,7 +1971,7 @@ export default function ExamsPage() {
         onClose={() => setShowDeleteAllConfirm(false)}
         onConfirm={handleDeleteAllConfirm}
         title="Delete All Exams"
-        message={`Are you sure you want to delete all ${allExams.length} exams? This action cannot be undone.`}
+        message={`Are you sure you want to delete all ${totalDbCount} exams? This action cannot be undone.`}
         confirmText="Delete All"
         cancelText="Cancel"
         confirmButtonStyle="danger"

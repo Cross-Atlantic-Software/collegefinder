@@ -32,17 +32,7 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
   "dashboard-shortlist-recommended": [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-    { label: "Recommended" },
-  ],
-  "dashboard-shortlist-shortlisted": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-    { label: "Shortlisted" },
-  ],
-  "dashboard-shortlist-all": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-    { label: "All Exams" },
+    { label: "Recommended exams" },
   ],
   "dashboard-applications": [
     { label: "Dashboard", href: "/dashboard" },
@@ -438,6 +428,15 @@ export default function ExamDetailPage() {
           <div className="px-4 py-4 md:px-6">
             <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
               <section className="space-y-5">
+                {exam?.description && String(exam.description).trim() !== "" && (
+                  <article className="rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">About this exam</h2>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                      {exam.description}
+                    </p>
+                  </article>
+                )}
+
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Mode</p>

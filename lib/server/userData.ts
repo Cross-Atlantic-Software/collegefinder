@@ -5,8 +5,9 @@
 
 import { cookies } from 'next/headers';
 
-const API_BASE_URL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+import { nodeFetchableApiBaseUrl } from './nodeFetchableApiUrl';
+
+const API_BASE_URL = nodeFetchableApiBaseUrl();
 
 /**
  * Get user token from cookies
