@@ -178,8 +178,8 @@ export default function QuestionDisplay({
         <p className="text-xs font-semibold text-blue-300 uppercase mb-2">Assertion</p>
         <p className="text-white text-sm leading-relaxed">{question.assertion}</p>
       </div>
-      <div className="bg-purple-900/20 rounded-xl p-5 border border-purple-700/50">
-        <p className="text-xs font-semibold text-purple-300 uppercase mb-2">Reason</p>
+      <div className="rounded-xl border border-amber-600/40 bg-amber-500/10 p-5">
+        <p className="mb-2 text-xs font-semibold uppercase text-amber-300">Reason</p>
         <p className="text-white text-sm leading-relaxed">{question.reason}</p>
       </div>
       <div className="space-y-2.5">
@@ -337,7 +337,7 @@ export default function QuestionDisplay({
           <span className="text-xs bg-blue-600/20 text-blue-300 px-2.5 py-1 rounded-full capitalize">
             {question.difficulty}
           </span>
-          <span className="text-xs bg-purple-600/20 text-purple-300 px-2.5 py-1 rounded-full capitalize">
+          <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full capitalize">
             {question.question_type.replace('_', ' ')}
           </span>
           <span className="text-xs text-slate-400">

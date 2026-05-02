@@ -19,7 +19,7 @@ export default function OnboardingLoader({ message = "Preparing your journey..."
   }, []);
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-[#F6F8FA]">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F6F8FA]">
       {/* Logo */}
       <div className="mb-10">
         <Image

@@ -5,10 +5,11 @@ type BubbleProps = {
   className?: string;
 };
 
+/** Simple text block for use inside the white onboarding card */
 export function Bubble({ children, className = "" }: BubbleProps) {
   return (
     <div
-      className={`rounded-2xl bg-white border border-slate-200 shadow-sm text-slate-800 text-sm sm:text-base px-5 py-4 max-w-lg min-h-[52px] flex items-center ${className}`.trim()}
+      className={`text-slate-700 text-sm sm:text-base font-medium leading-relaxed ${className}`.trim()}
     >
       {children}
     </div>

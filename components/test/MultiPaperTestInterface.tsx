@@ -112,12 +112,12 @@ export default function MultiPaperTestInterface({
     const paperFormat = getFormatForPaper(activePaper);
     if (!paperFormat) {
       return fullscreenOverlay(
-        <div className="fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
           <div className="text-center">
-            <p className="text-red-400 mb-4">Format not found for Paper {activePaper}</p>
+            <p className="mb-4 text-red-600 dark:text-red-400">Format not found for Paper {activePaper}</p>
             <button
               onClick={() => { setViewState('paper-selection'); setActivePaper(null); }}
-              className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition"
+              className="rounded-full border border-black bg-black px-6 py-2 text-[#FAD53C] transition hover:bg-black/90"
             >
               Back to Papers
             </button>
@@ -140,22 +140,22 @@ export default function MultiPaperTestInterface({
   const allCompleted = papers.length > 0 && papers.every(p => p.status === 'completed');
 
   return fullscreenOverlay(
-    <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <div className="min-h-full flex flex-col items-center justify-center py-8 px-4">
         <div className="w-full max-w-3xl">
           {/* Header */}
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold text-white mb-2">
+            <h1 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
               {exam.name} — Mock {mockNumber}
             </h1>
-            <p className="text-slate-300 text-lg">
+            <p className="text-lg text-slate-600 dark:text-slate-400">
               This exam has {numberOfPapers} papers. Complete them in order.
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 text-sm text-center">
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
               {error}
             </div>
           )}
@@ -166,12 +166,12 @@ export default function MultiPaperTestInterface({
               {Array.from({ length: numberOfPapers }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex-1 max-w-xs bg-white/10 rounded-2xl p-8 animate-pulse"
+                  className="flex-1 max-w-xs animate-pulse rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className="h-8 bg-white/20 rounded mb-4" />
-                  <div className="h-4 bg-white/10 rounded mb-2" />
-                  <div className="h-4 bg-white/10 rounded mb-6" />
-                  <div className="h-12 bg-white/20 rounded-lg" />
+                  <div className="mb-4 h-8 rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="mb-2 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                  <div className="mb-6 h-4 rounded bg-slate-100 dark:bg-slate-800" />
+                  <div className="h-12 rounded-lg bg-slate-200 dark:bg-slate-700" />
                 </div>
               ))}
             </div>
@@ -207,7 +207,7 @@ export default function MultiPaperTestInterface({
               <div className="mt-10 flex justify-center">
                 <button
                   onClick={handleAttemptLater}
-                  className="px-8 py-3 border border-white/20 text-slate-300 rounded-lg hover:bg-white/10 hover:text-white transition text-sm font-medium"
+                  className="rounded-full border border-slate-200 bg-white px-8 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                 >
                   {allCompleted ? 'Back to Exams' : 'Attempt Later'}
                 </button>
@@ -241,20 +241,20 @@ function PaperCard({
       className={`
         flex-1 max-w-xs rounded-2xl p-8 transition-all relative overflow-hidden
         ${isLocked
-          ? 'bg-white/5 border border-white/10 opacity-60'
+          ? 'border border-slate-200 bg-slate-100 opacity-70 dark:border-slate-700 dark:bg-slate-800/70'
           : isCompleted
-            ? 'bg-green-500/10 border border-green-500/30'
+            ? 'border border-green-300 bg-green-50 dark:border-green-700/40 dark:bg-green-950/20'
             : isGenerating
-              ? 'bg-yellow-500/10 border border-yellow-500/30'
-              : 'bg-white/10 border border-pink-500/30 hover:bg-white/15 hover:border-pink-500/50 hover:scale-[1.02] cursor-pointer'
+              ? 'border border-[#FAD53C]/50 bg-[#FAD53C]/15 dark:border-[#FAD53C]/30 dark:bg-[#FAD53C]/10'
+              : 'cursor-pointer border border-slate-200 bg-white hover:-translate-y-0.5 hover:border-black/20 hover:shadow-md dark:border-slate-700 dark:bg-slate-900'
         }
       `}
     >
       {/* Lock overlay */}
       {isLocked && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="bg-slate-800/80 rounded-full p-4">
-            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="rounded-full bg-white/90 p-4 shadow-sm dark:bg-slate-900/80">
+            <svg className="h-8 w-8 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
@@ -264,8 +264,8 @@ function PaperCard({
       {/* Completed checkmark */}
       {isCompleted && (
         <div className="absolute top-4 right-4">
-          <div className="bg-green-500 rounded-full p-1.5">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="rounded-full bg-green-500 p-1.5">
+            <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           </div>
@@ -273,15 +273,15 @@ function PaperCard({
       )}
 
       <div className={isLocked ? 'blur-[2px]' : ''}>
-        <h2 className="text-xl font-bold text-white mb-1">
+        <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-slate-100">
           Paper {paper.paper_number}
         </h2>
-        <p className="text-slate-400 text-sm mb-4">
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           {examName} — Paper {paper.paper_number}
         </p>
 
         {paper.total_questions > 0 && (
-          <p className="text-slate-300 text-sm mb-4">
+          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
             {paper.total_questions} Questions
           </p>
         )}
@@ -290,15 +290,15 @@ function PaperCard({
         {isCompleted && paper.attempt_data && (
           <div className="space-y-2 mb-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="rounded-lg border border-slate-200 bg-white p-2 text-center dark:border-slate-700 dark:bg-slate-800/80">
                 <div className="text-green-400 font-semibold">{paper.attempt_data.total_score}</div>
-                <div className="text-slate-400 text-xs">Score</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Score</div>
               </div>
-              <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="rounded-lg border border-slate-200 bg-white p-2 text-center dark:border-slate-700 dark:bg-slate-800/80">
                 <div className="text-green-400 font-semibold">
                   {Math.round(paper.attempt_data.accuracy_percentage)}%
                 </div>
-                <div className="text-slate-400 text-xs">Accuracy</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Accuracy</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-1 text-xs text-center">
@@ -323,13 +323,13 @@ function PaperCard({
           <>
             <button
               onClick={onSelect}
-              className="w-full py-3 rounded-lg font-medium transition text-sm bg-white text-purple-900 hover:bg-white/95 cursor-pointer"
+              className="w-full rounded-full border border-black bg-black py-3 text-sm font-medium text-[#FAD53C] transition hover:bg-black/90 cursor-pointer"
             >
               Start
             </button>
             {isGenerating && (
-              <div className="flex items-center justify-center gap-2 mt-2 text-yellow-400 text-xs">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400" />
+              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-[#b88900] dark:text-[#FAD53C]">
+                <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-[#b88900] dark:border-[#FAD53C]" />
                 Generating questions…
               </div>
             )}
@@ -337,13 +337,13 @@ function PaperCard({
         )}
 
         {isCompleted && (
-          <div className="text-center text-green-400 text-sm font-medium py-2">
+          <div className="py-2 text-center text-sm font-medium text-green-600 dark:text-green-400">
             Completed
           </div>
         )}
 
         {isLocked && (
-          <p className="text-slate-500 text-xs text-center mt-2">
+          <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
             Complete Paper {paper.paper_number - 1} first
           </p>
         )}
