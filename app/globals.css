@@ -6,7 +6,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --font-inter-sans: "Inter", Arial, Helvetica, sans-serif;
-  --landing-section-space: clamp(3.75rem, 6vw, 6.5rem);
+  --landing-section-space: clamp(1.875rem, 3vw, 3.25rem);
   --landing-section-space-tight: clamp(3rem, 5vw, 5.25rem);
   --landing-section-space-loose: clamp(4.5rem, 7vw, 7.5rem);
 }
