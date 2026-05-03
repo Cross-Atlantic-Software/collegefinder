@@ -15,6 +15,7 @@ import {
 } from "@/components/containers";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import ScrollRevealSection from "@/components/shared/ScrollRevealSection";
+import { scrollToLandingSection } from "@/lib/landingNav";
 
 export default function Home() {
   const { isLoading } = useAuth();
@@ -44,6 +45,26 @@ export default function Home() {
       cancelled = true;
     };
   }, [isLoading]);
+
+  /** After CMS content mounts, honor #hash (e.g. from /blogs → /#get-in-touch). */
+  useEffect(() => {
+    if (!landing) return;
+    const raw = window.location.hash?.replace(/^#/, "").trim();
+    if (!raw) return;
+
+    const run = () => scrollToLandingSection(raw);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+
+    const onHashChange = () => {
+      const id = window.location.hash?.replace(/^#/, "").trim();
+      if (id) scrollToLandingSection(id);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [landing]);
 
   if (isLoading) {
     return <OnboardingLoader message="Loading..." />;

@@ -80,12 +80,22 @@ export default function Header() {
         : "bg-white text-black hover:bg-white/90";
 
     const handleNavLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-        if (!isHomePage) {
-            setMobileOpen(false);
+        const hashIndex = href.indexOf("#");
+        const hasHash = hashIndex !== -1 && href.slice(hashIndex + 1).length > 0;
+
+        if (isHomePage && hasHash) {
+            handleLandingHashClick(event, href, { onAfterNavigate: () => setMobileOpen(false) });
             return;
         }
 
-        handleLandingHashClick(event, href, { onAfterNavigate: () => setMobileOpen(false) });
+        if (!isHomePage && hasHash) {
+            event.preventDefault();
+            setMobileOpen(false);
+            router.push(href);
+            return;
+        }
+
+        setMobileOpen(false);
     };
 
     return (
