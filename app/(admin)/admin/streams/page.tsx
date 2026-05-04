@@ -20,7 +20,7 @@ export default function StreamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingStream, setEditingStream] = useState<Stream | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState({ name: '', status: true, sort_order: '' as string });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -102,8 +102,15 @@ export default function StreamsPage() {
     }
 
     try {
+      const sortParsed = parseInt(formData.sort_order.trim(), 10);
+      const sortOrderNum = Number.isNaN(sortParsed) ? 0 : sortParsed;
+
       if (editingStream) {
-        const response = await updateStream(editingStream.id, formData);
+        const response = await updateStream(editingStream.id, {
+          name: formData.name,
+          status: formData.status,
+          sort_order: sortOrderNum,
+        });
         if (response.success) {
           showSuccess('Stream updated successfully');
           setShowModal(false);
@@ -115,7 +122,14 @@ export default function StreamsPage() {
           showError(errorMsg);
         }
       } else {
-        const response = await createStream(formData);
+        const createPayload: Parameters<typeof createStream>[0] = {
+          name: formData.name,
+          status: formData.status,
+        };
+        if (formData.sort_order.trim() !== '') {
+          createPayload.sort_order = sortOrderNum;
+        }
+        const response = await createStream(createPayload);
         if (response.success) {
           showSuccess('Stream created successfully');
           setShowModal(false);
@@ -177,7 +191,11 @@ export default function StreamsPage() {
 
   const handleEdit = (stream: Stream) => {
     setEditingStream(stream);
-    setFormData({ name: stream.name, status: stream.status });
+    setFormData({
+      name: stream.name,
+      status: stream.status,
+      sort_order: String(stream.sort_order ?? 0),
+    });
     setShowModal(true);
   };
 
@@ -188,7 +206,7 @@ export default function StreamsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true });
+    setFormData({ name: '', status: true, sort_order: '' });
     setError(null);
   };
 
@@ -363,6 +381,9 @@ export default function StreamsPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        SORT ORDER
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
@@ -382,7 +403,7 @@ export default function StreamsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {streams.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
                           {streams.length < allStreams.length ? 'No streams found matching your search' : 'No streams found'}
                         </td>
                       </tr>
@@ -391,6 +412,9 @@ export default function StreamsPage() {
                         <tr key={stream.id} className="hover:bg-[#F6F8FA] transition-colors">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{stream.name}</span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-slate-700 tabular-nums">
+                            {stream.sort_order ?? 0}
                           </td>
                           <td className="px-4 py-2">
                             {stream.status ? (
@@ -470,6 +494,24 @@ export default function StreamsPage() {
                     placeholder="e.g., Science, Commerce, Arts"
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Sort order
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })}
+                    placeholder={editingStream ? undefined : 'Leave blank for auto'}
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Lower numbers appear first in lists. Leave blank when creating to assign the next available order.
+                  </p>
                 </div>
 
                 <div>
@@ -580,7 +622,8 @@ export default function StreamsPage() {
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
                 <p className="text-xs text-slate-600 mb-3">
-                  Use columns: <span className="font-mono">name</span> and optional <span className="font-mono">status</span> (TRUE/FALSE).
+                  Use columns: <span className="font-mono">name</span>, optional <span className="font-mono">status</span> (TRUE/FALSE), and optional{' '}
+                  <span className="font-mono">sort_order</span> (non-negative integer). Rows without <span className="font-mono">sort_order</span> get sequential values after the current maximum.
                 </p>
                 <button
                   type="button"
@@ -666,6 +709,12 @@ export default function StreamsPage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Name</label>
                 <p className="text-lg font-bold text-slate-900">{viewingStream.name}</p>
+              </div>
+
+              {/* Sort order */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Sort order</label>
+                <p className="text-sm text-slate-700 tabular-nums">{viewingStream.sort_order ?? 0}</p>
               </div>
 
               {/* Status */}

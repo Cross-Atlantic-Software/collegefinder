@@ -129,6 +129,11 @@ const landingPageDefaults = {
     formPrivacy:
       'Your Data stays private. No spam. No pressure. No promotional calls',
   },
+  testimonials: {
+    titleBefore: 'What people say about',
+    titleHighlight: 'UniTracko',
+    subtitle: 'Real words from students and parents using the platform.',
+  },
   faq: {
     titleLine1: 'Frequently Asked',
     titleLine2: 'Questions',

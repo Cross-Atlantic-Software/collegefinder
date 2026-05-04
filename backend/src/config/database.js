@@ -179,7 +179,10 @@ const runMigrations = async () => {
     'remove_colleges_google_map_link.sql',
     'add_parent_university_to_colleges.sql',
     'rename_colleges_logo_filename_to_logo_url.sql',
-    'add_upload_job_rows_college_id.sql'
+    'add_upload_job_rows_college_id.sql',
+    'add_testimonials_table.sql',
+    'add_profile_image_to_testimonials.sql',
+    'add_sort_order_to_streams.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

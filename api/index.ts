@@ -14,7 +14,9 @@ export * from './admin';
 
 // Public site (landing copy)
 export { getLandingPageContent } from './site/landingPage';
+export { getPublicTestimonials, type PublicTestimonial } from './site/testimonials';
 export { getPublicBlogs, getPublicBlogBySlug } from './site/blogs';
+export { checkEmailRegistrationStatus } from './site/registration';
 
 // Export career goals API (public) - use explicit exports to avoid conflicts
 export { getAllCareerGoals as getAllCareerGoalsPublic } from './career-goals';

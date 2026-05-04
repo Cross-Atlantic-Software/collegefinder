@@ -6,7 +6,11 @@ import { FiChevronDown, FiLogOut, FiMenu, FiX } from "react-icons/fi";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
+import {
+    handleLandingHashClick,
+    landingPageSectionHref,
+    LANDING_PRIMARY_NAV,
+} from "@/lib/landingNav";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Header() {
@@ -107,7 +111,7 @@ export default function Header() {
                     {/* DESKTOP HEADER */}
                     <div className="hidden h-[72px] items-center justify-between gap-8 lg:flex">
                         <Link
-                            href="/"
+                            href={landingPageSectionHref("home")}
                             className="inline-flex items-center"
                             aria-label="UniTracko"
                         >
@@ -139,7 +143,7 @@ export default function Header() {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={() => router.push("/dashboard")}
+                                        onClick={() => router.push("/welcome")}
                                         className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
                                         My Dashboard
@@ -206,7 +210,7 @@ export default function Header() {
                     {/* MOBILE HEADER */}
                     <div className="flex h-[64px] items-center justify-between lg:hidden">
                         <Link
-                            href="/"
+                            href={landingPageSectionHref("home")}
                             className="inline-flex items-center"
                             aria-label="Unitracko"
                         >
@@ -259,7 +263,7 @@ export default function Header() {
                                             type="button"
                                             onClick={() => {
                                                 setMobileOpen(false);
-                                                router.push("/dashboard");
+                                                router.push("/welcome");
                                             }}
                                             className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
                                         >

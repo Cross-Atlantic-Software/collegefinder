@@ -1152,6 +1152,27 @@ class AuthController {
       return res.redirect(`${frontendUrl}/login?error=facebook_oauth_failed`);
     }
   }
+
+  /**
+   * Mark onboarding complete after landing contact flow (authenticated).
+   * POST /api/auth/profile/complete-landing-onboarding
+   */
+  static async completeLandingOnboarding(req, res) {
+    try {
+      await User.markOnboardingCompleted(req.user.id);
+      return res.json({
+        success: true,
+        message: 'Your profile setup is complete.',
+        data: { onboarding_completed: true },
+      });
+    } catch (error) {
+      console.error('completeLandingOnboarding:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to update onboarding status',
+      });
+    }
+  }
 }
 
 module.exports = AuthController;

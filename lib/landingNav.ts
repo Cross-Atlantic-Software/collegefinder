@@ -9,14 +9,27 @@ export const ANCHOR_SCROLL_DURATION_MS = 700;
 
 export type LandingNavItem = { label: string; href: string };
 
+/**
+ * Query on `/` so ContactSection does not auto-redirect completed users to `/welcome`
+ * (avoids a loop when returning from the post-onboarding welcome screen).
+ */
+export const LANDING_FROM_HOME_PARAM = "from";
+export const LANDING_FROM_HOME_VALUE = "home";
+
+/** Same-origin URL for a landing section; includes `from=home` so ContactSection does not send completed users to `/welcome`. */
+export function landingPageSectionHref(sectionId: string): string {
+    return `/?${LANDING_FROM_HOME_PARAM}=${LANDING_FROM_HOME_VALUE}#${sectionId}`;
+}
+
 /** Desktop + mobile header nav (order matches site IA). */
 export const LANDING_PRIMARY_NAV: LandingNavItem[] = [
-    { label: "UniTracko", href: "/#home" },
-    { label: "The Reality", href: "/#reality" },
-    { label: "The Playbook", href: "/#the-playbook" },
-    { label: "Our Edge", href: "/#our-edge" },
+    { label: "UniTracko", href: landingPageSectionHref("home") },
+    { label: "The Reality", href: landingPageSectionHref("reality") },
+    { label: "The Playbook", href: landingPageSectionHref("the-playbook") },
+    { label: "Our Edge", href: landingPageSectionHref("our-edge") },
     { label: "The Feed", href: "/blogs" },
-    { label: "Get in Touch", href: "/#get-in-touch" },
+    { label: "Get in Touch", href: landingPageSectionHref("get-in-touch") },
+    { label: "Testimonials", href: landingPageSectionHref("testimonials") },
 ];
 
 const easeInOutCubic = (value: number) =>
@@ -103,6 +116,15 @@ export function handleLandingHashClick(
     }
 
     event.preventDefault();
-    window.history.replaceState(null, "", `/#${targetId}`);
+
+    let pathWithSearch = "";
+    try {
+        const resolved = new URL(href, window.location.href);
+        pathWithSearch = resolved.pathname + resolved.search;
+    } catch {
+        pathWithSearch = window.location.pathname + window.location.search;
+    }
+
+    window.history.replaceState(null, "", `${pathWithSearch}#${targetId}`);
     scrollToLandingSection(targetId);
 }

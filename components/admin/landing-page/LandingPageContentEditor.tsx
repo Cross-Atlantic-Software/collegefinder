@@ -41,9 +41,14 @@ const SECTIONS = [
     blurb: 'Contact us — headings, bullet points, form labels',
   },
   {
+    id: 'testimonials',
+    title: 'Testimonials',
+    blurb: 'Section title and subtitle above the carousel (individual quotes: Admin → Testimonials)',
+  },
+  {
     id: 'faq',
     title: 'FAQ',
-    blurb: 'Questions and answers below contact',
+    blurb: 'Questions and answers below testimonials',
   },
 ] as const;
 
@@ -779,7 +784,37 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
           </div>
         </SectionShell>
 
-        <SectionShell id="faq" title="FAQ" blurb={SECTIONS[6].blurb}>
+        <SectionShell id="testimonials" title="Testimonials" blurb={SECTIONS[6].blurb}>
+          <LabeledInput
+            label="Heading — text before highlight"
+            hint="Shown before the underlined word (e.g. What people say about)."
+            value={value.testimonials?.titleBefore ?? ''}
+            onChange={(titleBefore) =>
+              patch({ testimonials: { ...value.testimonials, titleBefore } })
+            }
+            disabled={disabled}
+          />
+          <LabeledInput
+            label="Heading — highlighted word"
+            hint="The segment with the amber underline (often your brand name)."
+            value={value.testimonials?.titleHighlight ?? ''}
+            onChange={(titleHighlight) =>
+              patch({ testimonials: { ...value.testimonials, titleHighlight } })
+            }
+            disabled={disabled}
+          />
+          <LabeledTextarea
+            label="Subtitle"
+            rows={2}
+            value={value.testimonials?.subtitle ?? ''}
+            onChange={(subtitle) =>
+              patch({ testimonials: { ...value.testimonials, subtitle } })
+            }
+            disabled={disabled}
+          />
+        </SectionShell>
+
+        <SectionShell id="faq" title="FAQ" blurb={SECTIONS[7].blurb}>
           <div className="grid sm:grid-cols-2 gap-4">
             <LabeledInput
               label="Title — line 1"

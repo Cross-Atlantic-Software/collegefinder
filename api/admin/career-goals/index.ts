@@ -118,7 +118,7 @@ export async function updateCareerGoal(
   data: {
     label?: string;
     stream_id?: number;
-    logo?: string;
+    logo?: string | null;
     logo_filename?: string | null;
     description?: string | null;
     status?: boolean;
@@ -190,17 +190,34 @@ export async function downloadCareerGoalsBulkTemplate(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
+/** Server attaches logos from ZIP to rows created in the same request when filenames match `logo_filename`. */
+export type BulkUploadCareerGoalsLogosFromZip = {
+  updated: { id: number; label?: string; logo_filename?: string | null }[];
+  skipped: string[];
+  errors: { file: string; message: string }[];
+  summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+};
+
 /**
- * Bulk upload interests from Excel
+ * Bulk upload interests from Excel (optional column logo_filename) + optional ZIP of images.
  */
-export async function bulkUploadCareerGoals(file: File): Promise<ApiResponse<{
-  created: number;
-  createdInterests: { id: number; label: string; stream: string }[];
-  errors: number;
-  errorDetails: { row: number; message: string }[];
-}>> {
+export async function bulkUploadCareerGoals(
+  excelFile: File,
+  logosZip?: File | null,
+): Promise<
+  ApiResponse<{
+    created: number;
+    createdInterests: { id: number; label: string; stream: string }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+    logosFromZip: BulkUploadCareerGoalsLogosFromZip | null;
+  }>
+> {
   const formData = new FormData();
-  formData.append('excel', file);
+  formData.append('excel', excelFile);
+  if (logosZip && logosZip.size > 0) {
+    formData.append('logos_zip', logosZip);
+  }
 
   const adminToken = localStorage.getItem('admin_token');
   if (!adminToken) throw new Error('Admin token not found');

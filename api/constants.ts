@@ -44,7 +44,9 @@ export const API_ENDPOINTS = {
   /** Public site (no auth) */
   SITE: {
     LANDING_PAGE: '/site/landing-page',
+    TESTIMONIALS: '/site/testimonials',
     BLOGS: '/site/blogs',
+    CHECK_EMAIL: '/site/check-email',
   },
 
   // Public endpoints
@@ -70,6 +72,7 @@ export const API_ENDPOINTS = {
     EMAIL_TEMPLATES: '/admin/email-templates',
     BLOGS: '/admin/blogs',
     LANDING_PAGE: '/admin/landing-page',
+    TESTIMONIALS: '/admin/testimonials',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',
     MOCK_PROMPTS: '/admin/mock-prompts',

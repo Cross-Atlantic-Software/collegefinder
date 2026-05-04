@@ -137,18 +137,18 @@ export function OtpVerificationForm({
         console.log('🔍 OTP Verification - User data:', response.data.user);
         console.log('🔍 OTP Verification - onboarding_completed (raw):', onboardingCompletedValue, 'Type:', typeof onboardingCompletedValue);
         console.log('🔍 OTP Verification - onboarding_completed (converted):', onboardingCompleted);
-        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/' : '/step-1');
+        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/welcome' : '/step-1');
         
         // Prefetch target route for faster loading
         if (onboardingCompleted) {
-          router.prefetch("/");
+          router.prefetch("/welcome");
         } else {
           router.prefetch("/step-1");
         }
         // Small delay for smooth transition, then redirect
         setTimeout(() => {
           if (onboardingCompleted) {
-            router.replace("/");
+            router.replace("/welcome");
           } else {
             router.replace("/step-1");
           }

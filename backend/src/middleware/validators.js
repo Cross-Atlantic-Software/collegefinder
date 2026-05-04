@@ -773,7 +773,11 @@ const validateCreateStream = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('sort_order must be a non-negative integer')
 ];
 
 /**
@@ -788,7 +792,11 @@ const validateUpdateStream = [
   body('status')
     .optional()
     .isBoolean()
-    .withMessage('Status must be a boolean')
+    .withMessage('Status must be a boolean'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('sort_order must be a non-negative integer')
 ];
 
 /**

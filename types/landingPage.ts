@@ -66,4 +66,11 @@ export type LandingPageContent = {
     titleLine2: string;
     items: Array<{ question: string; answer: string }>;
   };
+  /** Heading above the testimonial carousel (quotes are managed under Admin → Testimonials). */
+  testimonials: {
+    titleBefore: string;
+    /** Emphasized segment with underline (e.g. brand name). */
+    titleHighlight: string;
+    subtitle: string;
+  };
 };

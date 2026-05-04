@@ -212,8 +212,12 @@ class CareerGoalsTaxonomyController {
         }
       }
 
-      // If logo is being updated, delete old logo from S3
-      if (logo !== undefined && logo !== existing.logo && existing.logo) {
+      // If logo is cleared or replaced, delete old file from S3
+      if (
+        logo !== undefined &&
+        existing.logo &&
+        (logo === null || logo === '' || logo !== existing.logo)
+      ) {
         await deleteFromS3(existing.logo);
       }
 
@@ -399,9 +403,9 @@ class CareerGoalsTaxonomyController {
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
-        ['label', 'stream'],
-        ['Computer Science', 'Engineering'],
-        ['Medical Sciences', 'Science']
+        ['label', 'stream', 'logo_filename'],
+        ['Computer Science', 'Engineering', 'computer-science.png'],
+        ['Medical Sciences', 'Science', 'medical-sciences.png']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Interests');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -415,7 +419,7 @@ class CareerGoalsTaxonomyController {
   }
 
   /**
-   * Bulk upload interests from Excel (label + stream)
+   * Bulk upload interests from Excel (label, stream, optional logo_filename) + optional ZIP of logo images.
    * POST /api/admin/career-goals/bulk-upload
    */
   static async bulkUpload(req, res) {
@@ -442,6 +446,20 @@ class CareerGoalsTaxonomyController {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
       }
 
+      const logosZipFile = req.files?.logos_zip?.[0];
+      let prebuiltLogoMap = null;
+      if (logosZipFile && logosZipFile.buffer && logosZipFile.buffer.length) {
+        const { parseLogosFromZip } = require('../../utils/logoUploadUtils');
+        prebuiltLogoMap = parseLogosFromZip(logosZipFile.buffer);
+        if (prebuiltLogoMap.size === 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Logos ZIP is empty or has no image files (.png, .jpg, .webp, etc.). Remove the ZIP to import without logos, or fix the archive.'
+          });
+        }
+      }
+
       const created = [];
       const errors = [];
       const labelsInFile = new Set();
@@ -452,6 +470,15 @@ class CareerGoalsTaxonomyController {
         const rowNum = i + 2;
         const labelRaw = (row.label ?? row.Label ?? '').toString().trim();
         const streamRaw = (row.stream ?? row.Stream ?? '').toString().trim();
+        const logoFilenameRaw = (
+          row.logo_filename ??
+          row.Logo_filename ??
+          row.logoFilename ??
+          row['logo filename'] ??
+          ''
+        )
+          .toString()
+          .trim();
 
         if (!labelRaw) {
           errors.push({ row: rowNum, message: 'label is required' });
@@ -485,7 +512,7 @@ class CareerGoalsTaxonomyController {
             label: labelRaw,
             stream_id: stream.id,
             logo: null,
-            logo_filename: null,
+            logo_filename: logoFilenameRaw || null,
             description: null,
             status: true,
             updated_by: req.admin?.id || null
@@ -497,15 +524,44 @@ class CareerGoalsTaxonomyController {
         }
       }
 
+      let logoZipResult = null;
+      // Only apply ZIP to interests created in this request (avoid attaching to unrelated rows)
+      if (prebuiltLogoMap && prebuiltLogoMap.size > 0 && created.length > 0) {
+        const { processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+        logoZipResult = await processMissingLogosFromZip(prebuiltLogoMap, {
+          findRecordsByFilename: (f) => CareerGoal.findMissingLogosByFilename(f),
+          uploadToS3,
+          s3Folder: 'career-goals-taxonomies',
+          logoColumn: 'logo',
+          updateRecord: (id, data) => CareerGoal.update(id, data),
+          toResultItem: (r) => ({ id: r.id, label: r.label, logo_filename: r.logo_filename })
+        });
+      }
+
+      const logoMsg =
+        logoZipResult != null
+          ? ` Attached ${logoZipResult.updated.length} logo(s) from ZIP.${
+              logoZipResult.skipped.length ? ` ${logoZipResult.skipped.length} ZIP file(s) had no matching row with that logo_filename (and empty logo).` : ''
+            }`
+          : '';
+
       res.json({
         success: true,
         data: {
           created: created.length,
           createdInterests: created,
           errors: errors.length,
-          errorDetails: errors
+          errorDetails: errors,
+          logosFromZip: logoZipResult
+            ? {
+                updated: logoZipResult.updated,
+                skipped: logoZipResult.skipped,
+                errors: logoZipResult.errors,
+                summary: logoZipResult.summary
+              }
+            : null
         },
-        message: `Created ${created.length} interest(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+        message: `Created ${created.length} interest(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}${logoMsg}`
       });
     } catch (error) {
       console.error('Error in interests bulk upload:', error);

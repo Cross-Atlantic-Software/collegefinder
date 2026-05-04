@@ -321,6 +321,17 @@ router.get('/profile/recommended-colleges', authenticate, ProfileCollegesControl
 router.get('/profile/completion', authenticate, ProfileCompletionController.getCompletion);
 
 /**
+ * @route   POST /api/auth/profile/complete-landing-onboarding
+ * @desc    Mark onboarding complete (landing contact form)
+ * @access  Private
+ */
+router.post(
+  '/profile/complete-landing-onboarding',
+  authenticate,
+  AuthController.completeLandingOnboarding
+);
+
+/**
  * @route   GET /api/auth/profile/government-identification
  * @desc    Get user government identification
  * @access  Private

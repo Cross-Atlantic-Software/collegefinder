@@ -23,6 +23,7 @@ export {
 // Export email templates management APIs
 export * from './email-templates';
 export * from './blogs';
+export * from './testimonials';
 
 // Export career goals taxonomy management APIs - use explicit exports to avoid conflicts
 export {
