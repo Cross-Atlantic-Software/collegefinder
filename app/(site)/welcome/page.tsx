@@ -53,13 +53,22 @@ export default function WelcomeJourneyPage() {
                         Unitracko
                     </p>
                     <h1 className="mt-4 text-3xl font-extrabold leading-tight text-black md:text-4xl">
-                        You&apos;re in.{" "}
-                        <span className="block text-black">The journey starts here.</span>
+                        We&apos;re building something great for you
                     </h1>
-                    <p className="mt-5 text-base leading-relaxed text-black/65 md:text-[1.05rem]">
-                        Your spot is secured. We&apos;re currently setting up the final details and will
-                        reach out with your next steps very soon. We&apos;ll take it from here.
-                    </p>
+                    <div className="mt-6 space-y-4 text-base leading-relaxed text-black/65 md:text-[1.05rem]">
+                        <p>
+                            Give us just a little more time — we want to make sure we get this absolutely
+                            right for you.
+                        </p>
+                        <p>
+                            You&apos;re on the waitlist. Your patience will pay off — we promise.
+                        </p>
+                        <p>
+                            As a thank you, we&apos;re giving you 2 months free when you&apos;re in —
+                            instead of the usual 1 month.
+                        </p>
+                        <p>We&apos;ll email you the moment you&apos;re ready to go.</p>
+                    </div>
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
                         <Link
                             href={`/?${LANDING_FROM_HOME_PARAM}=${LANDING_FROM_HOME_VALUE}`}

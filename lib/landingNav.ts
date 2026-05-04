@@ -29,7 +29,6 @@ export const LANDING_PRIMARY_NAV: LandingNavItem[] = [
     { label: "Our Edge", href: landingPageSectionHref("our-edge") },
     { label: "The Feed", href: "/blogs" },
     { label: "Get in Touch", href: landingPageSectionHref("get-in-touch") },
-    { label: "Testimonials", href: landingPageSectionHref("testimonials") },
 ];
 
 const easeInOutCubic = (value: number) =>
