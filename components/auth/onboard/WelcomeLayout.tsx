@@ -98,7 +98,7 @@ export function WelcomeLayout({
         loop
         muted
         playsInline
-        className="absolute inset-0 z-[-1] h-full w-full object-cover pointer-events-none"
+        className="absolute inset-0 z-[-1] h-full w-full object-cover object-center opacity-60 pointer-events-none"
       >
         <source src="/Animated_Student_s_Career_Journey_Video.mp4" type="video/mp4" />
       </video>

@@ -105,7 +105,8 @@ export default function StepReferral() {
 
           <div className="flex items-center gap-3 mb-2.5">
             <button
-              onClick={() => router.back()}
+              type="button"
+              onClick={() => router.push('/step-2c')}
               disabled={continueLoading}
               className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
