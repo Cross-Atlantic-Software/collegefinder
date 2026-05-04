@@ -151,7 +151,7 @@ export default function StepTwoB() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
             {loadingInterests ? (
               /* Inline shimmer grid while loading */
               <div className="grid grid-cols-3 gap-3">
@@ -164,7 +164,7 @@ export default function StepTwoB() {
                 <p>No interests are currently available for this stream.</p>
                 <button
                   type="button"
-                  onClick={() => router.back()}
+                  onClick={() => router.push('/step-2a')}
                   className="rounded-full border border-amber-300 bg-white px-4 py-2 font-semibold text-amber-800 transition hover:bg-amber-100 active:scale-95"
                 >
                   ← Go back to stream
@@ -209,10 +209,10 @@ export default function StepTwoB() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push('/step-2a')}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

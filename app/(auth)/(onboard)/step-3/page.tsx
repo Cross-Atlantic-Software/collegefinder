@@ -80,7 +80,7 @@ export default function StepThree() {
 
       <button
         onClick={() => router.replace("/")}
-        className="landing-cta w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
+        className="landing-cta w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] mt-auto"
       >
         Go to Dashboard
       </button>

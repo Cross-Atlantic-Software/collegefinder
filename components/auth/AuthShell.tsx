@@ -44,15 +44,17 @@ export function AuthShell({
 
   if (variant === "minimal") {
     return (
-      <main className="relative isolate flex min-h-screen flex-col overflow-hidden text-slate-900">
-        <Image
-          src="/login-3.png"
-          alt="Login page background"
-          fill
-          priority
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-white/72 backdrop-blur-[1px]" />
+      <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-slate-900">
+        {/* Background Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 z-[-1] h-full w-full object-cover object-center opacity-20 pointer-events-none"
+        >
+          <source src="/Animated_Student_s_Career_Journey_Video.mp4" type="video/mp4" />
+        </video>
 
         {showMinimalHeader && (
           <header className="appContainer relative z-10 flex w-full items-center justify-center border-b border-slate-200 py-5 lg:justify-start">

@@ -92,13 +92,13 @@ export function WelcomeLayout({
 
   return (
     <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden text-slate-900 bg-white">
-      {/* Background Video */}
+      {/* Background Video (Desktop Only) */}
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 z-[-1] h-full w-full object-cover pointer-events-none"
+        className="hidden sm:block absolute inset-0 z-[-1] h-full w-full object-cover object-center opacity-35 pointer-events-none"
       >
         <source src="/Animated_Student_s_Career_Journey_Video.mp4" type="video/mp4" />
       </video>
@@ -110,20 +110,40 @@ export function WelcomeLayout({
         .animate-slide-fade {
           animation: slideFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
+        @keyframes slideUpDrawer {
+          0% { transform: translateY(100%); }
+          100% { transform: translateY(0); }
+        }
+        .animate-slide-up-drawer {
+          animation: slideUpDrawer 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+        }
       `}</style>
 
       {/* Main */}
-      <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+      <div className="relative z-10 flex flex-1 flex-col justify-end sm:items-center sm:justify-center px-0 py-0 sm:px-6 sm:py-10">
+        {/* Mobile Logo - Centered in remaining space above drawer */}
+        <div className="flex flex-1 items-center justify-center w-full sm:hidden">
+          <Image
+            src="/UniTracko logo 2/logo-2.svg"
+            alt="UniTracko Logo"
+            width={240}
+            height={55}
+            priority
+            className="h-auto w-[200px]"
+          />
+        </div>
         {/* Narrow column — card is taller than wide at ~420px */}
-        <div className="flex w-full max-w-[440px] flex-col gap-5">
-          <div className="relative mt-2 mb-2">
+        <div className="flex w-full sm:max-w-[440px] flex-col sm:gap-5 animate-slide-up-drawer sm:animate-none">
+          <div className="relative sm:mt-2 sm:mb-2 w-full">
             {/* Blue offset background card */}
-            <div className="absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+            <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
             {/* Yellow offset background card */}
-            <div className="absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
-            <div className="relative z-10 rounded-[20px] border-2 border-black bg-white p-7 shadow-sm">
+            <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+            <div className="relative z-10 w-full rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-10 sm:p-7 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm min-h-[70vh] sm:min-h-0 flex flex-col">
+              {/* Optional pull pill for drawer look (mobile only) */}
+              <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
             {/* ── Stepper ── */}
-            <div className="flex items-center mb-7">
+            <div className="flex items-center mb-7 shrink-0">
               {STEPS.map((step, idx) => {
                 const isDone   = idx < currentStep;
                 const isActive = idx === currentStep;
@@ -198,7 +218,7 @@ export function WelcomeLayout({
 
             {/* Optional scribble heading */}
             {scribbleTitle && (
-              <div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3 shrink-0">
                 <DelayedLottie
                   animationData={
                     currentStep === 1 || currentStep === 4
@@ -228,7 +248,7 @@ export function WelcomeLayout({
               </div>
             )}
 
-            <div key={currentStep} className="animate-slide-fade">
+            <div key={currentStep} className="animate-slide-fade flex-1 flex flex-col">
               {children}
             </div>
             </div>

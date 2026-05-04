@@ -101,7 +101,7 @@ export default function StepTwoC() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
             <Select
               options={cityOptions}
               value={selectedCity}
@@ -110,10 +110,10 @@ export default function StepTwoC() {
               isSearchable={true}
               isClearable={false}
             />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push('/step-2b')}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
