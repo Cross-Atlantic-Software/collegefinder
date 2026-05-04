@@ -66,7 +66,7 @@ export default function Footer() {
                         <form className="mt-3 flex overflow-hidden rounded-full border border-black/25 bg-black">
                             <input
                                 type="email"
-                                placeholder=""
+                                placeholder="Enter your email"
                                 className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none"
                             />
                             <button

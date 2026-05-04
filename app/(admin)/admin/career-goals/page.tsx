@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, downloadCareerGoalsBulkTemplate, bulkUploadCareerGoals, CareerGoalAdmin } from '@/api';
+import { getAllCareerGoalsAdmin, createCareerGoal, updateCareerGoal, deleteCareerGoal, uploadCareerGoalLogo, downloadAllCareerGoalsExcel, deleteAllCareerGoals, downloadCareerGoalsBulkTemplate, bulkUploadCareerGoals, uploadMissingLogosCareerGoals, CareerGoalAdmin } from '@/api';
 import { getAllStreams } from '@/api/admin/streams';
 import { FiPlus, FiSearch, FiUpload, FiX, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
@@ -41,14 +41,25 @@ export default function CareerGoalsPage() {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
+  const [logosOnlyZipFile, setLogosOnlyZipFile] = useState<File | null>(null);
+  const [logosOnlyUploading, setLogosOnlyUploading] = useState(false);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [removeLogo, setRemoveLogo] = useState(false);
+
   const [bulkResult, setBulkResult] = useState<{
     created: number;
     createdInterests: { id: number; label: string; stream: string }[];
     errors: number;
     errorDetails: { row: number; message: string }[];
+    logosFromZip?: {
+      updated: { id: number; label?: string; logo_filename?: string | null }[];
+      skipped: string[];
+      errors: { file: string; message: string }[];
+      summary: { logosAdded: number; filesSkipped: number; uploadErrors: number };
+    } | null;
   } | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ type?: string } | null>(null);
 
@@ -129,6 +140,7 @@ export default function CareerGoalsPage() {
       const response = await uploadCareerGoalLogo(file);
       if (response.success && response.data) {
         const logoFilename = response.data.logoFilename ?? file.name;
+        setRemoveLogo(false);
         setFormData((prev) => ({ ...prev, logo: response.data!.logoUrl, logo_filename: logoFilename }));
         setLogoPreview(response.data.logoUrl);
         setError(null);
@@ -151,6 +163,7 @@ export default function CareerGoalsPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setRemoveLogo(false);
       setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -179,8 +192,12 @@ export default function CareerGoalsPage() {
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, {
           label: formData.label,
-          logo: formData.logo,
-          logo_filename: formData.logo_filename,
+          ...(removeLogo
+            ? { logo: null, logo_filename: null }
+            : {
+                logo: formData.logo || null,
+                logo_filename: formData.logo_filename || null,
+              }),
           description: formData.description,
           status: formData.status,
           stream_id: streamIdNum,
@@ -270,6 +287,7 @@ export default function CareerGoalsPage() {
     });
     setLogoPreview(careerGoal.logo ?? null);
     setLogoFile(null);
+    setRemoveLogo(false);
     setShowModal(true);
   };
 
@@ -283,7 +301,15 @@ export default function CareerGoalsPage() {
     setFormData({ label: '', logo: '', logo_filename: '', description: '', status: true, streamId: '' });
     setLogoFile(null);
     setLogoPreview(null);
+    setRemoveLogo(false);
     setError(null);
+  };
+
+  const handleRemoveLogo = () => {
+    setRemoveLogo(true);
+    setLogoFile(null);
+    setLogoPreview(null);
+    setFormData((prev) => ({ ...prev, logo: '', logo_filename: '' }));
   };
 
   const handleModalClose = () => {
@@ -336,6 +362,32 @@ export default function CareerGoalsPage() {
     }
   };
 
+  const handleLogosOnlyUpload = async () => {
+    if (!logosOnlyZipFile) {
+      setBulkError('Choose a ZIP file of logo images.');
+      return;
+    }
+    try {
+      setLogosOnlyUploading(true);
+      setBulkError(null);
+      const response = await uploadMissingLogosCareerGoals(logosOnlyZipFile);
+      if (response.success && response.data) {
+        showSuccess(response.message || `Added ${response.data.updated?.length ?? 0} logo(s)`);
+        fetchCareerGoals();
+        setLogosOnlyZipFile(null);
+      } else {
+        setBulkError(response.message || 'Upload failed');
+        showError(response.message || 'Upload failed');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      setBulkError(msg);
+      showError(msg);
+    } finally {
+      setLogosOnlyUploading(false);
+    }
+  };
+
   const handleBulkUpload = async () => {
     if (!bulkExcelFile) {
       setBulkError('Please select an Excel file');
@@ -345,13 +397,15 @@ export default function CareerGoalsPage() {
       setBulkUploading(true);
       setBulkError(null);
       setBulkResult(null);
-      const response = await bulkUploadCareerGoals(bulkExcelFile);
+      const response = await bulkUploadCareerGoals(bulkExcelFile, bulkLogosZipFile);
       if (response.success && response.data) {
         setBulkResult(response.data);
         showSuccess(response.message || `Created ${response.data.created} interest(s)`);
         fetchCareerGoals();
-        if (response.data.errors === 0) {
+        const zipErrs = response.data.logosFromZip?.errors?.length ?? 0;
+        if (response.data.errors === 0 && zipErrs === 0) {
           setBulkExcelFile(null);
+          setBulkLogosZipFile(null);
           setShowBulkModal(false);
         }
       } else {
@@ -429,6 +483,7 @@ export default function CareerGoalsPage() {
                 onClick={() => {
                   setShowBulkModal(true);
                   setBulkExcelFile(null);
+                  setBulkLogosZipFile(null);
                   setBulkError(null);
                   setBulkResult(null);
                 }}
@@ -704,6 +759,16 @@ export default function CareerGoalsPage() {
                         />
                       </div>
                     )}
+                    {(logoPreview || formData.logo) && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        <FiTrash2 className="h-4 w-4" />
+                        Remove logo
+                      </button>
+                    )}
                     <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA] cursor-pointer transition-colors">
                       <FiUpload className="h-4 w-4" />
                       <span>
@@ -784,6 +849,7 @@ export default function CareerGoalsPage() {
                 onClick={() => {
                   setShowBulkModal(false);
                   setBulkExcelFile(null);
+                  setBulkLogosZipFile(null);
                   setBulkResult(null);
                   setBulkError(null);
                 }}
@@ -796,8 +862,9 @@ export default function CareerGoalsPage() {
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
                 <p className="text-xs text-slate-600 mb-3">
-                  Use only two columns: <span className="font-mono">label</span> and <span className="font-mono">stream</span>.
-                  Label must be unique in the system. Stream name must already exist.
+                  Columns: <span className="font-mono">label</span>, <span className="font-mono">stream</span>, and optional{' '}
+                  <span className="font-mono">logo_filename</span> (must match the image file name inside the ZIP, e.g.{' '}
+                  <span className="font-mono">biology.png</span>). Label must be unique. Stream name must already exist.
                 </p>
                 <button
                   type="button"
@@ -810,7 +877,7 @@ export default function CareerGoalsPage() {
                 </button>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">1. Excel file</h3>
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -818,16 +885,66 @@ export default function CareerGoalsPage() {
                   className="w-full text-sm border border-slate-300 rounded-lg p-2"
                 />
               </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">2. Logos ZIP (optional)</h3>
+                <p className="text-xs text-slate-600 mb-2">
+                  A single ZIP containing image files only (PNG, JPG, WebP, …). Each file name must match{' '}
+                  <span className="font-mono">logo_filename</span> for the row you created. Applied after rows are created in the same upload.
+                </p>
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(e) => setBulkLogosZipFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+              <div className="border border-dashed border-slate-300 rounded-lg p-4 bg-white">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Logos ZIP only (existing interests)</h3>
+                <p className="text-xs text-slate-600 mb-2">
+                  If interests already exist with <span className="font-mono">logo_filename</span> set but no logo yet, upload a ZIP here to attach images by file name.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip"
+                    onChange={(e) => setLogosOnlyZipFile(e.target.files?.[0] || null)}
+                    className="flex-1 min-w-[200px] text-sm border border-slate-300 rounded-lg p-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleLogosOnlyUpload}
+                    disabled={logosOnlyUploading || !logosOnlyZipFile}
+                    className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                  >
+                    {logosOnlyUploading ? 'Uploading…' : 'Apply ZIP'}
+                  </button>
+                </div>
+              </div>
               {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
               {bulkResult && (
                 <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
                   <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.logosFromZip?.summary != null && (
+                    <p className="text-slate-700 mt-1">
+                      Logos from ZIP: {bulkResult.logosFromZip.summary.logosAdded} attached
+                      {bulkResult.logosFromZip.skipped?.length ? ` · ${bulkResult.logosFromZip.skipped.length} file(s) had no matching row` : ''}
+                    </p>
+                  )}
                   {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
                   {bulkResult.errorDetails?.length > 0 && (
                     <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
                       {bulkResult.errorDetails.map((err, i) => (
                         <li key={i}>
                           Row {err.row}: {err.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(bulkResult.logosFromZip?.errors?.length ?? 0) > 0 && (
+                    <ul className="mt-2 text-xs text-red-600 max-h-24 overflow-auto">
+                      {bulkResult.logosFromZip!.errors!.map((err, i) => (
+                        <li key={i}>
+                          {err.file}: {err.message}
                         </li>
                       ))}
                     </ul>
@@ -840,6 +957,7 @@ export default function CareerGoalsPage() {
                 onClick={() => {
                   setShowBulkModal(false);
                   setBulkExcelFile(null);
+                  setBulkLogosZipFile(null);
                   setBulkResult(null);
                   setBulkError(null);
                 }}

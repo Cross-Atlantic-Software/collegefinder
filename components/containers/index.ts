@@ -7,5 +7,6 @@ export { LandingCardFrame } from './LandingCardFrame';
 export { default as AudienceSection } from './AudienceSection';
 export { default as ContactSection } from './ContactSection';
 export { default as FaqSection } from './FaqSection';
+export { default as TestimonialsSection } from './TestimonialsSection';
 export { default as CareerGuidanceSection } from './CareerGuidanceSection';
 export { default as SmartShortlistSection } from './SmartShortlistSection';

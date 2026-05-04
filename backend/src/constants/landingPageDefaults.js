@@ -78,7 +78,8 @@ const landingPageDefaults = {
     headingBuiltFor: 'Built For',
     headingBoth: 'Both',
     headingStudents: 'Students',
-    headingAndParents: 'And Parents',
+    headingAnd: 'And',
+    headingParents: 'Parents',
     subtitle: 'Every feature, designed for both sides of the journey.',
     tabStudents: 'For Students',
     tabParents: 'For Parents',
@@ -127,6 +128,11 @@ const landingPageDefaults = {
     formSubmit: 'Map My Admission',
     formPrivacy:
       'Your Data stays private. No spam. No pressure. No promotional calls',
+  },
+  testimonials: {
+    titleBefore: 'What people say about',
+    titleHighlight: 'UniTracko',
+    subtitle: 'Real words from students and parents using the platform.',
   },
   faq: {
     titleLine1: 'Frequently Asked',

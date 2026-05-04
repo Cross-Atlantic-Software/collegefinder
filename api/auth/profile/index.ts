@@ -67,6 +67,18 @@ export async function getBasicInfo(): Promise<ApiResponse<{
 /**
  * Update user basic info
  */
+/**
+ * Mark onboarding complete after landing contact / Map my admission flow.
+ */
+export async function markLandingOnboardingComplete(): Promise<
+  ApiResponse<{ onboarding_completed: boolean }>
+> {
+  return apiRequest<{ onboarding_completed: boolean }>(
+    '/auth/profile/complete-landing-onboarding',
+    { method: 'POST' }
+  );
+}
+
 export async function updateBasicInfo(data: {
   name?: string;
   first_name?: string;

@@ -1,6 +1,13 @@
 const db = require('../../config/database');
 
 class Stream {
+  static async getNextSortOrder() {
+    const result = await db.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM streams'
+    );
+    return result.rows[0]?.n ?? 0;
+  }
+
   /**
    * Find all streams (with updated_by admin email)
    */
@@ -9,7 +16,7 @@ class Stream {
       `SELECT s.*, a.email as updated_by_email
        FROM streams s
        LEFT JOIN admin_users a ON s.updated_by = a.id
-       ORDER BY s.name ASC`
+       ORDER BY s.sort_order ASC, s.name ASC, s.id ASC`
     );
     return result.rows;
   }
@@ -44,7 +51,8 @@ class Stream {
    */
   static async findActive() {
     const result = await db.query(
-      'SELECT * FROM streams WHERE status = true ORDER BY name ASC'
+      `SELECT * FROM streams WHERE status = true
+       ORDER BY sort_order ASC, name ASC, id ASC`
     );
     return result.rows;
   }
@@ -53,10 +61,15 @@ class Stream {
    * Create a new stream
    */
   static async create(data) {
-    const { name, status, updated_by } = data;
+    const { name, status, updated_by, sort_order } = data;
+    let order = sort_order;
+    if (order === undefined || order === null) {
+      order = await Stream.getNextSortOrder();
+    }
     const result = await db.query(
-      'INSERT INTO streams (name, status, updated_by) VALUES ($1, $2, $3) RETURNING *',
-      [name, status !== undefined ? status : true, updated_by || null]
+      `INSERT INTO streams (name, status, updated_by, sort_order)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, status !== undefined ? status : true, updated_by || null, order]
     );
     return result.rows[0];
   }
@@ -65,8 +78,8 @@ class Stream {
    * Update a stream
    */
   static async update(id, data) {
-    const { name, status, updated_by } = data;
-    
+    const { name, status, updated_by, sort_order } = data;
+
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -82,6 +95,10 @@ class Stream {
     if (updated_by !== undefined) {
       updates.push(`updated_by = $${paramCount++}`);
       values.push(updated_by);
+    }
+    if (sort_order !== undefined) {
+      updates.push(`sort_order = $${paramCount++}`);
+      values.push(sort_order);
     }
 
     if (updates.length === 0) {
@@ -123,5 +140,3 @@ class Stream {
 }
 
 module.exports = Stream;
-
-

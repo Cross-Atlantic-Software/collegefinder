@@ -25,6 +25,7 @@ const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
 const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
+const TestimonialAdminController = require('../../controllers/admin/testimonialAdminController');
 const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
@@ -141,6 +142,43 @@ router.put(
   LandingPageAdminController.put
 );
 
+/** Landing testimonials (same module as landing page CMS) */
+router.get(
+  '/testimonials',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  TestimonialAdminController.list
+);
+router.post(
+  '/testimonials',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanEdit,
+  TestimonialAdminController.create
+);
+router.post(
+  '/testimonials/upload-image',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanEdit,
+  upload.single('image'),
+  TestimonialAdminController.uploadImage
+);
+router.put(
+  '/testimonials/:id',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanEdit,
+  TestimonialAdminController.update
+);
+router.delete(
+  '/testimonials/:id',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanDelete,
+  TestimonialAdminController.remove
+);
+
 /**
  * IMPORTANT: More specific routes must come BEFORE general routes
  * Otherwise Express will match the general route first
@@ -251,7 +289,16 @@ router.get('/career-goals/bulk-upload-template', authenticateAdmin, requireModul
 router.get('/career-goals/download-excel', authenticateAdmin, requireModuleAccess('career_goals'), requireCanDownloadExcel, CareerGoalsController.downloadAllExcel);
 router.post('/career-goals/upload-image', authenticateAdmin, requireModuleAccess('career_goals'), upload.single('image'), CareerGoalsController.uploadImage);
 router.post('/career-goals/upload-missing-logos', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'logos_zip', maxCount: 1 }]), CareerGoalsController.uploadMissingLogos);
-router.post('/career-goals/bulk-upload', authenticateAdmin, requireModuleAccess('career_goals'), uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]), CareerGoalsController.bulkUpload);
+router.post(
+  '/career-goals/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('career_goals'),
+  uploadBulkExams.fields([
+    { name: 'excel', maxCount: 1 },
+    { name: 'logos_zip', maxCount: 1 },
+  ]),
+  CareerGoalsController.bulkUpload
+);
 router.post('/career-goals', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.create);
 router.get('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), CareerGoalsController.getById);
 router.put('/career-goals/:id', authenticateAdmin, requireModuleAccess('career_goals'), requireCanEdit, CareerGoalsController.update);
@@ -929,6 +976,20 @@ router.post(
   requireModuleAccess('mapping'),
   uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
   RecommendedMappingController.bulkUpload
+);
+router.delete(
+  '/recommended-mappings/all',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  RecommendedMappingController.deleteAll
+);
+router.delete(
+  '/recommended-mappings/:id',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  RecommendedMappingController.deleteOne
 );
 
 /**

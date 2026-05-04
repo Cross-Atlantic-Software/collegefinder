@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getLandingPageContent } from "@/api";
+import { getLandingPageContent, getPublicTestimonials, type PublicTestimonial } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
 import {
   AudienceSection,
   ContactSection,
   FaqSection,
+  TestimonialsSection,
   FeatureStackSection,
   Hero,
   HowItWorksSection,
@@ -15,11 +16,13 @@ import {
 } from "@/components/containers";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import ScrollRevealSection from "@/components/shared/ScrollRevealSection";
+import { scrollToLandingSection } from "@/lib/landingNav";
 
 export default function Home() {
   const { isLoading } = useAuth();
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [landingError, setLandingError] = useState<string | null>(null);
+  const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -38,12 +41,41 @@ export default function Home() {
       } catch {
         if (!cancelled) setLandingError("Could not load page content.");
       }
+      try {
+        const tRes = await getPublicTestimonials();
+        if (cancelled) return;
+        if (tRes.success && tRes.data?.testimonials) {
+          setTestimonials(tRes.data.testimonials);
+        }
+      } catch {
+        /* testimonials optional; landing still works */
+      }
     })();
 
     return () => {
       cancelled = true;
     };
   }, [isLoading]);
+
+  /** After CMS content mounts, honor #hash (e.g. from /blogs → /#get-in-touch). */
+  useEffect(() => {
+    if (!landing) return;
+    const raw = window.location.hash?.replace(/^#/, "").trim();
+    if (!raw) return;
+
+    const run = () => scrollToLandingSection(raw);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+
+    const onHashChange = () => {
+      const id = window.location.hash?.replace(/^#/, "").trim();
+      if (id) scrollToLandingSection(id);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [landing]);
 
   if (isLoading) {
     return <OnboardingLoader message="Loading..." />;
@@ -78,7 +110,16 @@ export default function Home() {
       </div>
       <div id="get-in-touch" className="scroll-mt-20 md:scroll-mt-24">
         <ScrollRevealSection delayMs={340}>
-          <ContactSection contact={landing.contact} />
+          <Suspense
+            fallback={
+              <section className="landing-section scroll-mt-20 bg-white md:scroll-mt-24 min-h-[240px]" aria-hidden />
+            }
+          >
+            <ContactSection contact={landing.contact} />
+          </Suspense>
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={380}>
+          <TestimonialsSection testimonials={testimonials} copy={landing.testimonials} />
         </ScrollRevealSection>
         <ScrollRevealSection delayMs={420}>
           <FaqSection faq={landing.faq} />

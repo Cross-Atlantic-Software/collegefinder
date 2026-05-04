@@ -67,7 +67,7 @@ class StreamController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name, status, sort_order } = req.body;
 
       // Check if name already exists
       const existing = await Stream.findByName(name);
@@ -78,10 +78,17 @@ class StreamController {
         });
       }
 
-      const stream = await Stream.create({ 
-        name, 
+      let so;
+      if (sort_order !== undefined && sort_order !== null && sort_order !== '') {
+        const n = parseInt(String(sort_order), 10);
+        so = Number.isNaN(n) ? undefined : n;
+      }
+
+      const stream = await Stream.create({
+        name,
         status: status !== undefined ? status : true,
-        updated_by: req.admin?.id || null
+        updated_by: req.admin?.id || null,
+        sort_order: so,
       });
 
       res.status(201).json({
@@ -123,7 +130,7 @@ class StreamController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name, status, sort_order } = req.body;
 
       // Check if name is being changed and if it already exists
       if (name && name !== existingStream.name) {
@@ -136,11 +143,17 @@ class StreamController {
         }
       }
 
-      const stream = await Stream.update(parseInt(id), { 
-        name, 
-        status, 
-        updated_by: req.admin?.id || null 
-      });
+      const payload = {
+        name,
+        status,
+        updated_by: req.admin?.id || null,
+      };
+      if (sort_order !== undefined) {
+        const n = parseInt(String(sort_order), 10);
+        payload.sort_order = Number.isNaN(n) ? 0 : n;
+      }
+
+      const stream = await Stream.update(parseInt(id), payload);
 
       res.json({
         success: true,
@@ -213,13 +226,13 @@ class StreamController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const headers = ['name', 'status'];
+      const headers = ['name', 'status', 'sort_order'];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['Science', 'TRUE'],
-        ['Commerce', 'TRUE'],
-        ['Arts', 'TRUE']
+        ['Science', 'TRUE', '0'],
+        ['Commerce', 'TRUE', '1'],
+        ['Arts', 'TRUE', '2']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Streams');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -263,6 +276,7 @@ class StreamController {
       const created = [];
       const errors = [];
       const namesInFile = new Set();
+      let nextAutoOrder = await Stream.getNextSortOrder();
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -286,11 +300,28 @@ class StreamController {
         const statusRaw = (row.status ?? '').toString().trim();
         const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
 
+        const sortRaw = row.sort_order ?? row.Sort_order ?? row.sortOrder;
+        const sortStr =
+          sortRaw !== undefined && sortRaw !== null ? String(sortRaw).trim() : '';
+        let sortOrder;
+        if (sortStr !== '') {
+          const n = parseInt(sortStr, 10);
+          if (Number.isNaN(n)) {
+            errors.push({ row: rowNum, message: 'sort_order must be a valid integer' });
+            continue;
+          }
+          sortOrder = n;
+        } else {
+          sortOrder = nextAutoOrder;
+          nextAutoOrder += 1;
+        }
+
         try {
           const stream = await Stream.create({
             name: nameRaw,
             status,
-            updated_by: req.admin?.id || null
+            updated_by: req.admin?.id || null,
+            sort_order: sortOrder
           });
           created.push({ id: stream.id, name: stream.name });
           namesInFile.add(nameRaw.toLowerCase());

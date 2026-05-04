@@ -74,3 +74,11 @@ export async function bulkUploadRecommendedMappings(
   if (!response.ok) throw new Error(data.message || `Failed to upload (${response.status})`);
   return data;
 }
+
+export async function deleteRecommendedMapping(id: number): Promise<ApiResponse<Record<string, never>>> {
+  return apiRequest(`${BASE}/${id}`, { method: 'DELETE' });
+}
+
+export async function deleteAllRecommendedMappings(): Promise<ApiResponse<{ deleted: number }>> {
+  return apiRequest<{ deleted: number }>(`${BASE}/all`, { method: 'DELETE' });
+}

@@ -298,7 +298,7 @@ export default function InfoSection({ info }: { info: LandingPageContent["info"]
           </div>
 
           <div className="mx-auto w-full max-w-[740px]">
-            <div className="overflow-hidden rounded-[28px] pb-24">
+            <div className="overflow-hidden rounded-[28px] pb-0">
               <Image
                 src="/landing-page/problem3.png"
                 alt="Unitracko dashboard preview"

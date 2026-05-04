@@ -117,16 +117,27 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                                 </RoughNotation>
                                 <RoughNotation
                                     type="circle"
-                                    show={headingVisible}
+                                    show={headingVisible && activeAudience === "students"}
                                     color="#f59e0b"
                                     strokeWidth={3}
                                     padding={8}
-                                    animationDelay={900}
+                                    animationDelay={activeAudience === "students" ? 250 : 0}
                                     animationDuration={1100}
                                 >
                                     <span>{audience.headingStudents}</span>
                                 </RoughNotation>
-                                <span>{audience.headingAndParents}</span>
+                                <span>{audience.headingAnd}</span>
+                                <RoughNotation
+                                    type="circle"
+                                    show={headingVisible && activeAudience === "parents"}
+                                    color="#f59e0b"
+                                    strokeWidth={3}
+                                    padding={8}
+                                    animationDelay={activeAudience === "parents" ? 250 : 0}
+                                    animationDuration={1100}
+                                >
+                                    <span>{audience.headingParents}</span>
+                                </RoughNotation>
                             </span>
                         </h3>
                         <p className="mx-auto mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
