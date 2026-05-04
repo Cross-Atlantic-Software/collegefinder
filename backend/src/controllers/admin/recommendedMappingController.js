@@ -219,6 +219,43 @@ class RecommendedMappingController {
       });
     }
   }
+
+  static async deleteOne(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid mapping id' });
+      }
+      const deleted = await StreamInterestRecommendation.deleteById(id);
+      if (!deleted) {
+        return res.status(404).json({ success: false, message: 'Mapping not found' });
+      }
+      res.json({ success: true, message: 'Mapping deleted' });
+    } catch (error) {
+      console.error('Error deleting recommended mapping:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete mapping',
+      });
+    }
+  }
+
+  static async deleteAll(req, res) {
+    try {
+      const deleted = await StreamInterestRecommendation.deleteAll();
+      res.json({
+        success: true,
+        data: { deleted },
+        message: deleted === 0 ? 'No mappings to delete.' : `Deleted ${deleted} mapping(s).`,
+      });
+    } catch (error) {
+      console.error('Error deleting all recommended mappings:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete mappings',
+      });
+    }
+  }
 }
 
 module.exports = RecommendedMappingController;

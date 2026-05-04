@@ -261,5 +261,7 @@ export {
   getAllRecommendedMappings,
   downloadRecommendedMappingTemplate,
   bulkUploadRecommendedMappings,
+  deleteRecommendedMapping,
+  deleteAllRecommendedMappings,
 } from './recommended-mappings';
 export type { StreamInterestRecommendedMapping } from './recommended-mappings';

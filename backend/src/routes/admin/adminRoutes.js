@@ -930,6 +930,20 @@ router.post(
   uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
   RecommendedMappingController.bulkUpload
 );
+router.delete(
+  '/recommended-mappings/all',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  RecommendedMappingController.deleteAll
+);
+router.delete(
+  '/recommended-mappings/:id',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  RecommendedMappingController.deleteOne
+);
 
 /**
  * @route   GET /api/admin/programs

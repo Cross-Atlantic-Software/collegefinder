@@ -8,9 +8,11 @@ import {
   getAllRecommendedMappings,
   downloadRecommendedMappingTemplate,
   bulkUploadRecommendedMappings,
+  deleteRecommendedMapping,
+  deleteAllRecommendedMappings,
   type StreamInterestRecommendedMapping,
 } from '@/api/admin/recommended-mappings';
-import { FiDownload, FiUpload } from 'react-icons/fi';
+import { FiDownload, FiTrash2, FiUpload } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
 
 export default function RecommendedExamsMappingPage() {
@@ -26,6 +28,8 @@ export default function RecommendedExamsMappingPage() {
     errors: number;
     errorDetails: { row: number; message: string }[];
   } | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -94,6 +98,54 @@ export default function RecommendedExamsMappingPage() {
       showError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteRow = async (m: StreamInterestRecommendedMapping) => {
+    if (
+      !window.confirm(
+        `Delete this mapping?\n\n${m.stream_name} → ${m.interest_label}\n\nThis cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(m.id);
+    try {
+      const res = await deleteRecommendedMapping(m.id);
+      if (res.success) {
+        showSuccess(res.message || 'Mapping deleted');
+        await load();
+      } else {
+        showError(res.message || 'Delete failed');
+      }
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (
+      !window.confirm(
+        'Delete ALL recommended exam mappings?\n\nEvery stream + interest row will be removed. This cannot be undone.',
+      )
+    ) {
+      return;
+    }
+    setDeletingAll(true);
+    try {
+      const res = await deleteAllRecommendedMappings();
+      if (res.success) {
+        showSuccess(res.message || 'All mappings deleted');
+        await load();
+      } else {
+        showError(res.message || 'Delete failed');
+      }
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -174,8 +226,19 @@ export default function RecommendedExamsMappingPage() {
             )}
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
                 <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Current mappings</h2>
+                {mappings.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAll}
+                    disabled={isLoading || deletingAll}
+                    className="inline-flex items-center justify-center gap-1.5 self-start rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/60"
+                  >
+                    <FiTrash2 className="h-3.5 w-3.5" />
+                    {deletingAll ? 'Deleting…' : 'Delete all'}
+                  </button>
+                )}
               </div>
               {isLoading ? (
                 <p className="p-4 text-sm text-slate-500">Loading…</p>
@@ -190,6 +253,7 @@ export default function RecommendedExamsMappingPage() {
                         <th className="px-3 py-2">Interest</th>
                         <th className="px-3 py-2">Programs</th>
                         <th className="px-3 py-2">Exams</th>
+                        <th className="px-3 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -205,6 +269,18 @@ export default function RecommendedExamsMappingPage() {
                           </td>
                           <td className="max-w-xs px-3 py-2 text-slate-600 dark:text-slate-400">
                             {m.exam_names || '—'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRow(m)}
+                              disabled={deletingId === m.id || deletingAll}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50 dark:border-slate-600 dark:text-red-400 dark:hover:bg-red-950/30"
+                              title="Delete this row"
+                            >
+                              <FiTrash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}

@@ -555,14 +555,22 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
               disabled={disabled}
             />
           </div>
-          <LabeledInput
-            label="Heading — “and parents”"
-            value={value.audience.headingAndParents}
-            onChange={(headingAndParents) =>
-              patch({ audience: { ...value.audience, headingAndParents } })
-            }
-            disabled={disabled}
-          />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <LabeledInput
+              label="Heading — “and” (before Parents)"
+              value={value.audience.headingAnd}
+              onChange={(headingAnd) => patch({ audience: { ...value.audience, headingAnd } })}
+              disabled={disabled}
+            />
+            <LabeledInput
+              label="Heading — “parents” (circled on Parents tab)"
+              value={value.audience.headingParents}
+              onChange={(headingParents) =>
+                patch({ audience: { ...value.audience, headingParents } })
+              }
+              disabled={disabled}
+            />
+          </div>
           <LabeledTextarea
             label="Subtitle"
             rows={2}

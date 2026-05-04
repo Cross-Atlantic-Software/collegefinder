@@ -47,6 +47,19 @@ class StreamInterestRecommendation {
     );
     return result.rows[0];
   }
+
+  static async deleteById(id) {
+    const result = await db.query(
+      `DELETE FROM stream_interest_recommendation_mappings WHERE id = $1 RETURNING id`,
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async deleteAll() {
+    const result = await db.query(`DELETE FROM stream_interest_recommendation_mappings`);
+    return result.rowCount ?? 0;
+  }
 }
 
 module.exports = StreamInterestRecommendation;

@@ -33,7 +33,10 @@ export type LandingPageContent = {
     headingBuiltFor: string;
     headingBoth: string;
     headingStudents: string;
-    headingAndParents: string;
+    /** Conjunction before “Parents” (e.g. And) — plain text, no circle. */
+    headingAnd: string;
+    /** Word emphasized with the parents tab circle (e.g. Parents). */
+    headingParents: string;
     subtitle: string;
     tabStudents: string;
     tabParents: string;
