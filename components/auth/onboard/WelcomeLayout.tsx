@@ -92,13 +92,13 @@ export function WelcomeLayout({
 
   return (
     <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden text-slate-900 bg-white">
-      {/* Background Video */}
+      {/* Background Video (Desktop Only) */}
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 z-[-1] h-full w-full object-cover object-center opacity-60 pointer-events-none"
+        className="hidden sm:block absolute inset-0 z-[-1] h-full w-full object-cover object-center opacity-35 pointer-events-none"
       >
         <source src="/Animated_Student_s_Career_Journey_Video.mp4" type="video/mp4" />
       </video>
@@ -121,6 +121,17 @@ export function WelcomeLayout({
 
       {/* Main */}
       <div className="relative z-10 flex flex-1 flex-col justify-end sm:items-center sm:justify-center px-0 py-0 sm:px-6 sm:py-10">
+        {/* Mobile Logo - Centered in remaining space above drawer */}
+        <div className="flex flex-1 items-center justify-center w-full sm:hidden">
+          <Image
+            src="/UniTracko logo 2/logo-2.svg"
+            alt="UniTracko Logo"
+            width={240}
+            height={55}
+            priority
+            className="h-auto w-[200px]"
+          />
+        </div>
         {/* Narrow column — card is taller than wide at ~420px */}
         <div className="flex w-full sm:max-w-[440px] flex-col sm:gap-5 animate-slide-up-drawer sm:animate-none">
           <div className="relative sm:mt-2 sm:mb-2 w-full">
