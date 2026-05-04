@@ -29,10 +29,15 @@ type SubjectSection = {
   allTopics: Topic[];
 };
 
-export default function ExamPreparation() {
+type ExamPreparationProps = {
+  /** Synced with dashboard sidebar (Self study vs Coaching). URL `?mode=` overrides when present. */
+  initialMode?: PrepMode;
+};
+
+export default function ExamPreparation({ initialMode = "self" }: ExamPreparationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<PrepMode>("self");
+  const [mode, setMode] = useState<PrepMode>(initialMode);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const [subjects, setSubjects] = useState<SubjectSection[]>([]);
@@ -47,8 +52,10 @@ export default function ExamPreparation() {
     const requestedMode = searchParams.get("mode");
     if (requestedMode === "self" || requestedMode === "coaching") {
       setMode(requestedMode);
+      return;
     }
-  }, [searchParams]);
+    setMode(initialMode);
+  }, [searchParams, initialMode]);
 
   useEffect(() => {
     const fetchSubjectsAndLectures = async () => {
