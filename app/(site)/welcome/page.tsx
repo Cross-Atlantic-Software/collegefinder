@@ -57,15 +57,13 @@ export default function WelcomeJourneyPage() {
                     </h1>
                     <div className="mt-6 space-y-4 text-base leading-relaxed text-black/65 md:text-[1.05rem]">
                         <p>
-                            Give us just a little more time — we want to make sure we get this absolutely
+                            Give us just a little more time - we want to make sure we get this absolutely
                             right for you.
                         </p>
+                        <p>You&apos;re on the waitlist. Your patience will pay off - we promise.</p>
                         <p>
-                            You&apos;re on the waitlist. Your patience will pay off — we promise.
-                        </p>
-                        <p>
-                            As a thank you, we&apos;re giving you 2 months free when you&apos;re in —
-                            instead of the usual 1 month.
+                            As a thank you, we&apos;re giving you 2 months free when you&apos;re in - instead
+                            of the usual 1 months.
                         </p>
                         <p>We&apos;ll email you the moment you&apos;re ready to go.</p>
                     </div>

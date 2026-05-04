@@ -31,6 +31,21 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
     }
   }, [searchParams]);
 
+  // Prefill email from /signup?email= (e.g. landing footer)
+  useEffect(() => {
+    if (mode !== "signup") return;
+    const raw = searchParams.get("email");
+    if (!raw) return;
+    const decoded = (() => {
+      try {
+        return decodeURIComponent(raw.trim());
+      } catch {
+        return raw.trim();
+      }
+    })();
+    if (decoded) setEmail(decoded);
+  }, [searchParams, mode]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!agree) return;

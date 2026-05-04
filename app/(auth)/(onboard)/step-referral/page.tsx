@@ -81,7 +81,7 @@ export default function StepReferral() {
       {!continueLoading && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
-            Enter it below — or skip and go straight to your dashboard.
+            Drop it here if you have one — you can skip this
           </p>
 
           {referralError && (
@@ -119,16 +119,9 @@ export default function StepReferral() {
               disabled={continueLoading}
               className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {referralInput.trim() ? "Apply & Continue" : "Continue"}
+              Continue
             </button>
           </div>
-          <button
-            onClick={goHome}
-            disabled={continueLoading}
-            className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Skip
-          </button>
         </>
       )}
     </>

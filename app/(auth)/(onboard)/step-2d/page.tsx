@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { Select } from "@/components/shared";
@@ -19,6 +19,8 @@ export default function StepTwoD() {
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  /** When true, the next `selectedState` effect run should not clear district (server / initial hydrate). */
+  const skipDistrictReset = useRef(false);
 
   useEffect(() => {
     const states = getAllStates();
@@ -31,6 +33,7 @@ export default function StepTwoD() {
         const response = await getUserAddress();
         if (response.success && response.data) {
           if (response.data.state) {
+            skipDistrictReset.current = true;
             setSelectedState(response.data.state);
             const districts = getDistrictsForState(response.data.state);
             setDistrictOptions(districts.map(district => ({ value: district, label: district })));
@@ -46,6 +49,10 @@ export default function StepTwoD() {
     if (selectedState) {
       const districts = getDistrictsForState(selectedState);
       setDistrictOptions(districts.map(district => ({ value: district, label: district })));
+      if (skipDistrictReset.current) {
+        skipDistrictReset.current = false;
+        return;
+      }
       setSelectedDistrict("");
     } else {
       setDistrictOptions([]);
@@ -110,7 +117,7 @@ export default function StepTwoD() {
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
-            Select your state and district.
+            We&apos;ll show you the best options near you
           </p>
 
           {error && (
