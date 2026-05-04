@@ -151,7 +151,7 @@ export default function StepTwoB() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
             {loadingInterests ? (
               /* Inline shimmer grid while loading */
               <div className="grid grid-cols-3 gap-3">
@@ -209,7 +209,7 @@ export default function StepTwoB() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
                 onClick={() => router.push('/step-2a')}

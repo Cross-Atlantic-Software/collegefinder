@@ -104,7 +104,7 @@ export default function StepTwoA() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 flex-1">
             {loadingStreams ? (
               <div className="grid grid-cols-2 gap-3">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -140,7 +140,7 @@ export default function StepTwoA() {
               </div>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
                 onClick={() => router.push('/step-2')}

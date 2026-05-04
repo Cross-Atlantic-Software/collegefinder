@@ -76,7 +76,7 @@ export default function StepTwo() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
             <input
               type="text"
               placeholder="Enter your full name"
@@ -88,7 +88,7 @@ export default function StepTwo() {
               maxLength={255}
               autoFocus
             />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
                 onClick={() => router.push('/step-1')}

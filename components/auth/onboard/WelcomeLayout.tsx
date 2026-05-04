@@ -110,20 +110,29 @@ export function WelcomeLayout({
         .animate-slide-fade {
           animation: slideFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
+        @keyframes slideUpDrawer {
+          0% { transform: translateY(100%); }
+          100% { transform: translateY(0); }
+        }
+        .animate-slide-up-drawer {
+          animation: slideUpDrawer 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+        }
       `}</style>
 
       {/* Main */}
-      <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+      <div className="relative z-10 flex flex-1 flex-col justify-end sm:items-center sm:justify-center px-0 py-0 sm:px-6 sm:py-10">
         {/* Narrow column — card is taller than wide at ~420px */}
-        <div className="flex w-full max-w-[440px] flex-col gap-5">
-          <div className="relative mt-2 mb-2">
+        <div className="flex w-full sm:max-w-[440px] flex-col sm:gap-5 animate-slide-up-drawer sm:animate-none">
+          <div className="relative sm:mt-2 sm:mb-2 w-full">
             {/* Blue offset background card */}
-            <div className="absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+            <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
             {/* Yellow offset background card */}
-            <div className="absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
-            <div className="relative z-10 rounded-[20px] border-2 border-black bg-white p-7 shadow-sm">
+            <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+            <div className="relative z-10 w-full rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-10 sm:p-7 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm min-h-[70vh] sm:min-h-0 flex flex-col">
+              {/* Optional pull pill for drawer look (mobile only) */}
+              <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
             {/* ── Stepper ── */}
-            <div className="flex items-center mb-7">
+            <div className="flex items-center mb-7 shrink-0">
               {STEPS.map((step, idx) => {
                 const isDone   = idx < currentStep;
                 const isActive = idx === currentStep;
@@ -198,7 +207,7 @@ export function WelcomeLayout({
 
             {/* Optional scribble heading */}
             {scribbleTitle && (
-              <div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3 shrink-0">
                 <DelayedLottie
                   animationData={
                     currentStep === 1 || currentStep === 4
@@ -228,7 +237,7 @@ export function WelcomeLayout({
               </div>
             )}
 
-            <div key={currentStep} className="animate-slide-fade">
+            <div key={currentStep} className="animate-slide-fade flex-1 flex flex-col">
               {children}
             </div>
             </div>

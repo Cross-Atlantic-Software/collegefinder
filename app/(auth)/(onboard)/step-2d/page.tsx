@@ -119,7 +119,7 @@ export default function StepTwoD() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
             <Select
               options={stateOptions}
               value={selectedState}
@@ -137,7 +137,7 @@ export default function StepTwoD() {
               isClearable={false}
               disabled={!selectedState}
             />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
                 onClick={() => router.push('/step-2c')}

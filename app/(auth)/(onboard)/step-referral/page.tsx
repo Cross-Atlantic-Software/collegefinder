@@ -103,7 +103,7 @@ export default function StepReferral() {
             />
           </div>
 
-          <div className="flex items-center gap-3 mb-2.5">
+          <div className="flex items-center gap-3 mb-2.5 mt-auto pt-4">
             <button
               type="button"
               onClick={() => router.push('/step-2c')}
