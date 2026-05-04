@@ -89,7 +89,7 @@ export default function TestimonialsSection({ testimonials, copy }: Props) {
       onMouseEnter={() => n > 0 && setPause(true)}
       onMouseLeave={() => n > 0 && setPause(false)}
     >
-      <div className="appContainer py-14 md:py-16">
+      <div className="appContainer">
         <h3 className="text-center text-3xl font-extrabold leading-tight text-black md:text-4xl">
           {titleBefore}{" "}
           <span className="relative inline-block">
