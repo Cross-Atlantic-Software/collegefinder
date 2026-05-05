@@ -182,7 +182,9 @@ const runMigrations = async () => {
     'add_upload_job_rows_college_id.sql',
     'add_testimonials_table.sql',
     'add_profile_image_to_testimonials.sql',
-    'add_sort_order_to_streams.sql'
+    'add_sort_order_to_streams.sql',
+    'add_user_queries_table.sql',
+    'add_admin_resolution_to_user_queries.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

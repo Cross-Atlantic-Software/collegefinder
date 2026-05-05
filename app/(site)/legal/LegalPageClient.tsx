@@ -20,7 +20,7 @@ function isDecorativeLine(s: string): boolean {
 }
 
 function isNumberedSubheading(s: string): boolean {
-    return /^\d+\.\d+(\.\d+)?\s/.test(s.trim());
+    return /^\d+(\.\d+)?\s/.test(s.trim());
 }
 
 function isLetterSubheading(s: string): boolean {
@@ -38,6 +38,17 @@ function isMetaLine(s: string): boolean {
 
 function isTldrLine(s: string): boolean {
     return /^TL;DR\b/i.test(s.trim());
+}
+
+function isLikelyListItem(s: string): boolean {
+    const t = s.trim();
+    if (!t) return false;
+    if (isDecorativeLine(t) || isMetaLine(t) || isTldrLine(t)) return false;
+    if (isNumberedSubheading(t) || isLetterSubheading(t)) return false;
+    if (t.endsWith(":")) return false;
+    if (/[.!?]$/.test(t)) return false;
+    if (t.length > 95) return false;
+    return true;
 }
 
 function linkify(text: string): ReactNode {
@@ -83,6 +94,16 @@ function IntroBlock({ lines }: { lines: string[] }) {
     return (
         <header id="legal-top" className="scroll-mt-20 md:scroll-mt-24">
             {lines.map((line, i) => {
+                if (i === 0) {
+                    return (
+                        <h1
+                            key={i}
+                            className="text-[1.75rem] font-extrabold leading-tight text-black sm:text-4xl md:text-[2.35rem]"
+                        >
+                            {line}
+                        </h1>
+                    );
+                }
                 if (isDecorativeLine(line)) {
                     return (
                         <div
@@ -92,26 +113,6 @@ function IntroBlock({ lines }: { lines: string[] }) {
                         >
                             · · ·
                         </div>
-                    );
-                }
-                if (i === 0 && line === "UniTracko") {
-                    return (
-                        <p
-                            key={i}
-                            className="text-xs font-bold uppercase tracking-[0.25em] text-black/55"
-                        >
-                            {line}
-                        </p>
-                    );
-                }
-                if (i === 1 || line === "Legal & Policy Documents") {
-                    return (
-                        <h1
-                            key={i}
-                            className="mt-3 text-[1.75rem] font-extrabold leading-tight text-black sm:text-4xl md:text-[2.35rem]"
-                        >
-                            {line}
-                        </h1>
                     );
                 }
                 if (line === "Documents Included:") {
@@ -147,60 +148,135 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
             ? paragraphs.slice(1)
             : paragraphs;
 
-    return (
-        <div className="mt-6 space-y-3">
-            {body.map((line, i) => {
-                if (!line.trim()) {
-                    return null;
+    const lines = body.map((x) => x.trim()).filter(Boolean);
+    const nodes: ReactNode[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i];
+
+        if (isDecorativeLine(line)) {
+            nodes.push(
+                <div
+                    key={`sep-${i}`}
+                    className="my-6 text-center text-xs tracking-[0.35em] text-black/35"
+                    aria-hidden
+                >
+                    · · ·
+                </div>
+            );
+            i += 1;
+            continue;
+        }
+
+        if (isNumberedSubheading(line) || isLetterSubheading(line)) {
+            nodes.push(
+                <h3
+                    key={`h-${i}`}
+                    className="mt-9 scroll-mt-24 text-lg font-extrabold leading-snug text-black first:mt-0 md:text-xl md:scroll-mt-28"
+                >
+                    {linkify(line)}
+                </h3>
+            );
+            i += 1;
+            continue;
+        }
+
+        if (isTldrLine(line)) {
+            nodes.push(
+                <p key={`tldr-${i}`} className="mt-6 text-base font-semibold text-black">
+                    {linkify(line)}
+                </p>
+            );
+            i += 1;
+            continue;
+        }
+
+        if (isMetaLine(line)) {
+            nodes.push(
+                <p key={`meta-${i}`} className="text-sm text-black/60">
+                    {linkify(line)}
+                </p>
+            );
+            i += 1;
+            continue;
+        }
+
+        if (line.endsWith(":")) {
+            nodes.push(
+                <p key={`label-${i}`} className="mt-5 text-base font-bold text-black md:text-[1.04rem]">
+                    {linkify(line)}
+                </p>
+            );
+
+            const items: string[] = [];
+            let j = i + 1;
+            while (j < lines.length) {
+                const next = lines[j];
+                if (
+                    next.endsWith(":") ||
+                    isDecorativeLine(next) ||
+                    isMetaLine(next) ||
+                    isTldrLine(next) ||
+                    isNumberedSubheading(next) ||
+                    isLetterSubheading(next)
+                ) {
+                    break;
                 }
-                if (isDecorativeLine(line)) {
-                    return (
-                        <div
-                            key={i}
-                            className="my-6 text-center text-xs tracking-[0.35em] text-black/35"
-                            aria-hidden
-                        >
-                            · · ·
-                        </div>
-                    );
-                }
-                if (isNumberedSubheading(line) || isLetterSubheading(line)) {
-                    return (
-                        <h3
-                            key={i}
-                            className="mt-8 scroll-mt-24 text-lg font-bold text-black first:mt-0 md:scroll-mt-28"
-                        >
-                            {linkify(line)}
-                        </h3>
-                    );
-                }
-                if (isTldrLine(line)) {
-                    return (
-                        <p
-                            key={i}
-                            className="mt-6 text-base font-semibold text-black"
-                        >
-                            {linkify(line)}
-                        </p>
-                    );
-                }
-                if (isMetaLine(line)) {
-                    return (
-                        <p key={i} className="text-sm text-black/60">
-                            {linkify(line)}
-                        </p>
-                    );
-                }
-                return (
-                    <p
-                        key={i}
-                        className="text-base leading-relaxed text-black/80"
+                if (!isLikelyListItem(next)) break;
+                items.push(next);
+                j += 1;
+            }
+
+            if (items.length > 0) {
+                nodes.push(
+                    <ul
+                        key={`ul-after-label-${i}`}
+                        className="mt-2 list-disc space-y-1.5 rounded-xl border border-black/10 bg-slate-50/70 px-5 py-4 pl-9 text-black/85 marker:text-black/60"
                     >
-                        {linkify(line)}
-                    </p>
+                        {items.map((item, idx) => (
+                            <li key={`li-after-label-${i}-${idx}`}>{linkify(item)}</li>
+                        ))}
+                    </ul>
                 );
-            })}
-        </div>
+                i = j;
+            } else {
+                i += 1;
+            }
+            continue;
+        }
+
+        if (isLikelyListItem(line)) {
+            const items: string[] = [line];
+            let j = i + 1;
+            while (j < lines.length && isLikelyListItem(lines[j])) {
+                items.push(lines[j]);
+                j += 1;
+            }
+            nodes.push(
+                <ul
+                    key={`ul-${i}`}
+                    className="list-disc space-y-1.5 rounded-xl border border-black/10 bg-slate-50/70 px-5 py-4 pl-9 text-black/85 marker:text-black/60"
+                >
+                    {items.map((item, idx) => (
+                        <li key={`li-${i}-${idx}`}>{linkify(item)}</li>
+                    ))}
+                </ul>
+            );
+            i = j;
+            continue;
+        }
+
+        nodes.push(
+            <p key={`p-${i}`} className="text-base leading-relaxed text-black/80">
+                {linkify(line)}
+            </p>
+        );
+        i += 1;
+    }
+
+    return (
+        <div className="mt-6 space-y-3">{nodes}</div>
     );
 }
 
@@ -270,23 +346,12 @@ export default function LegalPageClient() {
                         >
                             <h2
                                 id={`${section.id}-heading`}
-                                className="text-2xl font-extrabold text-black md:text-3xl"
+                                className="text-2xl font-extrabold leading-tight text-black md:text-3xl"
                             >
                                 {section.title}
                             </h2>
                             <SectionBody paragraphs={section.paragraphs} />
-                            {idx < doc.sections.length - 1 ? null : (
-                                <p className="mt-12 text-sm text-black/50">
-                                    End of legal documents. For questions, contact{" "}
-                                    <a
-                                        href="mailto:privacy@unitracko.com"
-                                        className="font-semibold text-black underline"
-                                    >
-                                        privacy@unitracko.com
-                                    </a>
-                                    .
-                                </p>
-                            )}
+                            {idx < doc.sections.length - 1 ? null : null}
                         </section>
                     ))}
                 </article>

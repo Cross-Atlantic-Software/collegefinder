@@ -48,7 +48,7 @@ export default function WelcomeJourneyPage() {
     return (
         <main className="min-h-[calc(100vh-12rem)] bg-gradient-to-b from-amber-50/80 via-white to-white py-16 md:py-24">
             <div className="appContainer flex justify-center">
-                <div className="landing-card-lift w-full max-w-lg rounded-2xl border border-black/10 bg-gradient-to-b from-amber-50/90 to-white p-8 shadow-sm md:p-10">
+                <div className="landing-card-lift w-full max-w-lg rounded-2xl bg-gradient-to-b from-amber-50/90 to-white p-8 md:p-10">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">
                         Unitracko
                     </p>
@@ -67,16 +67,10 @@ export default function WelcomeJourneyPage() {
                         </p>
                         <p>We&apos;ll email you the moment you&apos;re ready to go.</p>
                     </div>
-                    <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+                    <div className="mt-8 flex justify-center">
                         <Link
                             href={`/?${LANDING_FROM_HOME_PARAM}=${LANDING_FROM_HOME_VALUE}`}
-                            className="landing-cta inline-flex min-h-[48px] flex-1 items-center justify-center rounded-full bg-black px-8 py-3 text-center text-sm font-semibold text-white hover:bg-black/85 sm:flex-none"
-                        >
-                            Go to Home
-                        </Link>
-                        <Link
-                            href={`/?${LANDING_FROM_HOME_PARAM}=${LANDING_FROM_HOME_VALUE}`}
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-full border border-black/20 bg-white px-8 py-3 text-center text-sm font-semibold text-black/85 transition-colors hover:border-black/35 hover:bg-amber-50/50 sm:flex-none"
+                            className="landing-cta inline-flex min-h-[48px] w-full max-w-sm items-center justify-center rounded-full bg-black px-8 py-3 text-center text-sm font-semibold text-white hover:bg-black/85"
                         >
                             Sounds good
                         </Link>

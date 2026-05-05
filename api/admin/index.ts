@@ -257,6 +257,10 @@ export {
 } from './referral-codes';
 export type { ActiveReferralCode } from './referral-codes';
 
+// User queries (admin)
+export { getAllUserQueriesAdmin, resolveUserQueryAdmin } from './queries';
+export type { AdminUserQuery } from './queries';
+
 // Stream + interest → programs / exams (admin mapping)
 export {
   getAllRecommendedMappings,

@@ -7,6 +7,11 @@ type LandingCardFrameProps = {
     showSquiggles?: boolean;
     /** `sm` for dense grids so strokes don’t overlap neighbors. */
     squiggleVariant?: "lg" | "sm";
+    /**
+     * `dual` = sky (bottom-left) + amber (top-right), fixed 82% height — blog / how-it-works.
+     * `amber-only` = single amber panel stretched full content height so tall cards still show the accent.
+     */
+    frameTone?: "dual" | "amber-only";
 };
 
 function FrameSquiggles({ variant }: { variant: "lg" | "sm" }) {
@@ -55,13 +60,20 @@ export function LandingCardFrame({
     className = "",
     showSquiggles = false,
     squiggleVariant = "lg",
+    frameTone = "dual",
 }: LandingCardFrameProps) {
     return (
         <div className={`relative w-full ${className}`.trim()}>
             {showSquiggles ? <FrameSquiggles variant={squiggleVariant} /> : null}
 
-            <div className="absolute -left-3 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200 sm:-left-5" />
-            <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
+            {frameTone === "dual" ? (
+                <>
+                    <div className="absolute -left-3 bottom-0 z-0 h-[82%] w-[82%] rounded-[18px] bg-sky-200 sm:-left-5" />
+                    <div className="absolute right-0 top-0 z-0 h-[82%] w-[86%] rounded-[18px] bg-amber-200" />
+                </>
+            ) : (
+                <div className="absolute right-0 top-0 bottom-0 z-0 w-[86%] rounded-[18px] bg-amber-200 sm:w-[84%]" />
+            )}
 
             <div className="relative z-10">{children}</div>
         </div>

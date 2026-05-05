@@ -47,6 +47,7 @@ export const API_ENDPOINTS = {
     TESTIMONIALS: '/site/testimonials',
     BLOGS: '/site/blogs',
     CHECK_EMAIL: '/site/check-email',
+    QUERIES: '/site/queries',
   },
 
   // Public endpoints
@@ -108,6 +109,7 @@ export const API_ENDPOINTS = {
     EXPERTS: '/admin/experts',
     BRANCHES: '/admin/branches',
     REFERRAL_CODES: '/admin/referral-codes',
+    QUERIES: '/admin/queries',
     /** Stream + interest → programs / exams recommendations (admin Excel) */
     RECOMMENDED_MAPPINGS: '/admin/recommended-mappings',
   },

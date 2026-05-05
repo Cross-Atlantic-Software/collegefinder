@@ -24,7 +24,7 @@ const FEATURE_CARD_MEDIA: Pick<FeatureCard, "image" | "imageAlt" | "bgClass">[] 
         bgClass: "bg-[#cfe0f1]",
     },
     {
-        image: "/landing-page/features-2.png",
+        image: "/landing-page/features-2-v2.png",
         imageAlt: "All in tracking panel",
         bgClass: "bg-amber-100",
     },
