@@ -24,6 +24,13 @@
   let currentTabUrl = '';
   let sectionStates = {};   // section_id → { status, report }
   let nextSectionIdx = 0;   // for "Fill Next" button
+  let isAdmin = false;      // populated from background after login
+  let hasPublishedAdapter = false; // false → admin sees Builder by default
+  let profileSchemaPaths = []; // populated lazily for the Builder source dropdown
+  let builderState = {
+    section: null,        // last AI-generated section (sanitized) currently being edited
+    fillReports: {}       // field_id → status returned by the live filler
+  };
 
   // ─── DOM ───
 
@@ -38,7 +45,9 @@
     ready:       $('stateReady'),
     filling:     $('stateFilling'),
     complete:    $('stateComplete'),
-    error:       $('stateError')
+    error:       $('stateError'),
+    noAdapter:   $('stateNoAdapter'),
+    builder:     $('stateBuilder')
   };
 
   // ─── Init ───
@@ -67,6 +76,8 @@
 
     examId   = detection.exam_id;
     examName = detection.exam_name || examId;
+    isAdmin  = detection.is_admin === true;
+    hasPublishedAdapter = detection.has_published_adapter === true;
     showExamBadge(examName);
 
     // Is this a portal's own auth/login page?
@@ -78,8 +89,9 @@
       showView('login');
       return;
     }
+    if (auth.is_admin === true) isAdmin = true;
 
-    // Fetch profile + adapter in parallel
+    // Fetch profile (always) + adapter (might 404 for new exams)
     const [profileRes, adapterRes] = await Promise.all([
       msg('GET_PROFILE'),
       msg('GET_ADAPTER', { exam_id: examId })
@@ -90,20 +102,33 @@
       showError(profileRes.error || 'Failed to load your profile');
       return;
     }
-    if (!adapterRes.success) {
-      showError(adapterRes.error || 'No adapter found for this exam');
-      return;
-    }
 
     profile  = profileRes.data;
-    adapter  = adapterRes.data;
-    examName = adapter.exam_name || examName;
+    adapter  = adapterRes.success ? adapterRes.data : null;
+    if (adapter && adapter.exam_name) examName = adapter.exam_name;
 
     if (isPortalLoginPage) {
       showPortalLoginGuide();
-    } else {
-      showReadyState();
+      return;
     }
+
+    // No published adapter for this exam yet
+    if (!adapter || !Array.isArray(adapter.sections) || adapter.sections.length === 0) {
+      showNoAdapterState();
+      return;
+    }
+
+    showReadyState();
+  }
+
+  function showNoAdapterState() {
+    showView('noAdapter');
+    $('noAdapterHeading').textContent = `${examName} — Adapter not ready`;
+    $('noAdapterAdminCta').style.display    = isAdmin ? 'block' : 'none';
+    $('noAdapterStudentCta').style.display  = isAdmin ? 'none'  : 'block';
+    $('noAdapterSub').textContent = isAdmin
+      ? 'Use the Builder to scan this page and let AI map every field.'
+      : 'This exam is registered but our team is still preparing the field mappings. Please check back soon.';
   }
 
   // ─── Portal login page detection ───
@@ -267,6 +292,9 @@
     const filled = fields.filter(v => v && String(v).trim()).length;
     const pct = Math.round((filled / fields.length) * 100);
     $('profileCompletion').textContent = `${pct}% complete`;
+
+    // Admin: show the Builder toggle so they can refine the existing adapter
+    $('adminToggleCard').style.display = isAdmin ? 'flex' : 'none';
 
     // Sections
     renderSections();
@@ -471,6 +499,252 @@
     }
   }
 
+  // ─── Builder (admin-only) ───
+
+  async function openBuilder() {
+    showView('builder');
+    $('builderTitle').textContent = `Build Adapter — ${examName}`;
+    $('builderSub').textContent = 'Click "Scan This Page", then review and apply the AI mapping.';
+    $('builderResultArea').style.display = 'none';
+    $('builderResult').style.display = 'none';
+    builderState = { section: null, fillReports: {} };
+
+    if (profileSchemaPaths.length === 0) {
+      try {
+        // Lightweight fallback list — covers everything in profileSchema.js.
+        // Pulled at runtime would require an admin-token call from the sidebar;
+        // we instead bundle a stable subset here. The CMS editor uses the live
+        // /admin/exam-adapters/profile-schema endpoint for the same purpose.
+        profileSchemaPaths = DEFAULT_PROFILE_PATHS;
+      } catch (_) { /* noop */ }
+    }
+  }
+
+  async function runScanAndBuild() {
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Scanning…');
+    $('builderResult').style.display = 'none';
+
+    const scan = await msg('SCAN_PAGE');
+    if (!scan?.success) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Scan This Page');
+      showBuilderResult('error', scan?.error || 'Failed to scan page');
+      return;
+    }
+
+    if (!scan.page?.fields?.length) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Scan This Page');
+      showBuilderResult('error', 'No form fields detected on this page. Make sure the registration form is visible and try again.');
+      return;
+    }
+
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Building with AI…');
+
+    const build = await msg('BUILD_ADAPTER_SECTION', { exam_id: examId, page: scan.page });
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
+
+    if (!build?.success) {
+      showBuilderResult('error', build?.error || 'AI build failed');
+      return;
+    }
+
+    builderState.section = build.data.section;
+    builderState.fillReports = {};
+
+    renderBuilderSection(builderState.section);
+    showBuilderResult('success', `Mapped ${builderState.section.fields.length} fields. Click "Apply & Fill" to test or "Save Section" to persist edits.`);
+  }
+
+  function renderBuilderSection(section) {
+    $('builderResultArea').style.display = 'block';
+    $('builderSectionName').value = section.section_name || '';
+    const pi = section.page_indicator || { type: 'url_contains', value: '' };
+    $('builderPageIndicatorType').value = pi.type;
+    $('builderPageIndicatorValue').value = pi.value;
+    $('builderFieldCount').textContent = section.fields.length;
+
+    const list = $('builderFieldsList');
+    list.innerHTML = '';
+
+    section.fields.forEach((f, idx) => {
+      const row = document.createElement('div');
+      row.className = 'builder-field-row';
+      row.dataset.idx = idx;
+
+      const sourceOptions = profileSchemaPaths.map((p) => {
+        const sel = p.path === f.source ? ' selected' : '';
+        return `<option value="${escAttr(p.path)}"${sel}>${escHtml(p.path)}</option>`;
+      }).join('');
+
+      const typeOptions = ['text', 'select', 'date', 'radio', 'checkbox', 'file', 'select_or_text']
+        .map((t) => `<option value="${t}"${t === f.type ? ' selected' : ''}>${t}</option>`).join('');
+
+      const status = builderState.fillReports[f.field_id];
+      const statusBadge = status ? `<span class="row-status ${status}">${status}</span>` : '';
+
+      row.innerHTML = `
+        <div class="row-top">
+          <span class="row-label" title="${escAttr(f.label)}">${escHtml(f.label || f.field_id)}</span>
+          ${statusBadge}
+        </div>
+        <div class="row-top">
+          <select class="row-source"><option value="">— skip —</option>${sourceOptions}</select>
+          <select class="row-type">${typeOptions}</select>
+        </div>
+        <div class="row-meta">id: ${escHtml(f.field_id)}</div>
+      `;
+      row.querySelector('.row-source').addEventListener('change', (e) => {
+        section.fields[idx].source = e.target.value || null;
+      });
+      row.querySelector('.row-type').addEventListener('change', (e) => {
+        section.fields[idx].type = e.target.value;
+      });
+      list.appendChild(row);
+    });
+  }
+
+  async function applyAndFillFromBuilder() {
+    const section = currentSectionFromBuilderUI();
+    if (!section || section.fields.length === 0) {
+      showBuilderResult('error', 'No fields to fill');
+      return;
+    }
+    const fields = section.fields.filter((f) => f.source);
+    if (fields.length === 0) {
+      showBuilderResult('error', 'Pick at least one source path before filling');
+      return;
+    }
+
+    showBuilderResult('info', 'Filling on the live page…');
+    const result = await msg('FILL_SECTION', {
+      section: section.section_id,
+      fields,
+      userData: profile
+    });
+
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Fill failed');
+      return;
+    }
+    builderState.fillReports = {};
+    for (const r of result.report?.results || []) {
+      builderState.fillReports[r.field_id] =
+        r.status === 'filled' ? 'filled' :
+        r.status === 'check'  ? 'check'  :
+        r.status === 'not_found' ? 'failed' : 'failed';
+    }
+    renderBuilderSection(builderState.section);
+    const s = result.report?.summary || {};
+    showBuilderResult('success',
+      `Live fill: ${s.filled || 0} filled · ${s.check || 0} check · ${(s.failed || 0) + (s.not_found || 0)} failed`
+    );
+  }
+
+  async function saveBuilderSection() {
+    const section = currentSectionFromBuilderUI();
+    if (!section) return;
+
+    setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', true, 'Saving…');
+
+    const result = await msg('BUILD_ADAPTER_SECTION', {
+      exam_id: examId,
+      // Re-scan so the backend's selectors match what's actually on the page now.
+      // Using the AI build endpoint here ALSO lets us merge by section_id.
+      page: await reuseLastScannedPage(section)
+    });
+    setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', false, 'Save Section');
+
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Save failed');
+      return;
+    }
+    showBuilderResult('success', `Saved. Adapter version: ${result.data.version}`);
+  }
+
+  /**
+   * Until we add a dedicated PATCH-section call from the extension, "Save"
+   * re-runs the build (idempotent — same section_id replaces the existing entry).
+   * This keeps the extension's payload tiny.
+   */
+  async function reuseLastScannedPage(section) {
+    const scan = await msg('SCAN_PAGE');
+    if (scan?.success && scan.page) return scan.page;
+    // Fallback: synthesize a minimal page from the editor (no fields options though)
+    return {
+      url: currentTabUrl,
+      title: section.section_name,
+      headings: [section.section_name],
+      fields: section.fields.map((f) => ({
+        label: f.label,
+        id: (f.selectors?.by_id || [])[0] || '',
+        name: (f.selectors?.by_name || [])[0] || '',
+        placeholder: (f.selectors?.by_placeholder || [])[0] || '',
+        type: f.type,
+        idx: typeof f.selectors?.by_index === 'number' ? f.selectors.by_index : 0
+      }))
+    };
+  }
+
+  function currentSectionFromBuilderUI() {
+    if (!builderState.section) return null;
+    const section = builderState.section;
+    section.section_name = $('builderSectionName').value.trim() || section.section_name;
+    section.page_indicator = {
+      type: $('builderPageIndicatorType').value,
+      value: $('builderPageIndicatorValue').value.trim()
+    };
+    return section;
+  }
+
+  async function publishAdapterFromBuilder() {
+    if (!confirm('Publish this adapter so all students can use it?')) return;
+    showBuilderResult('info', 'Publishing…');
+    const result = await msg('PUBLISH_ADAPTER', { exam_id: examId, status: 'published' });
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Publish failed');
+      return;
+    }
+    showBuilderResult('success', 'Published! Students can now use this adapter.');
+    hasPublishedAdapter = true;
+  }
+
+  function showBuilderResult(kind, msg) {
+    const el = $('builderResult');
+    el.className = `alert alert-${kind === 'error' ? 'error' : kind === 'success' ? 'success' : 'info'}`;
+    el.textContent = msg;
+    el.style.display = 'flex';
+  }
+
+  function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+
+  // Inline copy of the most common profile paths (mirrors backend/src/services/adapterBuilderService/profileSchema.js).
+  const DEFAULT_PROFILE_PATHS = [
+    'student.full_name', 'student.first_name', 'student.last_name', 'student.name',
+    'student.father_name', 'student.mother_name', 'student.guardian_name',
+    'student.dob', 'student.gender', 'student.category', 'student.sub_category',
+    'student.disability', 'student.nationality', 'student.religion', 'student.marital_status',
+    'student.mother_tongue', 'student.annual_family_income',
+    'student.occupation_of_father', 'student.occupation_of_mother',
+    'student.aadhar_no', 'student.id_document_type', 'student.pan_no', 'student.apaar_id',
+    'student.mobile', 'student.alternate_mobile', 'student.email', 'student.landline',
+    'address.line1', 'address.line2', 'address.city', 'address.district',
+    'address.state', 'address.pincode', 'address.country',
+    'education.class_10.board', 'education.class_10.school', 'education.class_10.passing_year',
+    'education.class_10.roll_no', 'education.class_10.total_marks', 'education.class_10.obtained_marks',
+    'education.class_10.percentage', 'education.class_10.state', 'education.class_10.city',
+    'education.class_10.school_pincode', 'education.class_10.marks_type', 'education.class_10.result_status',
+    'education.class_12.board', 'education.class_12.school', 'education.class_12.passing_year',
+    'education.class_12.roll_no', 'education.class_12.total_marks', 'education.class_12.obtained_marks',
+    'education.class_12.percentage', 'education.class_12.state', 'education.class_12.city',
+    'education.class_12.school_pincode', 'education.class_12.stream', 'education.class_12.is_appearing',
+    'education.class_12.marks_type', 'education.class_12.cgpa', 'education.class_12.result_status',
+    'education.class_12.pass_status', 'education.class_12.education_type',
+    'documents.photo', 'documents.signature', 'documents.id_proof', 'documents.aadhar_card',
+    'documents.matric_marksheet', 'documents.postmatric_marksheet',
+    'documents.sc_certificate', 'documents.st_certificate', 'documents.obc_certificate',
+    'documents.ews_certificate', 'documents.pwbd_certificate', 'documents.category_certificate',
+    'other.medium', 'other.language'
+  ].map((p) => ({ path: p }));
+
   // ─── OTP Login Flow ───
 
   let otpEmail = '';
@@ -654,6 +928,18 @@
 
     // Retry
     $('retryBtn').addEventListener('click', () => detectAndLoad());
+
+    // Builder admin entry points
+    $('openBuilderBtn').addEventListener('click', () => openBuilder());
+    $('startBuilderBtn').addEventListener('click', () => openBuilder());
+    $('exitBuilderBtn').addEventListener('click', () => {
+      if (adapter && adapter.sections?.length) showReadyState();
+      else showNoAdapterState();
+    });
+    $('scanPageBtn').addEventListener('click', () => runScanAndBuild());
+    $('builderApplyFillBtn').addEventListener('click', () => applyAndFillFromBuilder());
+    $('builderSaveBtn').addEventListener('click', () => saveBuilderSection());
+    $('publishAdapterBtn').addEventListener('click', () => publishAdapterFromBuilder());
 
     // Listen for tab URL changes (user navigates within portal)
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

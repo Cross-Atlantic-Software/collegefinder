@@ -1,12 +1,15 @@
 /**
  * Background Service Worker
- * 
+ *
  * Responsibilities:
- * - Detect when student navigates to a known exam portal
- * - Fetch adapter config + student profile from backend API
- * - Route messages between sidebar and content script
- * - Open side panel when on an exam portal
- * - Handle auth token management
+ * - Detect when student navigates to a registered exam portal (patterns
+ *   are fetched from the backend, NOT hard-coded — admins register new
+ *   exams via the CMS).
+ * - Fetch adapter config + student profile from backend API.
+ * - Route messages between sidebar and content script.
+ * - Open side panel on registered portals.
+ * - Handle auth token management.
+ * - Drive the admin-only "Build Adapter" flow that calls Gemini server-side.
  */
 
 const API_BASE = 'http://localhost:5001/api';
@@ -17,26 +20,52 @@ let cachedProfile = null;
 let cachedProfileTimestamp = 0;
 const PROFILE_CACHE_TTL = 10 * 60 * 1000; // 10 min
 
-let cachedAdapters = {};  // keyed by exam_id
-let currentExam = null;   // { exam_id, exam_name, adapter }
+let cachedAdapters = {};   // keyed by exam_id
+let registeredExams = [];  // [{exam_id, exam_name, portal_url_pattern, has_published_adapter, status, version}]
+let registeredExamsFetchedAt = 0;
+const REGISTERED_TTL = 10 * 60 * 1000; // 10 min
 
-// ─── URL Detection ───
+let cachedAuthMeta = null; // { is_admin: bool, fetchedAt: ts }
+const AUTH_META_TTL = 5 * 60 * 1000;
 
-const PORTAL_PATTERNS = [
-  { pattern: 'jeemain.nta.nic.in',     exam_id: 'jee_main' },
-  { pattern: 'neet.nta.nic.in',        exam_id: 'neet_ug' },
-  { pattern: 'cuet.samarth.ac.in',     exam_id: 'cuet_ug' },
-  { pattern: 'mhtcet2025.mahacet.org', exam_id: 'mht_cet' },
-  { pattern: 'bitsadmission.com',      exam_id: 'bitsat' },
-  { pattern: 'viteee.vit.ac.in',       exam_id: 'viteee' },
-  { pattern: 'nata-app.org',           exam_id: 'nata' },
-  { pattern: 'stureg.nata-app.org',    exam_id: 'nata' },
-];
+// ─── URL Detection (now data-driven) ─────────────────────────────
+
+async function ensureRegisteredExamsFresh(force = false) {
+  const now = Date.now();
+  if (!force && registeredExams.length > 0 && (now - registeredExamsFetchedAt) < REGISTERED_TTL) {
+    return registeredExams;
+  }
+  const token = await getToken();
+  if (!token) return registeredExams; // can't fetch without login; return whatever we cached
+
+  try {
+    const res = await fetch(`${API_BASE}/extension/adapters/registered`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return registeredExams;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) {
+      registeredExams = data.data;
+      registeredExamsFetchedAt = now;
+    }
+  } catch (err) {
+    console.warn('[ExamFill] Failed to refresh registered exams:', err.message);
+  }
+  return registeredExams;
+}
 
 function detectExam(url) {
   if (!url) return null;
-  for (const p of PORTAL_PATTERNS) {
-    if (url.includes(p.pattern)) return p;
+  for (const p of registeredExams) {
+    if (!p || !p.portal_url_pattern) continue;
+    if (url.includes(p.portal_url_pattern)) {
+      return {
+        exam_id: p.exam_id,
+        exam_name: p.exam_name,
+        has_published_adapter: !!p.has_published_adapter,
+        status: p.status
+      };
+    }
   }
   return null;
 }
@@ -45,10 +74,9 @@ function detectExam(url) {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete' || !tab.url) return;
-
+  await ensureRegisteredExamsFresh();
   const match = detectExam(tab.url);
   if (match) {
-    currentExam = { exam_id: match.exam_id, tabId };
     try {
       await chrome.sidePanel.setOptions({
         tabId,
@@ -98,14 +126,26 @@ async function handleMessage(message, sender) {
     case 'GET_ADAPTER':
       return getAdapter(message.payload.exam_id);
 
+    case 'GET_REGISTERED_EXAMS':
+      return getRegisteredExamsForSidebar(message.payload);
+
     case 'FILL_SECTION':
       return fillSection(message.payload);
+
+    case 'SCAN_PAGE':
+      return scanPage(message.payload);
+
+    case 'BUILD_ADAPTER_SECTION':
+      return buildAdapterSection(message.payload);
+
+    case 'PUBLISH_ADAPTER':
+      return publishAdapter(message.payload);
 
     case 'SEND_FILL_REPORT':
       return sendFillReport(message.payload);
 
     case 'GET_SUPPORTED_EXAMS':
-      return { success: true, exams: PORTAL_PATTERNS };
+      return { success: true, exams: registeredExams };
 
     case 'FETCH_FILE_AS_BASE64':
       return fetchFileAsBase64(message.payload);
@@ -119,7 +159,7 @@ async function handleMessage(message, sender) {
 
 async function getAuthStatus() {
   const { examfill_token } = await chrome.storage.local.get('examfill_token');
-  return { success: true, authenticated: !!examfill_token };
+  return { success: true, authenticated: !!examfill_token, is_admin: cachedAuthMeta?.is_admin === true };
 }
 
 async function sendOtp({ email }) {
@@ -146,7 +186,6 @@ async function verifyOtp({ email, code }) {
       body: JSON.stringify({ email, code })
     });
     const data = await res.json();
-    // Backend returns token nested under data.data.token
     const token = data.token || data.data?.token;
     if (!data.success || !token) {
       return { success: false, error: data.message || 'Invalid OTP' };
@@ -154,28 +193,48 @@ async function verifyOtp({ email, code }) {
     await chrome.storage.local.set({ examfill_token: token });
     cachedProfile = null;
     cachedProfileTimestamp = 0;
-    return { success: true };
+    cachedAuthMeta = {
+      is_admin: !!(data.data?.user?.is_admin || data.data?.is_admin),
+      fetchedAt: Date.now()
+    };
+    // Refresh registered exam list now that we have a token
+    await ensureRegisteredExamsFresh(true);
+    return { success: true, is_admin: cachedAuthMeta.is_admin };
   } catch (err) {
     return { success: false, error: `Network error: ${err.message}` };
   }
 }
 
-// Keep LOGIN as alias calling sendOtp for backward compat
-async function login(payload) {
-  return sendOtp(payload);
-}
+async function login(payload) { return sendOtp(payload); }
 
 async function logout() {
   await chrome.storage.local.remove('examfill_token');
   cachedProfile = null;
   cachedProfileTimestamp = 0;
-  currentExam = null;
+  cachedAuthMeta = null;
+  cachedAdapters = {};
   return { success: true };
 }
 
 async function getToken() {
   const { examfill_token } = await chrome.storage.local.get('examfill_token');
   return examfill_token || null;
+}
+
+async function refreshAuthMeta() {
+  const token = await getToken();
+  if (!token) { cachedAuthMeta = null; return null; }
+  if (cachedAuthMeta && (Date.now() - cachedAuthMeta.fetchedAt) < AUTH_META_TTL) return cachedAuthMeta;
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return cachedAuthMeta;
+    const data = await res.json();
+    const isAdmin = !!(data.data?.user?.is_admin || data.data?.is_admin);
+    cachedAuthMeta = { is_admin: isAdmin, fetchedAt: Date.now() };
+  } catch (_) { /* ignore */ }
+  return cachedAuthMeta;
 }
 
 // ─── Profile ───
@@ -210,27 +269,29 @@ async function getProfile() {
 
 // ─── Exam Detection ───
 
-const EXAM_DISPLAY_NAMES = {
-  jee_main: 'JEE Main',
-  neet_ug:  'NEET UG',
-  cuet_ug:  'CUET',
-  mht_cet:  'MHT-CET',
-  bitsat:   'BITSAT',
-  viteee:   'VITEEE',
-  nata:     'NATA 2026'
-};
-
-function detectCurrentExam(payload) {
+async function detectCurrentExam(payload) {
   const url = payload?.url || '';
+  await ensureRegisteredExamsFresh();
   const match = detectExam(url);
-  if (!match) return { success: false, detected: false };
+  if (!match) return { success: true, detected: false };
+
+  // Refresh admin flag in parallel — needed for the Builder UI gate
+  refreshAuthMeta();
 
   return {
     success: true,
     detected: true,
     exam_id: match.exam_id,
-    exam_name: EXAM_DISPLAY_NAMES[match.exam_id] || match.exam_id
+    exam_name: match.exam_name,
+    has_published_adapter: match.has_published_adapter,
+    status: match.status,
+    is_admin: cachedAuthMeta?.is_admin === true
   };
+}
+
+async function getRegisteredExamsForSidebar() {
+  await ensureRegisteredExamsFresh();
+  return { success: true, data: registeredExams };
 }
 
 // ─── Adapter ───
@@ -267,28 +328,91 @@ async function getAdapter(examId) {
 // ─── Fill Orchestration ───
 
 async function fillSection(payload) {
-  const { section, fields, userData, tabId } = payload;
+  const { tabId } = payload;
 
-  // Find the tab to send to
   let targetTabId = tabId;
   if (!targetTabId) {
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     targetTabId = activeTab?.id;
   }
-
-  if (!targetTabId) {
-    return { success: false, error: 'No active tab found' };
-  }
+  if (!targetTabId) return { success: false, error: 'No active tab found' };
 
   try {
     const response = await chrome.tabs.sendMessage(targetTabId, {
       type: 'FILL_SECTION',
-      payload: { section, fields, userData }
+      payload
     });
-
     return response;
   } catch (err) {
     return { success: false, error: `Content script not responding: ${err.message}` };
+  }
+}
+
+// ─── Scan page (for Builder) ───
+
+async function scanPage() {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!activeTab?.id) return { success: false, error: 'No active tab' };
+
+  try {
+    const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'SCAN_PAGE' });
+    return response;
+  } catch (err) {
+    return { success: false, error: `Page scanner not responding: ${err.message}. Reload the portal page and try again.` };
+  }
+}
+
+// ─── Build adapter section (admin-only, calls Gemini via backend) ───
+
+async function buildAdapterSection({ exam_id, page }) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/extension/adapters/build`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ exam_id, page })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.message || `Build failed (${res.status})` };
+    }
+    // Bust the adapter cache for this exam so subsequent fills use the new section
+    delete cachedAdapters[exam_id];
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// ─── Publish adapter (admin-only) ───
+
+async function publishAdapter({ exam_id, status }) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/exam-adapters/${exam_id}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: status || 'published' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.message || `Publish failed (${res.status})` };
+    }
+    delete cachedAdapters[exam_id];
+    await ensureRegisteredExamsFresh(true);
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
   }
 }
 
@@ -327,7 +451,6 @@ async function fetchFileAsBase64({ url }) {
     const contentType = res.headers.get('content-type') || 'application/octet-stream';
     const buffer = await res.arrayBuffer();
 
-    // Convert ArrayBuffer → base64
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) {

@@ -307,6 +307,66 @@ class GeminiService {
     };
   }
 
+  /**
+   * Generic JSON-mode generation. No question parsing, no diagrams — just
+   * "send a prompt, get a parsed JSON object back". Used by features that
+   * need structured output (e.g. AdapterBuilderService).
+   *
+   * The model is configured with responseMimeType=application/json which
+   * forces Gemini to emit valid JSON (no surrounding markdown).
+   *
+   * @param {string} prompt          Full prompt text.
+   * @param {object} [opts]
+   * @param {number} [opts.temperature=0.2]
+   * @param {number} [opts.maxOutputTokens=8192]
+   * @returns {Promise<any>} Parsed JSON
+   */
+  async generateJSON(prompt, opts = {}) {
+    await this.ensureInitialized();
+    if (this.genAI === null || this._modelName == null) {
+      throw new Error(this._initError || 'Gemini service is not available.');
+    }
+
+    const temperature = typeof opts.temperature === 'number' ? opts.temperature : 0.2;
+    const maxOutputTokens = typeof opts.maxOutputTokens === 'number' ? opts.maxOutputTokens : 8192;
+
+    const jsonModel = this.genAI.getGenerativeModel({
+      model: this._modelName,
+      generationConfig: {
+        temperature,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens,
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const doRequest = async () => {
+      const result = await jsonModel.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      try {
+        return JSON.parse(text);
+      } catch (parseErr) {
+        // Strip ```json fences if Gemini still added them despite responseMimeType.
+        const stripped = text
+          .trim()
+          .replace(/^```(?:json)?\s*/i, '')
+          .replace(/```\s*$/i, '')
+          .trim();
+        try {
+          return JSON.parse(stripped);
+        } catch (_) {
+          throw new Error(`Failed to parse Gemini JSON response: ${parseErr.message}. Raw: ${text.slice(0, 300)}`);
+        }
+      }
+    };
+
+    return apiLimit(async () => {
+      return withRetry(doRequest, { operationName: 'generateJSON' });
+    });
+  }
+
   async testService() {
     if (this.genAI === null) {
       return { success: false, error: 'Service not available' };

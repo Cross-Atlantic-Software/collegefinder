@@ -18,6 +18,7 @@
   const Resolver   = window.ExamFillResolver;
   const Formatter  = window.ExamFillFormatter;
   const Waiter     = window.ExamFillWaiter;
+  const PageScanner = window.ExamFillPageScanner;
 
   let isRunning = false;
 
@@ -37,6 +38,20 @@
 
     if (message.type === 'PING') {
       sendResponse({ alive: true });
+      return false;
+    }
+
+    if (message.type === 'SCAN_PAGE') {
+      try {
+        if (!PageScanner) {
+          sendResponse({ success: false, error: 'PageScanner not loaded' });
+          return false;
+        }
+        const page = PageScanner.scan();
+        sendResponse({ success: true, page });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
       return false;
     }
   });

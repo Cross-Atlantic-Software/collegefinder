@@ -7,6 +7,7 @@ const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const { downloadAndUploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const Referral = require('../../models/referral/Referral');
+const { computeIsAdmin } = require('../../middleware/extensionAdmin');
 
 class AuthController {
   /**
@@ -207,6 +208,10 @@ class AuthController {
       // Ensure we send a proper boolean (not string or number)
       const finalOnboardingCompleted = onboardingCompleted === true;
 
+      // Check whether this email is also an active admin — used by the
+      // ExamFill Chrome extension to unlock the Builder UI.
+      const isAdmin = await computeIsAdmin(updatedUser.email);
+
       const responseData = {
         success: true,
         message: 'OTP verified successfully',
@@ -216,8 +221,10 @@ class AuthController {
             email: updatedUser.email,
             name: updatedUser.name || null,
             onboarding_completed: finalOnboardingCompleted, // Explicitly send as boolean
-            createdAt: updatedUser.created_at
+            createdAt: updatedUser.created_at,
+            is_admin: isAdmin
           },
+          is_admin: isAdmin,
           token
         }
       };
@@ -311,6 +318,10 @@ class AuthController {
       console.log('🔍 getMe - onboarding_completed (converted):', onboardingCompleted);
       console.log('🔍 getMe - actualOnboardingStatus (verified):', actualOnboardingStatus);
 
+      // Same flag the OTP-verify response carries — lets the ExamFill
+      // extension show its admin-only Builder UI without a separate request.
+      const isAdmin = await computeIsAdmin(updatedUser.email);
+
       res.json({
         success: true,
         data: {
@@ -321,8 +332,10 @@ class AuthController {
             profile_photo: updatedUser.profile_photo,
             onboarding_completed: onboardingCompleted,
             createdAt: updatedUser.created_at,
-            lastLogin: updatedUser.last_login
-          }
+            lastLogin: updatedUser.last_login,
+            is_admin: isAdmin
+          },
+          is_admin: isAdmin
         }
       });
     } catch (error) {

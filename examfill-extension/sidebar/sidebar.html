@@ -149,9 +149,90 @@
         <div class="profile-completion" id="profileCompletion" title="Profile completeness"></div>
       </div>
 
+      <!-- Admin-only switch to Builder mode -->
+      <div id="adminToggleCard" class="admin-toggle-card" style="display:none;">
+        <div class="admin-toggle-text">
+          <strong>Admin tools</strong>
+          <span>Build / improve this exam's adapter with AI</span>
+        </div>
+        <button class="btn-secondary" id="openBuilderBtn">Open Builder →</button>
+      </div>
+
       <!-- Sections -->
       <div class="section-label">Sections</div>
       <div id="sectionsList" class="sections-list"></div>
+    </section>
+
+    <!-- ─── State: No adapter yet (admin sees AI builder, students see message) ─── -->
+    <section id="stateNoAdapter" class="view" style="display:none;">
+      <div class="view-hero compact">
+        <div class="hero-icon small">🛠️</div>
+        <h2 id="noAdapterHeading">No adapter yet</h2>
+        <p id="noAdapterSub">This exam is registered but has no published adapter.</p>
+      </div>
+      <div id="noAdapterAdminCta" style="display:none;">
+        <button class="btn-primary full" id="startBuilderBtn">Build adapter with AI</button>
+      </div>
+      <div id="noAdapterStudentCta" style="display:none;">
+        <div class="alert alert-info">
+          <span>Our team is still building this. Please try again later.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── State: Builder (admin only) ─── -->
+    <section id="stateBuilder" class="view" style="display:none;">
+      <div class="builder-header">
+        <div>
+          <div class="builder-title" id="builderTitle">Build Adapter</div>
+          <div class="builder-sub" id="builderSub">Scan the current page and review AI mappings.</div>
+        </div>
+        <button class="btn-ghost" id="exitBuilderBtn">✕</button>
+      </div>
+
+      <div class="builder-actions">
+        <button class="btn-primary full" id="scanPageBtn">
+          <span id="scanPageBtnText">Scan This Page</span>
+          <div id="scanPageSpinner" class="btn-spinner" style="display:none;"></div>
+        </button>
+      </div>
+
+      <div id="builderResultArea" style="display:none;">
+        <div class="builder-section-meta">
+          <div>
+            <div class="meta-label">Section name</div>
+            <input type="text" id="builderSectionName" class="meta-input" placeholder="e.g. Basic Information">
+          </div>
+          <div>
+            <div class="meta-label">Page indicator</div>
+            <div class="page-indicator-row">
+              <select id="builderPageIndicatorType">
+                <option value="url_contains">URL contains</option>
+                <option value="page_text_contains">Page heading contains</option>
+                <option value="step_number">Step number</option>
+              </select>
+              <input type="text" id="builderPageIndicatorValue" placeholder="value">
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">AI Field Mapping (<span id="builderFieldCount">0</span>)</div>
+        <div id="builderFieldsList" class="builder-fields-list"></div>
+
+        <div class="builder-footer-actions">
+          <button class="btn-secondary" id="builderApplyFillBtn">Apply &amp; Fill Now</button>
+          <button class="btn-primary" id="builderSaveBtn">
+            <span id="builderSaveBtnText">Save Section</span>
+            <div id="builderSaveSpinner" class="btn-spinner" style="display:none;"></div>
+          </button>
+        </div>
+
+        <div class="builder-publish-row">
+          <button class="btn-ghost full" id="publishAdapterBtn">Publish Adapter (mark as live)</button>
+        </div>
+
+        <div id="builderResult" class="alert" style="display:none;"></div>
+      </div>
     </section>
 
     <!-- ─── State: Filling in progress ─── -->

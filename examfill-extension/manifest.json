@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ExamFill — Exam Form Assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fill Indian competitive exam registration forms in under 5 minutes with your pre-loaded profile data.",
 
   "permissions": [
@@ -13,17 +13,7 @@
   ],
 
   "host_permissions": [
-    "https://jeemain.nta.nic.in/*",
-    "https://neet.nta.nic.in/*",
-    "https://cuet.samarth.ac.in/*",
-    "https://mhtcet2025.mahacet.org/*",
-    "https://www.bitsadmission.com/*",
-    "https://viteee.vit.ac.in/*",
-    "https://stureg.nata-app.org/*",
-    "https://nata-app.org/*",
-    "https://*.s3.amazonaws.com/*",
-    "https://*.s3.ap-south-1.amazonaws.com/*",
-    "https://college-finder.s3.ap-south-1.amazonaws.com/*"
+    "<all_urls>"
   ],
 
   "background": {
@@ -36,16 +26,7 @@
 
   "content_scripts": [
     {
-      "matches": [
-        "https://jeemain.nta.nic.in/*",
-        "https://neet.nta.nic.in/*",
-        "https://cuet.samarth.ac.in/*",
-        "https://mhtcet2025.mahacet.org/*",
-        "https://www.bitsadmission.com/*",
-        "https://viteee.vit.ac.in/*",
-        "https://stureg.nata-app.org/*",
-        "https://nata-app.org/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": [
         "utils/resolver.js",
         "utils/formatter.js",
@@ -54,6 +35,7 @@
         "content/filler.js",
         "content/verifier.js",
         "content/highlighter.js",
+        "content/pageScanner.js",
         "content/content_script.js"
       ],
       "run_at": "document_idle"

@@ -165,7 +165,9 @@ const runMigrations = async () => {
     'add_referral_uses_table.sql',
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
-    'add_landing_page_content.sql'
+    'add_landing_page_content.sql',
+    'add_exam_adapters_and_fill_reports.sql',
+    'add_exam_adapter_drafts.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
