@@ -11,11 +11,13 @@ function siteMailtoHref(): string {
   return "mailto:privacy@unitracko.com";
 }
 
+const DEFAULT_INSTAGRAM = "https://www.instagram.com/unitracko/";
+
 export const siteSocialLinks = {
   instagram:
     process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM_URL?.trim() ||
     process.env.NEXT_PUBLIC_UNITRACKO_INSTAGRAM_URL?.trim() ||
-    "#",
+    DEFAULT_INSTAGRAM,
   linkedin:
     process.env.NEXT_PUBLIC_SOCIAL_LINKEDIN_URL?.trim() ||
     process.env.NEXT_PUBLIC_UNITRACKO_LINKEDIN_URL?.trim() ||

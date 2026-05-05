@@ -252,10 +252,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
             if (res.data.exists && res.data.onboardingCompleted) {
                 setEmailBlocked(true);
                 setEmailCheckedOk(false);
-                setFormMessage({
-                    type: "error",
-                    text: "An account with this email already exists and onboarding is complete. Please log in.",
-                });
+                setFormMessage(null);
                 return;
             }
             setEmailBlocked(false);
@@ -762,7 +759,9 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                 className="pointer-events-none absolute bottom-3 left-6 right-6 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent"
                             />
                             <p className="text-2xl font-bold text-black">{contact.formTitle}</p>
-                            <p className="mt-1 text-sm text-black/50">{contact.formSubtitle}</p>
+                            {!emailBlocked ? (
+                                <p className="mt-1 text-sm text-black/50">{contact.formSubtitle}</p>
+                            ) : null}
 
                             <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
                                 <div>
@@ -795,9 +794,9 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                     </div>
                                     {emailBlocked && (
                                         <p className="mt-2 text-xs font-medium text-amber-800">
-                                            This email is already registered with a completed profile.{" "}
+                                            An Account with this email already exists.{" "}
                                             <Link href="/login" className="font-semibold underline">
-                                                Log in
+                                                Login
                                             </Link>{" "}
                                             to continue.
                                         </p>
