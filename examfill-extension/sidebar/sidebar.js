@@ -504,7 +504,7 @@
   async function openBuilder() {
     showView('builder');
     $('builderTitle').textContent = `Build Adapter — ${examName}`;
-    $('builderSub').textContent = 'Click "Scan This Page", then review and apply the AI mapping.';
+    $('builderSub').textContent = 'Navigate to a page with a visible registration form, then click "Scan This Page".';
     $('builderResultArea').style.display = 'none';
     $('builderResult').style.display = 'none';
     builderState = { section: null, fillReports: {} };
@@ -617,6 +617,7 @@
     showBuilderResult('info', 'Filling on the live page…');
     const result = await msg('FILL_SECTION', {
       section: section.section_id,
+      page_indicator: section.page_indicator || null,
       fields,
       userData: profile
     });
