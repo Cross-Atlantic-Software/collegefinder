@@ -4,6 +4,8 @@ const LandingPageController = require('../../controllers/site/landingPageControl
 const BlogSiteController = require('../../controllers/site/blogSiteController');
 const SiteRegistrationController = require('../../controllers/site/siteRegistrationController');
 const TestimonialSiteController = require('../../controllers/site/testimonialSiteController');
+const QuerySiteController = require('../../controllers/site/querySiteController');
+const { authenticate } = require('../../middleware/auth');
 
 /**
  * Public site content (no auth)
@@ -13,5 +15,6 @@ router.get('/testimonials', TestimonialSiteController.listPublic);
 router.get('/blogs', BlogSiteController.listPublic);
 router.get('/blogs/:slug', BlogSiteController.getBySlugPublic);
 router.post('/check-email', SiteRegistrationController.checkEmail);
+router.post('/queries', authenticate, QuerySiteController.create);
 
 module.exports = router;

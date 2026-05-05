@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { Select } from "@/components/shared";
 import { getAllCities } from "@/lib/data/indianStatesDistricts";
@@ -16,7 +16,21 @@ export default function StepTwoC() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, refreshUser, isLoading } = useAuth();
+  const fromReferralQuery = searchParams.get("from") === "referral";
+  const [allowFromReferralBack] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const allow = sessionStorage.getItem("cf_onboarding_back_from_referral") === "1";
+      if (allow) {
+        sessionStorage.removeItem("cf_onboarding_back_from_referral");
+      }
+      return allow;
+    } catch {
+      return false;
+    }
+  });
 
   const cities = useMemo(() => getAllCities(), []);
 
@@ -40,17 +54,24 @@ export default function StepTwoC() {
 
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToHome && !saving) {
+      if (allowFromReferralBack || fromReferralQuery) return;
       setIsRedirecting(true);
       router.prefetch('/');
       const timer = setTimeout(() => { router.replace('/'); }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router, isNavigatingToHome, saving]);
+  }, [user, isLoading, router, isNavigatingToHome, saving, allowFromReferralBack, fromReferralQuery]);
 
   if (isLoading || (isRedirecting && !saving && !isNavigatingToHome)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
-  if (user?.onboarding_completed && !saving && !isNavigatingToHome) {
+  if (
+    user?.onboarding_completed &&
+    !saving &&
+    !isNavigatingToHome &&
+    !allowFromReferralBack &&
+    !fromReferralQuery
+  ) {
     return <OnboardingLoader message="Taking you home..." />;
   }
 

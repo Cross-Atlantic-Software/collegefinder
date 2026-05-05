@@ -529,6 +529,87 @@ const sendPasswordResetEmail = async (email, resetLink) => {
   }
 };
 
+/**
+ * Send resolution email to a user after admin resolves their query.
+ * @param {Object} payload
+ * @param {string} payload.toEmail
+ * @param {string} payload.name
+ * @param {string} payload.queryType
+ * @param {string} payload.queryDescription
+ * @param {string} payload.answer
+ * @returns {Promise<boolean>}
+ */
+const sendQueryResolutionEmail = async ({
+  toEmail,
+  name,
+  queryType,
+  queryDescription,
+  answer,
+}) => {
+  const transporter = createTransporter();
+  const safeName = (name || '').trim() || 'there';
+  const subject = `Your UniTracko query has been resolved`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#f5f5f5;"><tr><td align="center" style="padding:24px 12px;">
+    <table role="presentation" style="max-width:600px;width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;">
+      <tr><td style="background:linear-gradient(135deg,#341050 0%,#8B1E8B 100%);padding:28px;text-align:center;">
+        <h1 style="margin:0;color:#fff;font-size:22px;">UniTracko</h1>
+        <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:13px;">Query Resolution</p>
+      </td></tr>
+      <tr><td style="padding:28px;">
+        <p style="margin:0 0 14px;color:#1f2937;font-size:15px;">Hi ${safeName},</p>
+        <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
+          Your query has been reviewed by our team.
+        </p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin:0 0 16px;">
+          <p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.3px;">Query Type</p>
+          <p style="margin:0 0 12px;color:#111827;font-size:14px;">${queryType || 'General'}</p>
+          <p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.3px;">Your Query</p>
+          <p style="margin:0;color:#111827;font-size:14px;line-height:1.5;">${queryDescription || '-'}</p>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;">
+          <p style="margin:0 0 8px;color:#1d4ed8;font-size:12px;text-transform:uppercase;letter-spacing:.3px;">Our Answer</p>
+          <p style="margin:0;color:#1f2937;font-size:14px;line-height:1.6;">${answer}</p>
+        </div>
+      </td></tr>
+      <tr><td style="padding:18px 28px;background:#f9f9f9;border-top:1px solid #eee;">
+        <p style="margin:0;color:#6b7280;font-size:12px;">© ${new Date().getFullYear()} UniTracko</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  const text = `Hi ${safeName},
+
+Your query has been reviewed by our team.
+
+Query type: ${queryType || 'General'}
+Your query: ${queryDescription || '-'}
+
+Our answer:
+${answer}
+
+Regards,
+UniTracko Team`;
+
+  if (!transporter) {
+    console.log('📧 [DEV] Query resolution email would be sent to:', toEmail);
+    return true;
+  }
+
+  await transporter.sendMail({
+    from: `"UniTracko" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject,
+    html,
+    text,
+  });
+  return true;
+};
+
 module.exports = {
   sendOTPEmail,
   sendPasswordResetEmail,
@@ -536,5 +617,6 @@ module.exports = {
   sendStrengthPaymentNotification,
   sendReferralInviteEmail,
   sendInstituteReferralInviteEmail,
+  sendQueryResolutionEmail,
 };
 

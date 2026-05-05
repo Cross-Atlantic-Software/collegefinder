@@ -12,19 +12,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared";
-import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
+import {
+    handleLandingHashClick,
+    LANDING_PRIMARY_NAV,
+    landingPageSectionHref,
+} from "@/lib/landingNav";
 
 function isValidEmail(value: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 const LEGAL_BAR_LINKS: { href: string; label: string }[] = [
-    { href: "/legal", label: "Legal" },
     { href: "/legal#privacy-policy", label: "Privacy Policy" },
     { href: "/legal#terms-of-use", label: "Terms of Use" },
-    { href: "/legal#cookie-policy", label: "Cookie Policy" },
-    { href: "/legal#disclaimer", label: "Disclaimer" },
-    { href: "/legal#our-data-promise", label: "Our Data Promise" },
+    { href: "/legal#cookie-policy", label: "Cookies" },
     { href: "/legal#refund-policy", label: "Refund Policy" },
 ];
 
@@ -35,7 +36,7 @@ export default function Footer() {
     const { showError } = useToast();
     const [leadEmail, setLeadEmail] = useState("");
     const isHomePage = pathname === "/";
-    const showLeadCapture = !user;
+    const isLoggedIn = Boolean(user);
 
     function handleLeadSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -46,6 +47,14 @@ export default function Footer() {
         }
         if (!isValidEmail(trimmed)) {
             showError("Please enter a valid email address.");
+            return;
+        }
+        if (isLoggedIn) {
+            const queryTarget = landingPageSectionHref("get-in-touch");
+            const [baseWithQuery, hashPart] = queryTarget.split("#");
+            const joiner = baseWithQuery.includes("?") ? "&" : "?";
+            const finalUrl = `${baseWithQuery}${joiner}queryEmail=${encodeURIComponent(trimmed)}&queryIntent=1${hashPart ? `#${hashPart}` : ""}`;
+            router.push(finalUrl);
             return;
         }
         router.push(`/signup?email=${encodeURIComponent(trimmed)}`);
@@ -74,7 +83,7 @@ export default function Footer() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className="transition-colors hover:text-black"
+                                className="inline-flex w-fit self-start transition-colors hover:text-black"
                                 onClick={(event) => {
                                     if (!isHomePage) return;
                                     handleLandingHashClick(event, item.href);
@@ -86,52 +95,54 @@ export default function Footer() {
                     </nav>
 
                     <div>
-                        {showLeadCapture ? (
-                            <>
-                                <p className="text-sm font-semibold uppercase tracking-wide text-black/70">
-                                    Stay up to date
-                                </p>
+                        <p className="text-sm font-semibold uppercase tracking-wide text-black/70">
+                            {isLoggedIn ? "Need help? Share your query" : "Stay up to date"}
+                        </p>
 
-                                <form
-                                    onSubmit={handleLeadSubmit}
-                                    className="mt-3 flex overflow-hidden rounded-full border border-black/25 bg-black"
-                                >
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        autoComplete="email"
-                                        value={leadEmail}
-                                        onChange={(e) => setLeadEmail(e.target.value)}
-                                        placeholder="Enter your email"
-                                        className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none"
-                                    />
-                                    <button
-                                        type="submit"
-                                        aria-label="Continue to sign up"
-                                        className="inline-flex items-center justify-center px-4 text-white/80 transition-colors hover:text-white"
-                                    >
-                                        <FaEnvelope />
-                                    </button>
-                                </form>
+                        <form
+                            onSubmit={handleLeadSubmit}
+                            className="mt-3 flex overflow-hidden rounded-full border border-black/25 bg-black"
+                        >
+                            <input
+                                type="email"
+                                name="email"
+                                autoComplete="email"
+                                value={leadEmail}
+                                onChange={(e) => setLeadEmail(e.target.value)}
+                                placeholder={
+                                    isLoggedIn ? "Enter mail for Query" : "Enter your email"
+                                }
+                                className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none"
+                            />
+                            <button
+                                type="submit"
+                                aria-label={
+                                    isLoggedIn
+                                        ? "Continue to query form"
+                                        : "Continue to sign up"
+                                }
+                                className="inline-flex items-center justify-center px-4 text-white/80 transition-colors hover:text-white"
+                            >
+                                <FaEnvelope />
+                            </button>
+                        </form>
 
-                                <p className="mt-3 text-xs text-black/70">
-                                    I confirm that I have read{" "}
-                                    <Link
-                                        href="/legal#privacy-policy"
-                                        className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
-                                    >
-                                        Privacy Policy
-                                    </Link>{" "}
-                                    and agree with it.
-                                </p>
-                            </>
-                        ) : null}
+                        <p className="mt-3 text-xs text-black/70">
+                            I agree to UniTracko&apos;s{" "}
+                            <Link
+                                href="/legal#terms-of-use"
+                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                            >
+                                Terms of Service
+                            </Link>
+                            .
+                        </p>
 
                         <div
                             className={
-                                showLeadCapture
+                                !isLoggedIn
                                     ? "mt-4 flex items-center gap-3 text-black/70"
-                                    : "flex items-center gap-3 text-black/70"
+                                    : "mt-4 flex items-center gap-3 text-black/70"
                             }
                         >
                             <Link href="#" aria-label="Email" className="transition-colors hover:text-black">

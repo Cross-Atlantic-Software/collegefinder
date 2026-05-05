@@ -23,6 +23,7 @@ import {
     checkEmailRegistrationStatus,
     sendOTP,
     verifyOTP,
+    createSiteQuery,
     type StreamPublic,
 } from "@/api";
 import { getAllCities } from "@/lib/data/indianStatesDistricts";
@@ -33,6 +34,14 @@ import {
 import Select from "@/components/shared/Select";
 
 const OTP_LEN = 6;
+const QUERY_TYPES = [
+    "Choosing the right course",
+    "College selection",
+    "Exam planning",
+    "Application process",
+    "Scholarships / fees",
+    "Others",
+] as const;
 
 type CareerOpt = { id: string; label: string; logo?: string | null };
 
@@ -57,6 +66,15 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
     const [formMessage, setFormMessage] = useState<{ type: "success" | "error"; text: string } | null>(
         null,
     );
+    const [queryForm, setQueryForm] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        queryType: "" as "" | (typeof QUERY_TYPES)[number],
+        description: "",
+    });
+    const [querySaving, setQuerySaving] = useState(false);
+    const [querySubmitted, setQuerySubmitted] = useState(false);
 
     const [nickname, setNickname] = useState("");
     const [email, setEmail] = useState("");
@@ -159,6 +177,26 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
     useEffect(() => {
         void loadProfile();
     }, [loadProfile]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !onboardingDone) return;
+        setQueryForm((prev) => ({
+            ...prev,
+            name: user?.name?.trim() || prev.name,
+            email: user?.email?.trim() || prev.email,
+        }));
+    }, [isAuthenticated, onboardingDone, user?.name, user?.email]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !onboardingDone) return;
+        const requestedEmail = searchParams.get("queryEmail")?.trim() || "";
+        if (!requestedEmail) return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedEmail)) return;
+        setQueryForm((prev) => ({
+            ...prev,
+            email: requestedEmail,
+        }));
+    }, [isAuthenticated, onboardingDone, searchParams]);
 
     useEffect(() => {
         if (streamId) {
@@ -312,8 +350,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         });
     };
 
-    const guestCanFillDetails =
-        !isAuthenticated && emailCheckedOk && !emailBlocked && otpVerified;
+    const guestCanFillDetails = !isAuthenticated && !emailBlocked;
 
     const displayFormFields =
         (isAuthenticated && !onboardingDone && !loadingProfile) || guestCanFillDetails;
@@ -392,6 +429,60 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         }
     };
 
+    const handleQuerySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!queryForm.name.trim()) {
+            setFormMessage({ type: "error", text: "Please enter your name." });
+            return;
+        }
+        if (!queryForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(queryForm.email.trim())) {
+            setFormMessage({ type: "error", text: "Please enter a valid email." });
+            return;
+        }
+        if (!queryForm.queryType) {
+            setFormMessage({ type: "error", text: "Please select a query type." });
+            return;
+        }
+        if (!queryForm.description.trim()) {
+            setFormMessage({ type: "error", text: "Please enter query details." });
+            return;
+        }
+
+        setFormMessage(null);
+        setQuerySaving(true);
+        try {
+            const res = await createSiteQuery({
+                name: queryForm.name.trim(),
+                email: queryForm.email.trim().toLowerCase(),
+                phone: queryForm.phone.trim(),
+                query_type: queryForm.queryType,
+                description: queryForm.description.trim(),
+            });
+            if (!res.success) throw new Error(res.message || "Could not submit query.");
+            setQuerySubmitted(true);
+            setFormMessage({ type: "success", text: "We will resolve your query." });
+        } catch (err) {
+            setFormMessage({
+                type: "error",
+                text: err instanceof Error ? err.message : "Could not submit query.",
+            });
+        } finally {
+            setQuerySaving(false);
+        }
+    };
+
+    const resetQueryForm = () => {
+        setQuerySubmitted(false);
+        setFormMessage(null);
+        setQueryForm((prev) => ({
+            name: user?.name?.trim() || prev.name || "",
+            email: user?.email?.trim() || prev.email || "",
+            phone: "",
+            queryType: "",
+            description: "",
+        }));
+    };
+
     if (isAuthenticated && onboardingDone && !allowLandingFromWelcome) {
         return (
             <section
@@ -459,25 +550,145 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                             </ul>
                         </div>
 
-                        <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[460px] items-center justify-center">
-                            <div className="landing-card-lift rounded-2xl border border-black/10 bg-gradient-to-b from-amber-50/90 to-white p-6 shadow-sm md:p-8">
-                                <p className="text-xl font-bold text-black">Contact us if you have any query</p>
-                                <p className="mt-2 text-sm text-black/55">
-                                    You&apos;re all set with your profile. For admissions support or questions,
-                                    reach out and our team will help.
-                                </p>
-                                <Link
-                                    href="/welcome"
-                                    className="landing-cta mt-6 inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
-                                >
-                                    Your journey
-                                </Link>
-                                <a
-                                    href="mailto:admin@unitracko.com"
-                                    className="mt-3 block text-center text-sm font-medium text-black/70 underline-offset-4 hover:text-black hover:underline"
-                                >
-                                    admin@unitracko.com
-                                </a>
+                        <div
+                            className={`relative mx-auto flex h-full min-h-0 w-full items-center ${
+                                querySubmitted ? "max-w-none justify-center" : "max-w-[460px]"
+                            }`}
+                        >
+                            <div className="relative overflow-hidden rounded-2xl border border-amber-200/80 bg-amber-50/30 p-6 md:p-8">
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute left-4 right-4 top-3 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent"
+                                />
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute bottom-3 left-6 right-6 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent"
+                                />
+                                {!querySubmitted ? (
+                                    <>
+                                        <p className="text-2xl font-bold text-black">Contact us if you have any query</p>
+                                        <p className="mt-1 text-sm text-black/50">
+                                            Share your query and our team will get back to you.
+                                        </p>
+                                        <form className="mt-5 space-y-4" onSubmit={handleQuerySubmit}>
+                                            <div>
+                                                <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                    Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={queryForm.name}
+                                                    onChange={(e) =>
+                                                        setQueryForm((prev) => ({ ...prev, name: e.target.value }))
+                                                    }
+                                                    placeholder="Your name"
+                                                    className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                    Email
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    value={queryForm.email}
+                                                    onChange={(e) =>
+                                                        setQueryForm((prev) => ({ ...prev, email: e.target.value }))
+                                                    }
+                                                    placeholder="you@example.com"
+                                                    className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                        Phone
+                                                    </label>
+                                                    <input
+                                                        type="tel"
+                                                        value={queryForm.phone}
+                                                        onChange={(e) =>
+                                                            setQueryForm((prev) => ({ ...prev, phone: e.target.value }))
+                                                        }
+                                                        placeholder="Your phone number"
+                                                        className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                        Query Type
+                                                    </label>
+                                                    <select
+                                                        value={queryForm.queryType}
+                                                        onChange={(e) =>
+                                                            setQueryForm((prev) => ({
+                                                                ...prev,
+                                                                queryType: e.target.value as (typeof QUERY_TYPES)[number] | "",
+                                                            }))
+                                                        }
+                                                        className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black focus:border-amber-500 focus:outline-none"
+                                                    >
+                                                        <option value="">Select query type</option>
+                                                        {QUERY_TYPES.map((qt) => (
+                                                            <option key={qt} value={qt}>
+                                                                {qt}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                    Description
+                                                </label>
+                                                <textarea
+                                                    value={queryForm.description}
+                                                    onChange={(e) =>
+                                                        setQueryForm((prev) => ({
+                                                            ...prev,
+                                                            description: e.target.value,
+                                                        }))
+                                                    }
+                                                    rows={4}
+                                                    placeholder="Describe your query"
+                                                    className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-black placeholder:text-black/35 focus:border-amber-400 focus:outline-none"
+                                                />
+                                            </div>
+                                            {formMessage && (
+                                                <p
+                                                    className={`text-center text-xs font-semibold ${
+                                                        formMessage.type === "success"
+                                                            ? "text-green-700"
+                                                            : "text-red-600"
+                                                    }`}
+                                                >
+                                                    {formMessage.text}
+                                                </p>
+                                            )}
+                                            <button
+                                                type="submit"
+                                                disabled={querySaving}
+                                                className="landing-cta mt-1 w-full rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85 disabled:opacity-60"
+                                            >
+                                                {querySaving ? "Submitting…" : "Submit"}
+                                            </button>
+                                        </form>
+                                    </>
+                                ) : (
+                                    <div className="flex min-h-[300px] flex-col items-center justify-center py-4 text-center">
+                                        <p className="text-xl font-bold text-[#341050]">Thank you</p>
+                                        <p className="mt-2 text-sm text-[#341050]/70">
+                                        We got your Query. We will get back to you shortly.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={resetQueryForm}
+                                            className="landing-cta mt-6 inline-flex w-full max-w-xs items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
+                                        >
+                                            Submit another response.
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -541,16 +752,24 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                     </div>
 
                     <div className="relative mx-auto w-full max-w-[460px]">
-                        <div className="landing-card-lift rounded-2xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
+                        <div className="relative overflow-hidden rounded-2xl border border-amber-200/80 bg-amber-50/30 p-6 md:p-8">
+                            <span
+                                aria-hidden
+                                className="pointer-events-none absolute left-4 right-4 top-3 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent"
+                            />
+                            <span
+                                aria-hidden
+                                className="pointer-events-none absolute bottom-3 left-6 right-6 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent"
+                            />
                             <p className="text-2xl font-bold text-black">{contact.formTitle}</p>
                             <p className="mt-1 text-sm text-black/50">{contact.formSubtitle}</p>
 
-                            <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+                            <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
                                 <div>
                                     <label className="text-xs font-medium uppercase tracking-wide text-black/50">
                                         Email
                                     </label>
-                                    <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-end">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                         <input
                                             type="email"
                                             autoComplete="email"
@@ -561,14 +780,14 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                 if (!isAuthenticated) resetGuestEmailFlow();
                                             }}
                                             readOnly={isAuthenticated}
-                                            className="min-w-0 flex-1 border-b border-black/20 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-black/40 focus:outline-none read-only:text-black/70"
+                                            className="min-w-0 flex-1 border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none read-only:text-black/70"
                                         />
                                         {!isAuthenticated && (
                                             <button
                                                 type="button"
                                                 onClick={handleEmailContinue}
                                                 disabled={checkingEmail}
-                                                className="shrink-0 rounded-full border border-black/20 px-4 py-2 text-xs font-semibold text-black transition hover:bg-black/5 disabled:opacity-50"
+                                                className="shrink-0 rounded-full border border-amber-300 bg-amber-100/70 px-4 py-2 text-xs font-semibold text-black transition hover:bg-amber-100 disabled:opacity-50"
                                             >
                                                 {checkingEmail ? "Checking…" : "Continue"}
                                             </button>
@@ -586,7 +805,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                 </div>
 
                                 {!isAuthenticated && emailCheckedOk && !emailBlocked && (
-                                    <div className="rounded-xl border border-black/10 bg-amber-50/50 p-4">
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
                                         {!otpVerified ? (
                                             <>
                                                 <p className="text-xs font-medium text-black/70">
@@ -632,7 +851,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                                             otpRefs.current[i - 1]?.focus();
                                                                         }
                                                                     }}
-                                                                    className="h-10 w-9 rounded-lg border border-black/15 text-center text-base font-semibold text-black outline-none focus:border-black/40"
+                                                                    className="h-10 w-9 rounded-lg border border-amber-200 bg-white text-center text-base font-semibold text-black outline-none focus:border-amber-500"
                                                                 />
                                                             ))}
                                                         </div>
@@ -660,7 +879,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                     <>
                                         <div>
                                             <label className="text-xs font-medium uppercase tracking-wide text-black/50">
-                                                Nickname
+                                                Name
                                             </label>
                                             <input
                                                 type="text"
@@ -669,37 +888,39 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                 value={nickname}
                                                 onChange={(e) => setNickname(e.target.value)}
                                                 disabled={loadingProfile && isAuthenticated}
-                                                className="mt-1 w-full border-b border-black/20 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-black/40 focus:outline-none disabled:opacity-60"
+                                                className="w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none disabled:opacity-60"
                                             />
                                         </div>
 
-                                        <div>
-                                            <label className="text-xs font-medium uppercase tracking-wide text-black/50">
-                                                Phone
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                autoComplete="tel"
-                                                placeholder="Your contact number"
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value)}
-                                                disabled={loadingProfile && isAuthenticated}
-                                                className="mt-1 w-full border-b border-black/20 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-black/40 focus:outline-none disabled:opacity-60"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-medium uppercase tracking-wide text-black/50">
-                                                City
-                                            </label>
-                                            <div className="mt-2">
-                                                <Select
-                                                    options={cityOptions}
-                                                    value={city || null}
-                                                    onChange={(v) => setCity(v || "")}
-                                                    placeholder="Search and select your city"
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                    Phone
+                                                </label>
+                                                <input
+                                                    type="tel"
+                                                    autoComplete="tel"
+                                                    placeholder="Your contact number"
+                                                    value={phone}
+                                                    onChange={(e) => setPhone(e.target.value)}
                                                     disabled={loadingProfile && isAuthenticated}
+                                                    className="w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black placeholder:text-black/35 focus:border-amber-500 focus:outline-none disabled:opacity-60"
                                                 />
+                                            </div>
+
+                                            <div>
+                                                <label className="text-xs font-medium uppercase tracking-wide text-black/50">
+                                                    City
+                                                </label>
+                                                <div>
+                                                    <Select
+                                                        options={cityOptions}
+                                                        value={city || null}
+                                                        onChange={(v) => setCity(v || "")}
+                                                        placeholder="Select your city"
+                                                        disabled={loadingProfile && isAuthenticated}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
@@ -714,7 +935,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                     setSelectedInterests([]);
                                                 }}
                                                 disabled={loadingProfile && isAuthenticated}
-                                                className="mt-1 w-full border-b border-black/20 bg-transparent pb-2 text-sm text-black focus:border-black/40 focus:outline-none disabled:opacity-60"
+                                                className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black focus:border-amber-500 focus:outline-none disabled:opacity-60"
                                             >
                                                 <option value="">Select stream</option>
                                                 {streams.map((s) => (
@@ -747,7 +968,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                                                                     on
                                                                         ? "border-black bg-black text-white"
-                                                                        : "border-black/15 bg-white text-black/80 hover:border-black/30"
+                                                                        : "border-amber-200 bg-white text-black/80 hover:border-amber-400"
                                                                 }`}
                                                             >
                                                                 {opt.logo ? (

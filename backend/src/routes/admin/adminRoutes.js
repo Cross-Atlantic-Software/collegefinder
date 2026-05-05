@@ -27,6 +27,7 @@ const ReferralCodesController = require('../../controllers/admin/referralCodesCo
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
 const TestimonialAdminController = require('../../controllers/admin/testimonialAdminController');
 const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
+const QueryAdminController = require('../../controllers/admin/queryAdminController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -916,6 +917,23 @@ router.delete(
   requireModuleAccess('referral_codes'),
   requireCanDelete,
   ReferralCodesController.delete
+);
+
+/**
+ * User Queries (admin)
+ */
+router.get(
+  '/queries',
+  authenticateAdmin,
+  requireModuleAccess('queries'),
+  QueryAdminController.list
+);
+router.patch(
+  '/queries/:id/resolve',
+  authenticateAdmin,
+  requireModuleAccess('queries'),
+  requireCanEdit,
+  QueryAdminController.resolve
 );
 
 /**

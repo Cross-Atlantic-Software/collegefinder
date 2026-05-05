@@ -130,9 +130,9 @@ const landingPageDefaults = {
       'Your Data stays private. No spam. No pressure. No promotional calls',
   },
   testimonials: {
-    titleBefore: 'What people say about',
+    titleBefore: 'Students & Parents Experience with',
     titleHighlight: 'UniTracko',
-    subtitle: 'Real words from students and parents using the platform.',
+    subtitle: 'From missed deadlines and confusion to clarity and control.',
   },
   faq: {
     titleLine1: 'Frequently Asked',

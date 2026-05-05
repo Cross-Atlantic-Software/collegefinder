@@ -787,7 +787,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
         <SectionShell id="testimonials" title="Testimonials" blurb={SECTIONS[6].blurb}>
           <LabeledInput
             label="Heading — text before highlight"
-            hint="Shown before the underlined word (e.g. What people say about)."
+            hint="Shown before the underlined word (e.g. Students & Parents Experience with)."
             value={value.testimonials?.titleBefore ?? ''}
             onChange={(titleBefore) =>
               patch({ testimonials: { ...value.testimonials, titleBefore } })
