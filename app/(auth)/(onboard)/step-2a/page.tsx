@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { Select, SelectOption } from "@/components/shared";
-import { updateAcademics, getAllStreamsPublic } from "@/api";
+import { updateAcademics, getAllStreamsPublic, getAcademics } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -17,6 +17,27 @@ export default function StepTwoA() {
   const [isNavigatingToStep2B, setIsNavigatingToStep2B] = useState(false);
   const router = useRouter();
   const { user, isLoading } = useAuth();
+
+  /** Restore stream when user taps Back from a later step. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (isLoading || !user) return;
+      try {
+        const res = await getAcademics();
+        if (cancelled || !res.success || !res.data?.stream_id) return;
+        const sid = res.data.stream_id;
+        if (typeof sid === "number" && sid > 0) {
+          setSelectedStream(String(sid));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, user]);
 
   useEffect(() => {
     const fetchStreams = async () => {
@@ -95,7 +116,7 @@ export default function StepTwoA() {
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
-            Select the stream you&apos;re pursuing or have completed.
+            Tell us what you&apos;re studying right now
           </p>
 
           {error && (

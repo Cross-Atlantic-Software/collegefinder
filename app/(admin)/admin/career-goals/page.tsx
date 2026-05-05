@@ -108,7 +108,8 @@ export default function CareerGoalsPage() {
       const filtered = allCareerGoals.filter(cg =>
         cg.label.toLowerCase().includes(searchLower) ||
         (cg.description && cg.description.toLowerCase().includes(searchLower)) ||
-        (cg.stream_name && cg.stream_name.toLowerCase().includes(searchLower))
+        (cg.stream_name && cg.stream_name.toLowerCase().includes(searchLower)) ||
+        (cg.logo_filename && cg.logo_filename.toLowerCase().includes(searchLower))
       );
       setCareerGoals(filtered);
     }, 300);
@@ -188,6 +189,8 @@ export default function CareerGoalsPage() {
       return;
     }
 
+    const logoFilenameTrimmed = formData.logo_filename.trim() || null;
+
     try {
       if (editingCareerGoal) {
         const response = await updateCareerGoal(editingCareerGoal.id, {
@@ -196,7 +199,7 @@ export default function CareerGoalsPage() {
             ? { logo: null, logo_filename: null }
             : {
                 logo: formData.logo || null,
-                logo_filename: formData.logo_filename || null,
+                logo_filename: logoFilenameTrimmed,
               }),
           description: formData.description,
           status: formData.status,
@@ -217,7 +220,7 @@ export default function CareerGoalsPage() {
           label: formData.label,
           stream_id: streamIdNum,
           logo: formData.logo || null,
-          logo_filename: formData.logo_filename || null,
+          logo_filename: logoFilenameTrimmed,
           description: formData.description || null,
           status: formData.status,
         });
@@ -533,6 +536,9 @@ export default function CareerGoalsPage() {
                         LOGO
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        LOGO FILE NAME
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         LABEL
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
@@ -561,7 +567,7 @@ export default function CareerGoalsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {careerGoals.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={10} className="px-4 py-4 text-center text-sm text-slate-500">
                           {careerGoals.length < allCareerGoals.length ? 'No interests found matching your search' : 'No interests found'}
                         </td>
                       </tr>
@@ -583,6 +589,11 @@ export default function CareerGoalsPage() {
                                 <span className="text-xs text-slate-400">No logo</span>
                               )}
                             </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="font-mono text-xs text-slate-700 break-all">
+                              {cg.logo_filename?.trim() ? cg.logo_filename : '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{cg.label}</span>
@@ -790,6 +801,25 @@ export default function CareerGoalsPage() {
                       <p className="text-xs text-slate-500">Uploading...</p>
                     )}
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Logo filename <span className="font-normal text-slate-500">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.logo_filename}
+                    onChange={(e) =>
+                      setFormData({ ...formData, logo_filename: e.target.value })
+                    }
+                    placeholder="e.g. biology.png"
+                    autoComplete="off"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Used to match files in a bulk logos ZIP. Uploading a logo may fill this from the file name — you can edit it here.
+                  </p>
                 </div>
 
                 {/* Error Message */}

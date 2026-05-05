@@ -29,14 +29,14 @@ export default function StepOne() {
   return (
     <>
       <p className="mb-6 text-sm text-slate-500 leading-relaxed -mt-1">
-        I&apos;m your personal study companion. Let&apos;s get you set up in just a few steps.
+        Your shortcut to clarity - no more endless research
       </p>
 
       <button
         onClick={() => router.push("/step-2")}
         className="landing-cta mt-auto w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
       >
-        Get Started
+        Start Now
       </button>
     </>
   );

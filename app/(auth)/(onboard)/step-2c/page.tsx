@@ -92,7 +92,7 @@ export default function StepTwoC() {
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
-            We&apos;ll connect you with nearby opportunities.
+            We&apos;ll show you the best options near you
           </p>
 
           {error && (

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { useToast } from "@/components/shared";
-import { updateCareerGoals, getAllCareerGoalsPublic, getAcademics } from "@/api";
+import { updateCareerGoals, getAllCareerGoalsPublic, getAcademics, getCareerGoals } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -57,6 +57,26 @@ export default function StepTwoB() {
     };
     fetchCareerGoals();
   }, []);
+
+  /** Re-select interests saved on the server when returning with Back. */
+  useEffect(() => {
+    let cancelled = false;
+    if (loadingInterests || needsStream || interestOptions.length === 0) return;
+    (async () => {
+      try {
+        const res = await getCareerGoals();
+        if (cancelled || !res.success || !res.data?.interests?.length) return;
+        const ids = res.data.interests.map(String);
+        const valid = ids.filter((id) => interestOptions.some((o) => o.id === id));
+        if (valid.length > 0) setSelectedInterests(valid);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadingInterests, needsStream, interestOptions]);
 
   useEffect(() => {
     if (!needsStream || isLoading) return;
@@ -140,7 +160,9 @@ export default function StepTwoB() {
     <>
       {!isBusy && (
         <>
-          <p className="mb-1 text-sm text-slate-500 -mt-1">Select what excites you most.</p>
+          <p className="mb-1 text-sm text-slate-500 -mt-1">
+            Choose the areas you&apos;d love to build a career in
+          </p>
           <p className="mb-4 text-xs font-semibold text-slate-400">
             {selectedInterests.length}/3 selected
           </p>

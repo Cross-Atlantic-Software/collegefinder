@@ -8,8 +8,15 @@ import {
 } from "react-icons/fa6";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, FormEvent } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/shared";
 import { handleLandingHashClick, LANDING_PRIMARY_NAV } from "@/lib/landingNav";
+
+function isValidEmail(value: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 const LEGAL_BAR_LINKS: { href: string; label: string }[] = [
     { href: "/legal", label: "Legal" },
@@ -23,7 +30,27 @@ const LEGAL_BAR_LINKS: { href: string; label: string }[] = [
 
 export default function Footer() {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user } = useAuth();
+    const { showError } = useToast();
+    const [leadEmail, setLeadEmail] = useState("");
     const isHomePage = pathname === "/";
+    const showLeadCapture = !user;
+
+    function handleLeadSubmit(e: FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        const trimmed = leadEmail.trim();
+        if (!trimmed) {
+            showError("Please enter your email address.");
+            return;
+        }
+        if (!isValidEmail(trimmed)) {
+            showError("Please enter a valid email address.");
+            return;
+        }
+        router.push(`/signup?email=${encodeURIComponent(trimmed)}`);
+    }
+
     return (
         <footer className="bg-amber-300 py-14 md:py-16">
             <div className="appContainer">
@@ -59,37 +86,54 @@ export default function Footer() {
                     </nav>
 
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-wide text-black/70">
-                            Stay up to date
-                        </p>
+                        {showLeadCapture ? (
+                            <>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-black/70">
+                                    Stay up to date
+                                </p>
 
-                        <form className="mt-3 flex overflow-hidden rounded-full border border-black/25 bg-black">
-                            <input
-                                type="email"
-                                placeholder="Enter your email"
-                                className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none"
-                            />
-                            <button
-                                type="submit"
-                                aria-label="Subscribe"
-                                className="inline-flex items-center justify-center px-4 text-white/80 transition-colors hover:text-white"
-                            >
-                                <FaEnvelope />
-                            </button>
-                        </form>
+                                <form
+                                    onSubmit={handleLeadSubmit}
+                                    className="mt-3 flex overflow-hidden rounded-full border border-black/25 bg-black"
+                                >
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        autoComplete="email"
+                                        value={leadEmail}
+                                        onChange={(e) => setLeadEmail(e.target.value)}
+                                        placeholder="Enter your email"
+                                        className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/60 focus:outline-none"
+                                    />
+                                    <button
+                                        type="submit"
+                                        aria-label="Continue to sign up"
+                                        className="inline-flex items-center justify-center px-4 text-white/80 transition-colors hover:text-white"
+                                    >
+                                        <FaEnvelope />
+                                    </button>
+                                </form>
 
-                        <p className="mt-3 text-xs text-black/70">
-                            I confirm that I have read{" "}
-                            <Link
-                                href="/legal#privacy-policy"
-                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
-                            >
-                                Privacy Policy
-                            </Link>{" "}
-                            and agree with it.
-                        </p>
+                                <p className="mt-3 text-xs text-black/70">
+                                    I confirm that I have read{" "}
+                                    <Link
+                                        href="/legal#privacy-policy"
+                                        className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                                    >
+                                        Privacy Policy
+                                    </Link>{" "}
+                                    and agree with it.
+                                </p>
+                            </>
+                        ) : null}
 
-                        <div className="mt-4 flex items-center gap-3 text-black/70">
+                        <div
+                            className={
+                                showLeadCapture
+                                    ? "mt-4 flex items-center gap-3 text-black/70"
+                                    : "flex items-center gap-3 text-black/70"
+                            }
+                        >
                             <Link href="#" aria-label="Email" className="transition-colors hover:text-black">
                                 <FaEnvelope />
                             </Link>

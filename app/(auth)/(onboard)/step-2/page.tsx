@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
-import { updateProfile } from "@/api";
+import { updateProfile, getBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -23,6 +23,29 @@ export default function StepTwo() {
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToStep2A, saving]);
+
+  /** Restore name when returning via Back so the field shows saved / typed value. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (isLoading || !user) return;
+      try {
+        const res = await getBasicInfo();
+        if (cancelled || !res.success || !res.data) return;
+        const d = res.data;
+        const display =
+          [d.first_name, d.last_name].filter(Boolean).join(" ").trim() ||
+          d.name?.trim() ||
+          "";
+        if (display) setName(display);
+      } catch {
+        /* non-blocking */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, user]);
 
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
@@ -67,7 +90,7 @@ export default function StepTwo() {
       {!isBusy && (
         <>
           <p className="mb-5 text-sm text-slate-500 -mt-1">
-            We&apos;ll personalise your experience with it.
+            We&apos;ll use this to make things feel personal
           </p>
 
           {error && (
@@ -103,7 +126,7 @@ export default function StepTwo() {
                 disabled={!name.trim()}
                 className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Sounds Good
+                Continue
               </button>
             </div>
           </form>

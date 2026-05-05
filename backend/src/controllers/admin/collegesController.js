@@ -235,7 +235,7 @@ class CollegesController {
   static async getAllAdmin(req, res) {
     try {
       if (!adminListWantsPagination(req)) {
-        const colleges = await College.findAll();
+      const colleges = await College.findAll();
         const total = colleges.length;
         return res.json({
           success: true,
@@ -494,7 +494,7 @@ class CollegesController {
       if (college_logo !== undefined) {
         const nextLogo = normalizeCollegeLogoFields(college_logo).college_logo;
         if (nextLogo !== existing.college_logo && existing.college_logo && isLikelyS3Url(existing.college_logo)) {
-          await deleteFromS3(existing.college_logo);
+        await deleteFromS3(existing.college_logo);
         }
       }
 
