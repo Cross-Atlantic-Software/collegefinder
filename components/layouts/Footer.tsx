@@ -2,8 +2,9 @@
 
 import {
     FaEnvelope,
-    FaFacebookF,
     FaInstagram,
+    FaLinkedinIn,
+    FaYoutube,
     FaXTwitter,
 } from "react-icons/fa6";
 import Image from "next/image";
@@ -96,8 +97,8 @@ export default function Footer() {
                     </nav>
 
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-wide text-black/70">
-                            {isLoggedIn ? "Need help? Share your query" : "Stay up to date"}
+                        <p className="text-sm font-semibold tracking-wide text-black/70">
+                            {isLoggedIn ? "Need help or have query ?" : "Join UniTracko"}
                         </p>
 
                         <form
@@ -128,23 +129,29 @@ export default function Footer() {
                             </button>
                         </form>
 
-                        <p className="mt-3 text-xs text-black/70">
-                            I agree to UniTracko&apos;s{" "}
-                            <Link
-                                href="/legal#terms-of-use"
-                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
-                            >
-                                Terms of Use
-                            </Link>
-                            {" "}and{" "}
-                            <Link
-                                href="/legal#privacy-policy"
-                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
-                            >
-                                Privacy Policy
-                            </Link>
-                            .
-                        </p>
+                        {!isLoggedIn && (
+                            <p className="mt-3 text-xs text-black/70">
+                                I agree to UniTracko&apos;s{" "}
+                                <Link
+                                    href="/legal#terms-of-use"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                                >
+                                    Terms of Use
+                                </Link>
+                                {" "}and{" "}
+                                <Link
+                                    href="/legal#privacy-policy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                                >
+                                    Privacy Policy
+                                </Link>
+                                .
+                            </p>
+                        )}
 
                         <div
                             className={
@@ -153,14 +160,26 @@ export default function Footer() {
                                     : "mt-4 flex items-center gap-3 text-black/70"
                             }
                         >
-                            <Link href="#" aria-label="Email" className="transition-colors hover:text-black">
+                            <Link href={siteSocialLinks.email} aria-label="Email" className="transition-colors hover:text-black">
                                 <FaEnvelope />
                             </Link>
-                            <Link href="#" aria-label="X" className="transition-colors hover:text-black">
+                            <Link
+                                href={siteSocialLinks.x}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="X"
+                                className="transition-colors hover:text-black"
+                            >
                                 <FaXTwitter />
                             </Link>
-                            <Link href="#" aria-label="Facebook" className="transition-colors hover:text-black">
-                                <FaFacebookF />
+                            <Link
+                                href={siteSocialLinks.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="LinkedIn"
+                                className="transition-colors hover:text-black"
+                            >
+                                <FaLinkedinIn />
                             </Link>
                             <Link
                                 href={siteSocialLinks.instagram}
@@ -170,6 +189,15 @@ export default function Footer() {
                                 className="transition-colors hover:text-black"
                             >
                                 <FaInstagram />
+                            </Link>
+                            <Link
+                                href={siteSocialLinks.youtube}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="YouTube"
+                                className="transition-colors hover:text-black"
+                            >
+                                <FaYoutube />
                             </Link>
                         </div>
                     </div>
@@ -192,6 +220,8 @@ export default function Footer() {
                                 ) : null}
                                 <Link
                                     href={link.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="whitespace-nowrap underline-offset-2 transition-colors hover:text-black hover:underline"
                                 >
                                     {link.label}

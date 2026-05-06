@@ -20,10 +20,16 @@ class CareerGoalsTaxonomyController {
         raw !== undefined && raw !== null && String(raw).trim() !== ''
           ? parseInt(String(raw), 10)
           : NaN;
-      const careerGoals =
-        Number.isInteger(streamId) && streamId > 0
-          ? await CareerGoal.findActiveByStreamId(streamId)
-          : await CareerGoal.findActive();
+      let careerGoals;
+      if (Number.isInteger(streamId) && streamId > 0) {
+        const defaultStream = await Stream.findByName('Default');
+        const streamIds = defaultStream && defaultStream.id !== streamId
+          ? [streamId, defaultStream.id]
+          : [streamId];
+        careerGoals = await CareerGoal.findActiveByStreamIds(streamIds);
+      } else {
+        careerGoals = await CareerGoal.findActive();
+      }
       res.json({
         success: true,
         data: { careerGoals }
@@ -667,11 +673,16 @@ class CareerGoalsTaxonomyController {
             message: 'Select your stream (academics) before choosing interests'
           });
         }
-        const matchCount = await CareerGoal.countActiveMatchingStream(interestIds, userStreamId);
+        const defaultStream = await Stream.findByName('Default');
+        const allowedStreamIds =
+          defaultStream && defaultStream.id !== userStreamId
+            ? [userStreamId, defaultStream.id]
+            : [userStreamId];
+        const matchCount = await CareerGoal.countActiveMatchingStreams(interestIds, allowedStreamIds);
         if (matchCount !== interestIds.length) {
           return res.status(400).json({
             success: false,
-            message: 'One or more interests are not valid for your selected stream'
+            message: 'One or more interests are not valid for your selected/default stream'
           });
         }
       }

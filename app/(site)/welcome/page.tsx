@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FiArrowLeft } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import {
@@ -10,16 +11,22 @@ import {
     LANDING_FROM_HOME_VALUE,
 } from "@/lib/landingNav";
 
-export default function WelcomeJourneyPage() {
+function WelcomeJourneyContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { isLoading, isAuthenticated, user } = useAuth();
+    const fromDashboard = searchParams.get("from") === "dashboard";
 
     useEffect(() => {
         if (isLoading) return;
         if (!isAuthenticated) {
             router.replace("/");
+            return;
         }
-    }, [isLoading, isAuthenticated, router]);
+        if (user?.onboarding_completed && !fromDashboard) {
+            router.replace("/");
+        }
+    }, [isLoading, isAuthenticated, user?.onboarding_completed, fromDashboard, router]);
 
     if (isLoading) {
         return <OnboardingLoader message="Loading..." />;
@@ -27,6 +34,10 @@ export default function WelcomeJourneyPage() {
 
     if (!isAuthenticated) {
         return <OnboardingLoader message="Redirecting..." />;
+    }
+
+    if (user?.onboarding_completed && !fromDashboard) {
+        return <OnboardingLoader message="Redirecting to home..." />;
     }
 
     if (!user?.onboarding_completed) {
@@ -49,6 +60,13 @@ export default function WelcomeJourneyPage() {
         <main className="min-h-[calc(100vh-12rem)] bg-gradient-to-b from-amber-50/80 via-white to-white py-16 md:py-24">
             <div className="appContainer flex justify-center">
                 <div className="landing-card-lift w-full max-w-lg rounded-2xl bg-gradient-to-b from-amber-50/90 to-white p-8 md:p-10">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-black/70 transition-colors hover:text-black hover:underline"
+                    >
+                        <FiArrowLeft aria-hidden />
+                        Back to UniTracko
+                    </Link>
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">
                         Unitracko
                     </p>
@@ -87,5 +105,13 @@ export default function WelcomeJourneyPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function WelcomeJourneyPage() {
+    return (
+        <Suspense fallback={<OnboardingLoader message="Loading..." />}>
+            <WelcomeJourneyContent />
+        </Suspense>
     );
 }

@@ -67,7 +67,7 @@ class StreamController {
         });
       }
 
-      const { name, status, sort_order } = req.body;
+      const { name, status, show_on_site, sort_order } = req.body;
 
       // Check if name already exists
       const existing = await Stream.findByName(name);
@@ -87,6 +87,7 @@ class StreamController {
       const stream = await Stream.create({
         name,
         status: status !== undefined ? status : true,
+        show_on_site: show_on_site !== undefined ? show_on_site : true,
         updated_by: req.admin?.id || null,
         sort_order: so,
       });
@@ -130,7 +131,7 @@ class StreamController {
         });
       }
 
-      const { name, status, sort_order } = req.body;
+      const { name, status, show_on_site, sort_order } = req.body;
 
       // Check if name is being changed and if it already exists
       if (name && name !== existingStream.name) {
@@ -146,6 +147,7 @@ class StreamController {
       const payload = {
         name,
         status,
+        show_on_site,
         updated_by: req.admin?.id || null,
       };
       if (sort_order !== undefined) {
@@ -226,13 +228,13 @@ class StreamController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const headers = ['name', 'status', 'sort_order'];
+      const headers = ['name', 'status', 'show_on_site', 'sort_order'];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['Science', 'TRUE', '0'],
-        ['Commerce', 'TRUE', '1'],
-        ['Arts', 'TRUE', '2']
+        ['Science', 'TRUE', 'TRUE', '0'],
+        ['Commerce', 'TRUE', 'TRUE', '1'],
+        ['Arts', 'TRUE', 'FALSE', '2']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Streams');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -299,6 +301,10 @@ class StreamController {
 
         const statusRaw = (row.status ?? '').toString().trim();
         const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
+        const showOnSiteRaw = (row.show_on_site ?? row.showOnSite ?? '').toString().trim();
+        const showOnSite = /^(1|true|yes)$/i.test(showOnSiteRaw)
+          ? true
+          : (showOnSiteRaw === '' ? true : false);
 
         const sortRaw = row.sort_order ?? row.Sort_order ?? row.sortOrder;
         const sortStr =
@@ -320,6 +326,7 @@ class StreamController {
           const stream = await Stream.create({
             name: nameRaw,
             status,
+            show_on_site: showOnSite,
             updated_by: req.admin?.id || null,
             sort_order: sortOrder
           });

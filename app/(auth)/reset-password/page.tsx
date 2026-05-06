@@ -12,6 +12,21 @@ import { PasswordStrengthIndicator } from "@/components/admin/PasswordStrengthIn
 import { isPasswordStrong } from "@/lib/passwordStrength";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
+function AuthFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-[460px]">
+      <div className="relative">
+        <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+        <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+        <section className="relative z-10 rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-8 sm:p-7 text-start shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm">
+          <div className="mx-auto mb-1 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
+          {children}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,7 +65,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <section className="mx-auto w-full max-w-[460px] rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8">
+      <AuthFrame>
         <h1 className="text-lg font-semibold text-slate-900">Invalid link</h1>
         <p className="mt-2 text-sm text-slate-600">This reset link is missing a token. Request a new link from the login page.</p>
         <Link
@@ -59,22 +74,22 @@ function ResetPasswordForm() {
         >
           Request reset link
         </Link>
-      </section>
+      </AuthFrame>
     );
   }
 
   if (done) {
     return (
-      <section className="mx-auto w-full max-w-[460px] rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8">
+      <AuthFrame>
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           Your password was updated. Redirecting you to sign in…
         </div>
-      </section>
+      </AuthFrame>
     );
   }
 
   return (
-    <section className="mx-auto w-full max-w-[460px] rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8">
+    <AuthFrame>
       <h1 className="text-lg font-semibold text-slate-900">Set a new password</h1>
       <p className="mt-1 text-sm text-slate-500">Choose a strong password you have not used elsewhere.</p>
 
@@ -149,7 +164,7 @@ function ResetPasswordForm() {
           </Link>
         </p>
       </form>
-    </section>
+    </AuthFrame>
   );
 }
 

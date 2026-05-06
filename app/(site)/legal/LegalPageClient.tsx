@@ -132,7 +132,7 @@ function IntroBlock({ lines }: { lines: string[] }) {
                 return (
                     <p
                         key={i}
-                        className={`mt-3 text-base leading-relaxed text-black/80 ${line.startsWith('"') ? "rounded-lg border border-black/10 bg-amber-50/80 px-4 py-3 font-medium text-black/85" : ""}`}
+                        className={`mt-3 text-base leading-relaxed text-black/80 ${line.startsWith('"') ? "font-medium text-black/85" : ""}`}
                     >
                         {linkify(line)}
                     </p>
@@ -143,12 +143,7 @@ function IntroBlock({ lines }: { lines: string[] }) {
 }
 
 function SectionBody({ paragraphs }: { paragraphs: string[] }) {
-    const body =
-        paragraphs.length > 0 && /^\d+\.\s/.test(paragraphs[0].trim())
-            ? paragraphs.slice(1)
-            : paragraphs;
-
-    const lines = body.map((x) => x.trim()).filter(Boolean);
+    const lines = paragraphs.map((x) => x.trim()).filter(Boolean);
     const nodes: ReactNode[] = [];
     let i = 0;
 
@@ -173,7 +168,7 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
             nodes.push(
                 <h3
                     key={`h-${i}`}
-                    className="mt-9 scroll-mt-24 text-lg font-extrabold leading-snug text-black first:mt-0 md:text-xl md:scroll-mt-28"
+                    className="mt-9 scroll-mt-24 text-lg font-black leading-snug text-black first:mt-0 md:text-xl md:scroll-mt-28"
                 >
                     {linkify(line)}
                 </h3>
@@ -232,7 +227,7 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
                 nodes.push(
                     <ul
                         key={`ul-after-label-${i}`}
-                        className="mt-2 list-disc space-y-1.5 rounded-xl border border-black/10 bg-slate-50/70 px-5 py-4 pl-9 text-black/85 marker:text-black/60"
+                        className="mt-2 list-disc space-y-1.5 pl-5 text-black/85 marker:text-black/60"
                     >
                         {items.map((item, idx) => (
                             <li key={`li-after-label-${i}-${idx}`}>{linkify(item)}</li>
@@ -256,7 +251,7 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
             nodes.push(
                 <ul
                     key={`ul-${i}`}
-                    className="list-disc space-y-1.5 rounded-xl border border-black/10 bg-slate-50/70 px-5 py-4 pl-9 text-black/85 marker:text-black/60"
+                    className="list-disc space-y-1.5 pl-5 text-black/85 marker:text-black/60"
                 >
                     {items.map((item, idx) => (
                         <li key={`li-${i}-${idx}`}>{linkify(item)}</li>
@@ -316,14 +311,11 @@ export default function LegalPageClient() {
                 <article className="mx-auto mt-10 max-w-3xl">
                     <IntroBlock lines={doc.intro} />
 
-                    <nav
-                        className="mt-10 rounded-2xl border border-black/10 bg-amber-50/60 px-5 py-5 md:px-6"
-                        aria-label="On this page"
-                    >
+                    <nav className="mt-8" aria-label="On this page">
                         <p className="text-xs font-bold uppercase tracking-wide text-black/55">
                             On this page
                         </p>
-                        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <ul className="mt-2 grid gap-2 sm:grid-cols-2">
                             {doc.sections.map((s) => (
                                 <li key={s.id}>
                                     <a
@@ -341,7 +333,7 @@ export default function LegalPageClient() {
                         <section
                             key={section.id}
                             id={section.id}
-                            className="scroll-mt-20 border-t border-black/10 pt-12 first:border-t-0 md:scroll-mt-24"
+                            className="scroll-mt-20 pt-12 first:pt-10 md:scroll-mt-24"
                             aria-labelledby={`${section.id}-heading`}
                         >
                             <h2

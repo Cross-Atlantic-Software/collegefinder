@@ -64,7 +64,7 @@ class AuthController {
       if (user && user.email_verified) {
         return res.status(409).json({
           success: false,
-          message: 'Email is already verified. Please login with password.'
+          message: 'Account already exists. Please Login.'
         });
       }
 
@@ -235,7 +235,7 @@ class AuthController {
       const genericResponse = {
         success: true,
         message:
-          'If an account exists for that email, we sent a password reset link. Check your inbox and spam folder.'
+          "If an account exists with this email, we've sent a reset link. Please check your inbox and spam folder."
       };
 
       const user = await User.findByEmail(email);

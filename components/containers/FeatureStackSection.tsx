@@ -246,7 +246,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                     </p>
 
                     <Link
-                        href="/login"
+                        href="/signup"
                         className="landing-cta group mt-7 inline-flex w-fit items-center gap-2 rounded-full border border-black/30 px-4 py-2.5 text-sm font-semibold text-black hover:bg-black hover:text-white"
                     >
                         {features.learnMoreLabel}

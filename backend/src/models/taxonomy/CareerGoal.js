@@ -43,6 +43,23 @@ class CareerGoal {
   }
 
   /**
+   * Active interests for any of the provided streams (e.g. selected stream + Default stream)
+   */
+  static async findActiveByStreamIds(streamIds) {
+    const ids = (Array.isArray(streamIds) ? streamIds : [streamIds])
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return [];
+    const result = await db.query(
+      `SELECT * FROM career_goals_taxonomies
+       WHERE status = TRUE AND stream_id = ANY($1::int[])
+       ORDER BY label ASC`,
+      [ids]
+    );
+    return result.rows;
+  }
+
+  /**
    * Find career goal taxonomy by ID (with updated_by admin email)
    */
   static async findById(id) {
@@ -119,6 +136,23 @@ class CareerGoal {
       `SELECT COUNT(*)::int AS c FROM career_goals_taxonomies
        WHERE id = ANY($1::int[]) AND status = TRUE AND stream_id = $2`,
       [ints, sid]
+    );
+    return result.rows[0]?.c ?? 0;
+  }
+
+  static async countActiveMatchingStreams(ids, streamIds) {
+    if (!ids || ids.length === 0) return 0;
+    const ints = ids
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    const sids = (Array.isArray(streamIds) ? streamIds : [streamIds])
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (ints.length === 0 || sids.length === 0) return 0;
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS c FROM career_goals_taxonomies
+       WHERE id = ANY($1::int[]) AND status = TRUE AND stream_id = ANY($2::int[])`,
+      [ints, sids]
     );
     return result.rows[0]?.c ?? 0;
   }

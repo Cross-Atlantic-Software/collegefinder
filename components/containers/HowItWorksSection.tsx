@@ -254,7 +254,7 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             style={{ transitionDelay: "760ms" }}
                         >
                             <Link
-                                href="/login"
+                                href="/signup"
                                 className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-8 py-3 text-sm font-semibold text-white hover:bg-black/85 md:text-base"
                             >
                                 {howItWorks.demoCta}

@@ -24,7 +24,7 @@ export default function StepReferral() {
     try { fromCityStep = sessionStorage.getItem(STORAGE_KEY) === "1"; } catch { /* ignore */ }
     if (!fromCityStep) {
       queueMicrotask(() => setIsRedirecting(true));
-      if (user.onboarding_completed) { router.replace("/welcome"); } else { router.replace("/step-1"); }
+      if (user.onboarding_completed) { router.replace("/"); } else { router.replace("/step-1"); }
     }
   }, [user, isLoading, router]);
 

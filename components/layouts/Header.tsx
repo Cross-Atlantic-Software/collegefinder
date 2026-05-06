@@ -143,7 +143,7 @@ export default function Header() {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={() => router.push("/welcome")}
+                                        onClick={() => router.push("/welcome?from=dashboard")}
                                         className={`text-sm font-semibold transition-colors duration-300 ${secondaryActionClass}`}
                                     >
                                         My Dashboard
@@ -263,7 +263,7 @@ export default function Header() {
                                             type="button"
                                             onClick={() => {
                                                 setMobileOpen(false);
-                                                router.push("/welcome");
+                                                router.push("/welcome?from=dashboard");
                                             }}
                                             className="rounded-full border border-black/20 px-4 py-2 text-sm font-semibold text-black"
                                         >
