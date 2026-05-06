@@ -76,7 +76,7 @@ export default function WelcomeJourneyPage() {
                         </Link>
                     </div>
                     <p className="mt-8 text-center text-xs text-black/45">
-                        Need help?{" "}
+                    Need help? Mail us at{" "}
                         <a
                             href="mailto:admin@unitracko.com"
                             className="font-medium text-black/70 underline-offset-4 hover:text-black hover:underline"

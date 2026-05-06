@@ -17,6 +17,7 @@ import {
     LANDING_PRIMARY_NAV,
     landingPageSectionHref,
 } from "@/lib/landingNav";
+import { siteSocialLinks } from "@/lib/siteSocial";
 
 function isValidEmail(value: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -133,7 +134,14 @@ export default function Footer() {
                                 href="/legal#terms-of-use"
                                 className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
                             >
-                                Terms of Service
+                                Terms of Use
+                            </Link>
+                            {" "}and{" "}
+                            <Link
+                                href="/legal#privacy-policy"
+                                className="font-semibold text-black/85 underline underline-offset-2 hover:text-black"
+                            >
+                                Privacy Policy
                             </Link>
                             .
                         </p>
@@ -154,7 +162,13 @@ export default function Footer() {
                             <Link href="#" aria-label="Facebook" className="transition-colors hover:text-black">
                                 <FaFacebookF />
                             </Link>
-                            <Link href="#" aria-label="Instagram" className="transition-colors hover:text-black">
+                            <Link
+                                href={siteSocialLinks.instagram}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="UniTracko on Instagram"
+                                className="transition-colors hover:text-black"
+                            >
                                 <FaInstagram />
                             </Link>
                         </div>

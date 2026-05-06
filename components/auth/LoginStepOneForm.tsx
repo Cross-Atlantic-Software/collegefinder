@@ -177,7 +177,14 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
               href="/legal#terms-of-use"
               className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
             >
-              Terms of Service
+              Terms of Use
+            </Link>
+            {" "}and{" "}
+            <Link
+              href="/legal#privacy-policy"
+              className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
+            >
+              Privacy Policy
             </Link>
             .
           </span>
