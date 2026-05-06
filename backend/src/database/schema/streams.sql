@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS streams (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   status BOOLEAN DEFAULT TRUE, -- true = active, false = inactive
+  show_on_site BOOLEAN DEFAULT TRUE, -- true = visible on public site
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL
@@ -15,6 +16,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'streams') THEN
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS name VARCHAR(255);
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS status BOOLEAN DEFAULT TRUE;
+    ALTER TABLE streams ADD COLUMN IF NOT EXISTS show_on_site BOOLEAN DEFAULT TRUE;
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ALTER TABLE streams ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL;
@@ -34,6 +36,7 @@ END $$;
 -- Create index on name for faster searches
 CREATE INDEX IF NOT EXISTS idx_streams_name ON streams(name);
 CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status);
+CREATE INDEX IF NOT EXISTS idx_streams_show_on_site ON streams(show_on_site);
 
 -- Trigger to automatically update updated_at for streams
 DROP TRIGGER IF EXISTS update_streams_updated_at ON streams;
@@ -43,6 +46,7 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 COMMENT ON TABLE streams IS 'Taxonomy table for stream options that can be selected for blogs';
 COMMENT ON COLUMN streams.name IS 'Display name for the stream (e.g., PCM, PCB, Commerce, Arts)';
 COMMENT ON COLUMN streams.status IS 'Active status of the stream (true = active, false = inactive)';
+COMMENT ON COLUMN streams.show_on_site IS 'Whether stream should appear on public site selectors';
 
 -- Streams are created only via admin / imports — no default seed rows on server init.
 

@@ -12,7 +12,14 @@ type LoginStepOneFormProps = {
   mode?: "login" | "signup";
 };
 
+const authFormMemory: Record<"login" | "signup", { email: string; password: string; agree: boolean }> = {
+  login: { email: "", password: "", agree: false },
+  signup: { email: "", password: "", agree: false },
+};
+
 export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
+  const FORM_STORAGE_KEY = mode === "signup" ? "cf_signup_form_values" : "cf_login_form_values";
+  const LEGAL_RETURN_FLAG = "cf_auth_return_from_legal";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(false);
@@ -46,9 +53,60 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
     if (decoded) setEmail(decoded);
   }, [searchParams, mode]);
 
+  // Restore typed values when coming back from legal links (or from memory fallback).
+  useEffect(() => {
+    let shouldRestore = false;
+    try {
+      shouldRestore = sessionStorage.getItem(LEGAL_RETURN_FLAG) === "1";
+      if (shouldRestore) sessionStorage.removeItem(LEGAL_RETURN_FLAG);
+    } catch {
+      // ignore flag read errors
+    }
+
+    const mem = authFormMemory[mode];
+    if (shouldRestore && (mem.email || mem.password || mem.agree)) {
+      setEmail(mem.email);
+      setPassword(mem.password);
+      setAgree(mem.agree);
+      return;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(FORM_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<{
+        email: string;
+        password: string;
+        agree: boolean;
+      }>;
+      if (typeof parsed.email === "string") setEmail(parsed.email);
+      if (typeof parsed.password === "string") setPassword(parsed.password);
+      if (typeof parsed.agree === "boolean") setAgree(parsed.agree);
+    } catch {
+      // ignore parse/storage errors
+    }
+  }, [FORM_STORAGE_KEY, LEGAL_RETURN_FLAG, mode]);
+
+  // Keep current values in session storage for back-navigation resilience.
+  useEffect(() => {
+    authFormMemory[mode] = { email, password, agree };
+    try {
+      sessionStorage.setItem(
+        FORM_STORAGE_KEY,
+        JSON.stringify({
+          email,
+          password,
+          agree,
+        }),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [FORM_STORAGE_KEY, email, password, agree, mode]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!agree) return;
+    if (mode === "signup" && !agree) return;
     
     setIsLoading(true);
     setError(null);
@@ -63,6 +121,11 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
         }
         const response = await startSignup(email, password);
         if (response.success) {
+          try {
+            sessionStorage.removeItem(FORM_STORAGE_KEY);
+          } catch {
+            // ignore storage errors
+          }
           const otpRoute = `/otpverification?email=${encodeURIComponent(email)}`;
           router.prefetch(otpRoute);
           setIsLeaving(true);
@@ -75,6 +138,11 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
       } else {
         const response = await loginWithPassword(email, password);
         if (response.success && response.data?.token && response.data.user) {
+          try {
+            sessionStorage.removeItem(FORM_STORAGE_KEY);
+          } catch {
+            // ignore storage errors
+          }
           const normalizedUser = {
             ...response.data.user,
             name: response.data.user.name ?? undefined
@@ -106,16 +174,28 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
     initiateFacebookAuth(sessionStorage.getItem("cf_pending_ref") || undefined);
   }
 
+  function markLegalNavigation() {
+    try {
+      sessionStorage.setItem(LEGAL_RETURN_FLAG, "1");
+    } catch {
+      // ignore storage errors
+    }
+  }
+
   return (
     <section
       className={`mx-auto w-full max-w-[460px] transform-gpu transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
         isLeaving ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8"
-      >
+      <div className="relative">
+        <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+        <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+        <form
+          onSubmit={handleSubmit}
+          className="relative z-10 space-y-5 rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-8 sm:p-7 text-start shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm"
+        >
+          <div className="mx-auto mb-1 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
         <div className="space-y-1.5 text-sm">
           <label
             htmlFor="email"
@@ -164,31 +244,39 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
           )}
         </div>
 
-        <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-600">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-[#f0c544] focus:ring-[#f0c544]"
-            checked={agree}
-            onChange={(e) => setAgree(e.target.checked)}
-          />
-          <span>
-            I agree to UniTracko&apos;s{" "}
-            <Link
-              href="/legal#terms-of-use"
-              className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
-            >
-              Terms of Use
-            </Link>
-            {" "}and{" "}
-            <Link
-              href="/legal#privacy-policy"
-              className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </span>
-        </label>
+        {mode === "signup" && (
+          <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-[#f0c544] focus:ring-[#f0c544]"
+              checked={agree}
+              onChange={(e) => setAgree(e.target.checked)}
+            />
+            <span>
+              I agree to UniTracko&apos;s{" "}
+              <Link
+                href="/legal#terms-of-use"
+                onClick={markLegalNavigation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
+              >
+                Terms of Use
+              </Link>
+              {" "}and{" "}
+              <Link
+                href="/legal#privacy-policy"
+                onClick={markLegalNavigation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="landing-scribble-hover underline underline-offset-2 transition duration-300 hover:text-slate-900"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+        )}
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -201,7 +289,7 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
           disabled={
             !email ||
             !password ||
-            !agree ||
+            (mode === "signup" && !agree) ||
             isLoading ||
             (mode === "signup" && !isPasswordStrong(password))
           }
@@ -294,7 +382,8 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
             </Link>
           </p>
         )}
-      </form>
+        </form>
+      </div>
     </section>
   );
 }

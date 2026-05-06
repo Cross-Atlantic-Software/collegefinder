@@ -17,6 +17,7 @@ type WelcomeLayoutProps = {
   progress: number; // 0–100
   scribbleTitle?: string;
   scribbleSuffix?: string;
+  mobileCompact?: boolean;
 };
 
 const STEPS = [
@@ -72,6 +73,7 @@ export function WelcomeLayout({
   progress,
   scribbleTitle,
   scribbleSuffix,
+  mobileCompact = false,
 }: WelcomeLayoutProps) {
   const currentStep = getStepIndex(progress);
   const [scribbleVisible, setScribbleVisible] = useState(false);
@@ -139,7 +141,11 @@ export function WelcomeLayout({
             <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
             {/* Yellow offset background card */}
             <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
-            <div className="relative z-10 w-full rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-10 sm:p-7 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm min-h-[70vh] sm:min-h-0 flex flex-col">
+            <div
+              className={`relative z-10 w-full rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-10 sm:p-7 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm ${
+                mobileCompact ? "min-h-[58vh]" : "min-h-[70vh]"
+              } sm:min-h-0 flex flex-col`}
+            >
               {/* Optional pull pill for drawer look (mobile only) */}
               <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
             {/* ── Stepper ── */}

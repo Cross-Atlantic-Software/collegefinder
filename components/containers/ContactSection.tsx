@@ -31,7 +31,6 @@ import {
     LANDING_FROM_HOME_PARAM,
     LANDING_FROM_HOME_VALUE,
 } from "@/lib/landingNav";
-import Select from "@/components/shared/Select";
 
 const OTP_LEN = 6;
 const QUERY_TYPES = [
@@ -210,7 +209,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         if (!isAuthenticated || !onboardingDone || allowLandingFromWelcome) {
             return;
         }
-        router.replace("/welcome");
+        router.replace("/");
     }, [allowLandingFromWelcome, isAuthenticated, onboardingDone, router]);
 
     useEffect(() => {
@@ -336,6 +335,21 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         }
     };
 
+    const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+        if (!pasted) return;
+        e.preventDefault();
+        const next = Array(OTP_LEN).fill("");
+        for (let i = 0; i < OTP_LEN; i += 1) {
+            next[i] = pasted[i] || "";
+        }
+        setOtp(next);
+        const focusIndex = Math.min(pasted.length, OTP_LEN) - 1;
+        if (focusIndex >= 0) {
+            otpRefs.current[focusIndex]?.focus();
+        }
+    };
+
     const toggleInterest = (id: string) => {
         setSelectedInterests((prev) => {
             if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -414,7 +428,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
             }
 
             await refreshUser();
-            router.push("/welcome");
+            router.push("/");
             return;
         } catch (err) {
             setFormMessage({
@@ -563,9 +577,9 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                 />
                                 {!querySubmitted ? (
                                     <>
-                                        <p className="text-2xl font-bold text-black">Contact us if you have any query</p>
+                                        <p className="text-2xl font-bold text-black">Need help or have a query?</p>
                                         <p className="mt-1 text-sm text-black/50">
-                                            Share your query and our team will get back to you.
+                                        Reach out to us, and our team will respond shortly.
                                         </p>
                                         <form className="mt-5 space-y-4" onSubmit={handleQuerySubmit}>
                                             <div>
@@ -850,6 +864,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                                             otpRefs.current[i - 1]?.focus();
                                                                         }
                                                                     }}
+                                                                    onPaste={i === 0 ? handleOtpPaste : undefined}
                                                                     className="h-10 w-9 rounded-lg border border-amber-200 bg-white text-center text-base font-semibold text-black outline-none focus:border-amber-500"
                                                                 />
                                                             ))}
@@ -883,7 +898,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                             <input
                                                 type="text"
                                                 autoComplete="nickname"
-                                                placeholder="Your nickname"
+                                                placeholder="Your name"
                                                 value={nickname}
                                                 onChange={(e) => setNickname(e.target.value)}
                                                 disabled={loadingProfile && isAuthenticated}
@@ -911,15 +926,19 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                 <label className="text-xs font-medium uppercase tracking-wide text-black/50">
                                                     City
                                                 </label>
-                                                <div>
-                                                    <Select
-                                                        options={cityOptions}
-                                                        value={city || null}
-                                                        onChange={(v) => setCity(v || "")}
-                                                        placeholder="Select your city"
-                                                        disabled={loadingProfile && isAuthenticated}
-                                                    />
-                                                </div>
+                                                <select
+                                                    value={city}
+                                                    onChange={(e) => setCity(e.target.value)}
+                                                    disabled={loadingProfile && isAuthenticated}
+                                                    className="mt-1 w-full border-b border-amber-300/70 bg-transparent pb-2 text-sm text-black focus:border-amber-500 focus:outline-none disabled:opacity-60"
+                                                >
+                                                    <option value="">Select your city</option>
+                                                    {cityOptions.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
 

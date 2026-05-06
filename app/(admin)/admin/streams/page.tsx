@@ -20,7 +20,7 @@ export default function StreamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingStream, setEditingStream] = useState<Stream | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true, sort_order: '' as string });
+  const [formData, setFormData] = useState({ name: '', status: true, show_on_site: true, sort_order: '' as string });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -109,6 +109,7 @@ export default function StreamsPage() {
         const response = await updateStream(editingStream.id, {
           name: formData.name,
           status: formData.status,
+          show_on_site: formData.show_on_site,
           sort_order: sortOrderNum,
         });
         if (response.success) {
@@ -125,6 +126,7 @@ export default function StreamsPage() {
         const createPayload: Parameters<typeof createStream>[0] = {
           name: formData.name,
           status: formData.status,
+          show_on_site: formData.show_on_site,
         };
         if (formData.sort_order.trim() !== '') {
           createPayload.sort_order = sortOrderNum;
@@ -194,6 +196,7 @@ export default function StreamsPage() {
     setFormData({
       name: stream.name,
       status: stream.status,
+      show_on_site: stream.show_on_site !== false,
       sort_order: String(stream.sort_order ?? 0),
     });
     setShowModal(true);
@@ -206,7 +209,7 @@ export default function StreamsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true, sort_order: '' });
+    setFormData({ name: '', status: true, show_on_site: true, sort_order: '' });
     setError(null);
   };
 
@@ -387,6 +390,9 @@ export default function StreamsPage() {
                         STATUS
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
+                        SHOW ON SITE
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CREATED
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
@@ -403,7 +409,7 @@ export default function StreamsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {streams.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
                           {streams.length < allStreams.length ? 'No streams found matching your search' : 'No streams found'}
                         </td>
                       </tr>
@@ -424,6 +430,17 @@ export default function StreamsPage() {
                             ) : (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                                 Inactive
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2">
+                            {stream.show_on_site !== false ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                No
                               </span>
                             )}
                           </td>
@@ -542,6 +559,34 @@ export default function StreamsPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Show on site
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="show_on_site"
+                        checked={formData.show_on_site === true}
+                        onChange={() => setFormData({ ...formData, show_on_site: true })}
+                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
+                      />
+                      <span className="text-sm text-slate-700">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="show_on_site"
+                        checked={formData.show_on_site === false}
+                        onChange={() => setFormData({ ...formData, show_on_site: false })}
+                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
+                      />
+                      <span className="text-sm text-slate-700">No</span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Error Message */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
@@ -622,7 +667,7 @@ export default function StreamsPage() {
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
                 <p className="text-xs text-slate-600 mb-3">
-                  Use columns: <span className="font-mono">name</span>, optional <span className="font-mono">status</span> (TRUE/FALSE), and optional{' '}
+                  Use columns: <span className="font-mono">name</span>, optional <span className="font-mono">status</span> (TRUE/FALSE), optional <span className="font-mono">show_on_site</span> (TRUE/FALSE), and optional{' '}
                   <span className="font-mono">sort_order</span> (non-negative integer). Rows without <span className="font-mono">sort_order</span> get sequential values after the current maximum.
                 </p>
                 <button
@@ -724,6 +769,15 @@ export default function StreamsPage() {
                   viewingStream.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
                   {viewingStream.status ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Show on site</label>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  viewingStream.show_on_site !== false ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  {viewingStream.show_on_site !== false ? 'Yes' : 'No'}
                 </span>
               </div>
 

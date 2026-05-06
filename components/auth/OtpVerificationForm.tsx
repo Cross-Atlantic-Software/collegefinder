@@ -137,18 +137,18 @@ export function OtpVerificationForm({
         console.log('🔍 OTP Verification - User data:', response.data.user);
         console.log('🔍 OTP Verification - onboarding_completed (raw):', onboardingCompletedValue, 'Type:', typeof onboardingCompletedValue);
         console.log('🔍 OTP Verification - onboarding_completed (converted):', onboardingCompleted);
-        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/welcome' : '/step-1');
+        console.log('🔍 OTP Verification - Will redirect to:', onboardingCompleted ? '/' : '/step-1');
         
         // Prefetch target route for faster loading
         if (onboardingCompleted) {
-          router.prefetch("/welcome");
+          router.prefetch("/");
         } else {
           router.prefetch("/step-1");
         }
         // Small delay for smooth transition, then redirect
         setTimeout(() => {
           if (onboardingCompleted) {
-            router.replace("/welcome");
+            router.replace("/");
           } else {
             router.replace("/step-1");
           }
@@ -195,10 +195,14 @@ export function OtpVerificationForm({
         isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 text-start shadow-sm sm:p-8"
-      >
+      <div className="relative">
+        <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+        <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+        <form
+          onSubmit={handleSubmit}
+          className="relative z-10 space-y-6 rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-8 sm:p-7 text-start shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm"
+        >
+          <div className="mx-auto mb-1 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
         <p className="text-sm leading-relaxed text-slate-600">
         We&apos;ve sent a 6-digit code to{" "}
         <span className="font-semibold text-slate-900">
@@ -271,11 +275,11 @@ export function OtpVerificationForm({
             onClick={handleResend}
             disabled={resending || !emailHint}
           >
-            {resending ? "Resending..." : "Didn't get the code? Resend"}
+            {resending ? "Resending..." : "Didn't get it? Resend"}
           </button>
-          <p className="text-slate-500">Using a different email? Go back and update it.</p>
         </div>
-      </form>
+        </form>
+      </div>
     </section>
   );
 }

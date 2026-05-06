@@ -240,7 +240,7 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                         </p>
 
                         <Link
-                            href="/login"
+                            href="/signup"
                             className="landing-cta mt-6 inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85 sm:w-auto"
                         >
                             {audience.whyCta}

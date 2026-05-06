@@ -19,8 +19,15 @@ export function OnboardLayoutClient({ children }: { children: ReactNode }) {
   else if (pathname === '/step-referral') { progress = 95; title = "Have a referral code?"; suffix = ""; }
   else if (pathname === '/step-3') { progress = 100; }
 
+  const mobileCompact = pathname === "/step-1" || pathname === "/step-2";
+
   return (
-    <WelcomeLayout progress={progress} scribbleTitle={title} scribbleSuffix={suffix}>
+    <WelcomeLayout
+      progress={progress}
+      scribbleTitle={title}
+      scribbleSuffix={suffix}
+      mobileCompact={mobileCompact}
+    >
       {children}
     </WelcomeLayout>
   );

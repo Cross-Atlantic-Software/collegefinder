@@ -8,7 +8,7 @@ const landingPageDefaults = {
     headingLine2: 'Finally Under Control',
     painPoints: ['No scattered portals', 'No forgotten forms', 'No last minute chaos'],
     ctaLabel: 'Find My Fit',
-    ctaHref: '/login',
+    ctaHref: '/signup',
   },
   info: {
     label: 'THE REALITY',
@@ -16,7 +16,7 @@ const landingPageDefaults = {
     highlightQuestion: 'Still tracking it all manually?',
     body: 'UniTracko brings it all into one place - nothing slips, nothing gets missed.\nNo scattered portals · No forgotten forms · No last-minute chaos',
     ctaLabel: 'Let\'s Figure This Out',
-    ctaHref: '/login',
+    ctaHref: '/signup',
   },
   features: {
     sectionTitleBefore: 'Unlock the',
@@ -124,7 +124,7 @@ const landingPageDefaults = {
       },
     ],
     formTitle: 'Personal data',
-    formSubtitle: 'Specify details as in your passport',
+    formSubtitle: 'Please enter the details correctly to the best of your knowledge.',
     formSubmit: 'Map My Admission',
     formPrivacy:
       'Your Data stays private. No spam. No pressure. No promotional calls',

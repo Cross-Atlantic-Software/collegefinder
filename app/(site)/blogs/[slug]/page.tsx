@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FaEnvelope, FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
+import { FaEnvelope, FaInstagram, FaLinkedinIn, FaXTwitter, FaYoutube } from "react-icons/fa6";
 import { FiArrowLeft } from "react-icons/fi";
 import { getPublicBlogBySlug } from "@/api";
 import type { Blog } from "@/api/admin/blogs";
@@ -220,6 +220,15 @@ export default function BlogPostPage() {
                             className="transition-colors hover:text-black"
                         >
                             <FaXTwitter className="h-[1.1rem] w-[1.1rem]" />
+                        </Link>
+                        <Link
+                            href={siteSocialLinks.youtube}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="YouTube"
+                            className="transition-colors hover:text-black"
+                        >
+                            <FaYoutube className="h-[1.1rem] w-[1.1rem]" />
                         </Link>
                         <Link
                             href={siteSocialLinks.email}

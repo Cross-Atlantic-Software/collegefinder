@@ -58,18 +58,36 @@ class Stream {
   }
 
   /**
+   * Find streams visible on site (for public onboarding)
+   */
+  static async findVisibleOnSite() {
+    const result = await db.query(
+      `SELECT * FROM streams
+       WHERE status = true AND COALESCE(show_on_site, true) = true
+       ORDER BY sort_order ASC, name ASC, id ASC`
+    );
+    return result.rows;
+  }
+
+  /**
    * Create a new stream
    */
   static async create(data) {
-    const { name, status, updated_by, sort_order } = data;
+    const { name, status, show_on_site, updated_by, sort_order } = data;
     let order = sort_order;
     if (order === undefined || order === null) {
       order = await Stream.getNextSortOrder();
     }
     const result = await db.query(
-      `INSERT INTO streams (name, status, updated_by, sort_order)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [name, status !== undefined ? status : true, updated_by || null, order]
+      `INSERT INTO streams (name, status, show_on_site, updated_by, sort_order)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [
+        name,
+        status !== undefined ? status : true,
+        show_on_site !== undefined ? show_on_site : true,
+        updated_by || null,
+        order
+      ]
     );
     return result.rows[0];
   }
@@ -78,7 +96,7 @@ class Stream {
    * Update a stream
    */
   static async update(id, data) {
-    const { name, status, updated_by, sort_order } = data;
+    const { name, status, show_on_site, updated_by, sort_order } = data;
 
     const updates = [];
     const values = [];
@@ -91,6 +109,10 @@ class Stream {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+    if (show_on_site !== undefined) {
+      updates.push(`show_on_site = $${paramCount++}`);
+      values.push(show_on_site);
     }
     if (updated_by !== undefined) {
       updates.push(`updated_by = $${paramCount++}`);

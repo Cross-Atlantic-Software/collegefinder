@@ -289,7 +289,7 @@ export default function InfoSection({ info }: { info: LandingPageContent["info"]
             )}
 
             <Link
-              href={info.ctaHref || "/login"}
+              href={info.ctaHref || "/signup"}
               className="landing-cta group mt-2 inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
             >
               {info.ctaLabel}

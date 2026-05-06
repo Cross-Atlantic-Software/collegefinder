@@ -278,7 +278,7 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
             />
             <LabeledInput
               label="Primary button link"
-              hint="Path or URL, e.g. /login"
+              hint="Path or URL, e.g. /signup"
               value={value.hero.ctaHref}
               onChange={(ctaHref) => patch({ hero: { ...value.hero, ctaHref } })}
               disabled={disabled}

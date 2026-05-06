@@ -101,7 +101,7 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                     </div> */}
 
                     <Link
-                        href={hero.ctaHref || "/login"}
+                        href={hero.ctaHref || "/signup"}
                         className="landing-cta group mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
                     >
                         {hero.ctaLabel}

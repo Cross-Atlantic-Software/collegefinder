@@ -60,7 +60,7 @@ const sendOTPEmail = async (email, otp) => {
   // Fallback to default template if not found
   if (!template) {
       template = {
-        subject: 'Verify your email address - UniTracko',
+        subject: 'Verify your email -UniTracko',
         body_html: `<!DOCTYPE html>
 <html>
 <head>
@@ -81,16 +81,25 @@ const sendOTPEmail = async (email, otp) => {
             <td style="padding: 50px 40px; background-color: #ffffff;">
               <h2 style="margin: 0 0 20px 0; color: #232f3e; font-size: 28px; font-weight: bold; line-height: 1.2;">Verify your email address</h2>
               <p style="color: #232f3e; font-size: 16px; line-height: 1.6; margin: 0 0 40px 0;">
-                Thanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.
+                You’re almost set. We just need to confirm it’s really you.
               </p>
-              <p style="color: #232f3e; font-size: 16px; font-weight: bold; margin: 0 0 15px 0;">Verification code</p>
+              <p style="color: #232f3e; font-size: 16px; font-weight: bold; margin: 0 0 15px 0;">Your verification code:</p>
               <div style="margin: 0 0 15px 0;">
                 <div style="font-size: 48px; font-weight: bold; color: #232f3e; font-family: 'Courier New', Courier, monospace; letter-spacing: 8px;">
-                  {{otpCode}}
+                  {{OTP}}
                 </div>
               </div>
               <p style="color: #666666; font-size: 14px; font-style: italic; margin: 0;">
-                (This code is valid for 10 minutes)
+                This code is valid for 10 minutes.
+              </p>
+              <p style="color: #232f3e; font-size: 15px; line-height: 1.6; margin: 18px 0 0 0;">
+                Enter this code to complete your sign-up.
+              </p>
+              <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 12px 0 0 0;">
+                If you didn’t request this, you can safely ignore this email.
+              </p>
+              <p style="color: #232f3e; font-size: 14px; font-weight: 600; margin: 16px 0 0 0;">
+                — UniTracko
               </p>
             </td>
           </tr>
@@ -114,9 +123,10 @@ const sendOTPEmail = async (email, otp) => {
   }
 
   // Replace template variables
-  const subject = EmailTemplate.replaceVariables(template.subject, { otpCode: otp });
+  const subject = EmailTemplate.replaceVariables(template.subject, { otpCode: otp, OTP: otp });
   const html = EmailTemplate.replaceVariables(template.body_html, {
     otpCode: otp,
+    OTP: otp,
     userName: email.split('@')[0] || 'User',
     email: email
   });
@@ -132,7 +142,7 @@ const sendOTPEmail = async (email, otp) => {
     to: email,
     subject: subject,
     html: html,
-    text: `Verify your email address - UniTracko\n\nThanks for starting the UniTracko account creation process. We want to make sure it's really you. Please enter the following verification code when prompted.\n\nVerification code: ${otp}\n\n(This code is valid for 10 minutes)`
+    text: `Verify your email -UniTracko\n\nVerify your email address\n\nYou’re almost set. We just need to confirm it’s really you.\n\nYour verification code:\n${otp}\n\nThis code is valid for 10 minutes.\n\nEnter this code to complete your sign-up.\n\nIf you didn’t request this, you can safely ignore this email.\n\n— UniTracko`
   };
 
   try {
@@ -470,7 +480,7 @@ const sendInstituteReferralInviteEmail = async (recipients, institute) => {
  */
 const sendPasswordResetEmail = async (email, resetLink) => {
   const transporter = createTransporter();
-  const subject = 'Reset your UniTracko password';
+  const subject = 'Reset Your Password - UniTracko';
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
@@ -481,20 +491,39 @@ const sendPasswordResetEmail = async (email, resetLink) => {
         <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:13px;">Password reset</p>
       </td></tr>
       <tr><td style="padding:32px 28px;">
-        <p style="margin:0 0 16px;color:#232f3e;font-size:16px;line-height:1.5;">We received a request to reset the password for your account. Click the button below to choose a new password. This link expires in one hour.</p>
+        <p style="margin:0 0 14px;color:#232f3e;font-size:16px;line-height:1.5;">Hi,</p>
+        <p style="margin:0 0 16px;color:#232f3e;font-size:16px;line-height:1.5;">We received a request to reset your UniTracko account password.</p>
+        <p style="margin:0 0 16px;color:#232f3e;font-size:16px;line-height:1.5;">Click the button below to create a new password. This link will expire in 1 hour.</p>
         <p style="margin:0 0 24px;text-align:center;">
-          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#341050 0%,#8B1E8B 100%);color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;font-size:15px;">Reset password</a>
+          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#341050 0%,#8B1E8B 100%);color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;font-size:15px;">Reset Password</a>
         </p>
-        <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">If you did not request this, you can ignore this email. Your password will not change.</p>
-        <p style="margin:16px 0 0;color:#999;font-size:11px;word-break:break-all;">If the button does not work, copy and paste this link into your browser:<br/>${resetLink}</p>
+        <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+        <p style="margin:16px 0 0;color:#666;font-size:13px;line-height:1.5;">If the button doesn&apos;t work, copy and paste the link below into your browser:</p>
+        <p style="margin:8px 0 0;color:#999;font-size:11px;word-break:break-all;">${resetLink}</p>
       </td></tr>
       <tr><td style="padding:20px 28px;background:#f9f9f9;border-top:1px solid #eee;">
-        <p style="margin:0;color:#666;font-size:12px;">© ${new Date().getFullYear()} UniTracko</p>
+        <p style="margin:0;color:#666;font-size:12px;">Team UniTracko</p>
       </td></tr>
     </table>
   </td></tr></table>
 </body></html>`;
-  const text = `Reset your UniTracko password\n\nOpen this link (valid about 1 hour):\n${resetLink}\n\nIf you did not request this, ignore this email.`;
+  const text = `Reset Your Password - UniTracko
+
+Hi,
+
+We received a request to reset your UniTracko account password.
+
+Click the button below to create a new password. This link will expire in 1 hour.
+
+Reset Password: ${resetLink}
+
+If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+
+If the button doesn't work, copy and paste the link below into your browser:
+
+${resetLink}
+
+Team UniTracko`;
 
   if (!transporter) {
     if (process.env.NODE_ENV === 'development') {

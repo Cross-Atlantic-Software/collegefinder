@@ -6,6 +6,7 @@ export interface Stream {
   id: number;
   name: string;
   status: boolean;
+  show_on_site?: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;

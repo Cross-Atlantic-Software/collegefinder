@@ -774,6 +774,10 @@ const validateCreateStream = [
     .optional()
     .isBoolean()
     .withMessage('Status must be a boolean'),
+  body('show_on_site')
+    .optional()
+    .isBoolean()
+    .withMessage('show_on_site must be a boolean'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })
@@ -793,6 +797,10 @@ const validateUpdateStream = [
     .optional()
     .isBoolean()
     .withMessage('Status must be a boolean'),
+  body('show_on_site')
+    .optional()
+    .isBoolean()
+    .withMessage('show_on_site must be a boolean'),
   body('sort_order')
     .optional()
     .isInt({ min: 0 })
