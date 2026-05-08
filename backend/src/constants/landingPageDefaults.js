@@ -176,6 +176,11 @@ const landingPageDefaults = {
       },
     ],
   },
+  /** Shown on the home page after successful email signup (OTP verified); auto-dismisses. */
+  signupWelcome: {
+    message: 'Thank you for signing up with Unitracko',
+    durationSeconds: 5,
+  },
 };
 
 module.exports = { landingPageDefaults };

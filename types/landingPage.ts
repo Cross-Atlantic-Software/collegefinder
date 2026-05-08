@@ -73,4 +73,10 @@ export type LandingPageContent = {
     titleHighlight: string;
     subtitle: string;
   };
+  /** Modal on home after email signup (OTP); copy and how long it stays visible. */
+  signupWelcome: {
+    message: string;
+    /** Seconds before the modal closes (1–60 on admin form). */
+    durationSeconds: number;
+  };
 };

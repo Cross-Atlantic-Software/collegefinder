@@ -167,6 +167,7 @@ const navItems: NavItem[] = [
   { label: 'Email Templates', href: '/admin/email-templates', icon: <FiMail className="h-4 w-4" />, moduleCode: 'email_templates' },
   { label: 'Blogs', href: '/admin/blogs', icon: <FiEdit3 className="h-4 w-4" />, moduleCode: 'blogs' },
   { label: 'Landing page', href: '/admin/landing-page', icon: <FiLayout className="h-4 w-4" />, moduleCode: 'landing_page' },
+  { label: 'Legal page', href: '/admin/legal-page', icon: <FiBookOpen className="h-4 w-4" />, moduleCode: 'landing_page' },
   { label: 'Testimonials', href: '/admin/testimonials', icon: <FiMessageCircle className="h-4 w-4" />, moduleCode: 'landing_page' },
   { label: 'Queries', href: '/admin/queries', icon: <FiMessageCircle className="h-4 w-4" />, moduleCode: 'queries' },
   { label: 'Self study material', href: '/admin/lectures', icon: <FiVideo className="h-4 w-4" />, moduleCode: 'lectures' },

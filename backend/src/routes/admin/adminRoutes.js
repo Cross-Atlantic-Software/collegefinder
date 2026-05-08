@@ -25,6 +25,7 @@ const LoansController = require('../../controllers/admin/loansController');
 const ModulesController = require('../../controllers/admin/modulesController');
 const ReferralCodesController = require('../../controllers/admin/referralCodesController');
 const LandingPageAdminController = require('../../controllers/admin/landingPageAdminController');
+const LegalPageAdminController = require('../../controllers/admin/legalPageAdminController');
 const TestimonialAdminController = require('../../controllers/admin/testimonialAdminController');
 const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
 const QueryAdminController = require('../../controllers/admin/queryAdminController');
@@ -141,6 +142,23 @@ router.put(
   requireModuleAccess('landing_page'),
   requireCanEdit,
   LandingPageAdminController.put
+);
+
+/**
+ * Legal page (/legal) — policies copy + rich HTML
+ */
+router.get(
+  '/legal-document',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  LegalPageAdminController.get
+);
+router.put(
+  '/legal-document',
+  authenticateAdmin,
+  requireModuleAccess('landing_page'),
+  requireCanEdit,
+  LegalPageAdminController.put
 );
 
 /** Landing testimonials (same module as landing page CMS) */

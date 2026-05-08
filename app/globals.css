@@ -50,6 +50,25 @@ button {
   }
 }
 
+/* /legal rich HTML: no automatic bullets or 1. 2. markers — use plain text in the admin editor */
+@layer components {
+  .legal-content ul,
+  .legal-content ol {
+    list-style: none !important;
+    list-style-type: none !important;
+    padding-inline-start: 1.5rem;
+  }
+
+  .legal-content li {
+    list-style: none !important;
+    list-style-type: none !important;
+  }
+
+  .legal-content li::marker {
+    content: none;
+  }
+}
+
 @layer utilities {
   .bg-lightGradient {
     background-image: linear-gradient(to right, #FBEDF7 0%, #FAF5FF 50%, #DAF1FF 100%);

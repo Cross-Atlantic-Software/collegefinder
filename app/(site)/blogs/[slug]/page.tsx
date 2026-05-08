@@ -4,13 +4,19 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FaEnvelope, FaInstagram, FaLinkedinIn, FaXTwitter, FaYoutube } from "react-icons/fa6";
-import { FiArrowLeft } from "react-icons/fi";
+import {
+    FaEnvelope,
+    FaFacebookF,
+    FaInstagram,
+    FaLinkedinIn,
+    FaWhatsapp,
+    FaXTwitter,
+} from "react-icons/fa6";
+import { FiArrowLeft, FiShare2 } from "react-icons/fi";
 import { getPublicBlogBySlug } from "@/api";
 import type { Blog } from "@/api/admin/blogs";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { LandingCardFrame } from "@/components/containers/LandingCardFrame";
-import { siteSocialLinks } from "@/lib/siteSocial";
 
 /** Extract YYYY-MM-DD from API (plain date or ISO string from DB/JSON). */
 function parseCustomPublishDate(raw: string | null | undefined): string | null {
@@ -51,12 +57,20 @@ function visibleRichText(html: string | null | undefined): boolean {
     return t.length > 0;
 }
 
+function getPublicShareUrl(slug: string): string {
+    const configuredBase =
+        process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://unitracko.com";
+    const base = configuredBase.replace(/\/+$/, "");
+    return `${base}/blogs/${encodeURIComponent(slug)}`;
+}
+
 export default function BlogPostPage() {
     const params = useParams();
     const slug = typeof params.slug === "string" ? params.slug : "";
     const [blog, setBlog] = useState<Blog | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [shareUrl, setShareUrl] = useState("");
 
     useEffect(() => {
         if (!slug) {
@@ -85,6 +99,15 @@ export default function BlogPostPage() {
         };
     }, [slug]);
 
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const href = window.location.href;
+        const isLocal =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+        setShareUrl(isLocal ? getPublicShareUrl(slug) : href);
+    }, [slug]);
+
     if (loading) {
         return <OnboardingLoader message="Loading..." />;
     }
@@ -107,6 +130,44 @@ export default function BlogPostPage() {
     }
 
     const displayDate = getBlogDisplayDate(blog);
+    const shareText = `Check out this blog: ${blog.title}`;
+    const safeShareUrl = shareUrl || getPublicShareUrl(slug);
+    const encodedUrl = encodeURIComponent(safeShareUrl);
+    const encodedText = encodeURIComponent(shareText);
+
+    const openShareWindow = (url: string) => {
+        window.open(url, "_blank", "noopener,noreferrer,width=680,height=680");
+    };
+
+    const copyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(safeShareUrl);
+            alert("Blog link copied. You can paste it in your app.");
+        } catch {
+            alert("Could not copy link automatically. Please copy from the address bar.");
+        }
+    };
+
+    const handleInstagramShare = async () => {
+        await copyLink();
+        window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+    };
+
+    const handleNativeShare = async () => {
+        if (!navigator.share) {
+            await copyLink();
+            return;
+        }
+        try {
+            await navigator.share({
+                title: blog.title,
+                text: shareText,
+                url: safeShareUrl,
+            });
+        } catch {
+            // User cancel is expected on some devices.
+        }
+    };
 
     return (
         <main className="min-h-screen bg-white pb-20">
@@ -194,46 +255,83 @@ export default function BlogPostPage() {
                         {displayDate.label}
                     </time>
                     <div className="flex shrink-0 items-center gap-3 text-black/70">
-                        <Link
-                            href={siteSocialLinks.instagram}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            type="button"
+                            onClick={handleNativeShare}
+                            aria-label="Share"
+                            className="transition-colors hover:text-black"
+                            title="Share"
+                        >
+                            <FiShare2 className="h-[1.1rem] w-[1.1rem]" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleInstagramShare}
                             aria-label="Instagram"
                             className="transition-colors hover:text-black"
+                            title="Instagram (copy link + open Instagram)"
                         >
                             <FaInstagram className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.linkedin}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                openShareWindow(
+                                    `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
+                                )
+                            }
                             aria-label="LinkedIn"
                             className="transition-colors hover:text-black"
+                            title="Share on LinkedIn"
                         >
                             <FaLinkedinIn className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.x}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                openShareWindow(
+                                    `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`
+                                )
+                            }
                             aria-label="X"
                             className="transition-colors hover:text-black"
+                            title="Share on X"
                         >
                             <FaXTwitter className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.youtube}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="YouTube"
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                openShareWindow(
+                                    `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+                                )
+                            }
+                            aria-label="Facebook"
                             className="transition-colors hover:text-black"
+                            title="Share on Facebook"
                         >
-                            <FaYoutube className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
+                            <FaFacebookF className="h-[1.1rem] w-[1.1rem]" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                openShareWindow(
+                                    `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${safeShareUrl}`)}`
+                                )
+                            }
+                            aria-label="WhatsApp"
+                            className="transition-colors hover:text-black"
+                            title="Share on WhatsApp"
+                        >
+                            <FaWhatsapp className="h-[1.1rem] w-[1.1rem]" />
+                        </button>
                         <Link
-                            href={siteSocialLinks.email}
+                            href={`mailto:?subject=${encodeURIComponent(blog.title)}&body=${encodeURIComponent(
+                                `${shareText}\n\n${safeShareUrl}`
+                            )}`}
                             aria-label="Email"
                             className="transition-colors hover:text-black"
+                            title="Share via Email"
                         >
                             <FaEnvelope className="h-[1.1rem] w-[1.1rem]" />
                         </Link>

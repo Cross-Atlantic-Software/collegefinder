@@ -1,17 +1,26 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
-import legalDocument from "@/data/legal-document.json";
+import legalDocumentFallback from "@/data/legal-document.json";
+import { getLegalPageDocument } from "@/api";
+import type { LegalDocument } from "@/types/legalDocument";
+import { LegalRichHtml } from "@/components/legal/LegalRichHtml";
+import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
 type LegalSection = {
     id: string;
     title: string;
     paragraphs: string[];
+    bodyHtml?: string;
 };
 
-const doc = legalDocument as { intro: string[]; sections: LegalSection[] };
+const fallbackDoc = legalDocumentFallback as LegalDocument;
+
+// Match admin RichTextEditor: indented lists without markers (Tailwind preflight + TipTap use list-style none).
+const legalRichAreaClass =
+  "legal-content max-w-none text-base leading-relaxed text-black/80 [&_p]:mb-4 [&_ul]:my-3 [&_ul]:list-none [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-none [&_ol]:pl-6 [&_li]:my-1.5 [&_a]:font-semibold [&_a]:text-black [&_a]:underline [&_strong]:font-bold [&_h1]:text-[1.75rem] [&_h1]:font-extrabold [&_h1]:leading-tight [&_h1]:text-black [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-black [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-black [&_h3]:text-black";
 
 function isDecorativeLine(s: string): boolean {
     const t = s.trim();
@@ -227,7 +236,7 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
                 nodes.push(
                     <ul
                         key={`ul-after-label-${i}`}
-                        className="mt-2 list-disc space-y-1.5 pl-5 text-black/85 marker:text-black/60"
+                        className="mt-2 list-none space-y-1.5 pl-5 text-black/85"
                     >
                         {items.map((item, idx) => (
                             <li key={`li-after-label-${i}-${idx}`}>{linkify(item)}</li>
@@ -251,7 +260,7 @@ function SectionBody({ paragraphs }: { paragraphs: string[] }) {
             nodes.push(
                 <ul
                     key={`ul-${i}`}
-                    className="list-disc space-y-1.5 pl-5 text-black/85 marker:text-black/60"
+                    className="list-none space-y-1.5 pl-5 text-black/85"
                 >
                     {items.map((item, idx) => (
                         <li key={`li-${i}-${idx}`}>{linkify(item)}</li>
@@ -290,12 +299,47 @@ function scrollToHash() {
 }
 
 export default function LegalPageClient() {
+    const [legalDoc, setLegalDoc] = useState<LegalDocument | null>(null);
+
     useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await getLegalPageDocument();
+                if (cancelled) return;
+                if (res.success && res.data?.document) {
+                    setLegalDoc(res.data.document);
+                } else {
+                    setLegalDoc(fallbackDoc);
+                }
+            } catch {
+                if (!cancelled) setLegalDoc(fallbackDoc);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!legalDoc) return;
         scrollToHash();
         const onHash = () => scrollToHash();
         window.addEventListener("hashchange", onHash);
         return () => window.removeEventListener("hashchange", onHash);
-    }, []);
+    }, [legalDoc]);
+
+    if (!legalDoc) {
+        return (
+            <main className="min-h-screen bg-white pb-24">
+                <div className="appContainer py-20">
+                    <OnboardingLoader message="Loading policies…" />
+                </div>
+            </main>
+        );
+    }
+
+    const doc = legalDoc;
 
     return (
         <main className="min-h-screen bg-white pb-24">
@@ -309,7 +353,11 @@ export default function LegalPageClient() {
                 </Link>
 
                 <article className="mx-auto mt-10 max-w-3xl">
-                    <IntroBlock lines={doc.intro} />
+                    {doc.introHtml?.trim() ? (
+                        <LegalRichHtml html={doc.introHtml} className={legalRichAreaClass} />
+                    ) : (
+                        <IntroBlock lines={doc.intro} />
+                    )}
 
                     <nav className="mt-8" aria-label="On this page">
                         <p className="text-xs font-bold uppercase tracking-wide text-black/55">
@@ -342,7 +390,14 @@ export default function LegalPageClient() {
                             >
                                 {section.title}
                             </h2>
-                            <SectionBody paragraphs={section.paragraphs} />
+                            {section.bodyHtml?.trim() ? (
+                                <LegalRichHtml
+                                    html={section.bodyHtml}
+                                    className={`mt-6 ${legalRichAreaClass}`}
+                                />
+                            ) : (
+                                <SectionBody paragraphs={section.paragraphs} />
+                            )}
                             {idx < doc.sections.length - 1 ? null : null}
                         </section>
                     ))}

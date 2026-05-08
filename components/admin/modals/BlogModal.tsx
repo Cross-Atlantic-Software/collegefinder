@@ -13,6 +13,7 @@ interface BlogModalProps {
 }
 
 export default function BlogModal({ blog, onClose }: BlogModalProps) {
+  const MAX_BLOG_IMAGE_BYTES = 500 * 1024; // 500KB
   const { showSuccess, showError } = useToast();
   const [slug, setSlug] = useState(blog?.slug || '');
   const [title, setTitle] = useState(blog?.title || '');
@@ -161,6 +162,11 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
         setError('Please select an image file');
         return;
       }
+      if (file.size > MAX_BLOG_IMAGE_BYTES) {
+        setError('Blog image must be 500KB or smaller. Please choose a compressed image.');
+        e.target.value = '';
+        return;
+      }
       setBlogImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -200,8 +206,8 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
       return;
     }
 
-    if (contentType === 'TEXT' && (!firstPart || !secondPart)) {
-      setError('First part and second part are required for TEXT content type');
+    if (contentType === 'TEXT' && !firstPart?.trim()) {
+      setError('First part is required for TEXT content type');
       return;
     }
 
@@ -493,6 +499,7 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                     <FiImage className="h-4 w-4" />
                     {blogImagePreview ? 'Change Image' : 'Upload Image'}
                   </button>
+                  <p className="mt-1 text-xs text-slate-500">Image size limit: 500KB</p>
                   {blogImagePreview && (
                     <button
                       type="button"
@@ -525,12 +532,12 @@ export default function BlogModal({ blog, onClose }: BlogModalProps) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Second Part <span className="text-[#341050]">*</span>
+                    Second Part <span className="text-slate-500 font-normal">(optional)</span>
                   </label>
                   <RichTextEditor
                     value={secondPart}
                     onChange={setSecondPart}
-                    placeholder="Second part of the blog content..."
+                    placeholder="Optional: continuation after Read more on the blog page"
                   />
                 </div>
               </div>

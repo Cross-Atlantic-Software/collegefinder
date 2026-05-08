@@ -375,7 +375,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
             return;
         }
         if (!nickname.trim()) {
-            setFormMessage({ type: "error", text: "Please enter your nickname." });
+            setFormMessage({ type: "error", text: "Please enter your name." });
             return;
         }
         if (!streamId) {
@@ -975,34 +975,36 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                                     Choose a stream to see interests.
                                                 </p>
                                             ) : (
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    {interestOptions.map((opt) => {
-                                                        const on = selectedInterests.includes(opt.id);
-                                                        return (
-                                                            <button
-                                                                key={opt.id}
-                                                                type="button"
-                                                                onClick={() => toggleInterest(opt.id)}
-                                                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                                                                    on
-                                                                        ? "border-black bg-black text-white"
-                                                                        : "border-amber-200 bg-white text-black/80 hover:border-amber-400"
-                                                                }`}
-                                                            >
-                                                                {opt.logo ? (
-                                                                    <Image
-                                                                        src={opt.logo}
-                                                                        alt=""
-                                                                        width={18}
-                                                                        height={18}
-                                                                        className="rounded-sm object-cover"
-                                                                        unoptimized
-                                                                    />
-                                                                ) : null}
-                                                                {opt.label}
-                                                            </button>
-                                                        );
-                                                    })}
+                                                <div className="mt-3 max-h-20 overflow-y-auto overflow-x-hidden overscroll-y-contain rounded-lg border border-amber-200/70 bg-white/60 py-1.5 pl-2 pr-1 [-webkit-overflow-scrolling:touch]">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {interestOptions.map((opt) => {
+                                                            const on = selectedInterests.includes(opt.id);
+                                                            return (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    type="button"
+                                                                    onClick={() => toggleInterest(opt.id)}
+                                                                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                                                        on
+                                                                            ? "border-black bg-black text-white"
+                                                                            : "border-amber-200 bg-white text-black/80 hover:border-amber-400"
+                                                                    }`}
+                                                                >
+                                                                    {opt.logo ? (
+                                                                        <Image
+                                                                            src={opt.logo}
+                                                                            alt=""
+                                                                            width={18}
+                                                                            height={18}
+                                                                            className="rounded-sm object-cover"
+                                                                            unoptimized
+                                                                        />
+                                                                    ) : null}
+                                                                    {opt.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

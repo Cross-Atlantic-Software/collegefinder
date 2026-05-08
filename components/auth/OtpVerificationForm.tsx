@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { verifyOTP, resendOTP } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 
 const OTP_LENGTH = 6;
 
@@ -103,7 +104,13 @@ export function OtpVerificationForm({
         };
         login(response.data.token, user);
         onVerified?.(code);
-        
+
+        try {
+          sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1");
+        } catch {
+          /* ignore */
+        }
+
         // Redirect based on whether user has completed onboarding.
         // If onboarding_completed is true → go to home
         // If onboarding_completed is false/null → go to onboarding step-1
