@@ -48,6 +48,7 @@ export const API_ENDPOINTS = {
     BLOGS: '/site/blogs',
     CHECK_EMAIL: '/site/check-email',
     QUERIES: '/site/queries',
+    LEGAL_DOCUMENT: '/site/legal-document',
   },
 
   // Public endpoints
@@ -73,6 +74,7 @@ export const API_ENDPOINTS = {
     EMAIL_TEMPLATES: '/admin/email-templates',
     BLOGS: '/admin/blogs',
     LANDING_PAGE: '/admin/landing-page',
+    LEGAL_DOCUMENT: '/admin/legal-document',
     TESTIMONIALS: '/admin/testimonials',
     CAREER_GOALS: '/admin/career-goals',
     EXAMS: '/admin/exams',

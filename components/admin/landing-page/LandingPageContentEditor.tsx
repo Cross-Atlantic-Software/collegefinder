@@ -50,6 +50,11 @@ const SECTIONS = [
     title: 'FAQ',
     blurb: 'Questions and answers below testimonials',
   },
+  {
+    id: 'signup-welcome',
+    title: 'After signup',
+    blurb: 'Welcome modal on the home page after email signup (OTP); duration in seconds',
+  },
 ] as const;
 
 function SectionShell({
@@ -889,6 +894,52 @@ export default function LandingPageContentEditor({ value, onChange, disabled }: 
                 Add FAQ item
               </button>
             </div>
+          </div>
+        </SectionShell>
+
+        <SectionShell
+          id="signup-welcome"
+          title="After signup (home modal)"
+          blurb={SECTIONS[8].blurb}
+        >
+          <LabeledTextarea
+            label="Welcome message"
+            rows={3}
+            value={value.signupWelcome?.message ?? ''}
+            onChange={(message) =>
+              patch({
+                signupWelcome: {
+                  message,
+                  durationSeconds: value.signupWelcome?.durationSeconds ?? 5,
+                },
+              })
+            }
+            disabled={disabled}
+            hint="Shown in a themed modal on the marketing home page after the user verifies their email. Press Enter for a new line."
+          />
+          <div>
+            <label className={labelClass}>Display time (seconds)</label>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              className={inputClass}
+              value={value.signupWelcome?.durationSeconds ?? 5}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                patch({
+                  signupWelcome: {
+                    message: value.signupWelcome?.message ?? '',
+                    durationSeconds: Number.isFinite(n) ? n : 5,
+                  },
+                });
+              }}
+              disabled={disabled}
+            />
+            <p className={hintClass}>
+              How long the modal stays open before the full home page is unobstructed (1–60). Example: 3 for three
+              seconds.
+            </p>
           </div>
         </SectionShell>
       </div>

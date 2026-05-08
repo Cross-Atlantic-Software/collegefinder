@@ -160,6 +160,7 @@ const runMigrations = async () => {
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',
+    'add_legal_page_content.sql',
     'add_branch_programs_junction.sql',
     'add_scholarship_colleges.sql',
     'add_expert_linkedin_website.sql',

@@ -14,6 +14,7 @@ export * from './admin';
 
 // Public site (landing copy)
 export { getLandingPageContent } from './site/landingPage';
+export { getLegalPageDocument } from './site/legalDocument';
 export { getPublicTestimonials, type PublicTestimonial } from './site/testimonials';
 export { getPublicBlogs, getPublicBlogBySlug } from './site/blogs';
 export { checkEmailRegistrationStatus } from './site/registration';

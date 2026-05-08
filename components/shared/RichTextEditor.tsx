@@ -16,6 +16,7 @@ interface RichTextEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
   imageUploadEndpoint?: string; // Optional custom endpoint for image uploads
   imageFormFieldName?: string; // Optional custom form field name for image uploads
 }
@@ -25,6 +26,7 @@ export default function RichTextEditor({
   onChange,
   placeholder = 'Start writing...',
   className = '',
+  disabled = false,
   imageUploadEndpoint = '/admin/blogs/upload-image',
   imageFormFieldName = 'blog_image',
 }: RichTextEditorProps) {
@@ -78,6 +80,7 @@ export default function RichTextEditor({
 
   const editor = useEditor({
     immediatelyRender: false, // Prevent SSR hydration mismatches
+    editable: !disabled,
     extensions: [
       StarterKit,
       Underline,
@@ -133,6 +136,10 @@ export default function RichTextEditor({
     }
   }, [value, editor]);
 
+  useEffect(() => {
+    editor?.setEditable(!disabled);
+  }, [editor, disabled]);
+
   // Add image button handler
   const addImage = useCallback(async () => {
     const input = document.createElement('input');
@@ -162,6 +169,7 @@ export default function RichTextEditor({
   return (
     <div className={className}>
       {/* Toolbar */}
+      {!disabled && (
       <div className="border border-gray-300 rounded-t-lg bg-gray-50 p-2 flex flex-wrap gap-2">
         <button
           type="button"
@@ -332,9 +340,14 @@ export default function RichTextEditor({
           🧹
         </button>
       </div>
+      )}
 
       {/* Editor Content */}
-      <div className="border border-t-0 border-gray-300 rounded-b-lg bg-white min-h-[200px]">
+      <div
+        className={`border border-gray-300 bg-white min-h-[200px] ${
+          disabled ? 'rounded-lg' : 'border-t-0 rounded-b-lg'
+        }`}
+      >
         <EditorContent 
           editor={editor}
           data-placeholder={placeholder}

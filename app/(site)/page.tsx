@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLandingPageContent, getPublicTestimonials, type PublicTestimonial } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
@@ -15,14 +15,19 @@ import {
   InfoSection,
 } from "@/components/containers";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { SignupWelcomeModal } from "@/components/shared/SignupWelcomeModal";
 import ScrollRevealSection from "@/components/shared/ScrollRevealSection";
 import { scrollToLandingSection } from "@/lib/landingNav";
+import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 
 export default function Home() {
   const { isLoading } = useAuth();
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [landingError, setLandingError] = useState<string | null>(null);
   const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
+  const [signupWelcomeOpen, setSignupWelcomeOpen] = useState(false);
+
+  const closeSignupWelcome = useCallback(() => setSignupWelcomeOpen(false), []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -77,6 +82,18 @@ export default function Home() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, [landing]);
 
+  useEffect(() => {
+    if (!landing) return;
+    try {
+      if (sessionStorage.getItem(SIGNUP_WELCOME_SESSION_KEY) === "1") {
+        sessionStorage.removeItem(SIGNUP_WELCOME_SESSION_KEY);
+        setSignupWelcomeOpen(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [landing]);
+
   if (isLoading) {
     return <OnboardingLoader message="Loading..." />;
   }
@@ -95,6 +112,14 @@ export default function Home() {
 
   return (
     <main className="bg-white">
+      {signupWelcomeOpen ? (
+        <SignupWelcomeModal
+          open={signupWelcomeOpen}
+          message={landing.signupWelcome?.message ?? ""}
+          durationSeconds={landing.signupWelcome?.durationSeconds ?? 5}
+          onClose={closeSignupWelcome}
+        />
+      ) : null}
       <Hero hero={landing.hero} />
       <ScrollRevealSection delayMs={0}>
         <InfoSection info={landing.info} />

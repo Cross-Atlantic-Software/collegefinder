@@ -249,6 +249,9 @@ export {
 // Landing page (home) CMS copy
 export { getAdminLandingPageContent, updateAdminLandingPageContent } from './landingPage';
 
+// Legal page (/legal) CMS
+export { getAdminLegalDocument, updateAdminLegalDocument } from './legalDocument';
+
 // Active referral codes (admin)
 export {
   getAllActiveReferralCodes,
