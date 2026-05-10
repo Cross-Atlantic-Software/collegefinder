@@ -28,6 +28,8 @@ export const API_ENDPOINTS = {
     PROFILE_PASSWORD: '/auth/profile/password',
     PROFILE_RECOMMENDED_EXAMS: '/auth/profile/recommended-exams',
     PROFILE_RECOMMENDED_COLLEGES: '/auth/profile/recommended-colleges',
+    PROFILE_DASHBOARD_COLLEGES: '/auth/profile/dashboard-colleges',
+    PROFILE_SHORTLISTED_COLLEGES: '/auth/profile/shortlisted-colleges',
     PROFILE_COMPLETION: '/auth/profile/completion',
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
     PROFILE_EMAIL_SEND_OTP: '/auth/profile/email/send-otp',

@@ -22,12 +22,109 @@ const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 class ExamsTaxonomyController {
   /**
+   * Merge all admin-linked exam rows (dates, eligibility, pattern, cutoff, career goals, programs)
+   * into public exam list items for GET /api/exams and dashboard-exams.
+   */
+  static async enrichExamRows(exams) {
+    if (!exams || exams.length === 0) return exams;
+    const ids = exams.map((e) => e.id).filter((id) => id != null);
+    if (ids.length === 0) return exams;
+
+    const [
+      datesRows,
+      patterns,
+      eligibilities,
+      cutoffs,
+      careerRows,
+      programRows,
+    ] = await Promise.all([
+      ExamDates.findByExamIds(ids),
+      ExamPattern.findByExamIds(ids),
+      ExamEligibilityCriteria.findByExamIds(ids),
+      ExamCutoff.findByExamIds(ids),
+      ExamCareerGoal.findCareerGoalsForExamIds(ids),
+      ExamProgram.findProgramsForExamIds(ids),
+    ]);
+
+    const dateMap = new Map(datesRows.map((d) => [d.exam_id, d]));
+    const pMap = new Map(patterns.map((p) => [p.exam_id, p]));
+    const eMap = new Map(eligibilities.map((r) => [r.exam_id, r]));
+    const cMap = new Map(cutoffs.map((r) => [r.exam_id, r]));
+
+    const streamIdSet = new Set();
+    const subjectIdSet = new Set();
+    for (const el of eligibilities) {
+      (el.stream_ids || []).forEach((sid) => streamIdSet.add(Number(sid)));
+      (el.subject_ids || []).forEach((sid) => subjectIdSet.add(Number(sid)));
+    }
+
+    const [streamRows, subjectRows] = await Promise.all([
+      Stream.findByIds([...streamIdSet]),
+      Subject.findByIds([...subjectIdSet]),
+    ]);
+    const streamNameById = new Map(streamRows.map((s) => [s.id, s.name]));
+    const subjectNameById = new Map(subjectRows.map((s) => [s.id, s.name]));
+
+    const careersByExam = new Map();
+    for (const row of careerRows) {
+      if (!careersByExam.has(row.exam_id)) {
+        careersByExam.set(row.exam_id, []);
+      }
+      careersByExam.get(row.exam_id).push({
+        id: row.career_goal_id,
+        label: row.label,
+        logo: row.logo ?? null,
+      });
+    }
+
+    const programsByExam = new Map();
+    for (const row of programRows) {
+      if (!programsByExam.has(row.exam_id)) {
+        programsByExam.set(row.exam_id, []);
+      }
+      programsByExam.get(row.exam_id).push({
+        id: row.program_id,
+        name: row.program_name,
+      });
+    }
+
+    return exams.map((ex) => {
+      const elRaw = eMap.get(ex.id);
+      let eligibilityCriteria = null;
+      if (elRaw) {
+        const streamLabels = (elRaw.stream_ids || [])
+          .map((id) => streamNameById.get(Number(id)))
+          .filter(Boolean);
+        const subjectLabels = (elRaw.subject_ids || [])
+          .map((id) => subjectNameById.get(Number(id)))
+          .filter(Boolean);
+        eligibilityCriteria = {
+          ...elRaw,
+          stream_labels: streamLabels,
+          subject_labels: subjectLabels,
+        };
+      }
+
+      return {
+        ...ex,
+        examDates: dateMap.get(ex.id) || null,
+        eligibilityCriteria,
+        examPattern: pMap.get(ex.id) || null,
+        examCutoff: cMap.get(ex.id) || null,
+        linkedCareerGoals: careersByExam.get(ex.id) || [],
+        linkedPrograms: programsByExam.get(ex.id) || [],
+      };
+    });
+  }
+
+  /**
    * Get all exams (for users - public endpoint)
    * GET /api/exams
    */
   static async getAll(req, res) {
     try {
-      const exams = await Exam.findAll();
+      const raw = await Exam.findAll();
+      const exams = await ExamsTaxonomyController.enrichExamRows(raw);
       res.json({
         success: true,
         data: { exams }
@@ -760,6 +857,138 @@ class ExamsTaxonomyController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch recommended exams'
+      });
+    }
+  }
+
+  /**
+   * Dashboard exams payload:
+   * - allExams: stream-filtered exams
+   * - recommendedExamIds: existing recommendation logic, intersected with stream-filtered set
+   * - shortlistedExamIds: stored in user_academics.user_shortlisted_exams, intersected with stream-filtered set
+   * GET /api/auth/profile/dashboard-exams
+   */
+  static async getDashboardExams(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const [academics, careerGoalsRow] = await Promise.all([
+        UserAcademics.findByUserId(userId),
+        UserCareerGoals.findByUserId(userId)
+      ]);
+
+      const streamId = academics?.stream_id ?? null;
+      if (streamId == null || streamId === '') {
+        return res.json({
+          success: true,
+          data: {
+            streamId: null,
+            allExams: [],
+            recommendedExamIds: [],
+            shortlistedExamIds: [],
+            message: 'Select your stream in profile to view exams.'
+          }
+        });
+      }
+
+      const streamExams = await Exam.findAllByStreamId(streamId);
+      const allExams = await ExamsTaxonomyController.enrichExamRows(streamExams);
+      const allExamIdSet = new Set(allExams.map((e) => Number(e.id)));
+
+      const careerGoalIds = careerGoalsRow?.interests ?? [];
+      const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
+        ? careerGoalIds
+            .map(id => (typeof id === 'string' ? parseInt(id, 10) : id))
+            .filter(id => Number.isInteger(id))
+        : [];
+
+      const recommendedIdSet = new Set();
+      for (const interestId of normalizedCareerGoalIds) {
+        const row = await StreamInterestRecommendation.findByStreamAndInterest(Number(streamId), interestId);
+        if (row && Array.isArray(row.exam_ids)) {
+          row.exam_ids.forEach((eid) => {
+            const n = Number(eid);
+            if (Number.isInteger(n) && allExamIdSet.has(n)) recommendedIdSet.add(n);
+          });
+        }
+      }
+
+      const shortlistedRaw = Array.isArray(academics?.user_shortlisted_exams)
+        ? academics.user_shortlisted_exams
+        : [];
+      const shortlistedExamIds = shortlistedRaw
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && allExamIdSet.has(id));
+
+      return res.json({
+        success: true,
+        data: {
+          streamId: Number(streamId),
+          allExams,
+          recommendedExamIds: [...recommendedIdSet],
+          shortlistedExamIds,
+          message:
+            allExams.length === 0
+              ? 'No exams are configured for your stream yet.'
+              : undefined
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard exams:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch dashboard exams'
+      });
+    }
+  }
+
+  /**
+   * Toggle shortlisted exam IDs in user_academics.user_shortlisted_exams
+   * PUT /api/auth/profile/shortlisted-exams
+   */
+  static async updateShortlistedExams(req, res) {
+    try {
+      const userId = req.user.id;
+      const examId = Number(req.body.exam_id);
+      const shortlisted = Boolean(req.body.shortlisted);
+
+      if (!Number.isInteger(examId) || examId < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'exam_id must be a positive integer'
+        });
+      }
+
+      const exam = await Exam.findById(examId);
+      if (!exam) {
+        return res.status(404).json({
+          success: false,
+          message: 'Exam not found'
+        });
+      }
+
+      const existing = await UserAcademics.findByUserId(userId);
+      const current = Array.isArray(existing?.user_shortlisted_exams)
+        ? existing.user_shortlisted_exams.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0)
+        : [];
+
+      const nextSet = new Set(current);
+      if (shortlisted) nextSet.add(examId);
+      else nextSet.delete(examId);
+      const next = [...nextSet].sort((a, b) => a - b);
+
+      await UserAcademics.upsert(userId, { user_shortlisted_exams: next });
+
+      return res.json({
+        success: true,
+        data: { shortlistedExamIds: next },
+        message: shortlisted ? 'Exam shortlisted' : 'Exam removed from shortlist'
+      });
+    } catch (error) {
+      console.error('Error updating shortlisted exams:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update shortlisted exams'
       });
     }
   }

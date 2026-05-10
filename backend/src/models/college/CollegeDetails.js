@@ -9,6 +9,15 @@ class CollegeDetails {
     return result.rows[0] || null;
   }
 
+  static async findByCollegeIds(collegeIds) {
+    if (!collegeIds || collegeIds.length === 0) return [];
+    const result = await db.query(
+      'SELECT * FROM college_details WHERE college_id = ANY($1::int[])',
+      [collegeIds]
+    );
+    return result.rows;
+  }
+
   static async create(data) {
     const { college_id, college_description, major_program_ids } = data;
     const result = await db.query(

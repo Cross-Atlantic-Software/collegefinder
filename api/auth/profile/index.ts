@@ -359,6 +359,65 @@ export async function getRecommendedColleges(): Promise<ApiResponse<{
   });
 }
 
+/** Admin-linked college payload for dashboard shortlist tabs */
+export interface DashboardCollegeProgram {
+  id: number;
+  college_id: number;
+  program_id: number;
+  program_name?: string | null;
+  intake_capacity?: number | null;
+  duration_years?: number | null;
+  branch_course?: string | null;
+  [key: string]: unknown;
+}
+
+export interface DashboardCollege {
+  id: number;
+  college_name: string;
+  college_location: string | null;
+  college_type: string | null;
+  college_logo: string | null;
+  logo_url?: string | null;
+  website?: string | null;
+  state?: string | null;
+  city?: string | null;
+  parent_university?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  collegeDetails?: { college_description?: string | null; major_program_ids?: unknown } | null;
+  keyDates?: Array<{ id?: number; event_name?: string | null; event_date?: string | null }>;
+  documentsRequired?: Array<{ id?: number; document_name?: string | null }>;
+  counsellingSteps?: Array<{ step_number?: number | null; description?: string | null }>;
+  programs?: DashboardCollegeProgram[];
+  linkedExams?: Array<{ id: number; name: string; code: string | null }>;
+}
+
+/**
+ * Dashboard college shortlist: all / recommended (exam overlap with exam shortlist) / shortlisted IDs + rows
+ */
+export async function getDashboardColleges(): Promise<ApiResponse<{
+  streamId: number | null;
+  allColleges: DashboardCollege[];
+  recommendedColleges: DashboardCollege[];
+  shortlistedColleges: DashboardCollege[];
+  shortlistedCollegeIds: number[];
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_COLLEGES, {
+    method: 'GET',
+  });
+}
+
+export async function updateShortlistedCollege(
+  college_id: number,
+  shortlisted: boolean
+): Promise<ApiResponse<{ shortlistedCollegeIds: number[] }>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_SHORTLISTED_COLLEGES, {
+    method: 'PUT',
+    body: JSON.stringify({ college_id, shortlisted }),
+  });
+}
+
 /**
  * Get profile completion percentage
  */

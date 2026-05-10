@@ -9,6 +9,17 @@ class ExamDates {
     return result.rows[0] || null;
   }
 
+  static async findByExamIds(examIds) {
+    if (!examIds || examIds.length === 0) {
+      return [];
+    }
+    const result = await db.query(
+      'SELECT * FROM exam_dates WHERE exam_id = ANY($1::int[])',
+      [examIds]
+    );
+    return result.rows;
+  }
+
   static async findById(id) {
     const result = await db.query(
       'SELECT * FROM exam_dates WHERE id = $1',

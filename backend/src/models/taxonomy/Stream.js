@@ -22,6 +22,20 @@ class Stream {
   }
 
   /**
+   * Find streams by IDs (name only; for resolving eligibility labels)
+   */
+  static async findByIds(ids) {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const result = await db.query(
+      'SELECT id, name FROM streams WHERE id = ANY($1::int[])',
+      [ids]
+    );
+    return result.rows;
+  }
+
+  /**
    * Find stream by ID (with updated_by admin email)
    */
   static async findById(id) {

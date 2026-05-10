@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiTarget, FiTrendingUp } from "react-icons/fi";
+import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiExternalLink, FiTarget, FiTrendingUp } from "react-icons/fi";
 import { MdOutlineInsights, MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { getAllExams, type Exam } from "@/api/exams";
@@ -192,6 +192,123 @@ function getExamStream(examName: string): string {
   return "General";
 }
 
+function formatDurationMinutes(m: number | null | undefined): string | null {
+  if (m == null) return null;
+  const n = Math.round(Number(m));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const h = Math.floor(n / 60);
+  const min = n % 60;
+  if (h === 0) return `${min} min`;
+  if (min === 0) return h === 1 ? "1 hour" : `${h} hours`;
+  return `${h} hr ${min} min`;
+}
+
+function scoreSummaryFromCutoff(exam: Exam | null): string | null {
+  if (!exam?.examCutoff) return null;
+  const c = exam.examCutoff;
+  const rp = c.ranks_percentiles != null && String(c.ranks_percentiles).trim();
+  if (rp) return String(c.ranks_percentiles).trim();
+  const tr = c.target_rank_range != null && String(c.target_rank_range).trim();
+  if (tr) return String(c.target_rank_range).trim();
+  return null;
+}
+
+function formatAttemptLimit(exam: Exam): string | null {
+  const v = exam.eligibilityCriteria?.attempt_limit;
+  if (v == null || String(v).trim() === "") return null;
+  return String(v).trim();
+}
+
+function formatQuestionCountLabel(exam: Exam): string | null {
+  const n = exam.examPattern?.number_of_questions;
+  if (n == null) return null;
+  const num = Number(n);
+  if (!Number.isFinite(num)) return null;
+  return `${Math.round(num)} questions`;
+}
+
+function formatMarkingSchemeLabel(exam: Exam): string | null {
+  const neg =
+    exam.examPattern?.negative_marking != null && String(exam.examPattern.negative_marking).trim()
+      ? String(exam.examPattern.negative_marking).trim()
+      : null;
+  const total = exam.examPattern?.total_marks;
+  const totalPart =
+    total != null && Number.isFinite(Number(total))
+      ? `${Math.round(Number(total))} total marks`
+      : null;
+  if (totalPart && neg) return `${totalPart}; ${neg}`;
+  if (totalPart) return totalPart;
+  if (neg) return neg;
+  return null;
+}
+
+function buildEligibilityRules(exam: Exam | null, fallback: string[]): string[] {
+  if (!exam?.eligibilityCriteria) return fallback;
+  const ec = exam.eligibilityCriteria;
+  const rules: string[] = [];
+  if (ec.stream_labels?.length) rules.push(`Eligible streams: ${ec.stream_labels.join(", ")}`);
+  if (ec.subject_labels?.length) rules.push(`Subject alignment: ${ec.subject_labels.join(", ")}`);
+  if (ec.age_limit?.trim()) rules.push(`Age limit: ${ec.age_limit.trim()}`);
+  if (ec.attempt_limit != null && String(ec.attempt_limit).trim() !== "")
+    rules.push(`Attempt limit: ${String(ec.attempt_limit).trim()}`);
+  if (ec.domicile?.trim()) rules.push(`Domicile / state rules: ${ec.domicile.trim()}`);
+  return rules.length ? rules : fallback;
+}
+
+function formatIsoDateLabel(raw: string | null | undefined): string | null {
+  if (!raw || !String(raw).trim()) return null;
+  try {
+    const dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) return String(raw).trim();
+    return dt.toLocaleDateString(undefined, { dateStyle: "medium" });
+  } catch {
+    return String(raw).trim();
+  }
+}
+
+function buildTimelineFromExamDates(exam: Exam | null, fallback: TimelineItem[]): TimelineItem[] {
+  const dates = exam?.examDates;
+  if (!dates) return fallback;
+  const items: TimelineItem[] = [];
+  const add = (label: string, raw: string | null | undefined, note: string, critical?: boolean) => {
+    const formatted = formatIsoDateLabel(raw || undefined);
+    if (!formatted) return;
+    items.push({ label, month: formatted, note, critical });
+  };
+  add("Application opens", dates.application_start_date, "Start of the registration window.", true);
+  add("Application closes", dates.application_close_date, "Last date to submit the application form.", true);
+  add("Exam date", dates.exam_date, "Main examination day.", true);
+  add("Result", dates.result_date, "Scorecard / merit outcome.", false);
+  if (dates.application_fees != null && String(dates.application_fees).trim() !== "") {
+    const fee = Number(dates.application_fees);
+    if (!Number.isNaN(fee)) {
+      items.push({
+        label: "Application fee",
+        month: "See note",
+        note: `₹${fee} — confirm on the official notification.`,
+      });
+    }
+  }
+  return items.length ? items : fallback;
+}
+
+function buildCutoffLines(exam: Exam | null, fallback: string[]): string[] {
+  const c = exam?.examCutoff;
+  if (!c) return fallback;
+  const lines: string[] = [];
+  const push = (label: string, val: string | null | undefined) => {
+    if (val != null && String(val).trim() !== "") lines.push(`${label}: ${String(val).trim()}`);
+  };
+  push("Ranks / percentiles", c.ranks_percentiles);
+  push("General", c.cutoff_general);
+  push("OBC", c.cutoff_obc);
+  push("SC", c.cutoff_sc);
+  push("ST", c.cutoff_st);
+  push("Target rank range", c.target_rank_range);
+  return lines.length ? lines : fallback;
+}
+
 function getModel(exam: Exam | null, examId: string): DetailModel {
   const key = exam ? slugify(exam.name) : slugify(examId);
   const now = new Date();
@@ -248,7 +365,7 @@ function getModel(exam: Exam | null, examId: string): DetailModel {
 
   const preset = PRESETS[key] || {};
 
-  return {
+  const merged: DetailModel = {
     ...base,
     ...preset,
     competitiveness: {
@@ -256,6 +373,46 @@ function getModel(exam: Exam | null, examId: string): DetailModel {
       ...preset.competitiveness,
     },
   };
+
+  if (exam) {
+    const mode =
+      exam.examPattern?.mode != null && String(exam.examPattern.mode).trim()
+        ? String(exam.examPattern.mode).trim()
+        : null;
+    if (mode) merged.mode = mode;
+
+    const durationLabel = formatDurationMinutes(exam.examPattern?.duration_minutes ?? undefined);
+    if (durationLabel) merged.duration = durationLabel;
+
+    const attemptsLabel = formatAttemptLimit(exam);
+    if (attemptsLabel) merged.attempts = attemptsLabel;
+
+    const scoreLabel = scoreSummaryFromCutoff(exam);
+    if (scoreLabel) merged.scoreWindow = scoreLabel;
+
+    const qc = formatQuestionCountLabel(exam);
+    if (qc) merged.questionCount = qc;
+
+    const marking = formatMarkingSchemeLabel(exam);
+    if (marking) merged.markingScheme = marking;
+
+    if (exam.exam_type?.trim()) merged.examType = exam.exam_type.trim();
+    if (exam.conducting_authority?.trim()) merged.conductingAuthority = exam.conducting_authority.trim();
+
+    merged.eligibility = buildEligibilityRules(exam, merged.eligibility);
+    merged.timeline = buildTimelineFromExamDates(exam, merged.timeline);
+    merged.cutoffBenchmarks = buildCutoffLines(exam, merged.cutoffBenchmarks);
+
+    const cg = exam.examCutoff?.cutoff_general;
+    if (cg != null && String(cg).trim() !== "") {
+      merged.competitiveness = {
+        ...merged.competitiveness,
+        typicalCutoff: String(cg).trim(),
+      };
+    }
+  }
+
+  return merged;
 }
 
 export default function ExamDetailPage() {
@@ -299,6 +456,12 @@ export default function ExamDetailPage() {
       null
     );
   }, [allExams, examId]);
+
+  const logoSrc = useMemo(
+    () => (exam?.exam_logo?.trim() ? exam.exam_logo.trim() : "/cbse.png"),
+    [exam]
+  );
+  const logoRemote = logoSrc.startsWith("http");
 
   const model = useMemo(() => getModel(exam, examId), [exam, examId]);
   const examName = exam?.name || examId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -388,12 +551,13 @@ export default function ExamDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
                   <Image
-                    src="/cbse.png"
+                    src={logoSrc}
                     alt="Exam logo"
                     fill
                     className="object-cover"
                     sizes="44px"
                     priority
+                    unoptimized={logoRemote}
                   />
                 </div>
                 <div>
@@ -456,6 +620,33 @@ export default function ExamDetailPage() {
                   </div>
                 </div>
 
+                {(exam?.linkedCareerGoals?.length || exam?.linkedPrograms?.length) ? (
+                  <article className="rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Career goals & programs</h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Linked interests and programs from admin configuration.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(exam?.linkedCareerGoals || []).map((g) => (
+                        <span
+                          key={`cg-${g.id}`}
+                          className="rounded-full bg-[#F6F8FA] px-3 py-1 text-xs font-medium text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                        >
+                          {g.label}
+                        </span>
+                      ))}
+                      {(exam?.linkedPrograms || []).map((p) => (
+                        <span
+                          key={`pg-${p.id}`}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                        >
+                          {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                ) : null}
+
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Exam Pattern</h2>
@@ -464,6 +655,11 @@ export default function ExamDetailPage() {
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Questions: {model.questionCount}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Marking: {model.markingScheme}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Duration: {model.duration}</p>
+                      {exam?.examPattern?.weightage_of_subjects != null && String(exam.examPattern.weightage_of_subjects).trim() !== "" ? (
+                        <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                          Subject weightage: {exam.examPattern.weightage_of_subjects}
+                        </p>
+                      ) : null}
                     </div>
                   </article>
 
@@ -514,12 +710,46 @@ export default function ExamDetailPage() {
             </article>
           </div>
 
+          {exam?.documents_required?.trim() ? (
+            <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Documents required</h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                {exam.documents_required.trim()}
+              </p>
+            </article>
+          ) : null}
+
+          {exam?.counselling?.trim() ? (
+            <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Counselling</h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                {exam.counselling.trim()}
+              </p>
+            </article>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Exam Type & Conducting Authority</h2>
               <div className="mt-3 space-y-2 text-sm">
                 <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Exam Type: {model.examType}</p>
                 <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Conducting Authority: {model.conductingAuthority}</p>
+                {exam?.number_of_papers != null && exam.number_of_papers >= 1 ? (
+                  <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                    Number of papers: {exam.number_of_papers}
+                  </p>
+                ) : null}
+                {exam?.website?.trim() ? (
+                  <a
+                    href={/^https?:\/\//i.test(exam.website.trim()) ? exam.website.trim() : `https://${exam.website.trim()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
+                  >
+                    Official website
+                    <FiExternalLink className="h-4 w-4 shrink-0 opacity-70" />
+                  </a>
+                ) : null}
               </div>
             </article>
 

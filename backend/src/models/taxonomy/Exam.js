@@ -19,6 +19,23 @@ class Exam {
   }
 
   /**
+   * Exams whose eligibility stream_ids contains the given stream ID.
+   */
+  static async findAllByStreamId(streamId) {
+    const n = parseInt(streamId, 10);
+    if (!Number.isInteger(n) || n < 1) return [];
+    const result = await db.query(
+      `SELECT DISTINCT e.*
+       FROM exams_taxonomies e
+       INNER JOIN exam_eligibility_criteria ec ON ec.exam_id = e.id
+       WHERE $1 = ANY(COALESCE(ec.stream_ids, '{}'))
+       ORDER BY e.name ASC`,
+      [n]
+    );
+    return result.rows;
+  }
+
+  /**
    * Paginated admin list with optional search (aligned with admin UI filter fields).
    */
   static async findPaginatedAdmin({ page = 1, perPage = 10, q = '' } = {}) {

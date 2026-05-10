@@ -76,6 +76,20 @@ class Subject {
   }
 
   /**
+   * Find subjects by IDs (id + name only; for resolving eligibility labels)
+   */
+  static async findByIds(ids) {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const result = await db.query(
+      'SELECT id, name FROM subjects WHERE id = ANY($1::int[])',
+      [ids]
+    );
+    return result.rows;
+  }
+
+  /**
    * Find subject by name
    */
   static async findByName(name) {

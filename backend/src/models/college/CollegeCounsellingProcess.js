@@ -9,6 +9,16 @@ class CollegeCounsellingProcess {
     return result.rows;
   }
 
+  static async findByCollegeIds(collegeIds) {
+    if (!collegeIds || collegeIds.length === 0) return [];
+    const result = await db.query(
+      `SELECT * FROM college_counselling_process WHERE college_id = ANY($1::int[])
+       ORDER BY college_id, step_number ASC NULLS LAST, id`,
+      [collegeIds]
+    );
+    return result.rows;
+  }
+
   static async create(data) {
     const { college_id, step_number, description } = data;
     const result = await db.query(

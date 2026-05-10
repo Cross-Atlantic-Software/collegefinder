@@ -4,30 +4,23 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { FiSearch } from "react-icons/fi";
 import { FaCheckCircle } from "react-icons/fa";
 import { MdSchool } from "react-icons/md";
-import { getRecommendedColleges } from "@/api/auth/profile";
+import {
+  getDashboardColleges,
+  updateShortlistedCollege,
+  type DashboardCollege,
+} from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 
 type TabId = "recommended" | "shortlisted" | "all";
 
-type CollegeApiItem = {
-  id: number;
-  college_name: string;
-  college_location: string | null;
-  college_type: string | null;
-  college_logo: string | null;
-};
+const PER_PAGE = 10;
 
-type CollegeCard = {
-  id: string;
-  college_name: string;
-  college_location: string;
-  college_type: string;
-  college_logo: string;
-  subtitle: string;
-  overview: string;
-  source: string;
-  shortlisted: boolean;
+type TabCollege = DashboardCollege & {
   detailHref: string;
+  displayOverview: string;
+  displaySubtitle: string;
+  logoSrc: string;
+  tabSource: string;
 };
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
@@ -43,7 +36,7 @@ const LOCAL_COLLEGE_IMAGES = [
 ];
 
 function getLocalCollegeImage(seed: number): string {
-  return LOCAL_COLLEGE_IMAGES[seed % LOCAL_COLLEGE_IMAGES.length];
+  return LOCAL_COLLEGE_IMAGES[Math.abs(seed) % LOCAL_COLLEGE_IMAGES.length];
 }
 
 function slugify(value: string): string {
@@ -55,147 +48,88 @@ function slugify(value: string): string {
     .replace(/-+/g, "-");
 }
 
-const PREVIEW_COLLEGES: CollegeCard[] = [
-  {
-    id: "preview-nit-trichy",
-    college_name: "NIT Trichy",
-    college_location: "Tiruchirappalli, Tamil Nadu",
-    college_type: "Government",
-    college_logo: getLocalCollegeImage(0),
-    subtitle: "Balanced academics and placements",
-    overview: "A dependable shortlist option with a broad branch mix and a consistent campus reputation.",
-    source: "Dev preview",
-    shortlisted: true,
-    detailHref: "/dashboard/colleges/nit-trichy?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-bits-pilani",
-    college_name: "BITS Pilani",
-    college_location: "Pilani, Rajasthan",
-    college_type: "Private Deemed",
-    college_logo: getLocalCollegeImage(1),
-    subtitle: "Flexible curriculum and strong alumni",
-    overview: "Popular for its open curriculum, strong peer group, and premium private campus experience.",
-    source: "Dev preview",
-    shortlisted: true,
-    detailHref: "/dashboard/colleges/bits-pilani?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-vit-vellore",
-    college_name: "VIT Vellore",
-    college_location: "Vellore, Tamil Nadu",
-    college_type: "Private",
-    college_logo: getLocalCollegeImage(2),
-    subtitle: "Large intake and many programs",
-    overview: "A practical backup choice with broad branch availability and a polished admissions flow.",
-    source: "Dev preview",
-    shortlisted: false,
-    detailHref: "/dashboard/colleges/vit-vellore?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-iiit-hyderabad",
-    college_name: "IIIT Hyderabad",
-    college_location: "Hyderabad, Telangana",
-    college_type: "Research Focused",
-    college_logo: getLocalCollegeImage(0),
-    subtitle: "Computer science and research depth",
-    overview: "A premium technology shortlist entry with deep CS strength and a research-first environment.",
-    source: "Dev preview",
-    shortlisted: true,
-    detailHref: "/dashboard/colleges/iiit-hyderabad?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-manipal",
-    college_name: "Manipal Institute of Technology",
-    college_location: "Manipal, Karnataka",
-    college_type: "Private",
-    college_logo: getLocalCollegeImage(1),
-    subtitle: "Campus life with broad branch choices",
-    overview: "Useful for students who want a large, active campus and flexible college-fit options.",
-    source: "Dev preview",
-    shortlisted: false,
-    detailHref: "/dashboard/colleges/manipal-institute-of-technology?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-iit-bombay",
-    college_name: "IIT Bombay",
-    college_location: "Mumbai, Maharashtra",
-    college_type: "Government",
-    college_logo: getLocalCollegeImage(2),
-    subtitle: "Top-tier placements and innovation",
-    overview: "A marquee option for students aiming for the most competitive engineering tracks.",
-    source: "Dev preview",
-    shortlisted: true,
-    detailHref: "/dashboard/colleges/iit-bombay?from=dashboard-college-shortlist-recommended",
-  },
-  {
-    id: "preview-nit-warangal",
-    college_name: "NIT Warangal",
-    college_location: "Warangal, Telangana",
-    college_type: "Government",
-    college_logo: getLocalCollegeImage(0),
-    subtitle: "Reliable core engineering choice",
-    overview: "A stable shortlist candidate with strong academics, alumni support, and campus reputation.",
-    source: "Dev preview",
-    shortlisted: false,
-    detailHref: "/dashboard/colleges/nit-warangal?from=dashboard-college-shortlist-recommended",
-  },
-];
+function collegeLogo(c: DashboardCollege): string {
+  const url = c.college_logo?.trim() || c.logo_url?.trim();
+  if (url) return url;
+  return getLocalCollegeImage(c.id);
+}
 
-function mapApiCollege(college: CollegeApiItem): CollegeCard {
-  const fallbackImage = getLocalCollegeImage(college.id);
+function overviewText(c: DashboardCollege): string {
+  const desc = c.collegeDetails?.college_description?.trim();
+  if (desc) return desc.length > 220 ? `${desc.slice(0, 217)}…` : desc;
+  const loc = [c.city, c.state].filter(Boolean).join(", ");
+  if (loc) return loc;
+  return c.college_location?.trim() || "Explore programs and admission details.";
+}
+
+function subtitleText(c: DashboardCollege): string {
+  if (c.linkedExams?.length)
+    return c.linkedExams
+      .map((e) => e.name)
+      .slice(0, 3)
+      .join(" · ");
+  return c.college_type || "College";
+}
+
+function toTabCollege(
+  c: DashboardCollege,
+  from: string,
+  tabSource: string
+): TabCollege {
   return {
-    id: `live-${college.id}`,
-    college_name: college.college_name,
-    college_location: college.college_location || "Location not set",
-    college_type: college.college_type || "Recommended match",
-    college_logo: fallbackImage,
-    subtitle: college.college_type || "Live recommendation",
-    overview: "Pulled from your recommendation feed so the shortlist stays tied to your profile.",
-    source: "Live recommendation",
-    shortlisted: false,
-    detailHref: `/dashboard/colleges/${slugify(college.college_name)}?from=dashboard-college-shortlist-all`,
+    ...c,
+    detailHref: `/dashboard/colleges/${slugify(c.college_name)}?from=${from}`,
+    displayOverview: overviewText(c),
+    displaySubtitle: subtitleText(c),
+    logoSrc: collegeLogo(c),
+    tabSource,
   };
 }
 
 export default function ShortlistColleges() {
   const [activeTab, setActiveTab] = useState<TabId>("recommended");
-  const [liveColleges, setLiveColleges] = useState<CollegeCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [emptyHint, setEmptyHint] = useState<string | null>(null);
+  const [recommendedColleges, setRecommendedColleges] = useState<DashboardCollege[]>([]);
+  const [allColleges, setAllColleges] = useState<DashboardCollege[]>([]);
+  const [shortlistedColleges, setShortlistedColleges] = useState<DashboardCollege[]>([]);
+  const [shortlistedIds, setShortlistedIds] = useState<number[]>([]);
+  const [pageByTab, setPageByTab] = useState<Record<TabId, number>>({
+    recommended: 1,
+    shortlisted: 1,
+    all: 1,
+  });
+
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     recommended: null,
     shortlisted: null,
     all: null,
   });
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  const [shortlistedIds] = useState<string[]>(
-    PREVIEW_COLLEGES.filter((college) => college.shortlisted).map((college) => college.id),
-  );
 
   useEffect(() => {
     let cancelled = false;
-
     const run = async () => {
       setLoading(true);
-      try {
-        const res = await getRecommendedColleges();
-        if (cancelled) return;
-
-        const colleges = res.success && res.data?.colleges ? res.data.colleges.map(mapApiCollege) : [];
-        setLiveColleges(colleges);
-      } catch {
-        if (!cancelled) {
-          setLiveColleges([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      const res = await getDashboardColleges();
+      if (cancelled) return;
+      if (res.success && res.data) {
+        setRecommendedColleges(res.data.recommendedColleges || []);
+        setAllColleges(res.data.allColleges || []);
+        setShortlistedColleges(res.data.shortlistedColleges || []);
+        setShortlistedIds((res.data.shortlistedCollegeIds || []).map(Number));
+        setEmptyHint(res.data.message || null);
+      } else {
+        setRecommendedColleges([]);
+        setAllColleges([]);
+        setShortlistedColleges([]);
+        setShortlistedIds([]);
+        setEmptyHint(res.message || "Could not load colleges.");
       }
+      setLoading(false);
     };
-
     void run();
-
     return () => {
       cancelled = true;
     };
@@ -216,40 +150,70 @@ export default function ShortlistColleges() {
     return () => window.removeEventListener("resize", updateIndicator);
   }, [activeTab]);
 
-  const colleges = useMemo(() => {
-    const merged: CollegeCard[] = [...PREVIEW_COLLEGES];
-    const seen = new Set(PREVIEW_COLLEGES.map((college) => college.college_name.toLowerCase()));
+  const viewFrom =
+    activeTab === "recommended"
+      ? "dashboard-college-shortlist-recommended"
+      : activeTab === "shortlisted"
+        ? "dashboard-college-shortlist-shortlisted"
+        : "dashboard-college-shortlist-all";
 
-    liveColleges.forEach((college) => {
-      const key = college.college_name.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(college);
+  const tabSourceLabel =
+    activeTab === "recommended"
+      ? "Recommended"
+      : activeTab === "shortlisted"
+        ? "Shortlisted"
+        : "All colleges";
+
+  const visibleRows = useMemo((): TabCollege[] => {
+    const base =
+      activeTab === "recommended"
+        ? recommendedColleges
+        : activeTab === "shortlisted"
+          ? shortlistedColleges
+          : allColleges;
+    return base.map((c) => toTabCollege(c, viewFrom, tabSourceLabel));
+  }, [
+    activeTab,
+    recommendedColleges,
+    shortlistedColleges,
+    allColleges,
+    viewFrom,
+    tabSourceLabel,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / PER_PAGE));
+  const currentPage = Math.min(pageByTab[activeTab], totalPages);
+  const pagedRows = visibleRows.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+
+  const setPage = (next: number) => {
+    setPageByTab((prev) => ({
+      ...prev,
+      [activeTab]: Math.max(1, Math.min(totalPages, next)),
+    }));
+  };
+
+  useEffect(() => {
+    setPageByTab((prev) => ({ ...prev, [activeTab]: 1 }));
+  }, [activeTab]);
+
+  const shortlistedCount = shortlistedIds.length;
+
+  const isShortlisted = (collegeId: number) => shortlistedIds.includes(collegeId);
+
+  const toggleShortlist = async (collegeId: number) => {
+    if (savingId != null) return;
+    const nextShortlisted = !isShortlisted(collegeId);
+    setSavingId(collegeId);
+    const res = await updateShortlistedCollege(collegeId, nextShortlisted);
+    if (res.success && res.data) {
+      setShortlistedIds((res.data.shortlistedCollegeIds || []).map(Number));
+      const res2 = await getDashboardColleges();
+      if (res2.success && res2.data) {
+        setShortlistedColleges(res2.data.shortlistedColleges || []);
       }
-    });
-
-    return merged;
-  }, [liveColleges]);
-
-  const recommendedColleges = PREVIEW_COLLEGES;
-
-  const shortlistedColleges = useMemo(() => {
-    return colleges.filter((college) => shortlistedIds.includes(college.id));
-  }, [colleges, shortlistedIds]);
-  const shortlistedCount = shortlistedColleges.length;
-
-  const visibleColleges = activeTab === "recommended"
-    ? recommendedColleges
-    : activeTab === "shortlisted"
-      ? shortlistedColleges
-      : colleges;
-
-  const isLoading = activeTab === "recommended" ? false : loading;
-  const viewFrom = activeTab === "recommended"
-    ? "dashboard-college-shortlist-recommended"
-    : activeTab === "shortlisted"
-      ? "dashboard-college-shortlist-shortlisted"
-      : "dashboard-college-shortlist-all";
+    }
+    setSavingId(null);
+  };
 
   return (
     <div className="w-full min-h-screen bg-[#f5f9ff] text-black dark:bg-slate-950 dark:text-slate-50">
@@ -261,7 +225,7 @@ export default function ShortlistColleges() {
                 <div>
                   <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">College Shortlist</p>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Manage recommendations, shortlist picks, and the full college list.
+                    Recommended and all colleges match your exam shortlist; shortlist saves to your profile.
                   </p>
                 </div>
                 {shortlistedCount > 0 && (
@@ -311,34 +275,39 @@ export default function ShortlistColleges() {
 
         <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6">
           <div key={activeTab} style={{ animation: "fade-in 220ms ease-out" }}>
-            {isLoading ? (
+            {loading ? (
               <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center text-sm font-medium text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                 <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
                 Loading colleges...
               </div>
-            ) : visibleColleges.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center shadow-sm dark:bg-slate-900">
                 <MdSchool className="mb-3 h-10 w-10 text-slate-200 dark:text-slate-700" />
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-300">No colleges available in this section.</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Try switching tabs or update your profile preferences.</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-300">
+                  {emptyHint || "No colleges available in this section."}
+                </p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                  Try another tab or update stream and interests in your profile.
+                </p>
               </div>
             ) : (
+              <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-                {visibleColleges.map((college) => (
+                {pagedRows.map((college) => (
                   <article
-                    key={college.id}
+                    key={`${activeTab}-${college.id}`}
                     className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900"
                   >
                     <div className="relative aspect-[23/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <img
-                        src={college.college_logo}
+                        src={college.logoSrc}
                         alt={college.college_name}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         loading="lazy"
                       />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                       <div className="absolute left-3 top-3 inline-flex rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
-                        {college.college_type}
+                        {college.college_type || "College"}
                       </div>
                     </div>
 
@@ -349,38 +318,81 @@ export default function ShortlistColleges() {
                             <h3 className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
                               {college.college_name}
                             </h3>
-                            <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{college.subtitle}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                              {college.displaySubtitle}
+                            </p>
                           </div>
 
                           <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            {college.source}
+                            {college.tabSource}
                           </span>
                         </div>
                       </div>
 
+                      <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                        {college.displayOverview}
+                      </p>
+
+                      {college.linkedExams && college.linkedExams.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {college.linkedExams.slice(0, 4).map((ex) => (
+                            <span
+                              key={ex.id}
+                              className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              title={ex.name}
+                            >
+                              {ex.code || ex.name}
+                            </span>
+                          ))}
+                          {college.linkedExams.length > 4 ? (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800">
+                              +{college.linkedExams.length - 4}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       <div className="flex flex-wrap gap-1.5">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {college.college_location}
+                          {college.college_location || [college.city, college.state].filter(Boolean).join(", ") || "—"}
                         </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {college.college_type}
-                        </span>
+                        {college.parent_university ? (
+                          <span className="max-w-[140px] truncate rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300" title={college.parent_university}>
+                            {college.parent_university}
+                          </span>
+                        ) : null}
                       </div>
 
-                      <div className="mt-auto flex items-center gap-2 pt-1">
+                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
                         <Button
                           variant="themeButtonOutline"
                           size="sm"
                           href={college.detailHref.replace(/from=[^&]*/, `from=${viewFrom}`)}
-                          className="flex-1 justify-center !rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                          className="min-w-[72px] flex-1 justify-center !rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
                         >
                           View
                         </Button>
+                        <button
+                          type="button"
+                          onClick={() => toggleShortlist(college.id)}
+                          disabled={savingId === college.id}
+                          className={`min-w-[88px] flex-1 justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                            isShortlisted(college.id)
+                              ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "border border-black bg-black text-[#FAD53C] hover:bg-black/90"
+                          }`}
+                        >
+                          {savingId === college.id
+                            ? "Saving..."
+                            : isShortlisted(college.id)
+                              ? "Shortlisted"
+                              : "Shortlist"}
+                        </button>
                         <Button
                           variant="themeButton"
                           size="sm"
                           href="/dashboard?section=applications"
-                          className="flex-1 justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                          className="min-w-[72px] flex-1 justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
                         >
                           Apply
                         </Button>
@@ -389,6 +401,35 @@ export default function ShortlistColleges() {
                   </article>
                 ))}
               </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-slate-600 dark:text-slate-400">
+                  Showing {(currentPage - 1) * PER_PAGE + 1}-
+                  {Math.min(currentPage * PER_PAGE, visibleRows.length)} of {visibleRows.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Page {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+              </>
             )}
           </div>
         </div>

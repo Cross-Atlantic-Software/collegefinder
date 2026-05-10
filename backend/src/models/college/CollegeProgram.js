@@ -9,6 +9,20 @@ class CollegeProgram {
     return result.rows;
   }
 
+  /** Programs for many colleges with program display name */
+  static async findByCollegeIdsWithProgramNames(collegeIds) {
+    if (!collegeIds || collegeIds.length === 0) return [];
+    const result = await db.query(
+      `SELECT cp.*, p.name AS program_name
+       FROM college_programs cp
+       LEFT JOIN programs p ON p.id = cp.program_id
+       WHERE cp.college_id = ANY($1::int[])
+       ORDER BY cp.college_id, cp.id`,
+      [collegeIds]
+    );
+    return result.rows;
+  }
+
   static async findById(id) {
     const result = await db.query(
       'SELECT * FROM college_programs WHERE id = $1',

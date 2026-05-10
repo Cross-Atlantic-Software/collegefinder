@@ -10,9 +10,23 @@ class CollegeRecommendedExam {
   }
 
   /**
-   * Get distinct college IDs that have at least one of the given exam IDs in college_recommended_exams.
-   * Used for recommended colleges: user's recommended exam IDs -> colleges that accept those exams.
+   * Exam rows linked to colleges (for dashboard enrichment). Rows: college_id, exam_id, exam_name, exam_code
    */
+  static async getExamLinksForCollegeIds(collegeIds) {
+    if (!collegeIds || !Array.isArray(collegeIds) || collegeIds.length === 0) return [];
+    const ids = collegeIds.map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
+    if (ids.length === 0) return [];
+    const result = await db.query(
+      `SELECT cre.college_id, cre.exam_id, e.name AS exam_name, e.code AS exam_code
+       FROM college_recommended_exams cre
+       JOIN exams_taxonomies e ON e.id = cre.exam_id
+       WHERE cre.college_id = ANY($1::int[])
+       ORDER BY cre.college_id, e.name ASC`,
+      [ids]
+    );
+    return result.rows;
+  }
+
   static async getCollegeIdsByExamIds(examIds) {
     if (!examIds || !Array.isArray(examIds) || examIds.length === 0) return [];
     const ids = examIds.map(id => parseInt(id, 10)).filter(n => !isNaN(n));

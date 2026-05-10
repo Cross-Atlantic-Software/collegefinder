@@ -307,11 +307,39 @@ router.put('/profile/exam-preferences', authenticate, ExamsController.updateExam
 router.get('/profile/recommended-exams', authenticate, ExamsController.getRecommendedExams);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-exams
+ * @desc    Stream-filtered exams + recommended + shortlisted IDs for dashboard tabs
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams', authenticate, ExamsController.getDashboardExams);
+
+/**
+ * @route   PUT /api/auth/profile/shortlisted-exams
+ * @desc    Add/remove exam in user shortlist
+ * @access  Private
+ */
+router.put('/profile/shortlisted-exams', authenticate, ExamsController.updateShortlistedExams);
+
+/**
  * @route   GET /api/auth/profile/recommended-colleges
  * @desc    Get recommended colleges for user (colleges whose recommended exams match user's recommended exam IDs)
  * @access  Private
  */
 router.get('/profile/recommended-colleges', authenticate, ProfileCollegesController.getRecommendedColleges);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-colleges
+ * @desc    Colleges for dashboard tabs (all / recommended by exam overlap / shortlisted)
+ * @access  Private
+ */
+router.get('/profile/dashboard-colleges', authenticate, ProfileCollegesController.getDashboardColleges);
+
+/**
+ * @route   PUT /api/auth/profile/shortlisted-colleges
+ * @desc    Add/remove college in user_academics.user_shortlisted_colleges
+ * @access  Private
+ */
+router.put('/profile/shortlisted-colleges', authenticate, ProfileCollegesController.updateShortlistedColleges);
 
 /**
  * @route   GET /api/auth/profile/completion

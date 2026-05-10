@@ -64,12 +64,20 @@ export default function ExamDirectoryPage() {
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
     if (!value) return exams;
-    return exams.filter(
-      (item) =>
-        item.name.toLowerCase().includes(value) ||
-        (item.code || "").toLowerCase().includes(value) ||
-        (item.description || "").toLowerCase().includes(value)
-    );
+    return exams.filter((item) => {
+      const hay = [
+        item.name,
+        item.code || "",
+        item.description || "",
+        item.exam_type || "",
+        item.conducting_authority || "",
+        ...(item.linkedCareerGoals || []).map((g) => g.label),
+        ...(item.linkedPrograms || []).map((p) => p.name),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(value);
+    });
   }, [exams, query]);
 
   const handleSectionChange = (section: SectionId) => {
