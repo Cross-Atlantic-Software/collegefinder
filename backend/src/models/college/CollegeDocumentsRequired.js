@@ -9,6 +9,15 @@ class CollegeDocumentsRequired {
     return result.rows;
   }
 
+  static async findByCollegeIds(collegeIds) {
+    if (!collegeIds || collegeIds.length === 0) return [];
+    const result = await db.query(
+      'SELECT * FROM college_documents_required WHERE college_id = ANY($1::int[]) ORDER BY college_id, id',
+      [collegeIds]
+    );
+    return result.rows;
+  }
+
   static async create(data) {
     const { college_id, document_name } = data;
     const result = await db.query(

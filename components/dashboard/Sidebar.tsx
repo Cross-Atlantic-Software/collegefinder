@@ -32,7 +32,8 @@ import {
 } from "react-icons/fa";
 import { IoPlayCircleOutline } from "react-icons/io5";
 import { MdSchool } from "react-icons/md";
-import { getProfileCompletion, getAllExams } from "@/api";
+import { getProfileCompletion, getAllExams, getDashboardColleges } from "@/api";
+import { getDashboardExams } from "@/api/exams";
 import { useAuth } from "@/contexts/AuthContext";
 
 type SectionId =
@@ -88,7 +89,6 @@ const baseNavItems: {
     sub: "Exams selected",
     icon: FiClipboard,
     activeIcon: FaClipboardList,
-    getValue: () => "8",
   },
   {
     id: "college-shortlist",
@@ -96,7 +96,6 @@ const baseNavItems: {
     sub: "Colleges matched",
     icon: FiHome,
     activeIcon: FaUniversity,
-    getValue: () => "",
   },
   {
     id: "applications",
@@ -168,6 +167,8 @@ export default function Sidebar({
   const { logout } = useAuth();
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [examsCount, setExamsCount] = useState(0);
+  const [shortlistedExamsCount, setShortlistedExamsCount] = useState(0);
+  const [shortlistedCollegesCount, setShortlistedCollegesCount] = useState(0);
   const [examPrepExpanded, setExamPrepExpanded] = useState(false);
 
   useEffect(() => {
@@ -206,12 +207,98 @@ export default function Sidebar({
     fetchExamsCount();
   }, []);
 
-  // Create navItems with dynamic values (Mock Test shows exams/practice tests count)
+  useEffect(() => {
+    let cancelled = false;
+    const fetchShortlistCount = async () => {
+      try {
+        const response = await getDashboardExams();
+        if (cancelled) return;
+        if (response.success && response.data?.shortlistedExamIds) {
+          setShortlistedExamsCount(response.data.shortlistedExamIds.length);
+        }
+      } catch (err) {
+        console.error("Error fetching exam shortlist count:", err);
+      }
+    };
+    void fetchShortlistCount();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "exam-shortlist") return;
+    let cancelled = false;
+    const fetchShortlistCount = async () => {
+      try {
+        const response = await getDashboardExams();
+        if (cancelled) return;
+        if (response.success && response.data?.shortlistedExamIds) {
+          setShortlistedExamsCount(response.data.shortlistedExamIds.length);
+        }
+      } catch (err) {
+        console.error("Error fetching exam shortlist count:", err);
+      }
+    };
+    void fetchShortlistCount();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCollegeShortlistCount = async () => {
+      try {
+        const response = await getDashboardColleges();
+        if (cancelled) return;
+        if (response.success && response.data?.shortlistedCollegeIds) {
+          setShortlistedCollegesCount(response.data.shortlistedCollegeIds.length);
+        }
+      } catch (err) {
+        console.error("Error fetching college shortlist count:", err);
+      }
+    };
+    void fetchCollegeShortlistCount();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "college-shortlist") return;
+    let cancelled = false;
+    const fetchCollegeShortlistCount = async () => {
+      try {
+        const response = await getDashboardColleges();
+        if (cancelled) return;
+        if (response.success && response.data?.shortlistedCollegeIds) {
+          setShortlistedCollegesCount(response.data.shortlistedCollegeIds.length);
+        }
+      } catch (err) {
+        console.error("Error fetching college shortlist count:", err);
+      }
+    };
+    void fetchCollegeShortlistCount();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
+  // Create navItems with dynamic values (Mock Test: exam count; shortlists: shortlisted counts)
   const navItems = baseNavItems.map(item => ({
     ...item,
     value:
       item.id === "test-module"
         ? String(examsCount)
+        : item.id === "exam-shortlist"
+          ? shortlistedExamsCount > 0
+            ? String(shortlistedExamsCount)
+            : ""
+          : item.id === "college-shortlist"
+            ? shortlistedCollegesCount > 0
+              ? String(shortlistedCollegesCount)
+              : ""
         : item.getValue
           ? item.getValue(completionPercentage)
           : undefined,
@@ -243,7 +330,7 @@ export default function Sidebar({
         fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200/80 dark:border-slate-800/60 bg-white dark:bg-slate-950
         transform transition-all duration-300 ease-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        w-full max-w-xs
+        w-full max-w-xs shrink-0
         md:static md:translate-x-0 md:h-screen md:max-w-none
         ${isCollapsed ? "md:w-16" : "md:w-60"}
       `}

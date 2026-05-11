@@ -112,6 +112,9 @@ class AcademicsController {
           postmatric_result_status: academics.postmatric_result_status,
           stream: streamDisplay,
           stream_id: academics.stream_id,
+          user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
+            ? academics.user_shortlisted_exams
+            : [],
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false
@@ -224,6 +227,9 @@ class AcademicsController {
           postmatric_result_status: academics.postmatric_result_status,
           stream: streamDisplay,
           stream_id: academics.stream_id,
+          user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
+            ? academics.user_shortlisted_exams
+            : [],
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false

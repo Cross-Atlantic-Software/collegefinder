@@ -124,7 +124,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+    <div className="flex h-screen min-h-0 min-w-0 overflow-x-hidden bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <Suspense fallback={null}>
         <StrengthPaymentReturnHandler
           onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
@@ -143,16 +143,16 @@ export default function DashboardPage() {
       />
 
       {/* MAIN AREA */}
-      <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
         <TopBar
           onToggleSidebar={toggleSidebar}
           onToggleCollapse={toggleSidebarCollapse}
           isSidebarCollapsed={sidebarCollapsed}
         />
 
-        <div className="flex flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
           {activeSection === "dashboard" ? (
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <DashboardHeader
                 fullName={dashboardProfile.fullName}
                 airRank={dashboardProfile.airRank}
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                 profileStrength={dashboardProfile.profileStrength}
               />
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
+              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
                 <main className="min-w-0">
                   <MiddleContent />
                 </main>
@@ -170,14 +170,14 @@ export default function DashboardPage() {
           ) : (
             <div
               className={[
-                "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
+                "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto lg:flex-row lg:items-start",
                 fullWidthSections.includes(activeSection)
                   ? "px-0 py-0"
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}
             >
               {/* MIDDLE BAR */}
-              <main className="flex-1 min-w-0">
+              <main className="min-w-0 flex-1 overflow-x-hidden">
                 {activeSection === "profile" && (
                   <div className="w-full">
                     <ProfileTabs />

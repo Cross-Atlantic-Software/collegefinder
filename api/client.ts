@@ -130,56 +130,77 @@ export async function apiRequest<T>(
       credentials: 'include', // Send cookies for auth
     });
 
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get('content-type');
-    let data: { message?: string; errors?: Array<{ msg: string; param: string }>; [key: string]: unknown } = {};
-    
-    // Clone response before reading (in case we need to read it again for error handling)
-    const responseClone = response.clone();
-    
-    // Try to parse as JSON first (most common case)
-    if (contentType && contentType.includes('application/json')) {
-      try {
-        data = await response.json() as typeof data;
-      } catch {
-        // If JSON parsing fails, get text from clone for debugging
+    const contentType = response.headers.get('content-type') ?? '';
+    let data: { message?: string; errors?: Array<{ msg: string; param: string }>; [key: string]: unknown } =
+      {};
+
+    /** Response body read once — avoids clone/double-read issues after failed json() */
+    let rawBody = '';
+    try {
+      rawBody = await response.text();
+    } catch (readErr) {
+      console.error('Failed to read response body:', readErr);
+      return {
+        success: false,
+        message: 'Server returned an unreadable response',
+        errors: undefined,
+      };
+    }
+
+    const snippet = (s: string, max: number) =>
+      typeof s === 'string' && s.length > max ? s.slice(0, max) : s || '';
+
+    if (contentType.includes('application/json')) {
+      const trimmed = rawBody.trim();
+      if (!trimmed) {
+        data = {};
+      } else {
         try {
-          const text = await responseClone.text();
-          console.error('Failed to parse JSON response:', text.substring(0, 200));
-          
-          // Check if it looks like multipart/form-data boundary
-          if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
+          const parsed: unknown = JSON.parse(trimmed);
+          data =
+            parsed !== null && typeof parsed === 'object'
+              ? (parsed as typeof data)
+              : {};
+        } catch {
+          const preview = snippet(rawBody, 200);
+          console.error('Failed to parse JSON response:', preview);
+
+          const lower = preview.toLowerCase();
+          if (
+            preview.includes('------WebKit') ||
+            lower.includes('multipart') ||
+            preview.startsWith('------')
+          ) {
             return {
               success: false,
-              message: 'Server received multipart data but expected JSON. This usually means a FormData request was sent incorrectly.',
+              message:
+                'Server received multipart data but expected JSON. This usually means a FormData request was sent incorrectly.',
               errors: undefined,
             };
           }
-        } catch (textError) {
-          console.error('Failed to read response as text:', textError);
-        }
-        return {
-          success: false,
-          message: 'Invalid JSON response from server',
-          errors: undefined,
-        };
-      }
-    } else {
-      // Non-JSON response - get text
-      try {
-        const text = await response.text();
-        console.error('Non-JSON response received:', text.substring(0, 200));
-        
-        // If it looks like multipart/form-data, it might be a misconfigured request
-        if (text.includes('------WebKit') || text.includes('multipart') || text.startsWith('------')) {
           return {
             success: false,
-            message: 'Server received multipart data but expected JSON. Please check your request format.',
+            message: 'Invalid JSON response from server',
             errors: undefined,
           };
         }
-      } catch (textError) {
-        console.error('Failed to read response as text:', textError);
+      }
+    } else {
+      const preview = snippet(rawBody, 200);
+      console.error('Non-JSON response received:', preview);
+
+      const lower = preview.toLowerCase();
+      if (
+        preview.includes('------WebKit') ||
+        lower.includes('multipart') ||
+        preview.startsWith('------')
+      ) {
+        return {
+          success: false,
+          message:
+            'Server received multipart data but expected JSON. Please check your request format.',
+          errors: undefined,
+        };
       }
       return {
         success: false,
