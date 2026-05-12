@@ -172,14 +172,21 @@ function studentRatingForExport(val) {
 }
 
 async function resolveExamNamesToIds(namesStr) {
-  if (!namesStr || typeof namesStr !== 'string') return [];
+  if (!namesStr || typeof namesStr !== 'string') return { ids: [], unknown: [] };
   const names = splitList(namesStr);
   const ids = [];
+  const unknown = [];
   for (const nm of names) {
-    const ex = await Exam.findByName(nm);
-    if (ex) ids.push(ex.id);
+    let ex = await Exam.findByName(nm);
+    if (!ex) ex = await Exam.findByCode(nm);
+    if (!ex) ex = await Exam.findByNameContains(nm);
+    if (ex) {
+      ids.push(ex.id);
+    } else {
+      unknown.push(nm);
+    }
   }
-  return ids;
+  return { ids, unknown };
 }
 
 class InstitutesController {
@@ -613,10 +620,12 @@ class InstitutesController {
     try {
       const headers = [
         'institute_name',
-        'state',
         'city',
+        'institute_cityname',
+        'state',
         'type',
         'logo_filename',
+        'logo_file_link',
         'website',
         'contact_number',
         'institute_description',
@@ -627,17 +636,24 @@ class InstitutesController {
         'student_rating',
         'exam_names',
         'specialization_exam_names',
-        'course_names'
+        'course_name',
+        'target_class',
+        'duration',
+        'fees',
+        'batch_size',
+        'start_date'
       ];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
         [
-          'Allen Kota',
-          'Rajasthan',
+          'Allen',
           'Kota',
+          'Allen, Kota',
+          'Rajasthan',
           'Offline',
           'allen.png',
+          '',
           'https://allen.ac.in',
           '9876543210',
           'Premier coaching for JEE and NEET.',
@@ -648,14 +664,46 @@ class InstitutesController {
           '5',
           'JEE Main',
           'JEE Main',
-          'JEE Main Intensive; NEET Foundation'
+          'JEE Main Intensive',
+          'Class 11-12',
+          '24',
+          '150000',
+          '60',
+          '2025-06-01'
+        ],
+        [
+          'Allen',
+          'Kota',
+          'Allen, Kota',
+          'Rajasthan',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          'NEET Foundation',
+          'Class 11-12',
+          '12',
+          '120000',
+          '50',
+          '2025-07-01'
         ],
         [
           'Unacademy',
+          'Bengaluru',
+          'Unacademy, Bengaluru',
           'Karnataka',
-          'Bengaluru Urban',
           'Online',
-          'unacademy.png',
+          '',
+          'https://example.com/unacademy-logo.png',
           'https://unacademy.com',
           '',
           'Online learning platform.',
@@ -666,7 +714,12 @@ class InstitutesController {
           '4',
           'JEE Main',
           'JEE Main',
-          ''
+          'JEE Crash Course',
+          'Class 12',
+          '6',
+          '50000',
+          '200',
+          '2025-03-01'
         ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Institutes');
@@ -888,20 +941,6 @@ class InstitutesController {
         return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
       }
 
-      let courseGrouped = loadGroupedCoursesFromWorkbook(workbook, { dedicatedCoursesFile: false });
-      const coursesExcelFile = req.files?.courses_excel?.[0];
-      if (coursesExcelFile?.buffer) {
-        try {
-          const wbCourses = XLSX.read(coursesExcelFile.buffer, { type: 'buffer', raw: true });
-          courseGrouped = mergeGroupedCourseMaps(
-            courseGrouped,
-            loadGroupedCoursesFromWorkbook(wbCourses, { dedicatedCoursesFile: true })
-          );
-        } catch (e) {
-          return res.status(400).json({ success: false, message: 'Invalid courses Excel file or format.' });
-        }
-      }
-
       const normSheet = (n) => String(n).toLowerCase().replace(/\s+/g, '');
       const institutesSheetName =
         workbook.SheetNames.find((n) => normSheet(n) === 'institutes') || workbook.SheetNames[0];
@@ -914,60 +953,86 @@ class InstitutesController {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
       }
 
-      const created = [];
-      const errors = [];
-      const namesInFile = new Set();
-
+      // Group rows by institute_cityname (unique key per institute)
+      const instituteGroups = new Map();
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
-        const name = (row.institute_name ?? row.institute_Name ?? '').toString().trim();
+        const name = getCell(row, 'institute_name', 'institute_Name');
+        const instituteCityName = getCell(row, 'institute_cityname', 'institute_Cityname', 'institute_cityName');
         if (!name) {
-          errors.push({ row: rowNum, message: 'institute_name is required' });
           continue;
         }
-        if (namesInFile.has(name.toLowerCase())) {
-          errors.push({ row: rowNum, message: `duplicate name "${name}" in this file` });
-          continue;
+        const groupKey = normalizeEntityKey(instituteCityName || name);
+        if (!instituteGroups.has(groupKey)) {
+          instituteGroups.set(groupKey, { firstRow: row, firstRowNum: rowNum, courses: [] });
         }
-        const existing = await Institute.findByName(name);
-        if (existing) {
-          errors.push({ row: rowNum, message: `institute "${name}" already exists` });
+        const courseName = getCell(row, 'course_name', 'course_Name');
+        if (courseName) {
+          const durationRaw = getCell(row, 'duration', 'duration_months', 'duration_Months');
+          const dur = durationRaw !== '' ? parseInt(durationRaw, 10) : null;
+          const feesRaw = getCell(row, 'fees', 'Fees');
+          const feeVal = feesRaw !== '' ? parseFloat(feesRaw) : null;
+          const batchRaw = getCell(row, 'batch_size', 'batch_Size');
+          const batch = batchRaw !== '' ? parseInt(batchRaw, 10) : null;
+          const startRaw = getCell(row, 'start_date', 'start_Date');
+          const start_date = startRaw ? parseDate(startRaw) : null;
+          instituteGroups.get(groupKey).courses.push({
+            course_name: courseName,
+            target_class: getCell(row, 'target_class', 'target_Class') || null,
+            duration_months: isNaN(dur) ? null : dur,
+            fees: isNaN(feeVal) ? null : feeVal,
+            batch_size: isNaN(batch) ? null : batch,
+            start_date,
+          });
+        }
+      }
+
+      const created = [];
+      const errors = [];
+
+      for (const [groupKey, group] of instituteGroups) {
+        const row = group.firstRow;
+        const rowNum = group.firstRowNum;
+        const name = getCell(row, 'institute_name', 'institute_Name');
+        const cityTrim = getCell(row, 'city', 'City');
+        const instituteCityName = getCell(row, 'institute_cityname', 'institute_Cityname', 'institute_cityName');
+        const stateTrim = getCell(row, 'state', 'State');
+
+        if (!instituteCityName) {
+          errors.push({ row: rowNum, message: 'institute_cityname is required' });
           continue;
         }
 
-        const stateTrim = getCell(row, 'state', 'State');
-        const cityTrim = getCell(row, 'city', 'City');
-        if (!stateTrim || !cityTrim) {
-          errors.push({ row: rowNum, message: 'state and city are required' });
+        // Check uniqueness by institute_cityname
+        const existing = await Institute.findByInstituteCityName(instituteCityName);
+        if (existing) {
+          errors.push({ row: rowNum, message: `institute "${instituteCityName}" already exists` });
           continue;
         }
-        const location = formatLocationLine(cityTrim, stateTrim);
-        const googleMapsLink = await resolveGoogleMapsLink({
-          name,
-          city: cityTrim,
-          state: stateTrim,
-        });
-        const typeRaw = (row.type ?? '').toString().trim();
+
+        const typeRaw = getCell(row, 'type', 'Type');
         const instituteType = validTypes.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) || null;
-        const logoFilename = (row.logo_filename ?? row.logo_Filename ?? '').toString().trim();
-        const website = (row.website ?? '').toString().trim() || null;
-        const contactNumber = (row.contact_number ?? row.contact_Number ?? '').toString().trim() || null;
-        const description = (row.institute_description ?? row.institute_Description ?? '').toString().trim() || null;
+        const logoFilename = getCell(row, 'logo_filename', 'logo_Filename');
+        const logoFileLink = getCell(row, 'logo_file_link', 'logo_File_Link');
+        const website = getCell(row, 'website', 'Website') || null;
+        const contactNumber = getCell(row, 'contact_number', 'contact_Number') || null;
+        const description = getCell(row, 'institute_description', 'institute_Description') || null;
         const demoAvailable = parseBool(row.demo_available, true);
         const scholarshipAvailable = parseBool(row.scholarship_available, false);
-        const rankingScoreRaw = (row.ranking_score ?? row.ranking_Score ?? '').toString().trim();
-        const successRateRaw = (row.success_rate ?? row.success_Rate ?? '').toString().trim();
-        const studentRatingRaw = (row.student_rating ?? row.student_Rating ?? '').toString().trim();
-        const examNamesRaw = (row.exam_names ?? row.exam_Names ?? '').toString().trim();
-        const examIdsRaw = (row.exam_ids ?? row.exam_Ids ?? '').toString().trim();
-        const specializationExamNamesRaw = (row.specialization_exam_names ?? row.specialization_exam_Names ?? '').toString().trim();
-        const specializationExamIdsRaw = (row.specialization_exam_ids ?? row.specialization_exam_Ids ?? '').toString().trim();
-        const courseNamesRaw = getCell(row, 'course_names', 'course_Names');
-        const courseNamesFilter = splitList(courseNamesRaw);
+        const rankingScoreRaw = getCell(row, 'ranking_score', 'ranking_Score');
+        const successRateRaw = getCell(row, 'success_rate', 'success_Rate');
+        const studentRatingRaw = getCell(row, 'student_rating', 'student_Rating');
+        const examNamesRaw = getCell(row, 'exam_names', 'exam_Names');
+        const examIdsRaw = getCell(row, 'exam_ids', 'exam_Ids');
+        const specializationExamNamesRaw = getCell(row, 'specialization_exam_names', 'specialization_exam_Names');
+        const specializationExamIdsRaw = getCell(row, 'specialization_exam_ids', 'specialization_exam_Ids');
 
+        // Resolve logo: prefer logo_file_link URL > logo from ZIP
         let logoUrl = null;
-        if (logoFilename) {
+        if (logoFileLink) {
+          logoUrl = logoFileLink;
+        } else if (logoFilename) {
           const logoFile = logoMap.get(logoFilename.toLowerCase());
           if (logoFile && logoFile.buffer) {
             try {
@@ -976,21 +1041,47 @@ class InstitutesController {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
           }
-          // If logo file not found: still create institute with logo_filename; user can upload missing logos later
+        }
+
+        // Resolve exam names BEFORE creating the institute — skip row if any are unresolved
+        let examIds = [];
+        if (examNamesRaw) {
+          const resolved = await resolveExamNamesToIds(examNamesRaw);
+          examIds = resolved.ids;
+          if (resolved.unknown.length > 0) {
+            errors.push({ row: rowNum, message: `exam(s) not found: ${resolved.unknown.map((n) => `"${n}"`).join(', ')}` });
+            continue;
+          }
+        }
+        if (examIds.length === 0 && examIdsRaw) {
+          examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+        }
+
+        let specExamIds = [];
+        if (specializationExamNamesRaw) {
+          const resolved = await resolveExamNamesToIds(specializationExamNamesRaw);
+          specExamIds = resolved.ids;
+          if (resolved.unknown.length > 0) {
+            errors.push({ row: rowNum, message: `specialization exam(s) not found: ${resolved.unknown.map((n) => `"${n}"`).join(', ')}` });
+            continue;
+          }
+        }
+        if (specExamIds.length === 0 && specializationExamIdsRaw) {
+          specExamIds = specializationExamIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
         }
 
         try {
           const institute = await Institute.create({
             institute_name: name,
-            institute_location: location,
-            google_maps_link: googleMapsLink,
+            institute_location: instituteCityName,
+            institute_cityname: instituteCityName,
             type: instituteType,
             logo: logoUrl,
             logo_filename: logoFilename || null,
             website,
             contact_number: contactNumber,
-            state: stateTrim,
-            city: cityTrim,
+            state: stateTrim || null,
+            city: cityTrim || null,
           });
           if (description || demoAvailable || scholarshipAvailable) {
             await InstituteDetails.create({
@@ -1011,47 +1102,26 @@ class InstitutesController {
               student_rating
             });
           }
-          let examIds = [];
-          if (examNamesRaw) {
-            examIds = await resolveExamNamesToIds(examNamesRaw);
-          }
-          if (examIds.length === 0 && examIdsRaw) {
-            examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-          }
-          if (examIds.length) await InstituteExam.setExamsForInstitute(institute.id, examIds);
 
-          let specExamIds = [];
-          if (specializationExamNamesRaw) {
-            specExamIds = await resolveExamNamesToIds(specializationExamNamesRaw);
-          }
-          if (specExamIds.length === 0 && specializationExamIdsRaw) {
-            specExamIds = specializationExamIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-          }
+          if (examIds.length) await InstituteExam.setExamsForInstitute(institute.id, examIds);
           if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
-          const bucket = courseGrouped.get(normalizeEntityKey(name)) || [];
-          if (bucket.length > 0) {
-            await insertInstituteCoursesFromBucket(institute.id, bucket, courseNamesFilter, errors, rowNum);
+
+          // Insert courses from grouped rows
+          for (const c of group.courses) {
+            await InstituteCourse.create({
+              institute_id: institute.id,
+              course_name: c.course_name || null,
+              target_class: c.target_class,
+              duration_months: c.duration_months,
+              fees: c.fees,
+              batch_size: c.batch_size,
+              start_date: c.start_date
+            });
           }
+
           created.push({ id: institute.id, name: institute.institute_name });
-          namesInFile.add(name.toLowerCase());
         } catch (createErr) {
           errors.push({ row: rowNum, message: createErr.message || 'Failed to create institute' });
-        }
-      }
-
-      const createdNamesLower = new Set(created.map((c) => normalizeEntityKey(c.name)));
-      const courseSheetWarnings = [];
-      if (coursesExcelFile?.buffer && dedicatedCoursesRowCount === 0) {
-        courseSheetWarnings.push(
-          'A courses Excel file was received, but no course rows were read from it. Use a sheet named InstituteCourses (or institute_courses) with institute_name and course_name on each data row. Course name catalog sheets are not imported as course rows.'
-        );
-      }
-      for (const [key, arr] of courseGrouped) {
-        if (!createdNamesLower.has(key) && arr.length) {
-          const label = arr[0].institute_name || key;
-          courseSheetWarnings.push(
-            `Institute Courses data references "${label}" but that institute was not created in this upload (${arr.length} course row(s)).`
-          );
         }
       }
 
@@ -1062,7 +1132,6 @@ class InstitutesController {
           createdInstitutes: created,
           errors: errors.length,
           errorDetails: errors,
-          courseSheetWarnings
         },
         message: `Created ${created.length} institute(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
       });

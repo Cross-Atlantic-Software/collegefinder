@@ -147,6 +147,8 @@ export {
   downloadLectureBulkUploadFailuresCsv,
   getLectureHookSummaryQueueStatus,
   enqueuePendingLectureHookSummaries,
+  pauseHookSummaryWorker,
+  resumeHookSummaryWorker,
   uploadMissingLectureThumbnails,
   fetchYoutubeLectureMetadata,
 } from './lectures';

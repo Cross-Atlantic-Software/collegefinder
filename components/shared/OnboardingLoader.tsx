@@ -23,29 +23,27 @@ export default function OnboardingLoader({ message = "Preparing your journey..."
       {/* Logo */}
       <div className="mb-10">
         <Image
-          src="/svgs/logo-unitracko.svg"
+          src="/logo.svg"
           alt="UniTracko"
           width={148}
           height={33}
-          className="h-8 w-auto"
+          className="w-auto h-8"
           priority
+          unoptimized
         />
       </div>
 
       {/* Spinner */}
       <div className="relative w-14 h-14 mb-6">
-        {/* Outer ring */}
         <div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
-        {/* Spinning arc — brand purple → magenta gradient effect via border-t */}
         <div
           className="absolute inset-0 rounded-full border-[3px] border-transparent animate-spin"
-          style={{ borderTopColor: "#341050" }}
+          style={{ borderTopColor: "#0f172a" }}
         />
-        {/* Inner ring */}
         <div className="absolute inset-[5px] rounded-full border-[2px] border-slate-100" />
         <div
           className="absolute inset-[5px] rounded-full border-[2px] border-transparent animate-spin"
-          style={{ borderTopColor: "#9705F9", animationDirection: "reverse", animationDuration: "1.4s" }}
+          style={{ borderTopColor: "#FAD53C", animationDirection: "reverse", animationDuration: "1.4s" }}
         />
       </div>
 
@@ -63,7 +61,7 @@ export default function OnboardingLoader({ message = "Preparing your journey..."
             key={i}
             className="w-1.5 h-1.5 rounded-full animate-pulse"
             style={{
-              backgroundColor: "#341050",
+              backgroundColor: "#0f172a",
               opacity: 0.4,
               animationDelay: `${i * 0.22}s`,
               animationDuration: "1.4s",

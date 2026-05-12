@@ -78,16 +78,26 @@ function buildHookPrompt(fields) {
  * Loads lecture + topic/subtopic names, calls Gemini, saves hook_summary.
  * No-op if GOOGLE_API_KEY missing, lecture missing, or content is not VIDEO.
  */
-async function generateAndPersistLectureHookSummary(lectureId) {
+async function generateAndPersistLectureHookSummary(lectureId, isCancelled) {
   if (!process.env.GOOGLE_API_KEY || !geminiService.genAI) {
-    return;
+    console.warn(`⚠️ [HookSummary] Skipping lecture ${lectureId}: GOOGLE_API_KEY not set or Gemini not initialized`);
+    throw new Error('Gemini service not available (missing GOOGLE_API_KEY or genAI not initialized)');
+  }
+
+  if (isCancelled && isCancelled()) {
+    throw new Error('Worker paused — job will be retried after resume');
   }
 
   const id = parseInt(lectureId, 10);
-  if (Number.isNaN(id) || id <= 0) return;
+  if (Number.isNaN(id) || id <= 0) {
+    throw new Error(`Invalid lectureId: ${lectureId}`);
+  }
 
   const lecture = await Lecture.findById(id);
-  if (!lecture || lecture.content_type !== 'VIDEO') return;
+  if (!lecture || lecture.content_type !== 'VIDEO') {
+    console.log(`⏭️ [HookSummary] Lecture ${id} skipped (not found or not VIDEO)`);
+    return;
+  }
 
   const [topicRow, subtopicRow] = await Promise.all([
     lecture.topic_id ? Topic.findById(lecture.topic_id) : null,
@@ -114,14 +124,18 @@ async function generateAndPersistLectureHookSummary(lectureId) {
     examName,
   });
 
-  let text = await geminiService.generatePlainText(prompt);
+  let text = await geminiService.generatePlainText(prompt, { isCancelled });
   text = stripOuterQuotes(text);
-  if (!text) return;
+  if (!text) {
+    console.warn(`⚠️ [HookSummary] Lecture ${id}: Gemini returned empty text`);
+    return;
+  }
   if (text.length > MAX_SUMMARY_LEN) {
     text = text.slice(0, MAX_SUMMARY_LEN).trim();
   }
 
   await Lecture.update(id, { hook_summary: text });
+  console.log(`✅ [HookSummary] Lecture ${id} summary saved (${text.length} chars)`);
 }
 
 /**

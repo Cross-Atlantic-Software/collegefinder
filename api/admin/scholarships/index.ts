@@ -17,6 +17,17 @@ export interface Scholarship {
   application_end_date: string | null;
   mode: string | null;
   official_website: string | null;
+  official_notification_link: string | null;
+  application_link: string | null;
+  active_status: string | null;
+  academic_year: string | null;
+  eligible_degree: string | null;
+  number_of_awards: string | null;
+  renewal_available: boolean | null;
+  renewal_conditions: string | null;
+  scope: string | null;
+  value_category: string | null;
+  education_level: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -171,11 +182,20 @@ export async function bulkUploadScholarships(excelFile: File): Promise<ApiRespon
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
   const base = getApiBaseUrl();
   const url = `${base}${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/bulk-upload`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}` },
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: formData,
+    });
+  } catch {
+    throw new Error('Network error – backend may be restarting. Please wait a few seconds and try again.');
+  }
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`Server returned ${res.status}. Backend may be restarting – please wait a few seconds and try again.`);
+  }
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Bulk upload failed');
   return data;

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { verifyOTP, resendOTP } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 
 const OTP_LENGTH = 6;
 
@@ -105,18 +104,8 @@ export function OtpVerificationForm({
         login(response.data.token, user);
         onVerified?.(code);
 
-        try {
-          sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1");
-        } catch {
-          /* ignore */
-        }
-
-        // Redirect based on whether user has completed onboarding.
-        // If onboarding_completed is true → go to home
-        // If onboarding_completed is false/null → go to onboarding step-1
+        // Determine onboarding status
         const onboardingCompletedValue = response.data.user?.onboarding_completed;
-        
-        // More robust check - handle boolean, string, number, or truthy values
         let onboardingCompleted = false;
         if (onboardingCompletedValue !== null && onboardingCompletedValue !== undefined) {
           if (onboardingCompletedValue === true) {
@@ -124,7 +113,6 @@ export function OtpVerificationForm({
           } else if (onboardingCompletedValue === false) {
             onboardingCompleted = false;
           } else {
-            // TypeScript doesn't know the exact type, so we check at runtime
             const valueType = typeof onboardingCompletedValue;
             if (valueType === 'string') {
               const strValue = onboardingCompletedValue as unknown as string;
@@ -133,11 +121,11 @@ export function OtpVerificationForm({
               const numValue = onboardingCompletedValue as unknown as number;
               onboardingCompleted = numValue === 1;
             } else {
-              // Fallback: treat as truthy
               onboardingCompleted = !!onboardingCompletedValue;
             }
           }
         }
+
         
         // Debug logging
         console.log('🔍 OTP Verification - Full response:', JSON.stringify(response, null, 2));

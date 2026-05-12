@@ -27,7 +27,7 @@ import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
-type FormTab = 'basic' | 'categories' | 'states' | 'documents' | 'exams' | 'colleges';
+type FormTab = 'basic' | 'details' | 'categories' | 'states' | 'documents' | 'exams' | 'colleges';
 
 const toDateInput = (val: string | null | undefined): string => {
   if (val == null || val === '') return '';
@@ -75,6 +75,17 @@ export default function ScholarshipsPage() {
     application_end_date: '',
     mode: '',
     official_website: '',
+    official_notification_link: '',
+    application_link: '',
+    active_status: 'active',
+    academic_year: '',
+    eligible_degree: '',
+    number_of_awards: '',
+    renewal_available: false,
+    renewal_conditions: '',
+    scope: '',
+    value_category: '',
+    education_level: '',
     eligibleCategories: [] as { category: string }[],
     applicableStates: [] as { state_name: string }[],
     documentsRequired: [] as { document_name: string }[],
@@ -186,6 +197,17 @@ export default function ScholarshipsPage() {
         application_end_date: formData.application_end_date || null,
         mode: formData.mode.trim() || null,
         official_website: formData.official_website.trim() || null,
+        official_notification_link: formData.official_notification_link.trim() || null,
+        application_link: formData.application_link.trim() || null,
+        active_status: formData.active_status.trim() || 'active',
+        academic_year: formData.academic_year.trim() || null,
+        eligible_degree: formData.eligible_degree.trim() || null,
+        number_of_awards: formData.number_of_awards.trim() || null,
+        renewal_available: formData.renewal_available,
+        renewal_conditions: formData.renewal_conditions.trim() || null,
+        scope: formData.scope.trim() || null,
+        value_category: formData.value_category.trim() || null,
+        education_level: formData.education_level.trim() || null,
         eligibleCategories: formData.eligibleCategories.filter((c) => c.category?.trim()),
         applicableStates: formData.applicableStates.filter((s) => s.state_name?.trim()),
         documentsRequired: formData.documentsRequired.filter((d) => d.document_name?.trim()),
@@ -273,6 +295,17 @@ export default function ScholarshipsPage() {
           application_end_date: toDateInput(d.scholarship.application_end_date),
           mode: d.scholarship.mode ?? '',
           official_website: d.scholarship.official_website ?? '',
+          official_notification_link: d.scholarship.official_notification_link ?? '',
+          application_link: d.scholarship.application_link ?? '',
+          active_status: d.scholarship.active_status ?? 'active',
+          academic_year: d.scholarship.academic_year ?? '',
+          eligible_degree: d.scholarship.eligible_degree ?? '',
+          number_of_awards: d.scholarship.number_of_awards ?? '',
+          renewal_available: d.scholarship.renewal_available ?? false,
+          renewal_conditions: d.scholarship.renewal_conditions ?? '',
+          scope: d.scholarship.scope ?? '',
+          value_category: d.scholarship.value_category ?? '',
+          education_level: d.scholarship.education_level ?? '',
           eligibleCategories: (d.eligibleCategories || []).map((c) => ({ category: c.category ?? '' })),
           applicableStates: (d.applicableStates || []).map((s) => ({ state_name: s.state_name ?? '' })),
           documentsRequired: (d.documentsRequired || []).map((doc) => ({ document_name: doc.document_name ?? '' })),
@@ -329,6 +362,17 @@ export default function ScholarshipsPage() {
       application_end_date: '',
       mode: '',
       official_website: '',
+      official_notification_link: '',
+      application_link: '',
+      active_status: 'active',
+      academic_year: '',
+      eligible_degree: '',
+      number_of_awards: '',
+      renewal_available: false,
+      renewal_conditions: '',
+      scope: '',
+      value_category: '',
+      education_level: '',
       eligibleCategories: [],
       applicableStates: [],
       documentsRequired: [],
@@ -444,6 +488,7 @@ export default function ScholarshipsPage() {
 
   const tabs: { id: FormTab; label: string }[] = [
     { id: 'basic', label: 'Basic' },
+    { id: 'details', label: 'Details' },
     { id: 'categories', label: 'Categories' },
     { id: 'states', label: 'States' },
     { id: 'documents', label: 'Documents' },
@@ -764,6 +809,139 @@ export default function ScholarshipsPage() {
                 </>
               )}
 
+              {activeTab === 'details' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Official Notification Link</label>
+                      <input
+                        type="url"
+                        value={formData.official_notification_link}
+                        onChange={(e) => setFormData({ ...formData, official_notification_link: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Application Link</label>
+                      <input
+                        type="url"
+                        value={formData.application_link}
+                        onChange={(e) => setFormData({ ...formData, application_link: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Active Status</label>
+                      <select
+                        value={formData.active_status}
+                        onChange={(e) => setFormData({ ...formData, active_status: e.target.value })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="expired">Expired</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Academic Year</label>
+                      <input
+                        type="text"
+                        value={formData.academic_year}
+                        onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
+                        placeholder="e.g. 2025-26"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Eligible Degree</label>
+                      <input
+                        type="text"
+                        value={formData.eligible_degree}
+                        onChange={(e) => setFormData({ ...formData, eligible_degree: e.target.value })}
+                        placeholder="e.g. B.Tech, B.Sc, MBA"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Number of Awards</label>
+                      <input
+                        type="text"
+                        value={formData.number_of_awards}
+                        onChange={(e) => setFormData({ ...formData, number_of_awards: e.target.value })}
+                        placeholder="e.g. 5000"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Scope</label>
+                      <select
+                        value={formData.scope}
+                        onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      >
+                        <option value="">Select scope</option>
+                        <option value="National">National</option>
+                        <option value="State">State</option>
+                        <option value="Institutional">Institutional</option>
+                        <option value="International">International</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Value Category</label>
+                      <input
+                        type="text"
+                        value={formData.value_category}
+                        onChange={(e) => setFormData({ ...formData, value_category: e.target.value })}
+                        placeholder="e.g. High Value, Medium Value"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Education Level</label>
+                    <input
+                      type="text"
+                      value={formData.education_level}
+                      onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
+                      placeholder="e.g. Undergraduate, Postgraduate, Doctoral"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.renewal_available}
+                        onChange={(e) => setFormData({ ...formData, renewal_available: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#341050] focus:ring-[#341050]"
+                      />
+                      <span className="text-sm text-slate-700">Renewal Available</span>
+                    </label>
+                  </div>
+                  {formData.renewal_available && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Renewal Conditions</label>
+                      <textarea
+                        value={formData.renewal_conditions}
+                        onChange={(e) => setFormData({ ...formData, renewal_conditions: e.target.value })}
+                        placeholder="e.g. Must maintain 60% in each year"
+                        rows={2}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
               {activeTab === 'categories' && (
                 <>
                   <div className="flex justify-between items-center">
@@ -902,6 +1080,27 @@ export default function ScholarshipsPage() {
                   <a href={viewingData.scholarship.official_website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.scholarship.official_website}</a>
                 ) : '-'}
               </p>
+              <p><strong>Notification link:</strong>{' '}
+                {viewingData.scholarship?.official_notification_link ? (
+                  <a href={viewingData.scholarship.official_notification_link} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.scholarship.official_notification_link}</a>
+                ) : '-'}
+              </p>
+              <p><strong>Application link:</strong>{' '}
+                {viewingData.scholarship?.application_link ? (
+                  <a href={viewingData.scholarship.application_link} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.scholarship.application_link}</a>
+                ) : '-'}
+              </p>
+              <p><strong>Active status:</strong> {viewingData.scholarship?.active_status ?? '-'}</p>
+              <p><strong>Academic year:</strong> {viewingData.scholarship?.academic_year ?? '-'}</p>
+              <p><strong>Eligible degree:</strong> {viewingData.scholarship?.eligible_degree ?? '-'}</p>
+              <p><strong>Number of awards:</strong> {viewingData.scholarship?.number_of_awards ?? '-'}</p>
+              <p><strong>Renewal available:</strong> {viewingData.scholarship?.renewal_available ? 'Yes' : 'No'}</p>
+              {viewingData.scholarship?.renewal_conditions && (
+                <p><strong>Renewal conditions:</strong> {viewingData.scholarship.renewal_conditions}</p>
+              )}
+              <p><strong>Scope:</strong> {viewingData.scholarship?.scope ?? '-'}</p>
+              <p><strong>Value category:</strong> {viewingData.scholarship?.value_category ?? '-'}</p>
+              <p><strong>Education level:</strong> {viewingData.scholarship?.education_level ?? '-'}</p>
             </div>
             {viewingData.scholarship?.description && (
               <div className="mt-3 pt-3 border-t border-slate-200">
@@ -974,10 +1173,25 @@ export default function ScholarshipsPage() {
                 </button>
               )}
             </div>
-            {bulkError && <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>}
+            {bulkError && (
+              <div className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                <FiX className="h-4 w-4 shrink-0 mt-0.5" />
+                {bulkError}
+              </div>
+            )}
             {bulkResult && (
-              <div className="mt-3 p-2 bg-green-50 text-green-800 text-sm rounded">
-                Created: {bulkResult.created}. {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+              <div className="mt-3 p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
+                <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
+                {bulkResult.errors > 0 && (
+                  <p className="text-amber-700">Errors: {bulkResult.errors}</p>
+                )}
+                {bulkResult.errorDetails?.length > 0 && (
+                  <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-32 overflow-y-auto">
+                    {bulkResult.errorDetails.map((e, i) => (
+                      <li key={i}>Row {e.row}: {e.message}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLandingPageContent, getPublicTestimonials, type PublicTestimonial } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
@@ -26,8 +26,22 @@ export default function Home() {
   const [landingError, setLandingError] = useState<string | null>(null);
   const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
   const [signupWelcomeOpen, setSignupWelcomeOpen] = useState(false);
+  const welcomeFlagConsumed = useRef(false);
 
   const closeSignupWelcome = useCallback(() => setSignupWelcomeOpen(false), []);
+
+  useEffect(() => {
+    if (welcomeFlagConsumed.current) return;
+    try {
+      if (sessionStorage.getItem(SIGNUP_WELCOME_SESSION_KEY) === "1") {
+        sessionStorage.removeItem(SIGNUP_WELCOME_SESSION_KEY);
+        welcomeFlagConsumed.current = true;
+        setSignupWelcomeOpen(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -82,44 +96,37 @@ export default function Home() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, [landing]);
 
-  useEffect(() => {
-    if (!landing) return;
-    try {
-      if (sessionStorage.getItem(SIGNUP_WELCOME_SESSION_KEY) === "1") {
-        sessionStorage.removeItem(SIGNUP_WELCOME_SESSION_KEY);
-        setSignupWelcomeOpen(true);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [landing]);
+  const welcomeModal = signupWelcomeOpen ? (
+    <SignupWelcomeModal
+      open={signupWelcomeOpen}
+      message={landing?.signupWelcome?.message ?? ""}
+      durationSeconds={landing?.signupWelcome?.durationSeconds ?? 5}
+      onClose={closeSignupWelcome}
+    />
+  ) : null;
 
   if (isLoading) {
-    return <OnboardingLoader message="Loading..." />;
+    return <>{welcomeModal}<OnboardingLoader message="Loading..." /></>;
   }
 
   if (!landing && !landingError) {
-    return <OnboardingLoader message="Loading..." />;
+    return <>{welcomeModal}<OnboardingLoader message="Loading..." /></>;
   }
 
   if (landingError || !landing) {
     return (
-      <main className="bg-white min-h-[50vh] flex items-center justify-center px-4">
-        <p className="text-slate-600 text-center max-w-md">{landingError}</p>
-      </main>
+      <>
+        {welcomeModal}
+        <main className="bg-white min-h-[50vh] flex items-center justify-center px-4">
+          <p className="text-slate-600 text-center max-w-md">{landingError}</p>
+        </main>
+      </>
     );
   }
 
   return (
     <main className="bg-white">
-      {signupWelcomeOpen ? (
-        <SignupWelcomeModal
-          open={signupWelcomeOpen}
-          message={landing.signupWelcome?.message ?? ""}
-          durationSeconds={landing.signupWelcome?.durationSeconds ?? 5}
-          onClose={closeSignupWelcome}
-        />
-      ) : null}
+      {welcomeModal}
       <Hero hero={landing.hero} />
       <ScrollRevealSection delayMs={0}>
         <InfoSection info={landing.info} />

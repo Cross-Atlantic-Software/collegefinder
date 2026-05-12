@@ -24,10 +24,27 @@ class Institute {
     return result.rows[0] || null;
   }
 
+  static async findByNameAndCity(name, city) {
+    const result = await db.query(
+      'SELECT * FROM institutes WHERE LOWER(institute_name) = LOWER($1) AND LOWER(city) = LOWER($2)',
+      [name, city]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async findByInstituteCityName(instituteCityName) {
+    const result = await db.query(
+      'SELECT * FROM institutes WHERE LOWER(institute_cityname) = LOWER($1)',
+      [instituteCityName]
+    );
+    return result.rows[0] || null;
+  }
+
   static async create(data) {
     const {
       institute_name,
       institute_location,
+      institute_cityname,
       google_maps_link,
       type,
       logo,
@@ -39,11 +56,12 @@ class Institute {
       city,
     } = data;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, state, city)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      `INSERT INTO institutes (institute_name, institute_location, institute_cityname, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, state, city)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
       [
         institute_name,
         institute_location || null,
+        institute_cityname != null ? String(institute_cityname).trim() || null : null,
         google_maps_link != null ? String(google_maps_link).trim() || null : null,
         type || null,
         logo || null,
@@ -106,6 +124,10 @@ class Institute {
     if (data.city !== undefined) {
       updates.push(`city = $${paramCount++}`);
       values.push(data.city != null ? String(data.city).trim() || null : null);
+    }
+    if (data.institute_cityname !== undefined) {
+      updates.push(`institute_cityname = $${paramCount++}`);
+      values.push(data.institute_cityname != null ? String(data.institute_cityname).trim() || null : null);
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

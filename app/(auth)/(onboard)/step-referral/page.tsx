@@ -6,6 +6,7 @@ import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { getBasicInfo, updateBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 
 const STORAGE_KEY = "cf_onboarding_referral_step";
 const BACK_FROM_REFERRAL_KEY = "cf_onboarding_back_from_referral";
@@ -43,8 +44,8 @@ export default function StepReferral() {
 
   const goHome = () => {
     try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-    router.prefetch("/");
-    router.replace("/");
+    try { sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1"); } catch { /* ignore */ }
+    window.location.href = "/";
   };
 
   const handleBackToPreviousStep = () => {

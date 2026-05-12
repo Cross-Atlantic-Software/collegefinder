@@ -19,14 +19,21 @@ async function resolveStreamNameToId(nameStr) {
 }
 
 async function resolveExamNamesToIds(namesStr) {
-  if (!namesStr || typeof namesStr !== 'string') return [];
+  if (!namesStr || typeof namesStr !== 'string') return { ids: [], unknown: [] };
   const names = splitList(namesStr);
   const ids = [];
+  const unknown = [];
   for (const nm of names) {
-    const ex = await Exam.findByName(nm);
-    if (ex) ids.push(ex.id);
+    let ex = await Exam.findByName(nm);
+    if (!ex) ex = await Exam.findByCode(nm);
+    if (!ex) ex = await Exam.findByNameContains(nm);
+    if (ex) {
+      ids.push(ex.id);
+    } else {
+      unknown.push(nm);
+    }
   }
-  return ids;
+  return { ids, unknown };
 }
 
 /** Resolves every listed college name; returns unknown names for row-level errors. */
@@ -122,6 +129,17 @@ class ScholarshipsController {
         application_end_date,
         mode,
         official_website,
+        official_notification_link,
+        application_link,
+        active_status,
+        academic_year,
+        eligible_degree,
+        number_of_awards,
+        renewal_available,
+        renewal_conditions,
+        scope,
+        value_category,
+        education_level,
         eligibleCategories,
         applicableStates,
         documentsRequired,
@@ -151,7 +169,18 @@ class ScholarshipsController {
         application_start_date: application_start_date || null,
         application_end_date: application_end_date || null,
         mode: mode ? mode.trim() : null,
-        official_website: official_website ? official_website.trim() : null
+        official_website: official_website ? official_website.trim() : null,
+        official_notification_link: official_notification_link ? official_notification_link.trim() : null,
+        application_link: application_link ? application_link.trim() : null,
+        active_status: active_status ? active_status.trim() : 'active',
+        academic_year: academic_year ? academic_year.trim() : null,
+        eligible_degree: eligible_degree ? eligible_degree.trim() : null,
+        number_of_awards: number_of_awards != null ? String(number_of_awards).trim() : null,
+        renewal_available: renewal_available != null ? renewal_available : false,
+        renewal_conditions: renewal_conditions ? renewal_conditions.trim() : null,
+        scope: scope ? scope.trim() : null,
+        value_category: value_category ? value_category.trim() : null,
+        education_level: education_level ? education_level.trim() : null
       });
 
       if (eligibleCategories && Array.isArray(eligibleCategories)) {
@@ -225,6 +254,17 @@ class ScholarshipsController {
         application_end_date,
         mode,
         official_website,
+        official_notification_link,
+        application_link,
+        active_status,
+        academic_year,
+        eligible_degree,
+        number_of_awards,
+        renewal_available,
+        renewal_conditions,
+        scope,
+        value_category,
+        education_level,
         eligibleCategories,
         applicableStates,
         documentsRequired,
@@ -252,7 +292,18 @@ class ScholarshipsController {
         application_start_date: application_start_date !== undefined ? application_start_date || null : undefined,
         application_end_date: application_end_date !== undefined ? application_end_date || null : undefined,
         mode: mode !== undefined ? (mode && mode.trim()) || null : undefined,
-        official_website: official_website !== undefined ? (official_website && official_website.trim()) || null : undefined
+        official_website: official_website !== undefined ? (official_website && official_website.trim()) || null : undefined,
+        official_notification_link: official_notification_link !== undefined ? (official_notification_link && official_notification_link.trim()) || null : undefined,
+        application_link: application_link !== undefined ? (application_link && application_link.trim()) || null : undefined,
+        active_status: active_status !== undefined ? (active_status && active_status.trim()) || null : undefined,
+        academic_year: academic_year !== undefined ? (academic_year && academic_year.trim()) || null : undefined,
+        eligible_degree: eligible_degree !== undefined ? (eligible_degree && eligible_degree.trim()) || null : undefined,
+        number_of_awards: number_of_awards !== undefined ? (number_of_awards != null ? String(number_of_awards).trim() : null) : undefined,
+        renewal_available: renewal_available !== undefined ? renewal_available : undefined,
+        renewal_conditions: renewal_conditions !== undefined ? (renewal_conditions && renewal_conditions.trim()) || null : undefined,
+        scope: scope !== undefined ? (scope && scope.trim()) || null : undefined,
+        value_category: value_category !== undefined ? (value_category && value_category.trim()) || null : undefined,
+        education_level: education_level !== undefined ? (education_level && education_level.trim()) || null : undefined
       });
 
       await ScholarshipEligibleCategory.deleteByScholarshipId(scholarshipId);
@@ -353,6 +404,17 @@ class ScholarshipsController {
         'application_end_date',
         'mode',
         'official_website',
+        'official_notification_link',
+        'application_link',
+        'active_status',
+        'academic_year',
+        'eligible_degree',
+        'number_of_awards',
+        'renewal_available',
+        'renewal_conditions',
+        'scope',
+        'value_category',
+        'education_level',
         'eligible_categories',
         'applicable_states',
         'documents_required',
@@ -376,6 +438,17 @@ class ScholarshipsController {
           '2025-03-31',
           'Online',
           'https://scholarships.gov.in',
+          'https://scholarships.gov.in/notification',
+          'https://scholarships.gov.in/apply',
+          'active',
+          '2025-26',
+          'B.Tech, B.Sc',
+          '5000',
+          'TRUE',
+          'Must maintain 60% in each year',
+          'National',
+          'High Value',
+          'Undergraduate',
           'SC, ST, OBC, General',
           'All India, Delhi, Maharashtra',
           'Aadhar, Marksheet, Income Certificate',
@@ -396,6 +469,17 @@ class ScholarshipsController {
           '2025-04-30',
           'Online',
           'https://state.gov.in',
+          '',
+          'https://state.gov.in/apply',
+          'active',
+          '2025-26',
+          'B.Com',
+          '100',
+          'FALSE',
+          '',
+          'State',
+          'Medium Value',
+          'Undergraduate',
           'General, OBC',
           'Maharashtra, Gujarat',
           'Marksheet, Domicile',
@@ -422,6 +506,9 @@ class ScholarshipsController {
         'scholarship_name', 'conducting_authority', 'scholarship_type', 'description', 'stream_name',
         'income_limit', 'minimum_marks_required', 'scholarship_amount', 'selection_process',
         'application_start_date', 'application_end_date', 'mode', 'official_website',
+        'official_notification_link', 'application_link', 'active_status', 'academic_year',
+        'eligible_degree', 'number_of_awards', 'renewal_available', 'renewal_conditions',
+        'scope', 'value_category', 'education_level',
         'eligible_categories', 'applicable_states', 'documents_required', 'exam_names', 'college_names'
       ];
       const rows = [headers];
@@ -465,6 +552,17 @@ class ScholarshipsController {
           s.application_end_date ? String(s.application_end_date).slice(0, 10) : '',
           s.mode || '',
           s.official_website || '',
+          s.official_notification_link || '',
+          s.application_link || '',
+          s.active_status || '',
+          s.academic_year || '',
+          s.eligible_degree || '',
+          s.number_of_awards || '',
+          s.renewal_available ? 'TRUE' : 'FALSE',
+          s.renewal_conditions || '',
+          s.scope || '',
+          s.value_category || '',
+          s.education_level || '',
           catStr,
           stateStr,
           docsStr,
@@ -486,6 +584,7 @@ class ScholarshipsController {
   }
 
   static async bulkUpload(req, res) {
+    console.log('[ScholarshipBulkUpload] Handler entered');
     try {
       const excelFile = req.files?.excel?.[0] || req.file;
       if (!excelFile || !excelFile.buffer) {
@@ -495,16 +594,19 @@ class ScholarshipsController {
         });
       }
 
+      console.log('[ScholarshipBulkUpload] File received, size:', excelFile.buffer?.length || 0);
       let workbook;
       try {
         workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
       } catch (parseErr) {
+        console.error('[ScholarshipBulkUpload] Excel parse error:', parseErr.message);
         return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
       }
 
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      console.log('[ScholarshipBulkUpload] Rows found:', rows.length);
       if (!rows.length) {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
       }
@@ -592,7 +694,24 @@ class ScholarshipsController {
           resolvedCollegeIds = parsed;
         }
 
+        // Resolve exam names BEFORE creating — skip row if any are unresolved
+        let examIds = [];
+        if (examNamesRaw) {
+          const resolved = await resolveExamNamesToIds(examNamesRaw);
+          examIds = resolved.ids;
+          if (resolved.unknown.length > 0) {
+            errors.push({ row: rowNum, message: `exam(s) not found: ${resolved.unknown.map((n) => `"${n}"`).join(', ')}` });
+            continue;
+          }
+        }
+        if (examIds.length === 0 && examIdsRaw) {
+          examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+        }
+
         try {
+          const renewalRaw = getVal(row, 'renewal_available');
+          const renewalBool = renewalRaw ? ['true', '1', 'yes', 'TRUE'].includes(renewalRaw) : false;
+
           const scholarship = await Scholarship.create({
             scholarship_name: name,
             conducting_authority: getVal(row, 'conducting_authority') || null,
@@ -606,7 +725,18 @@ class ScholarshipsController {
             application_start_date: application_start_date || null,
             application_end_date: application_end_date || null,
             mode: getVal(row, 'mode') || null,
-            official_website: getVal(row, 'official_website') || null
+            official_website: getVal(row, 'official_website') || null,
+            official_notification_link: getVal(row, 'official_notification_link') || null,
+            application_link: getVal(row, 'application_link') || null,
+            active_status: getVal(row, 'active_status') || 'active',
+            academic_year: getVal(row, 'academic_year') || null,
+            eligible_degree: getVal(row, 'eligible_degree') || null,
+            number_of_awards: getVal(row, 'number_of_awards') || null,
+            renewal_available: renewalBool,
+            renewal_conditions: getVal(row, 'renewal_conditions') || null,
+            scope: getVal(row, 'scope') || null,
+            value_category: getVal(row, 'value_category') || null,
+            education_level: getVal(row, 'education_level') || null
           });
           if (eligibleCategoriesRaw) {
             const cats = splitList(eligibleCategoriesRaw);
@@ -619,13 +749,6 @@ class ScholarshipsController {
           if (documentsRequiredRaw) {
             const docs = splitList(documentsRequiredRaw);
             for (const d of docs) await ScholarshipDocumentsRequired.create({ scholarship_id: scholarship.id, document_name: d });
-          }
-          let examIds = [];
-          if (examNamesRaw) {
-            examIds = await resolveExamNamesToIds(examNamesRaw);
-          }
-          if (examIds.length === 0 && examIdsRaw) {
-            examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
           }
           if (examIds.length) await ScholarshipExam.setExamsForScholarship(scholarship.id, examIds);
           if (resolvedCollegeIds.length) {
@@ -649,11 +772,16 @@ class ScholarshipsController {
         message: `Created ${created.length} scholarship(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
       });
     } catch (error) {
-      console.error('Error in bulk upload:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Bulk upload failed'
-      });
+      console.error('[ScholarshipBulkUpload] FATAL ERROR:', error);
+      console.error('[ScholarshipBulkUpload] Stack:', error.stack);
+      try {
+        res.status(500).json({
+          success: false,
+          message: error.message || 'Bulk upload failed'
+        });
+      } catch (resErr) {
+        console.error('[ScholarshipBulkUpload] Failed to send error response:', resErr);
+      }
     }
   }
 }

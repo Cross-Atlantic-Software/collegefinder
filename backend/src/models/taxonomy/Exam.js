@@ -86,12 +86,25 @@ class Exam {
   }
 
   /**
-   * Find exam taxonomy by name
+   * Find exam taxonomy by name (exact case-insensitive match)
    */
   static async findByName(name) {
     const result = await db.query(
-      'SELECT * FROM exams_taxonomies WHERE LOWER(name) = LOWER($1)',
+      'SELECT * FROM exams_taxonomies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))',
       [name]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Find exam taxonomy by partial name match (fuzzy fallback)
+   */
+  static async findByNameContains(name) {
+    if (!name || !String(name).trim()) return null;
+    const trimmed = String(name).trim();
+    const result = await db.query(
+      `SELECT * FROM exams_taxonomies WHERE LOWER(TRIM(name)) LIKE LOWER($1) LIMIT 1`,
+      [`%${trimmed}%`]
     );
     return result.rows[0] || null;
   }

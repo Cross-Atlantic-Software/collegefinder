@@ -12,7 +12,6 @@ import {
   deleteInstitute,
   uploadInstituteLogo,
   downloadInstitutesBulkTemplate,
-  downloadInstitutesCoursesExcelTemplate,
   downloadAllDataExcel,
   bulkUploadInstitutes,
   uploadMissingLogosInstitutes,
@@ -126,7 +125,6 @@ export default function InstitutesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
-  const [bulkCoursesExcelFile, setBulkCoursesExcelFile] = useState<File | null>(null);
   const [bulkLogoFiles, setBulkLogoFiles] = useState<File[]>([]);
   const [bulkLogosZipFile, setBulkLogosZipFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -453,14 +451,6 @@ export default function InstitutesPage() {
     }
   };
 
-  const handleCoursesExcelTemplateDownload = async () => {
-    try {
-      await downloadInstitutesCoursesExcelTemplate();
-      showSuccess('Courses Excel template downloaded');
-    } catch {
-      showError('Failed to download courses template');
-    }
-  };
 
   const handleDownloadAllExcel = async () => {
     try {
@@ -529,7 +519,7 @@ export default function InstitutesPage() {
     setBulkError(null);
     setBulkResult(null);
     try {
-      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, bulkCoursesExcelFile);
+      const res = await bulkUploadInstitutes(bulkExcelFile, bulkLogoFiles, bulkLogosZipFile, null);
       if (res.success && res.data) {
         setBulkResult(res.data);
         showSuccess(res.message || `Created ${res.data.created} institute(s)`);
@@ -641,7 +631,6 @@ export default function InstitutesPage() {
                   setBulkResult(null);
                   setBulkError(null);
                   setBulkExcelFile(null);
-                  setBulkCoursesExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
                 }}
@@ -1393,18 +1382,7 @@ export default function InstitutesPage() {
                   className="w-full text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Courses Excel (optional)</label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setBulkCoursesExcelFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Same layout as the separate <strong>institutes-courses-excel-template.xlsx</strong> (InstituteCourses sheet). Merged with course rows from the main file if both are present.
-                </p>
-              </div>
+              
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Logos (ZIP file)</label>
                 <input
@@ -1431,14 +1409,7 @@ export default function InstitutesPage() {
                     <FiDownload className="h-4 w-4" />
                     Download institutes template
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleCoursesExcelTemplateDownload}
-                    className="inline-flex items-center gap-2 text-sm text-[#341050] hover:underline"
-                  >
-                    <FiDownload className="h-4 w-4" />
-                    Download courses Excel template
-                  </button>
+              
                 </div>
               )}
             </div>
@@ -1447,9 +1418,18 @@ export default function InstitutesPage() {
             )}
             {bulkResult && (
               <div className="mt-3 space-y-2">
-                <div className="p-2 bg-green-50 text-green-800 text-sm rounded">
-                  Created: {bulkResult.created}.{' '}
-                  {bulkResult.errors > 0 && `Errors: ${bulkResult.errors} row(s).`}
+                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
+                  <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && (
+                    <p className="text-amber-700">Errors: {bulkResult.errors}</p>
+                  )}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-32 overflow-y-auto">
+                      {bulkResult.errorDetails.map((e, i) => (
+                        <li key={i}>Row {e.row}: {e.message}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 {bulkResult.courseSheetWarnings && bulkResult.courseSheetWarnings.length > 0 && (
                   <div className="p-2 bg-amber-50 text-amber-900 text-sm rounded border border-amber-200">

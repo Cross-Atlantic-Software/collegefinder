@@ -312,7 +312,7 @@ class GeminiService {
    * @param {string} promptText - Full user prompt (instructions + data).
    * @returns {Promise<string>} Trimmed model output.
    */
-  async generatePlainText(promptText) {
+  async generatePlainText(promptText, options = {}) {
     await this.ensureInitialized();
     if (this.model === null) {
       throw new Error(this._initError || 'Gemini service is not available.');
@@ -328,7 +328,10 @@ class GeminiService {
       return typeof t === 'string' ? t.trim() : '';
     };
 
-    return apiLimit(() => withRetry(doRequest, { operationName: 'generatePlainText' }));
+    const retryOpts = { operationName: 'generatePlainText' };
+    if (options.isCancelled) retryOpts.isCancelled = options.isCancelled;
+
+    return apiLimit(() => withRetry(doRequest, retryOpts));
   }
 
   async testService() {
