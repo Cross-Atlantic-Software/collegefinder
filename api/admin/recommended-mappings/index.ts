@@ -1,4 +1,4 @@
-import { apiRequest, getApiBaseUrl } from '../../client';
+import { apiRequest, getApiBaseUrl, postAdminMultipartForm } from '../../client';
 import { API_ENDPOINTS } from '../../constants';
 import { ApiResponse } from '../../types';
 
@@ -41,6 +41,24 @@ export async function downloadRecommendedMappingTemplate(): Promise<void> {
   URL.revokeObjectURL(a.href);
 }
 
+/** Full export of current stream + interest → programs / exams mappings (same sheet shape as import). */
+export async function downloadRecommendedMappingsExcel(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${BASE}/download-excel`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download mapping Excel');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'recommended-exams-mapping.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export async function bulkUploadRecommendedMappings(
   file: File
 ): Promise<ApiResponse<{
@@ -57,22 +75,18 @@ export async function bulkUploadRecommendedMappings(
 }>> {
   const formData = new FormData();
   formData.append('excel', file);
-
-  const adminToken = localStorage.getItem('admin_token');
-  if (!adminToken) throw new Error('Admin token not found');
-
-  const base = getApiBaseUrl();
-  const url = `${base}${BASE}/bulk-upload`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}` },
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || `Failed to upload (${response.status})`);
-  return data;
+  return postAdminMultipartForm<{
+    upserted: number;
+    rows: {
+      id: number;
+      stream: string;
+      interest: string;
+      programCount: number;
+      examCount: number;
+    }[];
+    errors: number;
+    errorDetails: { row: number; message: string }[];
+  }>(`${BASE}/bulk-upload`, formData);
 }
 
 export async function deleteRecommendedMapping(id: number): Promise<ApiResponse<Record<string, never>>> {

@@ -45,6 +45,66 @@ export function getBrowserAdminToken(): string | null {
   return t || null;
 }
 
+/**
+ * POST multipart FormData to an admin API path (browser only).
+ * Reads the body as text first, then JSON.parse — so HTML/502 proxy pages become a clear error instead of "JSON parse".
+ */
+export async function postAdminMultipartForm<T>(
+  endpoint: string,
+  formData: FormData
+): Promise<import('./types').ApiResponse<T>> {
+  if (typeof window === 'undefined') {
+    throw new Error('postAdminMultipartForm is only available in the browser');
+  }
+  const adminToken = getBrowserAdminToken();
+  if (!adminToken) throw new Error('Admin token not found');
+
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${getApiBaseUrl()}${path}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch {
+    throw new Error(`Could not read response body (HTTP ${response.status})`);
+  }
+
+  const trimmed = rawText.trim();
+  let parsed: unknown = {};
+  if (trimmed) {
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      const stripped = trimmed
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const preview = stripped.length > 450 ? `${stripped.slice(0, 450)}…` : stripped;
+      throw new Error(
+        `HTTP ${response.status}: response was not JSON. ${preview ? `Preview: ${preview}` : 'Empty body — check that the backend API is running (e.g. port 5001) and reachable from Next.js rewrites.'}`
+      );
+    }
+  }
+
+  const body = parsed as import('./types').ApiResponse<T>;
+  if (!response.ok) {
+    const msg =
+      typeof body?.message === 'string' && body.message.trim()
+        ? body.message
+        : `Request failed (HTTP ${response.status})`;
+    throw new Error(msg);
+  }
+
+  return body;
+}
+
 /** Config for apiRequest - timeout in ms (default 30s; pass higher for slow SMTP / heavy work) */
 export interface ApiRequestConfig {
   timeout?: number;

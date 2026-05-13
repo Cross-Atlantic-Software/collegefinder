@@ -22,17 +22,19 @@ import {
   type InstituteCourse,
   type InstitutesBulkUploadResult,
 } from '@/api/admin/institutes';
-import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye, FiFileText, FiBarChart, FiBook } from 'react-icons/fi';
 import { MdSchool } from 'react-icons/md';
-import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import InstituteReferralSendModal from '@/components/admin/modals/InstituteReferralSendModal';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { getAllStates, getDistrictsForState } from '@/lib/data/indianStatesDistricts';
 import Image from 'next/image';
 
-type FormTab = 'basic' | 'details' | 'exams' | 'statistics' | 'courses';
+const ADMIN_COACHING_LIST_PAGE_SIZE = 10;
+
+type FormTab = 'basic' | 'details' | 'statistics' | 'courses';
 
 /** Coerce stored rating to 1–5 for the admin select; empty if missing/invalid. */
 function studentRatingToSelectValue(value: string | number | null | undefined): '' | number {
@@ -51,15 +53,46 @@ const emptyCourse: Partial<InstituteCourse> = {
   start_date: '',
 };
 
+function csvQuoteCell(val: string): string {
+  return `"${String(val).replace(/"/g, '""')}"`;
+}
+
+/** Download merged / skipped / error rows from a bulk upload result. */
+function downloadInstitutesBulkUploadReportCsv(result: InstitutesBulkUploadResult) {
+  const lines: string[][] = [['section', 'row', 'message']];
+  const add = (section: string, row: number | string, message: string) => {
+    lines.push([section, String(row), message]);
+  };
+  for (const d of result.skippedEmptyNameDetails ?? []) {
+    add('skipped_empty_institute_name', d.row, d.message);
+  }
+  for (const d of result.mergedSameKeyDetails ?? []) {
+    add('merged_same_institute_key', d.row, d.message);
+  }
+  for (const d of result.errorDetails ?? []) {
+    add('error', d.row, d.message);
+  }
+  if ((result.mergedSameKeyDetailsTruncated ?? 0) > 0) {
+    add('note', '-', `${result.mergedSameKeyDetailsTruncated} more merged-key rows were not listed (server cap). Re-run with smaller files or check duplicate institute_cityname values.`);
+  }
+  const body = lines.map((r) => r.map(csvQuoteCell).join(',')).join('\n');
+  const blob = new Blob([body], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `institutes-bulk-upload-report-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export default function InstitutesPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [allInstitutes, setAllInstitutes] = useState<Institute[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listPage, setListPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingInstitute, setEditingInstitute] = useState<Institute | null>(null);
   const [viewingData, setViewingData] = useState<{
@@ -93,8 +126,6 @@ export default function InstitutesPage() {
     institute_description: '',
     demo_available: false,
     scholarship_available: false,
-    examIds: [] as number[],
-    specializationExamIds: [] as number[],
     ranking_score: '' as string | number,
     success_rate: '' as string | number,
     student_rating: '' as string | number,
@@ -186,19 +217,27 @@ export default function InstitutesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, allInstitutes]);
 
+  useEffect(() => {
+    setListPage(1);
+  }, [searchQuery]);
+
+  const institutesTotalPages = Math.max(1, Math.ceil(institutes.length / ADMIN_COACHING_LIST_PAGE_SIZE));
+  useEffect(() => {
+    if (listPage > institutesTotalPages) setListPage(institutesTotalPages);
+  }, [institutes.length, institutesTotalPages, listPage]);
+
+  const paginatedInstitutes = useMemo(() => {
+    const start = (listPage - 1) * ADMIN_COACHING_LIST_PAGE_SIZE;
+    return institutes.slice(start, start + ADMIN_COACHING_LIST_PAGE_SIZE);
+  }, [institutes, listPage]);
+
   const fetchData = async (silent = false) => {
     try {
       if (!silent) setIsLoading(true);
-      const [institutesRes, examsRes] = await Promise.all([
-        getAllInstitutesAdmin(),
-        getAllExamsAdmin(),
-      ]);
+      const institutesRes = await getAllInstitutesAdmin();
       if (institutesRes.success && institutesRes.data) {
         setAllInstitutes(institutesRes.data.institutes);
         setInstitutes(institutesRes.data.institutes);
-      }
-      if (examsRes.success && examsRes.data) {
-        setExams(examsRes.data.exams);
       }
     } catch (err) {
       setError('Failed to fetch institutes');
@@ -258,8 +297,6 @@ export default function InstitutesPage() {
         institute_description: formData.institute_description.trim() || null,
         demo_available: formData.demo_available,
         scholarship_available: formData.scholarship_available,
-        examIds: formData.examIds,
-        specializationExamIds: formData.specializationExamIds,
         ranking_score: formData.ranking_score === '' ? null : Number(formData.ranking_score),
         success_rate: formData.success_rate === '' ? null : Number(formData.success_rate),
         student_rating:
@@ -359,8 +396,6 @@ export default function InstitutesPage() {
           institute_description: d.instituteDetails?.institute_description ?? '',
           demo_available: d.instituteDetails?.demo_available ?? false,
           scholarship_available: d.instituteDetails?.scholarship_available ?? false,
-          examIds: d.examIds ?? [],
-          specializationExamIds: d.specializationExamIds ?? [],
           ranking_score: d.instituteStatistics?.ranking_score ?? '',
           success_rate: d.instituteStatistics?.success_rate ?? '',
           student_rating: studentRatingToSelectValue(d.instituteStatistics?.student_rating ?? ''),
@@ -424,8 +459,6 @@ export default function InstitutesPage() {
       institute_description: '',
       demo_available: false,
       scholarship_available: false,
-      examIds: [],
-      specializationExamIds: [],
       ranking_score: '',
       success_rate: '',
       student_rating: '',
@@ -562,7 +595,6 @@ export default function InstitutesPage() {
   const tabs: { id: FormTab; label: string; icon: typeof FiFileText }[] = [
     { id: 'basic', label: 'Basic', icon: FiFileText },
     { id: 'details', label: 'Details', icon: FiFileText },
-    { id: 'exams', label: 'Exams', icon: FiBook },
     { id: 'statistics', label: 'Statistics', icon: FiBarChart },
     { id: 'courses', label: 'Courses', icon: FiBook },
   ];
@@ -589,7 +621,8 @@ export default function InstitutesPage() {
           <div className="mb-3">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Coaching Institutes Manager</h1>
             <p className="text-sm text-slate-600">
-              Manage coaching institutes with details, exams, statistics, and courses. CRUD and bulk upload (Excel + logos).
+              Manage coaching institutes with details, statistics, and courses. Link exams via{' '}
+              <strong>Admin → Mapping → Coaching Exams</strong>. CRUD and bulk upload (Excel + logos).
             </p>
           </div>
 
@@ -689,31 +722,32 @@ export default function InstitutesPage() {
             {isLoading ? (
               <div className="p-4 text-center text-sm text-slate-500">Loading institutes...</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOCATION</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">WEBSITE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">REFERRAL CODE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700 max-w-[200px]">REFERRAL EMAILS</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {institutes.length === 0 ? (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#F6F8FA] border-b border-slate-200">
                       <tr>
-                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {institutes.length < allInstitutes.length
-                            ? 'No institutes match your search'
-                            : 'No institutes yet'}
-                        </td>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOCATION</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">WEBSITE</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">REFERRAL CODE</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700 max-w-[200px]">REFERRAL EMAILS</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                       </tr>
-                    ) : (
-                      institutes.map((inst) => (
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {institutes.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
+                            {institutes.length < allInstitutes.length
+                              ? 'No institutes match your search'
+                              : 'No institutes yet'}
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedInstitutes.map((inst) => (
                         <tr key={inst.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
                             <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
@@ -772,11 +806,18 @@ export default function InstitutesPage() {
                             />
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <AdminListPagination
+                  total={institutes.length}
+                  page={listPage}
+                  pageSize={ADMIN_COACHING_LIST_PAGE_SIZE}
+                  onPageChange={setListPage}
+                />
+              </>
             )}
           </div>
         </main>
@@ -971,35 +1012,6 @@ export default function InstitutesPage() {
                       />
                       <span className="text-sm">Scholarship available</span>
                     </label>
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'exams' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Exams offered</label>
-                    <MultiSelect
-                      options={exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` }))}
-                      value={formData.examIds.map(String)}
-                      onChange={(vals) =>
-                        setFormData({ ...formData, examIds: vals.map(Number) })
-                      }
-                      placeholder="Select exams"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
-                      Exam specializations
-                    </label>
-                    <MultiSelect
-                      options={exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` }))}
-                      value={formData.specializationExamIds.map(String)}
-                      onChange={(vals) =>
-                        setFormData({ ...formData, specializationExamIds: vals.map(Number) })
-                      }
-                      placeholder="Select exams"
-                    />
                   </div>
                 </>
               )}
@@ -1261,6 +1273,11 @@ export default function InstitutesPage() {
                 </p>
               </div>
             )}
+            {((viewingData.examNames ?? []).length > 0 || (viewingData.specializationExamNames ?? []).length > 0) && (
+              <p className="mt-3 text-xs text-slate-500">
+                To edit exam links, use <strong>Admin → Mapping → Coaching Exams</strong>.
+              </p>
+            )}
             {((viewingData.examNames ?? []).length > 0) && (
               <div className="mt-3 pt-3 border-t border-slate-200">
                 <p className="text-sm font-medium text-slate-700">Exams covered</p>
@@ -1353,7 +1370,7 @@ export default function InstitutesPage() {
       {/* Bulk Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Bulk Upload Institutes</h2>
               <button
@@ -1366,11 +1383,17 @@ export default function InstitutesPage() {
             </div>
             <p className="text-sm text-slate-600 mb-4">
               Download <strong>two</strong> templates: institutes only (<code className="bg-slate-100 px-1 rounded text-xs">institutes-bulk-template.xlsx</code>) and, separately, the optional courses file layout plus a catalog of course names already in use (
-              <code className="bg-slate-100 px-1 rounded text-xs">institutes-courses-excel-template.xlsx</code>). On the <strong>Institutes</strong> sheet,{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">institutes-courses-excel-template.xlsx</code>).{' '}
+              <strong className="text-slate-900">Bulk upload:</strong> the sheet is grouped by{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">institute_cityname</code> (or{' '}
+              <code className="bg-slate-100 px-1 rounded text-xs">institute_name</code> if city is blank) after trim/lowercase —{' '}
+              <em>one coaching institute per key</em>. Extra rows with the same key only add courses; they do not create
+              more institutes. On the <strong>Institutes</strong> sheet,{' '}
               <code className="bg-slate-100 px-1 rounded text-xs">state</code> and <code className="bg-slate-100 px-1 rounded text-xs">city</code> are required; the map link is generated automatically (no{' '}
               <code className="bg-slate-100 px-1 rounded text-xs">google_maps_link</code> column). Course rows use <code className="bg-slate-100 px-1 rounded text-xs">institute_name</code> matching the institutes sheet;{' '}
               <code className="bg-slate-100 px-1 rounded text-xs">course_names</code> on the institute row lists which courses to attach (comma or semicolon); leave blank to attach every course row for that institute from the courses file or sheet. Optionally upload a <strong>separate</strong> courses workbook below instead of a second sheet in the main file. Logos ZIP: filenames must match{' '}
-              <code className="bg-slate-100 px-1 rounded text-xs">logo_filename</code>.
+              <code className="bg-slate-100 px-1 rounded text-xs">logo_filename</code>. Exam lists are not imported here — use{' '}
+              <strong>Admin → Mapping → Coaching Exams</strong>.
             </p>
             <div className="space-y-3">
               <div>
@@ -1417,20 +1440,86 @@ export default function InstitutesPage() {
               <div className="mt-3 p-2 bg-red-50 text-red-700 text-sm rounded">{bulkError}</div>
             )}
             {bulkResult && (
-              <div className="mt-3 space-y-2">
-                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-1">
-                  <p className="font-medium text-slate-900">Created: {bulkResult.created}</p>
-                  {bulkResult.errors > 0 && (
-                    <p className="text-amber-700">Errors: {bulkResult.errors}</p>
-                  )}
-                  {bulkResult.errorDetails?.length > 0 && (
-                    <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-32 overflow-y-auto">
-                      {bulkResult.errorDetails.map((e, i) => (
-                        <li key={i}>Row {e.row}: {e.message}</li>
+              <div className="mt-3 space-y-3">
+                <div className="p-3 rounded-xl bg-[#F6F8FA] border border-slate-200 text-sm space-y-2">
+                  <p className="font-medium text-slate-900">Summary</p>
+                  <ul className="text-xs text-slate-700 space-y-1 list-disc list-inside">
+                    <li>Excel data rows: {bulkResult.totalExcelRows ?? '—'}</li>
+                    <li>Rows with an institute name: {bulkResult.rowsWithInstituteName ?? '—'}</li>
+                    <li>Unique institute keys (after grouping): {bulkResult.uniqueInstituteKeys ?? bulkResult.created}</li>
+                    <li>
+                      <strong className="text-slate-900">Institutes created: {bulkResult.created}</strong>
+                    </li>
+                    {(bulkResult.skippedEmptyNameCount ?? 0) > 0 && (
+                      <li className="text-amber-800">
+                        Skipped (empty institute_name): {bulkResult.skippedEmptyNameCount}
+                      </li>
+                    )}
+                    {(bulkResult.mergedDuplicateRowCount ?? 0) > 0 && (
+                      <li className="text-slate-800">
+                        Rows merged into an existing key (not new institutes): {bulkResult.mergedDuplicateRowCount}
+                      </li>
+                    )}
+                    {(bulkResult.errors ?? 0) > 0 && (
+                      <li className="text-amber-800">Errors (create / validation): {bulkResult.errors}</li>
+                    )}
+                  </ul>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => downloadInstitutesBulkUploadReportCsv(bulkResult)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                    >
+                      <FiDownload className="h-3.5 w-3.5" />
+                      Download report CSV
+                    </button>
+                  </div>
+                </div>
+                {(bulkResult.skippedEmptyNameDetails?.length ?? 0) > 0 && (
+                  <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/80 text-sm">
+                    <p className="font-medium text-amber-950 mb-1 text-xs">Skipped rows (empty institute_name)</p>
+                    <ul className="text-xs text-amber-950/90 list-disc list-inside max-h-40 overflow-y-auto space-y-0.5">
+                      {bulkResult.skippedEmptyNameDetails!.map((e, i) => (
+                        <li key={`skip-${e.row}-${i}`}>
+                          Row {e.row}: {e.message}
+                        </li>
                       ))}
                     </ul>
-                  )}
-                </div>
+                  </div>
+                )}
+                {(bulkResult.mergedSameKeyDetails?.length ?? 0) > 0 && (
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-sm">
+                    <p className="font-medium text-slate-900 mb-1 text-xs">
+                      Rows that did not create a new institute (duplicate key)
+                    </p>
+                    {(bulkResult.mergedSameKeyDetailsTruncated ?? 0) > 0 && (
+                      <p className="text-xs text-amber-800 mb-1">
+                        {bulkResult.mergedSameKeyDetailsTruncated} more merged-key rows are not shown in this list (server
+                        cap). Use unique <code className="font-mono">institute_cityname</code> values if each row must
+                        create a separate institute.
+                      </p>
+                    )}
+                    <ul className="text-xs text-slate-600 list-disc list-inside max-h-52 overflow-y-auto space-y-0.5">
+                      {bulkResult.mergedSameKeyDetails!.map((e, i) => (
+                        <li key={`merge-${e.row}-${i}`}>
+                          Row {e.row}: {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {(bulkResult.errors ?? 0) > 0 && (
+                  <div className="p-3 rounded-xl border border-red-200 bg-red-50/80 text-sm">
+                    <p className="font-medium text-red-900 mb-1 text-xs">Errors</p>
+                    <ul className="text-xs text-red-900/90 list-disc list-inside max-h-52 overflow-y-auto space-y-0.5">
+                      {bulkResult.errorDetails?.map((e, i) => (
+                        <li key={`err-${e.row}-${i}`}>
+                          Row {e.row}: {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {bulkResult.courseSheetWarnings && bulkResult.courseSheetWarnings.length > 0 && (
                   <div className="p-2 bg-amber-50 text-amber-900 text-sm rounded border border-amber-200">
                     <p className="font-medium mb-1">Course sheet notices</p>

@@ -28,6 +28,8 @@ const LandingPageAdminController = require('../../controllers/admin/landingPageA
 const LegalPageAdminController = require('../../controllers/admin/legalPageAdminController');
 const TestimonialAdminController = require('../../controllers/admin/testimonialAdminController');
 const RecommendedMappingController = require('../../controllers/admin/recommendedMappingController');
+const CoachingExamsMappingController = require('../../controllers/admin/coachingExamsMappingController');
+const ScholarshipExamsCollegesMappingController = require('../../controllers/admin/scholarshipExamsCollegesMappingController');
 const QueryAdminController = require('../../controllers/admin/queryAdminController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
@@ -518,6 +520,22 @@ router.get('/exams/bulk-upload-template', authenticateAdmin, requireModuleAccess
  * @access  Private (Super Admin)
  */
 router.get('/exams/download-excel', authenticateAdmin, requireModuleAccess('exams'), requireCanDownloadExcel, ExamsController.downloadAllExcel);
+
+/**
+ * @route   GET /api/admin/exams/bulk-popularity-ranks-template
+ * @desc    Minimal Excel (name, code, exam_popularity_rank) to update ranks on existing exams
+ * @access  Private (Admin)
+ */
+router.get('/exams/bulk-popularity-ranks-template', authenticateAdmin, requireModuleAccess('exams'), requireCanDownloadExcel, ExamsController.downloadPopularityRanksTemplate);
+
+/**
+ * @route   POST /api/admin/exams/bulk-popularity-ranks
+ * @desc    Bulk update exam_popularity_rank only (match by code, else name)
+ * @access  Private (Admin)
+ */
+router.post('/exams/bulk-popularity-ranks', authenticateAdmin, requireModuleAccess('exams'), uploadBulkExams.fields([
+  { name: 'excel', maxCount: 1 },
+]), ExamsController.bulkUploadPopularityRanks);
 
 /**
  * @route   POST /api/admin/exams/bulk-upload
@@ -1020,6 +1038,13 @@ router.get(
   requireModuleAccess('mapping'),
   RecommendedMappingController.downloadTemplate
 );
+router.get(
+  '/recommended-mappings/download-excel',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDownloadExcel,
+  RecommendedMappingController.downloadAllExcel
+);
 router.post(
   '/recommended-mappings/bulk-upload',
   authenticateAdmin,
@@ -1040,6 +1065,94 @@ router.delete(
   requireModuleAccess('mapping'),
   requireCanDelete,
   RecommendedMappingController.deleteOne
+);
+
+/**
+ * Coaching institutes: institute_cityname → exams (institute_exams) + specialization_exams (institute_exam_specialization)
+ */
+router.get(
+  '/coaching-exams-mappings',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  CoachingExamsMappingController.getAll
+);
+router.get(
+  '/coaching-exams-mappings/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  CoachingExamsMappingController.downloadTemplate
+);
+router.get(
+  '/coaching-exams-mappings/download-excel',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDownloadExcel,
+  CoachingExamsMappingController.downloadAllExcel
+);
+router.post(
+  '/coaching-exams-mappings/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
+  CoachingExamsMappingController.bulkUpload
+);
+router.delete(
+  '/coaching-exams-mappings/all',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  CoachingExamsMappingController.deleteAll
+);
+router.delete(
+  '/coaching-exams-mappings/:id',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  CoachingExamsMappingController.deleteOne
+);
+
+/**
+ * Scholarships: scholarship name → exams + colleges (junction tables)
+ */
+router.get(
+  '/scholarship-exams-colleges-mappings',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  ScholarshipExamsCollegesMappingController.getAll
+);
+router.get(
+  '/scholarship-exams-colleges-mappings/bulk-upload-template',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  ScholarshipExamsCollegesMappingController.downloadTemplate
+);
+router.get(
+  '/scholarship-exams-colleges-mappings/download-excel',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDownloadExcel,
+  ScholarshipExamsCollegesMappingController.downloadAllExcel
+);
+router.post(
+  '/scholarship-exams-colleges-mappings/bulk-upload',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  uploadBulkExams.fields([{ name: 'excel', maxCount: 1 }]),
+  ScholarshipExamsCollegesMappingController.bulkUpload
+);
+router.delete(
+  '/scholarship-exams-colleges-mappings/all',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  ScholarshipExamsCollegesMappingController.deleteAll
+);
+router.delete(
+  '/scholarship-exams-colleges-mappings/:id',
+  authenticateAdmin,
+  requireModuleAccess('mapping'),
+  requireCanDelete,
+  ScholarshipExamsCollegesMappingController.deleteOne
 );
 
 /**

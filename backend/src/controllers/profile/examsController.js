@@ -13,12 +13,40 @@ const ExamCareerGoal = require('../../models/exam/ExamCareerGoal');
 const ExamProgram = require('../../models/exam/ExamProgram');
 const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
 const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
+const {
+  sortExamsByPopularityRank,
+  computeRecommendedExamIdsTop20,
+} = require('../../services/examDashboardRecommendation');
 const Stream = require('../../models/taxonomy/Stream');
 const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+
+/** Allowed `exam_pattern.mode` values (must match DB CHECK after migration `exam_pattern_mode_add_online_cbt.sql`). */
+const EXAM_PATTERN_VALID_MODES = ['Offline', 'Online', 'Hybrid', 'Online (CBT)'];
+
+/**
+ * Admin Excel / forms: duration in hours as entered (e.g. 3 → 3 Hrs in UI).
+ * Stored without conversion in `exam_pattern.duration_minutes` (legacy column name).
+ */
+function durationHoursStoredFromInput(raw) {
+  if (raw == null || String(raw).trim() === '') return null;
+  const h = parseFloat(String(raw).trim());
+  if (Number.isNaN(h) || h < 0) return null;
+  return Math.round(h);
+}
+
+/** Stored hours → string cell for Excel export (same numeric value). */
+function durationHoursStoredForExportCell(stored) {
+  if (stored == null || stored === '') return '';
+  const n = Number(stored);
+  if (Number.isNaN(n)) return '';
+  if (Number.isInteger(n)) return String(n);
+  const rounded = Math.round(n * 10000) / 10000;
+  return String(rounded);
+}
 
 class ExamsTaxonomyController {
   /**
@@ -386,6 +414,7 @@ class ExamsTaxonomyController {
         website,
         documents_required,
         counselling,
+        exam_popularity_rank,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -433,7 +462,8 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         documents_required,
-        counselling
+        counselling,
+        exam_popularity_rank,
       });
 
       // Create related data if provided
@@ -506,6 +536,7 @@ class ExamsTaxonomyController {
         website,
         documents_required,
         counselling,
+        exam_popularity_rank,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -563,7 +594,8 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         documents_required: documents_required !== undefined ? documents_required : undefined,
-        counselling: counselling !== undefined ? counselling : undefined
+        counselling: counselling !== undefined ? counselling : undefined,
+        exam_popularity_rank: exam_popularity_rank !== undefined ? exam_popularity_rank : undefined,
       });
 
       // Update related data if provided
@@ -807,7 +839,7 @@ class ExamsTaxonomyController {
       const streamId = academics?.stream_id ?? null;
       const careerGoalIds = careerGoalsRow?.interests ?? [];
       const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
-        ? careerGoalIds.map(id => (typeof id === 'string' ? parseInt(id, 10) : id)).filter(id => !isNaN(id))
+        ? careerGoalIds.map(id => (typeof id === 'string' ? parseInt(id, 10) : id)).filter(id => Number.isInteger(id))
         : [];
 
       if (streamId == null || streamId === '') {
@@ -820,36 +852,28 @@ class ExamsTaxonomyController {
         });
       }
 
-      if (normalizedCareerGoalIds.length === 0) {
-        return res.json({
-          success: true,
-          data: { examIds: [], message: 'Add your interests in your profile to get recommended exams.' }
-        });
-      }
-
       const streamIdNum = Number(streamId);
-      const examIdSet = new Set();
+      const streamExams = await Exam.findAllByStreamId(streamIdNum);
+      const streamMappings = await StreamInterestRecommendation.findByStream(streamIdNum);
+      const rankedIds = computeRecommendedExamIdsTop20(
+        streamExams,
+        normalizedCareerGoalIds,
+        streamMappings
+      );
 
-      for (const interestId of normalizedCareerGoalIds) {
-        const row = await StreamInterestRecommendation.findByStreamAndInterest(streamIdNum, interestId);
-        if (row && Array.isArray(row.exam_ids)) {
-          row.exam_ids.forEach(eid => {
-            const n = Number(eid);
-            if (!isNaN(n)) examIdSet.add(n);
-          });
-        }
+      let message;
+      if (streamExams.length === 0) {
+        message = 'No exams are configured for your stream yet.';
+      } else if (normalizedCareerGoalIds.length === 0) {
+        message =
+          'Add your interests for interest-weighted recommendations; showing top popular exams for your stream.';
       }
-
-      const examIds = [...examIdSet];
 
       res.json({
         success: true,
         data: {
-          examIds: examIds.map(id => id.toString()),
-          message:
-            examIds.length === 0
-              ? 'No exam recommendations are configured yet for your stream and interests. Check back after your counselor updates mappings.'
-              : undefined
+          examIds: rankedIds.map(id => id.toString()),
+          message
         }
       });
     } catch (error) {
@@ -863,8 +887,8 @@ class ExamsTaxonomyController {
 
   /**
    * Dashboard exams payload:
-   * - allExams: stream-filtered exams
-   * - recommendedExamIds: existing recommendation logic, intersected with stream-filtered set
+   * - allExams: stream-filtered exams, ordered by exam_popularity_rank (then name)
+   * - recommendedExamIds: top 20 by blended interest/default score (stream + mappings + popularity)
    * - shortlistedExamIds: stored in user_academics.user_shortlisted_exams, intersected with stream-filtered set
    * GET /api/auth/profile/dashboard-exams
    */
@@ -892,9 +916,6 @@ class ExamsTaxonomyController {
       }
 
       const streamExams = await Exam.findAllByStreamId(streamId);
-      const allExams = await ExamsTaxonomyController.enrichExamRows(streamExams);
-      const allExamIdSet = new Set(allExams.map((e) => Number(e.id)));
-
       const careerGoalIds = careerGoalsRow?.interests ?? [];
       const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
         ? careerGoalIds
@@ -902,16 +923,16 @@ class ExamsTaxonomyController {
             .filter(id => Number.isInteger(id))
         : [];
 
-      const recommendedIdSet = new Set();
-      for (const interestId of normalizedCareerGoalIds) {
-        const row = await StreamInterestRecommendation.findByStreamAndInterest(Number(streamId), interestId);
-        if (row && Array.isArray(row.exam_ids)) {
-          row.exam_ids.forEach((eid) => {
-            const n = Number(eid);
-            if (Number.isInteger(n) && allExamIdSet.has(n)) recommendedIdSet.add(n);
-          });
-        }
-      }
+      const streamMappings = await StreamInterestRecommendation.findByStream(Number(streamId));
+      const recommendedExamIds = computeRecommendedExamIdsTop20(
+        streamExams,
+        normalizedCareerGoalIds,
+        streamMappings
+      );
+      const allExamIdSet = new Set(streamExams.map((e) => Number(e.id)));
+
+      const examsForAllTab = sortExamsByPopularityRank(streamExams);
+      const allExams = await ExamsTaxonomyController.enrichExamRows(examsForAllTab);
 
       const shortlistedRaw = Array.isArray(academics?.user_shortlisted_exams)
         ? academics.user_shortlisted_exams
@@ -925,7 +946,7 @@ class ExamsTaxonomyController {
         data: {
           streamId: Number(streamId),
           allExams,
-          recommendedExamIds: [...recommendedIdSet],
+          recommendedExamIds,
           shortlistedExamIds,
           message:
             allExams.length === 0
@@ -1024,7 +1045,7 @@ class ExamsTaxonomyController {
         'total_marks',
         'negative_marking',
         'weightage_of_subjects',
-        'duration_minutes',
+        'duration_hours',
         'ranks_percentiles',
         'cutoff_general',
         'cutoff_obc',
@@ -1032,6 +1053,7 @@ class ExamsTaxonomyController {
         'cutoff_st',
         'target_rank_range',
         'website',
+        'exam_popularity_rank',
         'interests',
         'programs'
       ];
@@ -1060,7 +1082,7 @@ class ExamsTaxonomyController {
         '300',
         '-1 per wrong answer, +4 correct',
         'Physics 33%, Chemistry 33%, Maths 34%',
-        '180',
+        '3',
         'Rank 1 = 99.99, Rank 1000 = 97.2',
         '95.5',
         '92.0',
@@ -1068,6 +1090,7 @@ class ExamsTaxonomyController {
         '85.0',
         'Top 10k',
         'https://jeemain.nta.nic.in',
+        '1',
         'Building Apps & Software, Designing Machines & Robots',
         'B.Tech, B.E.'
       ];
@@ -1096,7 +1119,7 @@ class ExamsTaxonomyController {
         '720',
         '-1 per wrong, +4 correct',
         'Balanced across PCB',
-        '200',
+        '3',
         'Rank 1 = 99.99',
         '98.0',
         '95.0',
@@ -1104,6 +1127,7 @@ class ExamsTaxonomyController {
         '88.0',
         'Top 50k',
         'https://neet.nta.nic.in',
+        '2',
         'Medicine & Healthcare',
         'MBBS, BDS'
       ];
@@ -1145,9 +1169,9 @@ class ExamsTaxonomyController {
         'name', 'code', 'description', 'exam_type', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date', 'result_date', 'application_fees', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
-        'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_minutes',
+        'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
-        'website',
+        'website', 'exam_popularity_rank',
         'programs', 'Interests'
       ];
       const rows = [headers];
@@ -1197,7 +1221,7 @@ class ExamsTaxonomyController {
           (pattern && pattern.total_marks != null) ? String(pattern.total_marks) : '',
           (pattern && pattern.negative_marking) || '',
           (pattern && pattern.weightage_of_subjects) || '',
-          (pattern && pattern.duration_minutes != null) ? String(pattern.duration_minutes) : '',
+          (pattern && pattern.duration_minutes != null) ? durationHoursStoredForExportCell(pattern.duration_minutes) : '',
           (cutoff && cutoff.ranks_percentiles) || '',
           (cutoff && cutoff.cutoff_general) || '',
           (cutoff && cutoff.cutoff_obc) || '',
@@ -1205,6 +1229,9 @@ class ExamsTaxonomyController {
           (cutoff && cutoff.cutoff_st) || '',
           (cutoff && cutoff.target_rank_range) || '',
           exam.website || '',
+          exam.exam_popularity_rank != null && !Number.isNaN(Number(exam.exam_popularity_rank))
+            ? String(exam.exam_popularity_rank)
+            : '',
           programNames,
           interestNames
         ]);
@@ -1418,7 +1445,7 @@ class ExamsTaxonomyController {
 
       const allErrors = [];
       const validTypes = ['National', 'State', 'Institute'];
-      const validModes = ['Offline', 'Online', 'Hybrid'];
+      const validModes = EXAM_PATTERN_VALID_MODES;
       const codesInFile = new Set();
       const namesInFile = new Set();
       const created = [];
@@ -1487,6 +1514,12 @@ class ExamsTaxonomyController {
         const websiteRaw = getCell(row, 'website', 'Website') || getCellByKeyword(row, 'website');
         const websiteVal = websiteRaw ? websiteRaw.trim() : null;
 
+        const popRaw = getCell(row, 'exam_popularity_rank', 'Exam_Popularity_Rank', 'popularity_rank', 'Popularity_Rank');
+        let examPopularityRank = null;
+        if (popRaw !== '' && !Number.isNaN(parseInt(String(popRaw), 10))) {
+          examPopularityRank = parseInt(String(popRaw), 10);
+        }
+
         const numPapersRaw = getCell(row, 'number_of_papers', 'Number_Of_Papers') || row.number_of_papers || row.Number_Of_Papers || '';
         const numberOfPapers = (numPapersRaw !== '' && !isNaN(parseInt(String(numPapersRaw), 10)))
           ? Math.max(1, Math.min(10, parseInt(String(numPapersRaw), 10)))
@@ -1519,7 +1552,8 @@ class ExamsTaxonomyController {
             number_of_papers: numberOfPapers,
             website: websiteVal,
             documents_required: documentsRequired,
-            counselling: counsellingText
+            counselling: counsellingText,
+            exam_popularity_rank: examPopularityRank,
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code || '' });
           if (codeNorm) codesInFile.add(codeNorm);
@@ -1565,16 +1599,17 @@ class ExamsTaxonomyController {
               ageLimit = [ageMin, ageMax].filter((x) => x != null && !Number.isNaN(x)).join(' – ') || null;
             }
           }
-          const attemptLimit = row.attempt_limit != null && row.attempt_limit !== '' ? parseInt(String(row.attempt_limit), 10) : null;
+          const attemptRaw = row.attempt_limit != null && row.attempt_limit !== '' ? String(row.attempt_limit).trim() : '';
+          const attemptLimit = attemptRaw !== '' ? attemptRaw : null;
           const domicileRaw = getCell(row, 'domicile', 'Domicile') || getCellByKeyword(row, 'domicile');
           const domicile = domicileRaw ? domicileRaw.trim() : null;
-          if (streamIds.length > 0 || subjectIds.length > 0 || ageLimit || (attemptLimit != null && !Number.isNaN(attemptLimit)) || domicile) {
+          if (streamIds.length > 0 || subjectIds.length > 0 || ageLimit || attemptLimit || domicile) {
             await ExamEligibilityCriteria.create({
               exam_id: examId,
               stream_ids: streamIds,
               subject_ids: subjectIds,
               age_limit: ageLimit || null,
-              attempt_limit: !isNaN(attemptLimit) ? attemptLimit : null,
+              attempt_limit: attemptLimit,
               domicile
             });
           }
@@ -1590,9 +1625,16 @@ class ExamsTaxonomyController {
           const negative_marking = negRaw ? String(negRaw).trim() : null;
           const wRaw = getCell(row, 'weightage_of_subjects', 'Weightage_Of_Subjects', 'weightage') || getCellByKeyword(row, 'weightage');
           const weightage_of_subjects = wRaw ? String(wRaw).trim() : null;
-          const duration = row.duration_minutes != null && row.duration_minutes !== '' ? parseInt(String(row.duration_minutes), 10) : null;
+          const durationHoursRaw = getCell(row, 'duration_hours', 'Duration_Hours');
+          const durationLegacyRaw = getCell(row, 'duration_minutes', 'Duration_Minutes');
+          let durationMinutes = null;
+          if (durationHoursRaw !== '') {
+            durationMinutes = durationHoursStoredFromInput(durationHoursRaw);
+          } else if (durationLegacyRaw !== '') {
+            durationMinutes = durationHoursStoredFromInput(durationLegacyRaw);
+          }
           const finalMode = validModes.find((m) => m.toLowerCase() === mode.toLowerCase()) || null;
-          if (finalMode || numQ != null || totalMarks != null || negative_marking || weightage_of_subjects || (duration != null && !isNaN(duration))) {
+          if (finalMode || numQ != null || totalMarks != null || negative_marking || weightage_of_subjects || durationMinutes != null) {
             await ExamPattern.create({
               exam_id: examId,
               mode: finalMode,
@@ -1600,7 +1642,7 @@ class ExamsTaxonomyController {
               total_marks: !isNaN(totalMarks) ? totalMarks : null,
               negative_marking,
               weightage_of_subjects,
-              duration_minutes: !isNaN(duration) ? duration : null
+              duration_minutes: durationMinutes
             });
           }
         } catch (e) {
@@ -1685,6 +1727,146 @@ class ExamsTaxonomyController {
       res.status(500).json({
         success: false,
         message: error.message || 'Bulk upload failed'
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/exams/bulk-popularity-ranks-template
+   * Minimal Excel: name, code (optional), exam_popularity_rank — for updating existing rows only.
+   */
+  static async downloadPopularityRanksTemplate(req, res) {
+    try {
+      const headers = ['name', 'code', 'exam_popularity_rank'];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([
+        headers,
+        ['JEE Main', 'JEE_MAIN', '1'],
+        ['NEET', 'NEET', '2'],
+        ['Some State CET', '', '50'],
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Ranks');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=exam-popularity-ranks-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating popularity ranks template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * POST /api/admin/exams/bulk-popularity-ranks
+   * Updates exam_popularity_rank only (matched by code first, else name). Empty rank clears the column (NULL).
+   */
+  static async bulkUploadPopularityRanks(req, res) {
+    const getCell = (row, ...keys) => {
+      for (const k of keys) {
+        const v = row[k];
+        if (v != null && String(v).trim() !== '') return String(v).trim();
+      }
+      return '';
+    };
+    try {
+      const excelFile = req.files?.excel?.[0] || req.file;
+      if (!excelFile || !excelFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No Excel file uploaded. Use field name "excel".',
+        });
+      }
+      let workbook;
+      try {
+        workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
+      } catch (parseErr) {
+        return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
+      }
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      if (!rows.length) {
+        return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
+      }
+
+      const updated = [];
+      const errors = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const name = getCell(row, 'name', 'Name', 'exam_name', 'Exam_Name', 'exam name', 'Exam Name');
+        const code = getCell(row, 'code', 'Code', 'exam_code', 'Exam_Code');
+        const rankRaw = getCell(
+          row,
+          'exam_popularity_rank',
+          'Exam_Popularity_Rank',
+          'popularity_rank',
+          'Popularity_Rank',
+          'rank',
+          'Rank',
+        );
+
+        if (!name && !code) {
+          errors.push({ row: rowNum, message: 'Provide name or code to identify the exam' });
+          continue;
+        }
+
+        let rank = null;
+        if (rankRaw !== '') {
+          const n = parseInt(rankRaw, 10);
+          if (Number.isNaN(n)) {
+            errors.push({ row: rowNum, message: `Invalid exam_popularity_rank: "${rankRaw}"` });
+            continue;
+          }
+          rank = n;
+        }
+
+        let exam = null;
+        if (code) {
+          exam = await Exam.findByCode(code);
+        }
+        if (!exam && name) {
+          exam = await Exam.findByName(name);
+        }
+        if (!exam) {
+          errors.push({
+            row: rowNum,
+            message: `Exam not found for ${code ? `code "${code}"` : ''}${code && name ? ' / ' : ''}${name ? `name "${name}"` : ''}`,
+          });
+          continue;
+        }
+
+        try {
+          const rowOut = await Exam.update(exam.id, { exam_popularity_rank: rank });
+          updated.push({
+            id: exam.id,
+            name: rowOut?.name || exam.name,
+            exam_popularity_rank: rowOut?.exam_popularity_rank ?? rank,
+          });
+        } catch (e) {
+          errors.push({ row: rowNum, message: e.message || 'Update failed' });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          updated: updated.length,
+          rows: updated,
+          errors: errors.length,
+          errorDetails: errors,
+        },
+        message:
+          errors.length === 0
+            ? `Updated popularity rank for ${updated.length} exam(s).`
+            : `Updated ${updated.length} exam(s); ${errors.length} row(s) had errors.`,
+      });
+    } catch (error) {
+      console.error('bulkUploadPopularityRanks:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to import popularity ranks',
       });
     }
   }

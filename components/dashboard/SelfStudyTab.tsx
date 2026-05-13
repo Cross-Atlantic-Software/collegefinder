@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FiExternalLink, FiPlayCircle } from "react-icons/fi";
 import type { ExamPrepLectureDto } from "@/api/auth/profile";
+import { formatDurationFromSeconds } from "@/lib/formatDuration";
 
 type Topic = {
   id: number;
@@ -76,7 +77,7 @@ function prepLectureToVideoItem(lec: ExamPrepLectureDto): VideoItem {
     youtubeId: lec.youtubeId,
     title: `${lec.topicName} • ${lec.title}`,
     channel: lec.channel || "YouTube",
-    duration: "—",
+    duration: formatDurationFromSeconds(lec.durationSeconds ?? undefined),
     views: `${likesStr} likes · ${subsStr} subs`,
     published: formatRelativeTime(lec.updatedAt),
     viewsCount,
@@ -118,6 +119,9 @@ const toEmbedUrl = (youtubeId: string, startSeconds = 12, endSeconds = 20): stri
 
 type RowModel = { id: string; title: string; videos: VideoItem[] };
 type SubjectWithRows = SubjectSection & { rows: RowModel[] };
+
+/** Per topic (under each subject): show this many lecture cards first; "Load more" reveals the next chunk. */
+const LECTURES_PER_TOPIC_PAGE = 6;
 
 function buildSubjectsWithVideosFromPrep(
   subjectsTaxonomy: SubjectSection[],
@@ -212,6 +216,20 @@ export default function SelfStudyTab({
   const subjectsWithVideos = useMemo(() => {
     return buildSubjectsWithVideosFromPrep(filteredSubjects, prepLectures, query, sortBy);
   }, [filteredSubjects, prepLectures, query, sortBy]);
+
+  const lecturePagingResetKey = useMemo(
+    () =>
+      subjectsWithVideos
+        .map((s) => s.rows.map((r) => `${r.id}:${r.videos.map((v) => v.id).join(",")}`).join("^"))
+        .join("|"),
+    [subjectsWithVideos]
+  );
+
+  const [lecturesVisibleByTopicRow, setLecturesVisibleByTopicRow] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setLecturesVisibleByTopicRow({});
+  }, [lecturePagingResetKey, query, sortBy]);
 
   const allVideos = useMemo(() => {
     return subjectsWithVideos.flatMap((subject) => subject.rows.flatMap((row) => row.videos));
@@ -355,16 +373,27 @@ export default function SelfStudyTab({
                 </div>
 
                 <div className="space-y-4">
-                  {subject.rows.map((row) => (
+                  {subject.rows.map((row) => {
+                    const total = row.videos.length;
+                    const limit = Math.min(
+                      total,
+                      lecturesVisibleByTopicRow[row.id] ?? LECTURES_PER_TOPIC_PAGE
+                    );
+                    const shown = row.videos.slice(0, limit);
+                    const hasMore = total > limit;
+
+                    return (
                     <div key={row.id}>
                       <div className="mb-2 flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{row.title}</h4>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{row.videos.length} videos</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          Showing {shown.length} of {total} videos
+                        </span>
                       </div>
 
                       <div className="w-full min-w-0 pb-1">
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                          {row.videos.map((video, index) => (
+                          {shown.map((video, index) => (
                             <div key={video.id} className="group relative min-w-0">
                               <a
                                 href={video.youtubeUrl}
@@ -404,9 +433,29 @@ export default function SelfStudyTab({
                             </div>
                           ))}
                         </div>
+                        {hasMore ? (
+                          <div className="mt-3 flex justify-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLecturesVisibleByTopicRow((prev) => ({
+                                  ...prev,
+                                  [row.id]: Math.min(
+                                    total,
+                                    (prev[row.id] ?? LECTURES_PER_TOPIC_PAGE) + LECTURES_PER_TOPIC_PAGE
+                                  ),
+                                }))
+                              }
+                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            >
+                              Load more lectures ({total - limit} more)
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             );

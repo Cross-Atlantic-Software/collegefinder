@@ -29,11 +29,14 @@ import {
   FaUserCircle,
   FaBrain,
   FaHandsHelping,
+  FaChalkboardTeacher,
+  FaAward,
 } from "react-icons/fa";
 import { IoPlayCircleOutline } from "react-icons/io5";
 import { MdSchool } from "react-icons/md";
 import { getProfileCompletion, getAllExams, getDashboardColleges } from "@/api";
 import { getDashboardExams } from "@/api/exams";
+import { getDashboardInstitutes, getDashboardScholarships } from "@/api/auth/profile";
 import { useAuth } from "@/contexts/AuthContext";
 
 type SectionId =
@@ -41,6 +44,8 @@ type SectionId =
   | "profile"
   | "exam-shortlist"
   | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
   | "applications"
   | "exam-prep"
   | "test-module"
@@ -96,6 +101,20 @@ const baseNavItems: {
     sub: "Colleges matched",
     icon: FiHome,
     activeIcon: FaUniversity,
+  },
+  {
+    id: "coaching-institutes",
+    label: "Coaching Institutes",
+    sub: "Coachings matched",
+    icon: FaChalkboardTeacher,
+    activeIcon: FaChalkboardTeacher,
+  },
+  {
+    id: "scholarships",
+    label: "Scholarships",
+    sub: "Funding options",
+    icon: FaAward,
+    activeIcon: FaAward,
   },
   {
     id: "applications",
@@ -169,6 +188,8 @@ export default function Sidebar({
   const [examsCount, setExamsCount] = useState(0);
   const [shortlistedExamsCount, setShortlistedExamsCount] = useState(0);
   const [shortlistedCollegesCount, setShortlistedCollegesCount] = useState(0);
+  const [shortlistedInstitutesCount, setShortlistedInstitutesCount] = useState(0);
+  const [shortlistedScholarshipsCount, setShortlistedScholarshipsCount] = useState(0);
   const [examPrepExpanded, setExamPrepExpanded] = useState(false);
 
   useEffect(() => {
@@ -285,6 +306,51 @@ export default function Sidebar({
     };
   }, [activeSection]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const fetchInstituteScholarshipCounts = async () => {
+      try {
+        const [ir, sr] = await Promise.all([getDashboardInstitutes(), getDashboardScholarships()]);
+        if (cancelled) return;
+        if (ir.success && ir.data?.shortlistedInstituteIds) {
+          setShortlistedInstitutesCount(ir.data.shortlistedInstituteIds.length);
+        }
+        if (sr.success && sr.data?.shortlistedScholarshipIds) {
+          setShortlistedScholarshipsCount(sr.data.shortlistedScholarshipIds.length);
+        }
+      } catch (err) {
+        console.error("Error fetching institute/scholarship shortlist counts:", err);
+      }
+    };
+    void fetchInstituteScholarshipCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "coaching-institutes" && activeSection !== "scholarships") return;
+    let cancelled = false;
+    const fetchInstituteScholarshipCounts = async () => {
+      try {
+        const [ir, sr] = await Promise.all([getDashboardInstitutes(), getDashboardScholarships()]);
+        if (cancelled) return;
+        if (ir.success && ir.data?.shortlistedInstituteIds) {
+          setShortlistedInstitutesCount(ir.data.shortlistedInstituteIds.length);
+        }
+        if (sr.success && sr.data?.shortlistedScholarshipIds) {
+          setShortlistedScholarshipsCount(sr.data.shortlistedScholarshipIds.length);
+        }
+      } catch (err) {
+        console.error("Error refreshing institute/scholarship shortlist counts:", err);
+      }
+    };
+    void fetchInstituteScholarshipCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
   // Create navItems with dynamic values (Mock Test: exam count; shortlists: shortlisted counts)
   const navItems = baseNavItems.map(item => ({
     ...item,
@@ -299,12 +365,20 @@ export default function Sidebar({
             ? shortlistedCollegesCount > 0
               ? String(shortlistedCollegesCount)
               : ""
+            : item.id === "coaching-institutes"
+              ? shortlistedInstitutesCount > 0
+                ? String(shortlistedInstitutesCount)
+                : ""
+              : item.id === "scholarships"
+                ? shortlistedScholarshipsCount > 0
+                  ? String(shortlistedScholarshipsCount)
+                  : ""
         : item.getValue
           ? item.getValue(completionPercentage)
           : undefined,
   }));
 
-          const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
+  const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
 
   const handleSectionClick = (id: SectionId) => {
     onSectionChange(id);

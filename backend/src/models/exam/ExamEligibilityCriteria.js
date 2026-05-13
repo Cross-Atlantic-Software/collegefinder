@@ -37,7 +37,9 @@ class ExamEligibilityCriteria {
         stream_ids && Array.isArray(stream_ids) ? stream_ids : [],
         subject_ids && Array.isArray(subject_ids) ? subject_ids : [],
         age_limit != null && String(age_limit).trim() ? String(age_limit).trim() : null,
-        attempt_limit || null,
+        attempt_limit != null && String(attempt_limit).trim() !== ''
+          ? String(attempt_limit).trim()
+          : null,
         domicile || null
       ]
     );
@@ -65,8 +67,12 @@ class ExamEligibilityCriteria {
       values.push(v);
     }
     if (attempt_limit !== undefined) {
+      const al =
+        attempt_limit != null && String(attempt_limit).trim() !== ''
+          ? String(attempt_limit).trim()
+          : null;
       updates.push(`attempt_limit = $${paramCount++}`);
-      values.push(attempt_limit);
+      values.push(al);
     }
     if (domicile !== undefined) {
       updates.push(`domicile = $${paramCount++}`);

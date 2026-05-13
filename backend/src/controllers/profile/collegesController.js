@@ -6,6 +6,7 @@ const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedE
 const College = require('../../models/college/College');
 const Exam = require('../../models/taxonomy/Exam');
 const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
+const { computeRecommendedExamIdsTop20 } = require('../../services/examDashboardRecommendation');
 const CollegeDetails = require('../../models/college/CollegeDetails');
 const CollegeKeyDates = require('../../models/college/CollegeKeyDates');
 const CollegeDocumentsRequired = require('../../models/college/CollegeDocumentsRequired');
@@ -182,7 +183,6 @@ async function getDashboardColleges(req, res) {
 
     const streamExams = await Exam.findAllByStreamId(streamId);
     const allExamIds = streamExams.map((e) => Number(e.id));
-    const allExamIdSet = new Set(allExamIds);
 
     const careerGoalIds = careerGoalsRow?.interests ?? [];
     const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
@@ -191,17 +191,12 @@ async function getDashboardColleges(req, res) {
           .filter((id) => Number.isInteger(id))
       : [];
 
-    const recommendedIdSet = new Set();
-    for (const interestId of normalizedCareerGoalIds) {
-      const row = await StreamInterestRecommendation.findByStreamAndInterest(Number(streamId), interestId);
-      if (row && Array.isArray(row.exam_ids)) {
-        row.exam_ids.forEach((eid) => {
-          const n = Number(eid);
-          if (Number.isInteger(n) && allExamIdSet.has(n)) recommendedIdSet.add(n);
-        });
-      }
-    }
-    const recommendedExamIds = [...recommendedIdSet];
+    const streamMappings = await StreamInterestRecommendation.findByStream(Number(streamId));
+    const recommendedExamIds = computeRecommendedExamIdsTop20(
+      streamExams,
+      normalizedCareerGoalIds,
+      streamMappings
+    );
 
     const allCollegeIds =
       allExamIds.length > 0 ? await CollegeRecommendedExam.getCollegeIdsByExamIds(allExamIds) : [];

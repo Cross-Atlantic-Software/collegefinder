@@ -8,11 +8,15 @@ import { MdSchool } from "react-icons/md";
 import { getAllExams, type Exam } from "@/api/exams";
 import { Sidebar, TopBar } from "@/components/dashboard";
 
+import { matchesExamSearchTokens } from "@/lib/examSearch";
+
 type SectionId =
   | "dashboard"
   | "profile"
   | "exam-shortlist"
   | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
   | "applications"
   | "exam-prep"
   | "test-module"
@@ -62,22 +66,21 @@ export default function ExamDirectoryPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const value = query.trim().toLowerCase();
-    if (!value) return exams;
-    return exams.filter((item) => {
-      const hay = [
-        item.name,
-        item.code || "",
-        item.description || "",
-        item.exam_type || "",
-        item.conducting_authority || "",
-        ...(item.linkedCareerGoals || []).map((g) => g.label),
-        ...(item.linkedPrograms || []).map((p) => p.name),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(value);
-    });
+    return exams.filter((item) =>
+      matchesExamSearchTokens(
+        [
+          item.name,
+          item.code,
+          item.description,
+          item.exam_type,
+          item.conducting_authority,
+          item.examPattern?.mode,
+          ...(item.linkedCareerGoals ?? []).map((g) => g.label),
+          ...(item.linkedPrograms ?? []).map((p) => p.name),
+        ],
+        query
+      )
+    );
   }, [exams, query]);
 
   const handleSectionChange = (section: SectionId) => {

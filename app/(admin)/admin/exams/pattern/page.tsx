@@ -28,7 +28,7 @@ export default function ExamPatternPage() {
           <div className="mb-4">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Exam Pattern</h1>
             <p className="text-sm text-slate-600">
-              Mode, questions, total marks, negative marking, subject weightage, and duration are configured per exam.
+              Mode, questions, total marks, negative marking, subject weightage, and duration (hours) are configured per exam.
             </p>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">

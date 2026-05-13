@@ -1,6 +1,7 @@
 'use client'
 import { Button } from "@/components/shared";
 import { FormatRules } from "@/api/tests";
+import { formatDurationMinutes } from "@/lib/formatDuration";
 
 interface TestRulesProps {
   examName: string;
@@ -41,8 +42,10 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/70">
-            <div className="text-2xl font-bold text-[#b88900] dark:text-[#FAD53C]">{format.duration_minutes}</div>
-            <div className="text-sm text-slate-600 dark:text-slate-300">Minutes</div>
+            <div className="text-2xl font-bold text-[#b88900] dark:text-[#FAD53C]">
+              {formatDurationMinutes(format.duration_minutes)}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-300">Duration</div>
           </div>
           <div className="text-center p-4 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/70">
             <div className="text-2xl font-bold text-[#b88900] dark:text-[#FAD53C]">{totalQuestions}</div>

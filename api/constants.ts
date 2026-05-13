@@ -30,6 +30,10 @@ export const API_ENDPOINTS = {
     PROFILE_RECOMMENDED_COLLEGES: '/auth/profile/recommended-colleges',
     PROFILE_DASHBOARD_COLLEGES: '/auth/profile/dashboard-colleges',
     PROFILE_SHORTLISTED_COLLEGES: '/auth/profile/shortlisted-colleges',
+    PROFILE_DASHBOARD_INSTITUTES: '/auth/profile/dashboard-institutes',
+    PROFILE_SHORTLISTED_INSTITUTES: '/auth/profile/shortlisted-institutes',
+    PROFILE_DASHBOARD_SCHOLARSHIPS: '/auth/profile/dashboard-scholarships',
+    PROFILE_SHORTLISTED_SCHOLARSHIPS: '/auth/profile/shortlisted-scholarships',
     PROFILE_COMPLETION: '/auth/profile/completion',
     PROFILE_UPLOAD_PHOTO: '/auth/profile/upload-photo',
     PROFILE_EMAIL_SEND_OTP: '/auth/profile/email/send-otp',
@@ -116,6 +120,8 @@ export const API_ENDPOINTS = {
     QUERIES: '/admin/queries',
     /** Stream + interest → programs / exams recommendations (admin Excel) */
     RECOMMENDED_MAPPINGS: '/admin/recommended-mappings',
+    COACHING_EXAMS_MAPPINGS: '/admin/coaching-exams-mappings',
+    SCHOLARSHIP_EXAMS_COLLEGES_MAPPINGS: '/admin/scholarship-exams-colleges-mappings',
   },
 
   // Strength endpoints (user-facing)

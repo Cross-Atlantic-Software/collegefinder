@@ -270,8 +270,31 @@ export type { AdminUserQuery } from './queries';
 export {
   getAllRecommendedMappings,
   downloadRecommendedMappingTemplate,
+  downloadRecommendedMappingsExcel,
   bulkUploadRecommendedMappings,
   deleteRecommendedMapping,
   deleteAllRecommendedMappings,
 } from './recommended-mappings';
 export type { StreamInterestRecommendedMapping } from './recommended-mappings';
+
+// Coaching institutes → exams + specialization exams (admin mapping)
+export {
+  getAllCoachingExamsMappings,
+  downloadCoachingExamsMappingTemplate,
+  downloadCoachingExamsMappingsExcel,
+  bulkUploadCoachingExamsMappings,
+  deleteCoachingExamsMapping,
+  deleteAllCoachingExamsMappings,
+} from './coaching-exams-mappings';
+export type { CoachingExamsMappingRow } from './coaching-exams-mappings';
+
+// Scholarships → exams + colleges (admin mapping)
+export {
+  getAllScholarshipExamsCollegesMappings,
+  downloadScholarshipExamsCollegesMappingTemplate,
+  downloadScholarshipExamsCollegesMappingsExcel,
+  bulkUploadScholarshipExamsCollegesMappings,
+  deleteScholarshipExamsCollegesMapping,
+  deleteAllScholarshipExamsCollegesMappings,
+} from './scholarship-exams-colleges-mappings';
+export type { ScholarshipExamsCollegesMappingRow } from './scholarship-exams-colleges-mappings';

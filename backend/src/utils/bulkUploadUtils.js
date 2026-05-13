@@ -7,8 +7,10 @@
  * Split a string by comma, semicolon, pipe, or newline. Returns trimmed non-empty parts.
  */
 function splitList(raw) {
-  if (raw == null || typeof raw !== 'string') return [];
-  return raw.split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean);
+  if (raw == null) return [];
+  const s = typeof raw === 'string' ? raw : String(raw);
+  if (!s.trim()) return [];
+  return s.split(/[,;|\n]+/).map((part) => part.trim()).filter(Boolean);
 }
 
 /**

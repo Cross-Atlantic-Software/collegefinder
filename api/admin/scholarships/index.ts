@@ -85,11 +85,20 @@ export async function createScholarship(data: {
   application_end_date?: string | null;
   mode?: string | null;
   official_website?: string | null;
+  official_notification_link?: string | null;
+  application_link?: string | null;
+  active_status?: string | null;
+  academic_year?: string | null;
+  eligible_degree?: string | null;
+  number_of_awards?: string | null;
+  renewal_available?: boolean | null;
+  renewal_conditions?: string | null;
+  scope?: string | null;
+  value_category?: string | null;
+  education_level?: string | null;
   eligibleCategories?: { category?: string }[];
   applicableStates?: { state_name?: string }[];
   documentsRequired?: { document_name?: string }[];
-  examIds?: number[];
-  collegeIds?: number[];
 }): Promise<ApiResponse<{ scholarship: Scholarship }>> {
   return apiRequest(API_ENDPOINTS.ADMIN.SCHOLARSHIPS, {
     method: 'POST',
@@ -113,11 +122,20 @@ export async function updateScholarship(
     application_end_date?: string | null;
     mode?: string | null;
     official_website?: string | null;
+    official_notification_link?: string | null;
+    application_link?: string | null;
+    active_status?: string | null;
+    academic_year?: string | null;
+    eligible_degree?: string | null;
+    number_of_awards?: string | null;
+    renewal_available?: boolean | null;
+    renewal_conditions?: string | null;
+    scope?: string | null;
+    value_category?: string | null;
+    education_level?: string | null;
     eligibleCategories?: { category?: string }[];
     applicableStates?: { state_name?: string }[];
     documentsRequired?: { document_name?: string }[];
-    examIds?: number[];
-    collegeIds?: number[];
   }
 ): Promise<ApiResponse<{ scholarship: Scholarship }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.SCHOLARSHIPS}/${id}`, {

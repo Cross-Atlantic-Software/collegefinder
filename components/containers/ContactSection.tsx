@@ -344,7 +344,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         setSelectedInterests((prev) => {
             if (prev.includes(id)) return prev.filter((x) => x !== id);
             if (prev.length >= 3) {
-                setFormMessage({ type: "error", text: "You can select up to 3 interests." });
+                setFormMessage({ type: "error", text: "Select exactly 3 interests. Remove one to pick another." });
                 return prev;
             }
             return [...prev, id];
@@ -376,8 +376,8 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
             setFormMessage({ type: "error", text: "Please select your city." });
             return;
         }
-        if (selectedInterests.length === 0) {
-            setFormMessage({ type: "error", text: "Select at least one interest." });
+        if (selectedInterests.length !== 3) {
+            setFormMessage({ type: "error", text: "Select exactly 3 interests." });
             return;
         }
 
@@ -942,8 +942,13 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
 
                                         <div>
                                             <label className="text-xs font-medium uppercase tracking-wide text-black/50">
-                                                Interests (up to 3)
+                                                Interests (select exactly 3)
                                             </label>
+                                            {interestOptions.length > 0 && !loadingInterests && (
+                                                <p className="mt-1 text-[11px] font-medium text-black/45">
+                                                    {selectedInterests.length}/3 selected
+                                                </p>
+                                            )}
                                             {loadingInterests ? (
                                                 <p className="mt-2 text-xs text-black/45">Loading interests…</p>
                                             ) : interestOptions.length === 0 ? (
@@ -1002,7 +1007,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                 {displayFormFields && (
                                     <button
                                         type="submit"
-                                        disabled={saving || (loadingProfile && isAuthenticated)}
+                                        disabled={saving || (loadingProfile && isAuthenticated) || selectedInterests.length !== 3}
                                         className="landing-cta mt-1 w-full rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85 disabled:opacity-60"
                                     >
                                         {saving ? "Saving…" : contact.formSubmit}

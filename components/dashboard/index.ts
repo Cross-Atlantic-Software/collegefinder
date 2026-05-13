@@ -7,6 +7,8 @@ export { default as UrgentImportantSwiper } from "./UrgentImportantSwiper";
 export { default as BasicInfoForm } from "./ProfileTabs/BasicInfoForm";
 export { default as ShortlistExams } from "./ShortlistExams";
 export { default as ShortlistColleges } from "./ShortlistColleges";
+export { default as ShortlistInstitutes } from "./ShortlistInstitutes";
+export { default as ShortlistScholarships } from "./ShortlistScholarships";
 export { default as ApplicationsPage } from "./Applications";
 export { default as ExamBox } from "./ExamBox";
 export { default as ExamPreparation } from "./ExamPreparation";

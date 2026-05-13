@@ -68,7 +68,7 @@ export default function StepTwoB() {
         if (cancelled || !res.success || !res.data?.interests?.length) return;
         const ids = res.data.interests.map(String);
         const valid = ids.filter((id) => interestOptions.some((o) => o.id === id));
-        if (valid.length > 0) setSelectedInterests(valid);
+        if (valid.length > 0) setSelectedInterests(valid.slice(0, 3));
       } catch {
         /* ignore */
       }
@@ -116,7 +116,7 @@ export default function StepTwoB() {
       return;
     }
     if (selectedInterests.length >= 3) {
-      queueMicrotask(() => showError("You can choose up to 3 interests only."));
+      queueMicrotask(() => showError("You must select exactly 3 interests. Remove one to choose another."));
       return;
     }
     setSelectedInterests((prev) => [...prev, id]);
@@ -124,8 +124,10 @@ export default function StepTwoB() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedInterests.length === 0) { setError("Please select at least one interest"); return; }
-    if (selectedInterests.length > 3)   { setError("Please select up to 3 interests only"); return; }
+    if (selectedInterests.length !== 3) {
+      setError("Please select exactly 3 interests to continue.");
+      return;
+    }
     if (!user) { setError("You must be logged in to save your interests"); return; }
 
     setSaving(true);
@@ -161,7 +163,7 @@ export default function StepTwoB() {
       {!isBusy && (
         <>
           <p className="mb-1 text-sm text-slate-500 -mt-1">
-            Choose the areas you&apos;d love to build a career in
+            Choose exactly three areas you&apos;d love to build a career in
           </p>
           <p className="mb-4 text-xs font-semibold text-slate-400">
             {selectedInterests.length}/3 selected
@@ -243,7 +245,7 @@ export default function StepTwoB() {
               </button>
               <button
                 type="submit"
-                disabled={saving || selectedInterests.length === 0 || loadingInterests}
+                disabled={saving || selectedInterests.length !== 3 || loadingInterests}
                 className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue

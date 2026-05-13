@@ -15,6 +15,8 @@ export interface Exam {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  /** Lower = more popular when sorting; null if unset */
+  exam_popularity_rank?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,7 +39,7 @@ export interface ExamEligibilityCriteria {
   stream_ids: number[];
   subject_ids: number[];
   age_limit: string | null;
-  attempt_limit: number | null;
+  attempt_limit: string | null;
   domicile?: string | null;
   created_at: string;
   updated_at: string;
@@ -46,11 +48,12 @@ export interface ExamEligibilityCriteria {
 export interface ExamPattern {
   id: number;
   exam_id: number;
-  mode: 'Offline' | 'Online' | 'Hybrid' | null;
+  mode: 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | null;
   number_of_questions: number | null;
   total_marks: number | null;
   negative_marking: string | null;
   weightage_of_subjects: string | null;
+  /** Hours as entered in admin/Excel; column name is legacy (`duration_minutes`). */
   duration_minutes: number | null;
   created_at: string;
   updated_at: string;
@@ -169,6 +172,7 @@ export async function createExam(data: {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  exam_popularity_rank?: number | null;
   examDates?: Partial<ExamDates>;
   eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
   examPattern?: Partial<ExamPattern>;
@@ -205,6 +209,7 @@ export async function updateExam(
     counselling?: string | null;
     number_of_papers?: number;
     website?: string | null;
+    exam_popularity_rank?: number | null;
     examDates?: Partial<ExamDates>;
     eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
     examPattern?: Partial<ExamPattern>;
@@ -286,6 +291,54 @@ export async function downloadAllDataExcel(): Promise<void> {
   a.download = 'exams-all-data.xlsx';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Download minimal template: name, code, exam_popularity_rank (updates existing rows only).
+ */
+export async function downloadExamPopularityRanksTemplate(): Promise<void> {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/bulk-popularity-ranks-template`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'exam-popularity-ranks-template.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export interface BulkPopularityRanksResult {
+  updated: number;
+  rows: { id: number; name: string; exam_popularity_rank: number | null }[];
+  errors: number;
+  errorDetails: { row: number; message: string }[];
+}
+
+/**
+ * Bulk-update exam_popularity_rank for existing exams (Excel columns: name, code, exam_popularity_rank).
+ */
+export async function bulkUploadExamPopularityRanks(excelFile: File): Promise<ApiResponse<BulkPopularityRanksResult>> {
+  const formData = new FormData();
+  formData.append('excel', excelFile);
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const base = getApiBaseUrl();
+  const url = `${base}${API_ENDPOINTS.ADMIN.EXAMS}/bulk-popularity-ranks`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to upload popularity ranks');
+  }
+  return data;
 }
 
 export interface UploadMissingLogosResult {

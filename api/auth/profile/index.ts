@@ -211,6 +211,8 @@ export type ExamPrepLectureDto = {
   subjectName: string;
   topicId: number;
   topicName: string;
+  /** Full video length in seconds (YouTube Data API); null if unavailable. */
+  durationSeconds?: number | null;
 };
 
 /**
@@ -328,7 +330,7 @@ export async function getCareerGoals(): Promise<ApiResponse<{
  * Update user career goals
  */
 export async function updateCareerGoals(data: {
-  interests?: string[];
+  interests: string[];
 }): Promise<ApiResponse<{
   interests: string[];
 }>> {
@@ -415,6 +417,79 @@ export async function updateShortlistedCollege(
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_SHORTLISTED_COLLEGES, {
     method: 'PUT',
     body: JSON.stringify({ college_id, shortlisted }),
+  });
+}
+
+export interface DashboardLinkedExam {
+  id: number;
+  name: string;
+  code: string | null;
+}
+
+export interface DashboardInstitute {
+  id: number;
+  institute_name: string;
+  institute_location: string | null;
+  city?: string | null;
+  state?: string | null;
+  institute_cityname?: string | null;
+  type?: string | null;
+  logo?: string | null;
+  website?: string | null;
+  linkedExams?: DashboardLinkedExam[];
+}
+
+export async function getDashboardInstitutes(): Promise<ApiResponse<{
+  streamId: number | null;
+  allInstitutes: DashboardInstitute[];
+  recommendedInstitutes: DashboardInstitute[];
+  shortlistedInstitutes: DashboardInstitute[];
+  shortlistedInstituteIds: number[];
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_INSTITUTES, { method: 'GET' });
+}
+
+export async function updateShortlistedInstitute(
+  institute_id: number,
+  shortlisted: boolean
+): Promise<ApiResponse<{ shortlistedInstituteIds: number[] }>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_SHORTLISTED_INSTITUTES, {
+    method: 'PUT',
+    body: JSON.stringify({ institute_id, shortlisted }),
+  });
+}
+
+export interface DashboardScholarship {
+  id: number;
+  scholarship_name: string;
+  conducting_authority: string | null;
+  scholarship_type: string | null;
+  description: string | null;
+  scholarship_amount: string | null;
+  official_website: string | null;
+  application_link?: string | null;
+  linkedExams?: DashboardLinkedExam[];
+}
+
+export async function getDashboardScholarships(): Promise<ApiResponse<{
+  streamId: number | null;
+  allScholarships: DashboardScholarship[];
+  recommendedScholarships: DashboardScholarship[];
+  shortlistedScholarships: DashboardScholarship[];
+  shortlistedScholarshipIds: number[];
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_SCHOLARSHIPS, { method: 'GET' });
+}
+
+export async function updateShortlistedScholarship(
+  scholarship_id: number,
+  shortlisted: boolean
+): Promise<ApiResponse<{ shortlistedScholarshipIds: number[] }>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_SHORTLISTED_SCHOLARSHIPS, {
+    method: 'PUT',
+    body: JSON.stringify({ scholarship_id, shortlisted }),
   });
 }
 

@@ -6,6 +6,7 @@ import type { Exam } from "@/api/exams";
 import { getExamFormats, getTestRules, getUserAnalyticsSummary, getNextMockNumber, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
+import { formatDurationMinutes } from "@/lib/formatDuration";
 
 type ViewState = 'exam-selection' | 'format-selection' | 'test-active';
 
@@ -357,7 +358,9 @@ export default function TestModule() {
                         <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{format.name}</h3>
                         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                           <div className="text-center">
-                            <div className="font-semibold text-[#b88900]">{format.duration_minutes}m</div>
+                            <div className="font-semibold text-[#b88900]">
+                              {formatDurationMinutes(format.duration_minutes)}
+                            </div>
                             <div className="text-slate-500 dark:text-slate-400">Duration</div>
                           </div>
                           <div className="text-center">

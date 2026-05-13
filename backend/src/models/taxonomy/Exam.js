@@ -29,7 +29,7 @@ class Exam {
        FROM exams_taxonomies e
        INNER JOIN exam_eligibility_criteria ec ON ec.exam_id = e.id
        WHERE $1 = ANY(COALESCE(ec.stream_ids, '{}'))
-       ORDER BY e.name ASC`,
+       ORDER BY e.exam_popularity_rank ASC NULLS LAST, e.name ASC`,
       [n]
     );
     return result.rows;
@@ -97,6 +97,32 @@ class Exam {
   }
 
   /**
+   * One query: map lowercased trimmed name or code tokens -> exam id (exact match).
+   */
+  static async findIdMapByExactNameOrCodeLowercase(tokens) {
+    const unique = [
+      ...new Set(
+        (tokens || []).map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+      ),
+    ];
+    if (!unique.length) return new Map();
+    const result = await db.query(
+      `SELECT id, name, code FROM exams_taxonomies
+       WHERE LOWER(TRIM(name)) = ANY($1::text[])
+          OR (NULLIF(TRIM(code), '') IS NOT NULL AND LOWER(TRIM(code)) = ANY($1::text[]))`,
+      [unique]
+    );
+    const map = new Map();
+    for (const r of result.rows) {
+      map.set(String(r.name).trim().toLowerCase(), r.id);
+      if (r.code != null && String(r.code).trim() !== '') {
+        map.set(String(r.code).trim().toLowerCase(), r.id);
+      }
+    }
+    return map;
+  }
+
+  /**
    * Find exam taxonomy by partial name match (fuzzy fallback)
    */
   static async findByNameContains(name) {
@@ -127,13 +153,43 @@ class Exam {
    * Create a new exam taxonomy
    */
   static async create(data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling } = data;
+    const {
+      name,
+      code,
+      description,
+      exam_logo,
+      exam_type,
+      conducting_authority,
+      logo_file_name,
+      number_of_papers,
+      website,
+      documents_required,
+      counselling,
+      exam_popularity_rank,
+    } = data;
     const codeVal = code != null && String(code).trim() ? String(code).trim() : null;
     const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
+    const rankVal =
+      exam_popularity_rank != null && exam_popularity_rank !== '' && !Number.isNaN(parseInt(exam_popularity_rank, 10))
+        ? parseInt(exam_popularity_rank, 10)
+        : null;
     const result = await db.query(
-      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [name, codeVal, description || null, exam_logo || null, exam_type || null, conducting_authority || null, logo_file_name || null, papers, website || null, documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null, counselling != null && String(counselling).trim() ? String(counselling).trim() : null]
+      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling, exam_popularity_rank)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [
+        name,
+        codeVal,
+        description || null,
+        exam_logo || null,
+        exam_type || null,
+        conducting_authority || null,
+        logo_file_name || null,
+        papers,
+        website || null,
+        documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null,
+        counselling != null && String(counselling).trim() ? String(counselling).trim() : null,
+        rankVal,
+      ]
     );
     return result.rows[0];
   }
@@ -142,7 +198,20 @@ class Exam {
    * Update an exam taxonomy
    */
   static async update(id, data) {
-    const { name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling } = data;
+    const {
+      name,
+      code,
+      description,
+      exam_logo,
+      exam_type,
+      conducting_authority,
+      logo_file_name,
+      number_of_papers,
+      website,
+      documents_required,
+      counselling,
+      exam_popularity_rank,
+    } = data;
 
     const updates = [];
     const values = [];
@@ -195,6 +264,14 @@ class Exam {
       const v = counselling != null && String(counselling).trim() ? String(counselling).trim() : null;
       updates.push(`counselling = $${paramCount++}`);
       values.push(v);
+    }
+    if (exam_popularity_rank !== undefined) {
+      const v =
+        exam_popularity_rank == null || exam_popularity_rank === ''
+          ? null
+          : parseInt(exam_popularity_rank, 10);
+      updates.push(`exam_popularity_rank = $${paramCount++}`);
+      values.push(Number.isNaN(v) ? null : v);
     }
 
     if (updates.length === 0) {

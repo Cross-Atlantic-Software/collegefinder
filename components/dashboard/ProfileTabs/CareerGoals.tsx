@@ -83,9 +83,14 @@ export default function CareerGoalsTab() {
     }, []);
 
     const toggleInterest = (id: string) => {
-        setSelectedInterests((prev) =>
-            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-        );
+        setSelectedInterests((prev) => {
+            if (prev.includes(id)) return prev.filter((x) => x !== id);
+            if (prev.length >= 3) {
+                showError("Select exactly 3 interests. Remove one to pick another.");
+                return prev;
+            }
+            return [...prev, id];
+        });
     };
 
     const handleTargetExamChange = (value: string | null) => {
@@ -106,6 +111,15 @@ export default function CareerGoalsTab() {
         setSuccess(false);
 
         try {
+            if (selectedInterests.length !== 3) {
+                const msg = "Please select exactly 3 interests.";
+                setValidationErrors({ interests: msg });
+                showError(msg);
+                setSaving(false);
+                return;
+            }
+            setValidationErrors({});
+
             // Update career goals
             const interests = selectedInterests.map(id => id.toString());
             const careerGoalsResponse = await updateCareerGoals({
@@ -158,7 +172,9 @@ export default function CareerGoalsTab() {
             <div className="space-y-5">
                 <div>
                     <h2 className="text-lg font-bold text-black">Interests</h2>
-                    <p className="text-sm text-black/50 mt-0.5">Tell us what excites you! This helps us find the perfect matches.</p>
+                    <p className="text-sm text-black/50 mt-0.5">
+                        Tell us what excites you! Choose exactly three interests — this helps us find the best matches.
+                    </p>
                 </div>
 
                 {error && (
@@ -181,6 +197,12 @@ export default function CareerGoalsTab() {
                     <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
                         Interests updated successfully!
                     </div>
+                )}
+
+                {interestOptions.length > 0 && (
+                    <p className="text-xs font-semibold text-black/45">
+                        {selectedInterests.length}/3 selected
+                    </p>
                 )}
 
                 {/* What excites you */}
@@ -279,7 +301,7 @@ export default function CareerGoalsTab() {
                     variant="primary"
                     size="md"
                     className="w-full flex-1 !rounded-full border border-black bg-black text-white hover:bg-neutral-900"
-                    disabled={saving}
+                    disabled={saving || selectedInterests.length !== 3}
                 >
                     {saving ? "Updating..." : "Update Interests"}
                 </Button>

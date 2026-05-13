@@ -40,6 +40,17 @@ class Institute {
     return result.rows[0] || null;
   }
 
+  static async findByIds(ids) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
+    const validIds = ids.map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
+    if (validIds.length === 0) return [];
+    const result = await db.query(
+      'SELECT * FROM institutes WHERE id = ANY($1::int[]) ORDER BY institute_name ASC',
+      [validIds]
+    );
+    return result.rows;
+  }
+
   static async create(data) {
     const {
       institute_name,

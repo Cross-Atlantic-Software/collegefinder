@@ -81,6 +81,28 @@ class College {
     return result.rows[0] || null;
   }
 
+  /**
+   * One query: map LOWER(TRIM(college_name)) -> id for names in the given list.
+   */
+  static async findIdMapByCollegeNamesLowercase(names) {
+    const unique = [
+      ...new Set(
+        (names || []).map((n) => String(n).trim().toLowerCase()).filter(Boolean)
+      ),
+    ];
+    if (!unique.length) return new Map();
+    const result = await db.query(
+      `SELECT id, college_name FROM colleges
+       WHERE LOWER(TRIM(college_name)) = ANY($1::text[])`,
+      [unique]
+    );
+    const map = new Map();
+    for (const r of result.rows) {
+      map.set(String(r.college_name).trim().toLowerCase(), r.id);
+    }
+    return map;
+  }
+
   static async create(data) {
     const {
       college_name,
