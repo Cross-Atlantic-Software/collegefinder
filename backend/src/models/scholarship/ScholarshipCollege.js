@@ -12,16 +12,20 @@ class ScholarshipCollege {
   static async setCollegesForScholarship(scholarshipId, collegeIds) {
     await db.query('DELETE FROM scholarship_colleges WHERE scholarship_id = $1', [scholarshipId]);
     if (!collegeIds || !Array.isArray(collegeIds) || collegeIds.length === 0) return [];
-    const created = [];
-    for (const collegeId of collegeIds) {
-      const row = await db.query(
-        `INSERT INTO scholarship_colleges (scholarship_id, college_id) VALUES ($1, $2)
-         ON CONFLICT (scholarship_id, college_id) DO NOTHING RETURNING *`,
-        [scholarshipId, collegeId]
-      );
-      if (row.rows[0]) created.push(row.rows[0]);
-    }
-    return created;
+    const ids = [
+      ...new Set(
+        collegeIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n) && n > 0)
+      ),
+    ];
+    if (ids.length === 0) return [];
+    const result = await db.query(
+      `INSERT INTO scholarship_colleges (scholarship_id, college_id)
+       SELECT $1, x FROM unnest($2::int[]) AS x
+       ON CONFLICT (scholarship_id, college_id) DO NOTHING
+       RETURNING *`,
+      [scholarshipId, ids]
+    );
+    return result.rows;
   }
 
   static async deleteByScholarshipId(scholarshipId) {

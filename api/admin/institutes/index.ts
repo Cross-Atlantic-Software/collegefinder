@@ -54,8 +54,6 @@ export interface InstituteCourse {
 
 export interface InstituteWithDetails extends Institute {
   instituteDetails: InstituteDetails | null;
-  examIds: number[];
-  specializationExamIds: number[];
   instituteStatistics: InstituteStatistics | null;
   instituteCourses: InstituteCourse[];
 }
@@ -123,8 +121,6 @@ export async function createInstitute(data: {
   institute_description?: string | null;
   demo_available?: boolean;
   scholarship_available?: boolean;
-  examIds?: number[];
-  specializationExamIds?: number[];
   ranking_score?: number | null;
   success_rate?: number | null;
   student_rating?: number | null;
@@ -152,8 +148,6 @@ export async function updateInstitute(
     institute_description?: string | null;
     demo_available?: boolean;
     scholarship_available?: boolean;
-    examIds?: number[];
-    specializationExamIds?: number[];
     ranking_score?: number | null;
     success_rate?: number | null;
     student_rating?: number | null;
@@ -175,6 +169,18 @@ export async function deleteAllInstitutes(): Promise<ApiResponse<{ message: stri
 }
 
 export interface InstitutesBulkUploadResult {
+  /** Rows read from the Institutes sheet (excluding header). */
+  totalExcelRows?: number;
+  rowsWithInstituteName?: number;
+  skippedEmptyNameCount?: number;
+  skippedEmptyNameDetails?: { row: number; message: string }[];
+  /** Distinct institute keys after grouping (one create attempt per key). */
+  uniqueInstituteKeys?: number;
+  /** Rows that matched an earlier row's key — not separate institutes. */
+  mergedDuplicateRowCount?: number;
+  mergedSameKeyDetails?: { row: number; message: string }[];
+  /** Rows not listed in mergedSameKeyDetails because the list was capped on the server. */
+  mergedSameKeyDetailsTruncated?: number;
   created: number;
   createdInstitutes: { id: number; name: string }[];
   errors: number;

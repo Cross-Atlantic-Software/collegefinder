@@ -16,6 +16,8 @@ type SectionId =
   | "profile"
   | "exam-shortlist"
   | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
   | "applications"
   | "exam-prep"
   | "test-module"

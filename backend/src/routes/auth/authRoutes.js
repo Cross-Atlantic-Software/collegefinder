@@ -7,6 +7,8 @@ const AcademicsController = require('../../controllers/profile/academicsControll
 const CareerGoalsController = require('../../controllers/profile/careerGoalsController');
 const ExamsController = require('../../controllers/profile/examsController');
 const ProfileCollegesController = require('../../controllers/profile/collegesController');
+const DashboardInstitutesController = require('../../controllers/profile/dashboardInstitutesController');
+const DashboardScholarshipsController = require('../../controllers/profile/dashboardScholarshipsController');
 const ProfileCompletionController = require('../../controllers/profile/profileCompletionController');
 const SubjectsController = require('../../controllers/profile/subjectsController');
 const ExamPrepLecturesController = require('../../controllers/profile/examPrepLecturesController');
@@ -340,6 +342,34 @@ router.get('/profile/dashboard-colleges', authenticate, ProfileCollegesControlle
  * @access  Private
  */
 router.put('/profile/shortlisted-colleges', authenticate, ProfileCollegesController.updateShortlistedColleges);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-institutes
+ * @desc    Coaching institutes for dashboard (all / recommended by exam overlap / shortlisted)
+ * @access  Private
+ */
+router.get('/profile/dashboard-institutes', authenticate, DashboardInstitutesController.getDashboardInstitutes);
+
+/**
+ * @route   PUT /api/auth/profile/shortlisted-institutes
+ * @desc    Toggle shortlisted coaching institute IDs
+ * @access  Private
+ */
+router.put('/profile/shortlisted-institutes', authenticate, DashboardInstitutesController.updateShortlistedInstitutes);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-scholarships
+ * @desc    Scholarships for dashboard (all / recommended by exam overlap / shortlisted)
+ * @access  Private
+ */
+router.get('/profile/dashboard-scholarships', authenticate, DashboardScholarshipsController.getDashboardScholarships);
+
+/**
+ * @route   PUT /api/auth/profile/shortlisted-scholarships
+ * @desc    Toggle shortlisted scholarship IDs
+ * @access  Private
+ */
+router.put('/profile/shortlisted-scholarships', authenticate, DashboardScholarshipsController.updateShortlistedScholarships);
 
 /**
  * @route   GET /api/auth/profile/completion

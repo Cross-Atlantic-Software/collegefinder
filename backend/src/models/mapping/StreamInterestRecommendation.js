@@ -31,6 +31,15 @@ class StreamInterestRecommendation {
     return result.rows[0] || null;
   }
 
+  /** All stream↔interest mappings for a stream (one query for dashboard scoring). */
+  static async findByStream(streamId) {
+    const result = await db.query(
+      `SELECT * FROM stream_interest_recommendation_mappings WHERE stream_id = $1`,
+      [streamId]
+    );
+    return result.rows;
+  }
+
   static async upsert(streamId, interestId, programIds, examIds) {
     const pids = Array.isArray(programIds) ? programIds : [];
     const eids = Array.isArray(examIds) ? examIds : [];

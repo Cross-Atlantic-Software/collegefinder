@@ -14,9 +14,12 @@ import {
   uploadExamLogo,
   downloadBulkTemplate,
   downloadAllDataExcel,
+  downloadExamPopularityRanksTemplate,
   bulkUploadExams,
+  bulkUploadExamPopularityRanks,
   uploadMissingLogos,
   type Exam,
+  type BulkPopularityRanksResult,
   type ExamDates,
   type ExamEligibilityCriteria,
   type ExamPattern,
@@ -31,8 +34,23 @@ import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
+import { formatExamPatternDurationHours } from '@/lib/formatDuration';
 
 const EXAMS_PAGE_SIZE = 10;
+
+/** `exam_pattern.duration_minutes` holds hours as entered (no ×60). */
+function storedDurationHoursToFormValue(stored: number | null | undefined): string {
+  if (stored == null || Number.isNaN(Number(stored))) return '';
+  return String(Number(stored));
+}
+
+function formHoursToStoredDuration(hoursStr: string): number | null {
+  const t = hoursStr.trim();
+  if (t === '') return null;
+  const h = parseFloat(t);
+  if (Number.isNaN(h) || h < 0) return null;
+  return Math.round(h);
+}
 
 export default function ExamsPage() {
   const router = useRouter();
@@ -78,6 +96,7 @@ export default function ExamsPage() {
     counselling: '',
     number_of_papers: '1',
     website: '',
+    exam_popularity_rank: '',
     examDates: {
       application_start_date: '',
       application_close_date: '',
@@ -93,12 +112,12 @@ export default function ExamsPage() {
       domicile: '',
     },
     examPattern: {
-      mode: '' as 'Offline' | 'Online' | 'Hybrid' | '',
+      mode: '' as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | '',
       number_of_questions: '',
       total_marks: '',
       negative_marking: '',
       weightage_of_subjects: '',
-      duration_minutes: '',
+      duration_hours: '',
     },
     examCutoff: {
       ranks_percentiles: '',
@@ -125,6 +144,10 @@ export default function ExamsPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ created: number; createdExams: { id: number; name: string; code: string }[]; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [popRanksFile, setPopRanksFile] = useState<File | null>(null);
+  const [popRanksUploading, setPopRanksUploading] = useState(false);
+  const [popRanksResult, setPopRanksResult] = useState<BulkPopularityRanksResult | null>(null);
+  const [popRanksError, setPopRanksError] = useState<string | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { canDownloadExcel, isSuperAdmin } = useAdminPermissions();
@@ -282,6 +305,18 @@ export default function ExamsPage() {
     setError(null);
 
     try {
+      const rankStr = formData.exam_popularity_rank.trim();
+      let exam_popularity_rank: number | null = null;
+      if (rankStr !== '') {
+        const n = parseInt(rankStr, 10);
+        if (Number.isNaN(n)) {
+          showError('Popularity rank must be a whole number or left empty');
+          setIsSaving(false);
+          return;
+        }
+        exam_popularity_rank = n;
+      }
+
       const submitData = {
         name: formData.name,
         code: formData.code?.trim() ? formData.code.trim() : null,
@@ -293,6 +328,7 @@ export default function ExamsPage() {
         counselling: formData.counselling?.trim() || null,
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         website: formData.website || null,
+        exam_popularity_rank,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
           application_close_date: formData.examDates.application_close_date || null,
@@ -306,7 +342,7 @@ export default function ExamsPage() {
           stream_ids: formData.eligibilityCriteria.stream_ids,
           subject_ids: formData.eligibilityCriteria.subject_ids,
           age_limit: formData.eligibilityCriteria.age_limit?.trim() || null,
-          attempt_limit: formData.eligibilityCriteria.attempt_limit ? parseInt(formData.eligibilityCriteria.attempt_limit, 10) : null,
+          attempt_limit: formData.eligibilityCriteria.attempt_limit?.trim() || null,
           domicile: formData.eligibilityCriteria.domicile || null,
         },
         examPattern: {
@@ -315,7 +351,7 @@ export default function ExamsPage() {
           total_marks: formData.examPattern.total_marks ? parseInt(formData.examPattern.total_marks, 10) : null,
           negative_marking: formData.examPattern.negative_marking?.trim() || null,
           weightage_of_subjects: formData.examPattern.weightage_of_subjects?.trim() || null,
-          duration_minutes: formData.examPattern.duration_minutes ? parseInt(formData.examPattern.duration_minutes, 10) : null,
+          duration_minutes: formHoursToStoredDuration(formData.examPattern.duration_hours),
         },
         examCutoff: {
           ranks_percentiles: formData.examCutoff.ranks_percentiles || null,
@@ -411,6 +447,10 @@ export default function ExamsPage() {
           counselling: e?.counselling ?? '',
           number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
           website: e?.website ?? '',
+          exam_popularity_rank:
+            e?.exam_popularity_rank != null && !Number.isNaN(Number(e.exam_popularity_rank))
+              ? String(e.exam_popularity_rank)
+              : '',
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
@@ -429,12 +469,12 @@ export default function ExamsPage() {
             domicile: data.eligibilityCriteria?.domicile ?? '',
           },
           examPattern: {
-            mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid') ?? '',
+            mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)') ?? '',
             number_of_questions: data.examPattern?.number_of_questions != null ? String(data.examPattern.number_of_questions) : '',
             total_marks: data.examPattern?.total_marks != null ? String(data.examPattern.total_marks) : '',
             negative_marking: data.examPattern?.negative_marking ?? '',
             weightage_of_subjects: data.examPattern?.weightage_of_subjects ?? '',
-            duration_minutes: data.examPattern?.duration_minutes != null ? String(data.examPattern.duration_minutes) : '',
+            duration_hours: storedDurationHoursToFormValue(data.examPattern?.duration_minutes ?? undefined),
           },
           examCutoff: {
             ranks_percentiles: data.examCutoff?.ranks_percentiles ?? '',
@@ -508,6 +548,7 @@ export default function ExamsPage() {
       counselling: '',
       number_of_papers: '1',
       website: '',
+      exam_popularity_rank: '',
       examDates: {
         application_start_date: '',
         application_close_date: '',
@@ -528,7 +569,7 @@ export default function ExamsPage() {
         total_marks: '',
         negative_marking: '',
         weightage_of_subjects: '',
-        duration_minutes: '',
+        duration_hours: '',
       },
       examCutoff: {
         ranks_percentiles: '',
@@ -621,6 +662,41 @@ export default function ExamsPage() {
       }
     } finally {
       setBulkUploading(false);
+    }
+  };
+
+  const handlePopRanksTemplateDownload = async () => {
+    try {
+      await downloadExamPopularityRanksTemplate();
+      showSuccess('Popularity ranks template downloaded');
+    } catch {
+      showError('Failed to download template');
+    }
+  };
+
+  const handlePopRanksSubmit = async () => {
+    if (!popRanksFile) {
+      showError('Please select an Excel file for popularity ranks');
+      return;
+    }
+    setPopRanksUploading(true);
+    setPopRanksError(null);
+    setPopRanksResult(null);
+    try {
+      const res = await bulkUploadExamPopularityRanks(popRanksFile);
+      if (res.success && res.data) {
+        setPopRanksResult(res.data);
+        showSuccess(res.message || `Updated ${res.data.updated} exam(s)`);
+        void loadExams(true);
+      } else {
+        setPopRanksError(res.message || 'Upload failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setPopRanksError(msg);
+      showError(msg);
+    } finally {
+      setPopRanksUploading(false);
     }
   };
 
@@ -722,6 +798,9 @@ export default function ExamsPage() {
                   setBulkExcelFile(null);
                   setBulkLogoFiles([]);
                   setBulkLogosZipFile(null);
+                  setPopRanksFile(null);
+                  setPopRanksResult(null);
+                  setPopRanksError(null);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] transition-colors"
               >
@@ -785,6 +864,7 @@ export default function ExamsPage() {
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CODE</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-slate-700 w-20">RANK</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
@@ -793,7 +873,7 @@ export default function ExamsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {exams.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
                           {debouncedSearch.trim()
                             ? 'No exams found matching your search'
                             : totalDbCount === 0
@@ -825,6 +905,11 @@ export default function ExamsPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm text-slate-600 font-mono">{exam.code || '—'}</span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="text-sm text-slate-600 tabular-nums">
+                              {exam.exam_popularity_rank != null ? exam.exam_popularity_rank : '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-2">
                             {exam.exam_type && (
@@ -1156,6 +1241,7 @@ export default function ExamsPage() {
                         options={[
                           { value: 'Offline', label: 'Offline' },
                           { value: 'Online', label: 'Online' },
+                          { value: 'Online (CBT)', label: 'Online (CBT)' },
                           { value: 'Hybrid', label: 'Hybrid' },
                         ]}
                         placeholder="Select mode"
@@ -1239,13 +1325,13 @@ export default function ExamsPage() {
                         Attempt Limit
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         value={formData.eligibilityCriteria.attempt_limit}
                         onChange={(e) => setFormData({
                           ...formData,
                           eligibilityCriteria: { ...formData.eligibilityCriteria, attempt_limit: e.target.value }
                         })}
-                        placeholder="e.g., 3"
+                        placeholder="e.g., 3 or Unlimited"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1325,15 +1411,19 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Duration (minutes)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Duration (in Hours)</label>
+                      <p className="text-xs text-slate-500 mb-1.5">
+                        Enter exam length in hours (decimals allowed, e.g. 3 or 3.5). Stored internally as minutes.
+                      </p>
                       <input
-                        type="number"
-                        value={formData.examPattern.duration_minutes}
+                        type="text"
+                        inputMode="decimal"
+                        value={formData.examPattern.duration_hours}
                         onChange={(e) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, duration_minutes: e.target.value }
+                          examPattern: { ...formData.examPattern, duration_hours: e.target.value }
                         })}
-                        placeholder="e.g., 180"
+                        placeholder="e.g., 3 or 3.5"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1438,6 +1528,23 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                         placeholder="e.g., https://jeemain.nta.nic.in"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Popularity rank
+                      </label>
+                      <p className="text-xs text-slate-500 mb-1.5">
+                        Optional. Lower numbers sort earlier (e.g. 1 = most popular). Leave empty to clear.
+                      </p>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={formData.exam_popularity_rank}
+                        onChange={(e) => setFormData({ ...formData, exam_popularity_rank: e.target.value })}
+                        placeholder="e.g., 5"
+                        className="w-full max-w-xs px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
                   </>
@@ -1609,7 +1716,9 @@ export default function ExamsPage() {
                     {viewingExamData.examPattern.total_marks != null && <p>Total marks: {viewingExamData.examPattern.total_marks}</p>}
                     {viewingExamData.examPattern.negative_marking && <p className="whitespace-pre-wrap">Negative marking: {viewingExamData.examPattern.negative_marking}</p>}
                     {viewingExamData.examPattern.weightage_of_subjects && <p className="whitespace-pre-wrap">Weightage of subject: {viewingExamData.examPattern.weightage_of_subjects}</p>}
-                    {viewingExamData.examPattern.duration_minutes != null && <p>Duration: {viewingExamData.examPattern.duration_minutes} min</p>}
+                    {viewingExamData.examPattern.duration_minutes != null && (
+                      <p>Duration (in Hours): {formatExamPatternDurationHours(viewingExamData.examPattern.duration_minutes)}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1626,11 +1735,16 @@ export default function ExamsPage() {
                   </div>
                 </div>
               )}
-              {viewingExamData.exam.website && (
+              {(viewingExamData.exam.website || viewingExamData.exam.exam_popularity_rank != null) && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Contact Details</label>
                   <div className="text-sm text-slate-900 space-y-1">
-                    <p>Website: <a href={viewingExamData.exam.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.website}</a></p>
+                    {viewingExamData.exam.website && (
+                      <p>Website: <a href={viewingExamData.exam.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.website}</a></p>
+                    )}
+                    {viewingExamData.exam.exam_popularity_rank != null && (
+                      <p>Popularity rank: <span className="tabular-nums">{viewingExamData.exam.exam_popularity_rank}</span></p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1668,7 +1782,7 @@ export default function ExamsPage() {
       {/* Bulk Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="h-9 w-9 rounded-lg bg-highlight-100 flex items-center justify-center text-[#341050]">
@@ -1798,6 +1912,88 @@ export default function ExamsPage() {
               <p className="text-xs text-slate-500 pt-1">
                 Note: Put all logo images in one ZIP. File names inside the ZIP must match <strong>logo_filename</strong> in Excel.
               </p>
+
+              <div className="border-t border-slate-200 pt-5 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-900">Update popularity ranks only</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  For exams already in the database: fill <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px] font-mono">name</code>, optional <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px] font-mono">code</code>, and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px] font-mono">exam_popularity_rank</code>. Rows are matched by code first, then by name. Leave rank empty in a row to clear it (NULL).
+                </p>
+                {canDownloadExcel && (
+                  <button
+                    type="button"
+                    onClick={handlePopRanksTemplateDownload}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#341050] bg-white border border-[#341050]/30 rounded-lg hover:bg-[#341050]/5"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Download ranks template
+                  </button>
+                )}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-900">Popularity ranks Excel</p>
+                  <label className="block w-full">
+                    <div className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer w-full min-h-[100px] ${popRanksFile ? 'border-emerald-600/40 bg-emerald-50/50' : 'border-slate-200 hover:border-slate-300 hover:bg-[#F6F8FA]/50'}`}>
+                      <FiFile className={`h-8 w-8 ${popRanksFile ? 'text-emerald-700' : 'text-slate-400'}`} />
+                      <span className="text-sm font-medium text-slate-700">
+                        {popRanksFile ? popRanksFile.name : 'Choose Excel (.xlsx, .xls)'}
+                      </span>
+                      {popRanksFile ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPopRanksFile(null); }}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={(e) => setPopRanksFile(e.target.files?.[0] ?? null)}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+                {popRanksError && (
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <FiX className="h-4 w-4 shrink-0 mt-0.5" />
+                    {popRanksError}
+                  </div>
+                )}
+                {popRanksResult && (
+                  <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-sm space-y-1">
+                    <p className="font-medium text-slate-900">Updated: {popRanksResult.updated}</p>
+                    {popRanksResult.errors > 0 && (
+                      <p className="text-amber-800">Row errors: {popRanksResult.errors}</p>
+                    )}
+                    {popRanksResult.errorDetails?.length > 0 && (
+                      <ul className="mt-2 text-xs text-slate-600 list-disc list-inside max-h-28 overflow-y-auto">
+                        {popRanksResult.errorDetails.map((e, i) => (
+                          <li key={i}>Row {e.row}: {e.message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePopRanksSubmit}
+                  disabled={!popRanksFile || popRanksUploading}
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {popRanksUploading ? (
+                    <>
+                      <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Applying ranks…
+                    </>
+                  ) : (
+                    <>
+                      <FiUpload className="h-4 w-4" />
+                      Apply popularity ranks
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="px-5 py-4 border-t border-slate-200 flex justify-end gap-3 bg-[#F6F8FA]/50">
               <button

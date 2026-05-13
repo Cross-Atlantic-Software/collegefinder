@@ -21,7 +21,7 @@ export interface ExamEligibilityPublic {
   stream_ids: number[];
   subject_ids: number[];
   age_limit: string | null;
-  attempt_limit: number | string | null;
+  attempt_limit: string | null;
   domicile?: string | null;
   stream_labels?: string[];
   subject_labels?: string[];
@@ -37,6 +37,7 @@ export interface ExamPatternPublic {
   total_marks: number | null;
   negative_marking: string | null;
   weightage_of_subjects: string | null;
+  /** Hours as entered in admin/Excel; column name is legacy (`duration_minutes`). */
   duration_minutes: number | null;
   created_at?: string;
   updated_at?: string;
@@ -82,6 +83,8 @@ export interface Exam {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  /** Lower = more popular for All Exams tab ordering; optional. */
+  exam_popularity_rank?: number | null;
   created_at: string;
   updated_at: string;
   examDates?: ExamDatesPublic | null;

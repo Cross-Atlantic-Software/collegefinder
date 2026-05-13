@@ -152,6 +152,18 @@ const navGroups: NavGroup[] = [
         icon: <FiClipboard className="h-4 w-4" />,
         moduleCode: 'mapping',
       },
+      {
+        label: 'Coaching Exams',
+        href: '/admin/mapping/coaching-exams',
+        icon: <FiLink2 className="h-4 w-4" />,
+        moduleCode: 'mapping',
+      },
+      {
+        label: 'Scholarship Exams & Colleges',
+        href: '/admin/mapping/scholarship-exams-colleges',
+        icon: <FiAward className="h-4 w-4" />,
+        moduleCode: 'mapping',
+      },
     ],
   },
   // {

@@ -159,7 +159,7 @@ class User {
    * Required steps:
    * 1. Name (from users table)
    * 2. Stream (from user_academics table - stream_id)
-   * 3. Interests (from user_career_goals table - interests array)
+   * 3. Interests (from user_career_goals table — exactly 3 taxonomy IDs)
    * 4. State and District (from user_address table)
    */
   static async checkOnboardingCompletion(userId) {
@@ -193,18 +193,18 @@ class User {
       }
       console.log('✅ checkOnboardingCompletion - Stream check passed:', academicsResult.rows[0].stream_id);
 
-      // Check if user has interests
+      // Check if user has exactly 3 interests
       const careerGoalsResult = await db.query(
-        'SELECT interests FROM user_career_goals WHERE user_id = $1 AND interests IS NOT NULL AND array_length(interests, 1) > 0',
+        'SELECT interests FROM user_career_goals WHERE user_id = $1 AND interests IS NOT NULL AND array_length(interests, 1) = 3',
         [userIdNum]
       );
       console.log('🔍 checkOnboardingCompletion - Career goals result:', careerGoalsResult.rows);
-      if (!careerGoalsResult.rows[0] || !careerGoalsResult.rows[0].interests || 
-          careerGoalsResult.rows[0].interests.length === 0) {
-        console.log('❌ checkOnboardingCompletion - Missing interests');
+      const cgInterests = careerGoalsResult.rows[0]?.interests;
+      if (!cgInterests || !Array.isArray(cgInterests) || cgInterests.length !== 3) {
+        console.log('❌ checkOnboardingCompletion - Need exactly 3 interests');
         return false;
       }
-      console.log('✅ checkOnboardingCompletion - Interests check passed:', careerGoalsResult.rows[0].interests);
+      console.log('✅ checkOnboardingCompletion - Interests check passed:', cgInterests);
 
       // Check if user has city (city_town_village in user_address)
       const addressResult = await db.query(

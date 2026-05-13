@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS user_academics (
   stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL, -- Foreign key to streams table
   user_shortlisted_exams INTEGER[] DEFAULT '{}', -- Exam IDs shortlisted by user in dashboard
   user_shortlisted_colleges INTEGER[] DEFAULT '{}', -- College IDs shortlisted by user in dashboard
+  user_shortlisted_institutes INTEGER[] DEFAULT '{}', -- Coaching institute IDs shortlisted on dashboard
+  user_shortlisted_scholarships INTEGER[] DEFAULT '{}', -- Scholarship IDs shortlisted on dashboard
   subjects JSONB, -- Array of subjects for 12th: [{"subject_id": 1, "name": "Physics", "percent": 89}, ...]
   matric_subjects JSONB, -- Array of subjects for 10th: [{"subject_id": 1, "name": "Math", "percent": 89}, ...]
   is_pursuing_12th BOOLEAN DEFAULT false, -- Whether user is currently pursuing 12th
@@ -72,6 +74,8 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL;
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_exams INTEGER[] DEFAULT '{}';
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_colleges INTEGER[] DEFAULT '{}';
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_institutes INTEGER[] DEFAULT '{}';
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_scholarships INTEGER[] DEFAULT '{}';
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS subjects JSONB;
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS matric_subjects JSONB;
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS is_pursuing_12th BOOLEAN DEFAULT false;

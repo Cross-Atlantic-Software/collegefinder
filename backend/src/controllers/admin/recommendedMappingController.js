@@ -35,6 +35,33 @@ class RecommendedMappingController {
     }
   }
 
+  /** Current mappings as Excel (same columns as bulk upload / template) — re-importable. */
+  static async downloadAllExcel(req, res) {
+    try {
+      const rows = await StreamInterestRecommendation.findAll();
+      const headers = ['Stream', 'Interest', 'Programs', 'Exams'];
+      const dataRows = rows.map((r) => [
+        r.stream_name || '',
+        r.interest_label || '',
+        r.program_names || '',
+        r.exam_names || '',
+      ]);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Mapping');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename=recommended-exams-mapping.xlsx'
+      );
+      res.send(buf);
+    } catch (error) {
+      console.error('Error exporting recommended mappings Excel:', error);
+      res.status(500).json({ success: false, message: 'Failed to export mappings' });
+    }
+  }
+
   static async downloadTemplate(req, res) {
     try {
       const headers = ['Stream', 'Interest', 'Programs', 'Exams'];

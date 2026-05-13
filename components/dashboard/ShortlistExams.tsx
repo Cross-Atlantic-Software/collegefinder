@@ -6,20 +6,21 @@ import { FiSearch } from "react-icons/fi";
 import { MdOutlineArrowOutward, MdSchool } from "react-icons/md";
 import { getDashboardExams, updateShortlistedExam, type Exam } from "@/api/exams";
 import { ExamApplicationModal } from "./ExamApplicationModal";
+import { matchesExamSearchTokens } from "@/lib/examSearch";
+import { formatExamPatternDurationHours } from "@/lib/formatDuration";
 
 type TabId = "recommended" | "shortlisted" | "all";
 const PER_PAGE = 10;
 
-function formatDurationMinutes(m: number | null | undefined): string {
-  if (m == null) return "—";
-  const n = Math.round(Number(m));
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  const h = Math.floor(n / 60);
-  const min = n % 60;
-  if (h === 0) return `${min} min`;
-  if (min === 0) return h === 1 ? "1 hour" : `${h} hours`;
-  return `${h} hr ${min} min`;
-}
+export type ExamShortlistExamTypeFilter = "all" | "National" | "State" | "Institute";
+
+type ShortlistExamsProps = {
+  /** When set with onSearchQueryChange, search is controlled (e.g. from dashboard TopBar). */
+  searchQuery?: string;
+  onSearchQueryChange?: (q: string) => void;
+  examTypeFilter?: ExamShortlistExamTypeFilter;
+  onExamTypeFilterChange?: (t: ExamShortlistExamTypeFilter) => void;
+};
 
 type ExamRow = {
   examId: number;
@@ -32,6 +33,8 @@ type ExamRow = {
   attempts: string;
   examType: string;
   conductingAuthority: string;
+  /** Dashboard DB field `exam_popularity_rank`; "—" when unset. */
+  popularityRank: string;
 };
 
 function toRow(exam: Exam, from: string): ExamRow {
@@ -39,10 +42,15 @@ function toRow(exam: Exam, from: string): ExamRow {
   const attempts =
     attemptsRaw != null && String(attemptsRaw).trim() !== ""
       ? String(attemptsRaw).trim()
-      : "—";
+      : "—"; // free-form or numeric from admin — always show as text
   const mode =
     exam.examPattern?.mode != null && String(exam.examPattern.mode).trim() !== ""
       ? String(exam.examPattern.mode).trim()
+      : "—";
+  const rankRaw = exam.exam_popularity_rank;
+  const popularityRank =
+    rankRaw != null && rankRaw !== "" && !Number.isNaN(Number(rankRaw))
+      ? String(Number(rankRaw))
       : "—";
   return {
     examId: Number(exam.id),
@@ -51,18 +59,33 @@ function toRow(exam: Exam, from: string): ExamRow {
     description: exam.description || "Exam details, key dates, and next-step guidance.",
     detailHref: `/dashboard/exams/${exam.id}?from=${from}`,
     mode,
-    duration: formatDurationMinutes(exam.examPattern?.duration_minutes ?? undefined),
+    duration: formatExamPatternDurationHours(exam.examPattern?.duration_minutes ?? undefined),
     attempts,
     examType: exam.exam_type?.trim() || "",
     conductingAuthority: exam.conducting_authority?.trim() || "",
+    popularityRank,
   };
 }
 
-export default function ShortlistExams() {
+export default function ShortlistExams({
+  searchQuery: controlledSearch,
+  onSearchQueryChange,
+  examTypeFilter: controlledTypeFilter,
+  onExamTypeFilterChange,
+}: ShortlistExamsProps = {}) {
   const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("recommended");
-  const [query, setQuery] = useState("");
+  const [internalQuery, setInternalQuery] = useState("");
+  const searchControlled = controlledSearch !== undefined && onSearchQueryChange !== undefined;
+  const query = searchControlled ? controlledSearch! : internalQuery;
+  const setQuery = searchControlled ? onSearchQueryChange! : setInternalQuery;
+
+  const [internalTypeFilter, setInternalTypeFilter] = useState<ExamShortlistExamTypeFilter>("all");
+  const typeFilterControlled =
+    controlledTypeFilter !== undefined && onExamTypeFilterChange !== undefined;
+  const examTypeFilter = typeFilterControlled ? controlledTypeFilter! : internalTypeFilter;
+  const setExamTypeFilter = typeFilterControlled ? onExamTypeFilterChange! : setInternalTypeFilter;
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [allExams, setAllExams] = useState<Exam[]>([]);
@@ -120,20 +143,29 @@ export default function ShortlistExams() {
 
   const filteredRows = useMemo(() => {
     const base = rowsByTab[activeTab];
-    const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.subtitle.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.mode.toLowerCase().includes(q) ||
-        r.duration.toLowerCase().includes(q) ||
-        r.attempts.toLowerCase().includes(q) ||
-        r.examType.toLowerCase().includes(q) ||
-        r.conductingAuthority.toLowerCase().includes(q)
+    const byType =
+      examTypeFilter === "all"
+        ? base
+        : base.filter(
+            (r) => r.examType.trim().toLowerCase() === examTypeFilter.toLowerCase()
+          );
+    return byType.filter((r) =>
+      matchesExamSearchTokens(
+        [
+          r.name,
+          r.subtitle,
+          r.description,
+          r.mode,
+          r.duration,
+          r.attempts,
+          r.examType,
+          r.conductingAuthority,
+          ...(activeTab === "all" ? [r.popularityRank] : []),
+        ],
+        query
+      )
     );
-  }, [rowsByTab, activeTab, query]);
+  }, [rowsByTab, activeTab, query, examTypeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PER_PAGE));
   const currentPage = Math.min(pageByTab[activeTab], totalPages);
@@ -199,12 +231,41 @@ export default function ShortlistExams() {
             ))}
           </div>
 
+          <div id="exam-shortlist-filters" className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">Type:</span>
+            {(
+              [
+                ["all", "All"],
+                ["National", "National"],
+                ["State", "State"],
+                ["Institute", "Institute"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setExamTypeFilter(id)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  examTypeFilter === id
+                    ? "bg-[#341050] text-white"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <label className="flex w-full max-w-xl items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
             <FiSearch className="h-4 w-4 text-slate-500" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search exams"
+              placeholder={
+                activeTab === "all"
+                  ? "Search by name, code, mode, duration, attempts, type, authority, popularity rank…"
+                  : "Search by name, code, mode, duration, attempts, type, authority…"
+              }
               className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
             />
           </label>
@@ -219,20 +280,32 @@ export default function ShortlistExams() {
               <div className="flex flex-col items-center justify-center px-4 py-16 text-center md:px-6">
                 <MdSchool className="mb-3 h-10 w-10 text-slate-200" />
                 <p className="text-sm font-medium text-slate-500">
-                  {emptyHint || "No exams found for this tab."}
+                  {rowsByTab[activeTab].length === 0
+                    ? emptyHint || "No exams found for this tab."
+                    : query.trim() || examTypeFilter !== "all"
+                      ? "No exams match your search or filters. Try different keywords or set type to All."
+                      : emptyHint || "No exams found for this tab."}
                 </p>
               </div>
             ) : (
               <div className="w-full min-w-0 px-1 pb-1 pt-0 sm:px-2">
                 <div className="text-center">
                   <div className="inline-block max-w-full overflow-x-auto overscroll-x-contain text-left align-top [scrollbar-gutter:stable]">
-                    <table className="w-max min-w-[860px] border-collapse text-left">
+                    <table className="w-max min-w-[940px] border-collapse text-left">
                   <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                     <tr>
                       <th className="px-6 py-4">Name</th>
                       <th className="px-6 py-4">Description</th>
                       <th className="px-6 py-4">Mode</th>
-                      <th className="px-6 py-4">Duration</th>
+                      <th className="px-6 py-4">Duration (Hrs)</th>
+                      {activeTab === "all" ? (
+                        <th
+                          className="px-6 py-4 text-right tabular-nums"
+                          title="From exam popularity rank in the database (lower = more popular). Matches All Exams sort order."
+                        >
+                          Popularity rank
+                        </th>
+                      ) : null}
                       <th className="px-6 py-4">Attempts</th>
                       <th className="px-6 py-4 text-right">Action</th>
                     </tr>
@@ -260,6 +333,11 @@ export default function ShortlistExams() {
                           </div>
                         </td>
                         <td className="px-6 py-3.5 text-[13px] text-slate-700 whitespace-nowrap">{row.duration}</td>
+                        {activeTab === "all" ? (
+                          <td className="px-6 py-3.5 text-right text-[13px] text-slate-700 tabular-nums whitespace-nowrap">
+                            {row.popularityRank}
+                          </td>
+                        ) : null}
                         <td className="px-6 py-3.5 text-[13px] text-slate-700">
                           <div className="max-w-[120px] truncate" title={row.attempts}>
                             {row.attempts}

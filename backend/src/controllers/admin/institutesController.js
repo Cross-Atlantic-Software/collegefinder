@@ -22,6 +22,19 @@ const { buildLogoMapFromRequest, parseLogosFromZip, processMissingLogosFromZip }
 const { splitList, parseDate, parseBool, getCell, normalizeEntityKey, countMapArrayValues } = require('../../utils/bulkUploadUtils');
 const { resolveGoogleMapsLink, formatLocationLine } = require('../../services/googlePlacesMapsLink');
 
+/** Store coaching metrics / course fields as DB TEXT (trimmed; empty → null). */
+function toInstituteMetricText(val) {
+  if (val === undefined || val === null) return null;
+  const s = String(val).trim();
+  return s === '' ? null : s;
+}
+
+/** For Excel export: plain string cell. */
+function metricTextForExport(val) {
+  if (val === undefined || val === null || val === '') return '';
+  return String(val).trim();
+}
+
 /**
  * Build map: lowercased institute_name -> array of course row objects (from InstituteCourses sheet / file).
  */
@@ -37,20 +50,17 @@ function groupInstituteCourseRowsToMap(rows) {
     const key = normalizeEntityKey(instituteName);
     if (!map.has(key)) map.set(key, []);
     const durationRaw = getCell(row, 'duration_months', 'duration_Months');
-    const dur = durationRaw !== '' ? parseInt(durationRaw, 10) : null;
     const feesRaw = getCell(row, 'fees');
-    const feeVal = feesRaw !== '' ? parseFloat(feesRaw) : null;
     const batchRaw = getCell(row, 'batch_size', 'batch_Size');
-    const batch = batchRaw !== '' ? parseInt(batchRaw, 10) : null;
     const startRaw = getCell(row, 'start_date', 'start_Date');
     const start_date = startRaw ? parseDate(startRaw) : null;
     map.get(key).push({
       institute_name: instituteName,
       course_name,
       target_class: getCell(row, 'target_class', 'target_Class') || null,
-      duration_months: dur != null && !Number.isNaN(dur) ? dur : null,
-      fees: feeVal != null && !Number.isNaN(feeVal) ? feeVal : null,
-      batch_size: batch != null && !Number.isNaN(batch) ? batch : null,
+      duration_months: durationRaw !== '' ? toInstituteMetricText(durationRaw) : null,
+      fees: feesRaw !== '' ? toInstituteMetricText(feesRaw) : null,
+      batch_size: batchRaw !== '' ? toInstituteMetricText(batchRaw) : null,
       start_date
     });
   }
@@ -151,42 +161,6 @@ function mergeGroupedCourseMaps(base, extra) {
     out.get(k).push(...arr);
   }
   return out;
-}
-
-/** Student / exam-style rating: integer 1–5 only (null if empty/invalid; values above 5 coerced to 5). */
-function clampStudentRating(val) {
-  if (val === undefined || val === null || val === '') return null;
-  const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
-  if (Number.isNaN(n)) return null;
-  const r = Math.round(n);
-  if (r < 1) return null;
-  return Math.min(5, r);
-}
-
-/** For Excel export: coerce any numeric rating into 1–5 (rounded), empty if invalid. */
-function studentRatingForExport(val) {
-  if (val === undefined || val === null || val === '') return '';
-  const n = typeof val === 'number' ? val : parseFloat(String(val));
-  if (Number.isNaN(n)) return '';
-  return String(Math.min(5, Math.max(1, Math.round(n))));
-}
-
-async function resolveExamNamesToIds(namesStr) {
-  if (!namesStr || typeof namesStr !== 'string') return { ids: [], unknown: [] };
-  const names = splitList(namesStr);
-  const ids = [];
-  const unknown = [];
-  for (const nm of names) {
-    let ex = await Exam.findByName(nm);
-    if (!ex) ex = await Exam.findByCode(nm);
-    if (!ex) ex = await Exam.findByNameContains(nm);
-    if (ex) {
-      ids.push(ex.id);
-    } else {
-      unknown.push(nm);
-    }
-  }
-  return { ids, unknown };
 }
 
 class InstitutesController {
@@ -339,8 +313,6 @@ class InstitutesController {
         institute_description,
         demo_available,
         scholarship_available,
-        examIds,
-        specializationExamIds,
         ranking_score,
         success_rate,
         student_rating,
@@ -393,19 +365,12 @@ class InstitutesController {
         });
       }
 
-      if (examIds && Array.isArray(examIds) && examIds.length > 0) {
-        await InstituteExam.setExamsForInstitute(institute.id, examIds);
-      }
-      if (specializationExamIds && Array.isArray(specializationExamIds) && specializationExamIds.length > 0) {
-        await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specializationExamIds);
-      }
-
       if (ranking_score != null || success_rate != null || student_rating != null) {
         await InstituteStatistics.create({
           institute_id: institute.id,
-          ranking_score: ranking_score ?? null,
-          success_rate: success_rate ?? null,
-          student_rating: clampStudentRating(student_rating)
+          ranking_score: toInstituteMetricText(ranking_score),
+          success_rate: toInstituteMetricText(success_rate),
+          student_rating: toInstituteMetricText(student_rating)
         });
       }
 
@@ -416,9 +381,9 @@ class InstitutesController {
               institute_id: institute.id,
               course_name: c.course_name || null,
               target_class: c.target_class || null,
-              duration_months: c.duration_months ?? null,
-              fees: c.fees ?? null,
-              batch_size: c.batch_size ?? null,
+              duration_months: toInstituteMetricText(c.duration_months),
+              fees: toInstituteMetricText(c.fees),
+              batch_size: toInstituteMetricText(c.batch_size),
               start_date: c.start_date || null
             });
           }
@@ -463,8 +428,6 @@ class InstitutesController {
         institute_description,
         demo_available,
         scholarship_available,
-        examIds,
-        specializationExamIds,
         ranking_score,
         success_rate,
         student_rating,
@@ -540,19 +503,12 @@ class InstitutesController {
         });
       }
 
-      if (examIds !== undefined) {
-        await InstituteExam.setExamsForInstitute(instituteId, Array.isArray(examIds) ? examIds : []);
-      }
-      if (specializationExamIds !== undefined) {
-        await InstituteExamSpecialization.setSpecializationsForInstitute(instituteId, Array.isArray(specializationExamIds) ? specializationExamIds : []);
-      }
-
       if (ranking_score !== undefined || success_rate !== undefined || student_rating !== undefined) {
         await InstituteStatistics.create({
           institute_id: instituteId,
-          ranking_score: ranking_score ?? null,
-          success_rate: success_rate ?? null,
-          student_rating: clampStudentRating(student_rating)
+          ranking_score: toInstituteMetricText(ranking_score),
+          success_rate: toInstituteMetricText(success_rate),
+          student_rating: toInstituteMetricText(student_rating)
         });
       }
 
@@ -564,9 +520,9 @@ class InstitutesController {
               institute_id: instituteId,
               course_name: c.course_name || null,
               target_class: c.target_class || null,
-              duration_months: c.duration_months ?? null,
-              fees: c.fees ?? null,
-              batch_size: c.batch_size ?? null,
+              duration_months: toInstituteMetricText(c.duration_months),
+              fees: toInstituteMetricText(c.fees),
+              batch_size: toInstituteMetricText(c.batch_size),
               start_date: c.start_date || null
             });
           }
@@ -634,8 +590,6 @@ class InstitutesController {
         'ranking_score',
         'success_rate',
         'student_rating',
-        'exam_names',
-        'specialization_exam_names',
         'course_name',
         'target_class',
         'duration',
@@ -662,8 +616,6 @@ class InstitutesController {
           '9.5',
           '85',
           '5',
-          'JEE Main',
-          'JEE Main',
           'JEE Main Intensive',
           'Class 11-12',
           '24',
@@ -676,9 +628,6 @@ class InstitutesController {
           'Kota',
           'Allen, Kota',
           'Rajasthan',
-          '',
-          '',
-          '',
           '',
           '',
           '',
@@ -712,8 +661,6 @@ class InstitutesController {
           '8',
           '78',
           '4',
-          'JEE Main',
-          'JEE Main',
           'JEE Crash Course',
           'Class 12',
           '6',
@@ -804,17 +751,15 @@ class InstitutesController {
       const headers = [
         'institute_name', 'state', 'city', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
-        'exam_names', 'specialization_exam_names', 'course_names'
+        'course_names'
       ];
       const rows = [headers];
       const courseExportRows = [
         ['institute_name', 'course_name', 'target_class', 'duration_months', 'fees', 'batch_size', 'start_date']
       ];
       for (const inst of institutes) {
-        const [details, examIds, specExamIds, statistics, courses] = await Promise.all([
+        const [details, statistics, courses] = await Promise.all([
           InstituteDetails.findByInstituteId(inst.id),
-          InstituteExam.getExamIdsByInstituteId(inst.id),
-          InstituteExamSpecialization.getExamIdsByInstituteId(inst.id),
           InstituteStatistics.findByInstituteId(inst.id),
           InstituteCourse.findByInstituteId(inst.id)
         ]);
@@ -837,16 +782,6 @@ class InstitutesController {
             ]);
           }
         }
-        const examNames = [];
-        for (const eid of examIds || []) {
-          const ex = await Exam.findById(eid);
-          if (ex && ex.name) examNames.push(ex.name);
-        }
-        const specExamNames = [];
-        for (const eid of specExamIds || []) {
-          const ex = await Exam.findById(eid);
-          if (ex && ex.name) specExamNames.push(ex.name);
-        }
         rows.push([
           inst.institute_name || '',
           inst.state || '',
@@ -862,9 +797,7 @@ class InstitutesController {
           (detail.scholarship_available === true || detail.scholarship_available === 't') ? 'TRUE' : 'FALSE',
           (stats.ranking_score != null) ? String(stats.ranking_score) : '',
           (stats.success_rate != null) ? String(stats.success_rate) : '',
-          studentRatingForExport(stats.student_rating),
-          examNames.join(','),
-          specExamNames.join(','),
+          metricTextForExport(stats.student_rating),
           courseNamesStr
         ]);
       }
@@ -953,40 +886,66 @@ class InstitutesController {
         return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
       }
 
-      // Group rows by institute_cityname (unique key per institute)
+      // Group rows by normalized institute_cityname (or institute_name if city blank) — one institute per key.
+      // Extra Excel rows with the same key merge as extra courses only; they are NOT separate institutes.
       const instituteGroups = new Map();
+      const skippedEmptyNameDetails = [];
+      const mergedSameKeyDetails = [];
+      const MAX_MERGED_DETAIL_ROWS = 2000;
+      let mergedDuplicateRowCount = 0;
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
         const name = getCell(row, 'institute_name', 'institute_Name');
         const instituteCityName = getCell(row, 'institute_cityname', 'institute_Cityname', 'institute_cityName');
-        if (!name) {
+        if (!name || !String(name).trim()) {
+          skippedEmptyNameDetails.push({
+            row: rowNum,
+            message: 'Skipped: institute_name is empty',
+          });
           continue;
         }
         const groupKey = normalizeEntityKey(instituteCityName || name);
-        if (!instituteGroups.has(groupKey)) {
+        const label =
+          instituteCityName && String(instituteCityName).trim()
+            ? String(instituteCityName).trim()
+            : String(name).trim();
+        const courseNameCell = getCell(row, 'course_name', 'course_Name');
+        const hasCourse = !!(courseNameCell && String(courseNameCell).trim());
+        const hadGroup = instituteGroups.has(groupKey);
+        if (!hadGroup) {
           instituteGroups.set(groupKey, { firstRow: row, firstRowNum: rowNum, courses: [] });
+        } else {
+          mergedDuplicateRowCount += 1;
+          if (mergedSameKeyDetails.length < MAX_MERGED_DETAIL_ROWS) {
+            const anchorRow = instituteGroups.get(groupKey).firstRowNum;
+            const courseHint = hasCourse
+              ? ' Course columns from this row were merged into that single institute.'
+              : ' No course_name on this row — nothing was applied from this line.';
+            mergedSameKeyDetails.push({
+              row: rowNum,
+              message: `Same institute key as row ${anchorRow} ("${label}" after trim/lowercase). This is not a new institute.${courseHint}`,
+            });
+          }
         }
-        const courseName = getCell(row, 'course_name', 'course_Name');
-        if (courseName) {
+        if (hasCourse) {
           const durationRaw = getCell(row, 'duration', 'duration_months', 'duration_Months');
-          const dur = durationRaw !== '' ? parseInt(durationRaw, 10) : null;
           const feesRaw = getCell(row, 'fees', 'Fees');
-          const feeVal = feesRaw !== '' ? parseFloat(feesRaw) : null;
           const batchRaw = getCell(row, 'batch_size', 'batch_Size');
-          const batch = batchRaw !== '' ? parseInt(batchRaw, 10) : null;
           const startRaw = getCell(row, 'start_date', 'start_Date');
           const start_date = startRaw ? parseDate(startRaw) : null;
           instituteGroups.get(groupKey).courses.push({
-            course_name: courseName,
+            course_name: String(courseNameCell).trim(),
             target_class: getCell(row, 'target_class', 'target_Class') || null,
-            duration_months: isNaN(dur) ? null : dur,
-            fees: isNaN(feeVal) ? null : feeVal,
-            batch_size: isNaN(batch) ? null : batch,
+            duration_months: durationRaw !== '' ? toInstituteMetricText(durationRaw) : null,
+            fees: feesRaw !== '' ? toInstituteMetricText(feesRaw) : null,
+            batch_size: batchRaw !== '' ? toInstituteMetricText(batchRaw) : null,
             start_date,
           });
         }
       }
+
+      const mergedSameKeyDetailsTruncated = Math.max(0, mergedDuplicateRowCount - mergedSameKeyDetails.length);
 
       const created = [];
       const errors = [];
@@ -1023,10 +982,6 @@ class InstitutesController {
         const rankingScoreRaw = getCell(row, 'ranking_score', 'ranking_Score');
         const successRateRaw = getCell(row, 'success_rate', 'success_Rate');
         const studentRatingRaw = getCell(row, 'student_rating', 'student_Rating');
-        const examNamesRaw = getCell(row, 'exam_names', 'exam_Names');
-        const examIdsRaw = getCell(row, 'exam_ids', 'exam_Ids');
-        const specializationExamNamesRaw = getCell(row, 'specialization_exam_names', 'specialization_exam_Names');
-        const specializationExamIdsRaw = getCell(row, 'specialization_exam_ids', 'specialization_exam_Ids');
 
         // Resolve logo: prefer logo_file_link URL > logo from ZIP
         let logoUrl = null;
@@ -1041,33 +996,6 @@ class InstitutesController {
               errors.push({ row: rowNum, message: `logo upload failed for "${logoFilename}": ${uploadErr.message}` });
             }
           }
-        }
-
-        // Resolve exam names BEFORE creating the institute — skip row if any are unresolved
-        let examIds = [];
-        if (examNamesRaw) {
-          const resolved = await resolveExamNamesToIds(examNamesRaw);
-          examIds = resolved.ids;
-          if (resolved.unknown.length > 0) {
-            errors.push({ row: rowNum, message: `exam(s) not found: ${resolved.unknown.map((n) => `"${n}"`).join(', ')}` });
-            continue;
-          }
-        }
-        if (examIds.length === 0 && examIdsRaw) {
-          examIds = examIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-        }
-
-        let specExamIds = [];
-        if (specializationExamNamesRaw) {
-          const resolved = await resolveExamNamesToIds(specializationExamNamesRaw);
-          specExamIds = resolved.ids;
-          if (resolved.unknown.length > 0) {
-            errors.push({ row: rowNum, message: `specialization exam(s) not found: ${resolved.unknown.map((n) => `"${n}"`).join(', ')}` });
-            continue;
-          }
-        }
-        if (specExamIds.length === 0 && specializationExamIdsRaw) {
-          specExamIds = specializationExamIdsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
         }
 
         try {
@@ -1091,20 +1019,17 @@ class InstitutesController {
               scholarship_available: scholarshipAvailable
             });
           }
-          const ranking_score = rankingScoreRaw ? parseFloat(rankingScoreRaw) : null;
-          const success_rate = successRateRaw ? parseFloat(successRateRaw) : null;
-          const student_rating = clampStudentRating(studentRatingRaw);
+          const ranking_score = toInstituteMetricText(rankingScoreRaw);
+          const success_rate = toInstituteMetricText(successRateRaw);
+          const student_rating = toInstituteMetricText(studentRatingRaw);
           if (ranking_score != null || success_rate != null || student_rating != null) {
             await InstituteStatistics.create({
               institute_id: institute.id,
-              ranking_score: isNaN(ranking_score) ? null : ranking_score,
-              success_rate: isNaN(success_rate) ? null : success_rate,
+              ranking_score,
+              success_rate,
               student_rating
             });
           }
-
-          if (examIds.length) await InstituteExam.setExamsForInstitute(institute.id, examIds);
-          if (specExamIds.length) await InstituteExamSpecialization.setSpecializationsForInstitute(institute.id, specExamIds);
 
           // Insert courses from grouped rows
           for (const c of group.courses) {
@@ -1121,19 +1046,34 @@ class InstitutesController {
 
           created.push({ id: institute.id, name: institute.institute_name });
         } catch (createErr) {
-          errors.push({ row: rowNum, message: createErr.message || 'Failed to create institute' });
+          errors.push({
+            row: rowNum,
+            message: createErr.message || 'Failed to create institute',
+          });
         }
       }
 
       res.json({
         success: true,
         data: {
+          totalExcelRows: rows.length,
+          rowsWithInstituteName: rows.length - skippedEmptyNameDetails.length,
+          skippedEmptyNameCount: skippedEmptyNameDetails.length,
+          skippedEmptyNameDetails,
+          uniqueInstituteKeys: instituteGroups.size,
+          mergedDuplicateRowCount,
+          mergedSameKeyDetails,
+          mergedSameKeyDetailsTruncated,
           created: created.length,
           createdInstitutes: created,
           errors: errors.length,
           errorDetails: errors,
         },
-        message: `Created ${created.length} institute(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}`
+        message:
+          `Created ${created.length} institute(s) from ${instituteGroups.size} unique key(s). ` +
+          `Excel had ${rows.length} data row(s); ${skippedEmptyNameDetails.length} skipped (empty institute_name); ` +
+          `${mergedDuplicateRowCount} row(s) shared an existing key (same institute, not extra coachings).` +
+          (errors.length ? ` ${errors.length} row-level error(s).` : ''),
       });
     } catch (error) {
       console.error('Error in bulk upload:', error);

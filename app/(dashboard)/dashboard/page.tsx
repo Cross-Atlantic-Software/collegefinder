@@ -8,8 +8,20 @@ import {
   getBasicInfo,
   getProfileCompletion,
 } from "@/api";
-import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
-import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
+import {
+  ApplicationsPage,
+  ExamPreparation,
+  MiddleContent,
+  ReferralCard,
+  ShortlistColleges,
+  ShortlistExams,
+  ShortlistInstitutes,
+  ShortlistScholarships,
+  Sidebar,
+  TestModule,
+  TopBar,
+} from "@/components/dashboard";
+import type { ExamShortlistExamTypeFilter } from "@/components/dashboard/ShortlistExams";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
@@ -21,6 +33,8 @@ type SectionId =
   | "profile"
   | "exam-shortlist"
   | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
   | "applications"
   | "exam-prep"
   | "test-module"
@@ -34,6 +48,9 @@ export default function DashboardPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
+  const [examShortlistSearch, setExamShortlistSearch] = useState("");
+  const [examShortlistTypeFilter, setExamShortlistTypeFilter] =
+    useState<ExamShortlistExamTypeFilter>("all");
   const [dashboardProfile, setDashboardProfile] = useState({
     fullName: "User",
     airRank: "—",
@@ -115,6 +132,8 @@ export default function DashboardPage() {
     "profile",
     "exam-shortlist",
     "college-shortlist",
+    "coaching-institutes",
+    "scholarships",
     "applications",
     "exam-prep",
     "test-module",
@@ -184,9 +203,20 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {activeSection === "exam-shortlist" && <ShortlistExams />}
+                {activeSection === "exam-shortlist" && (
+                  <ShortlistExams
+                    searchQuery={examShortlistSearch}
+                    onSearchQueryChange={setExamShortlistSearch}
+                    examTypeFilter={examShortlistTypeFilter}
+                    onExamTypeFilterChange={setExamShortlistTypeFilter}
+                  />
+                )}
 
                 {activeSection === "college-shortlist" && <ShortlistColleges />}
+
+                {activeSection === "coaching-institutes" && <ShortlistInstitutes />}
+
+                {activeSection === "scholarships" && <ShortlistScholarships />}
 
                 {activeSection === "applications" && (
                   <ApplicationsPage />

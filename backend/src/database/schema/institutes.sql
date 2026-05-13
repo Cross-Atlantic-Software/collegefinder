@@ -65,9 +65,9 @@ CREATE INDEX IF NOT EXISTS idx_institute_exam_specialization_exam_id ON institut
 CREATE TABLE IF NOT EXISTS institute_statistics (
   id SERIAL PRIMARY KEY,
   institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
-  ranking_score DECIMAL(5, 2),
-  success_rate DECIMAL(5, 2),
-  student_rating DECIMAL(3, 2),
+  ranking_score TEXT,
+  success_rate TEXT,
+  student_rating TEXT,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(institute_id)
 );
@@ -84,9 +84,9 @@ CREATE TABLE IF NOT EXISTS institute_courses (
   institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
   course_name VARCHAR(255),
   target_class VARCHAR(100),
-  duration_months INTEGER,
-  fees DECIMAL(12, 2),
-  batch_size INTEGER,
+  duration_months TEXT,
+  fees TEXT,
+  batch_size TEXT,
   start_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -660,35 +660,41 @@ class CareerGoalsTaxonomyController {
         });
       }
 
-      const interestIds = (interests || [])
+      const rawIds = (interests || [])
         .map((id) => parseInt(String(id), 10))
         .filter((n) => Number.isInteger(n) && n > 0);
+      const interestIds = [...new Set(rawIds)];
 
-      if (interestIds.length > 0) {
-        const academics = await UserAcademics.findByUserId(userId);
-        const userStreamId = academics?.stream_id;
-        if (!userStreamId) {
-          return res.status(400).json({
-            success: false,
-            message: 'Select your stream (academics) before choosing interests'
-          });
-        }
-        const defaultStream = await Stream.findByName('Default');
-        const allowedStreamIds =
-          defaultStream && defaultStream.id !== userStreamId
-            ? [userStreamId, defaultStream.id]
-            : [userStreamId];
-        const matchCount = await CareerGoal.countActiveMatchingStreams(interestIds, allowedStreamIds);
-        if (matchCount !== interestIds.length) {
-          return res.status(400).json({
-            success: false,
-            message: 'One or more interests are not valid for your selected/default stream'
-          });
-        }
+      if (interestIds.length !== 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'You must select exactly 3 distinct interests',
+        });
+      }
+
+      const academics = await UserAcademics.findByUserId(userId);
+      const userStreamId = academics?.stream_id;
+      if (!userStreamId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Select your stream (academics) before choosing interests',
+        });
+      }
+      const defaultStream = await Stream.findByName('Default');
+      const allowedStreamIds =
+        defaultStream && defaultStream.id !== userStreamId
+          ? [userStreamId, defaultStream.id]
+          : [userStreamId];
+      const matchCount = await CareerGoal.countActiveMatchingStreams(interestIds, allowedStreamIds);
+      if (matchCount !== interestIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more interests are not valid for your selected/default stream',
+        });
       }
 
       const userCareerGoals = await UserCareerGoals.upsert(userId, {
-        interests: interests || []
+        interests: interestIds,
       });
 
       // Check if all onboarding steps are completed and mark onboarding as completed

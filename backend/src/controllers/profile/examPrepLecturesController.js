@@ -1,6 +1,9 @@
 const UserAcademics = require('../../models/user/UserAcademics');
 const Lecture = require('../../models/taxonomy/Lecture');
-const { extractYouTubeVideoId } = require('../../utils/youtubeMetadata');
+const {
+  extractYouTubeVideoId,
+  fetchYouTubeVideosDurationSecondsMap,
+} = require('../../utils/youtubeMetadata');
 
 class ExamPrepLecturesController {
   /**
@@ -24,6 +27,29 @@ class ExamPrepLecturesController {
       }
 
       const rows = await Lecture.findVideoLecturesForExamPrepByStream(academics.stream_id);
+
+      const apiKey =
+        process.env.YOUTUBE_API_KEY ||
+        process.env.GOOGLE_YOUTUBE_API_KEY ||
+        process.env.GOOGLE_API_KEY;
+
+      const youtubeIdsForBatch = [];
+      for (const row of rows) {
+        const iframe = row.iframe_code != null ? String(row.iframe_code) : '';
+        const file = row.video_file != null ? String(row.video_file) : '';
+        const yid = extractYouTubeVideoId(iframe) || extractYouTubeVideoId(file);
+        if (yid) youtubeIdsForBatch.push(yid);
+      }
+
+      let durationByVideoId = new Map();
+      try {
+        if (youtubeIdsForBatch.length && apiKey) {
+          durationByVideoId = await fetchYouTubeVideosDurationSecondsMap(youtubeIdsForBatch, apiKey);
+        }
+      } catch (durErr) {
+        console.error('Exam prep: YouTube duration batch failed:', durErr.message || durErr);
+      }
+
       const lectures = [];
 
       for (const row of rows) {
@@ -38,6 +64,10 @@ class ExamPrepLecturesController {
           row.rank_score != null && !Number.isNaN(Number(row.rank_score))
             ? Number(row.rank_score)
             : likes + subs / 1000;
+
+        const durationSeconds = durationByVideoId.has(youtubeId)
+          ? durationByVideoId.get(youtubeId)
+          : null;
 
         lectures.push({
           id: row.id,
@@ -56,6 +86,8 @@ class ExamPrepLecturesController {
           subjectName: row.subject_name || 'Subject',
           topicId: row.topic_id,
           topicName: row.topic_name || 'Topic',
+          durationSeconds:
+            durationSeconds != null && Number.isFinite(durationSeconds) ? durationSeconds : null,
         });
       }
 

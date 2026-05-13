@@ -246,6 +246,53 @@ async function enrichDescriptionFromYoutubeIframe(iframeCode, existingDescriptio
   }
 }
 
+/**
+ * Parse YouTube ISO8601 duration (e.g. PT1H2M3S) to whole seconds.
+ * @param {string|undefined|null} iso
+ * @returns {number|null}
+ */
+function parseIso8601DurationToSeconds(iso) {
+  if (!iso || typeof iso !== 'string') return null;
+  const m = iso.trim().match(/^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$/i);
+  if (!m) return null;
+  const h = parseFloat(m[1] || '0') || 0;
+  const min = parseFloat(m[2] || '0') || 0;
+  const sec = parseFloat(m[3] || '0') || 0;
+  const total = h * 3600 + min * 60 + sec;
+  if (!Number.isFinite(total)) return null;
+  return Math.round(total);
+}
+
+/**
+ * Batch-fetch video lengths (seconds) by id. Up to 50 ids per request.
+ * @param {string[]} videoIds
+ * @param {string} apiKey
+ * @returns {Promise<Map<string, number>>}
+ */
+async function fetchYouTubeVideosDurationSecondsMap(videoIds, apiKey) {
+  const map = new Map();
+  const unique = [...new Set((videoIds || []).filter(Boolean))];
+  if (!unique.length || !apiKey) return map;
+
+  for (let i = 0; i < unique.length; i += 50) {
+    const chunk = unique.slice(i, i + 50);
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${chunk.map(encodeURIComponent).join(',')}&key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || `YouTube API HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    for (const item of data.items || []) {
+      const id = item?.id;
+      const iso = item?.contentDetails?.duration;
+      const sec = parseIso8601DurationToSeconds(iso);
+      if (id && sec != null) map.set(id, sec);
+    }
+  }
+  return map;
+}
+
 module.exports = {
   extractYouTubeVideoId,
   fetchYouTubeSnippet,
@@ -255,4 +302,6 @@ module.exports = {
   enrichDescriptionFromYoutubeIframe,
   enrichThumbnailFromYoutubeIframe,
   MAX_LECTURE_DESCRIPTION_LENGTH,
+  parseIso8601DurationToSeconds,
+  fetchYouTubeVideosDurationSecondsMap,
 };

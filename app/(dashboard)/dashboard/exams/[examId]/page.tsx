@@ -8,6 +8,7 @@ import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiExtern
 import { MdOutlineInsights, MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { getAllExams, type Exam } from "@/api/exams";
+import { formatExamPatternDurationHours } from "@/lib/formatDuration";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
 
@@ -16,6 +17,8 @@ type SectionId =
   | "profile"
   | "exam-shortlist"
   | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
   | "applications"
   | "exam-prep"
   | "test-module"
@@ -190,17 +193,6 @@ function getExamStream(examName: string): string {
   }
 
   return "General";
-}
-
-function formatDurationMinutes(m: number | null | undefined): string | null {
-  if (m == null) return null;
-  const n = Math.round(Number(m));
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const h = Math.floor(n / 60);
-  const min = n % 60;
-  if (h === 0) return `${min} min`;
-  if (min === 0) return h === 1 ? "1 hour" : `${h} hours`;
-  return `${h} hr ${min} min`;
 }
 
 function scoreSummaryFromCutoff(exam: Exam | null): string | null {
@@ -381,8 +373,8 @@ function getModel(exam: Exam | null, examId: string): DetailModel {
         : null;
     if (mode) merged.mode = mode;
 
-    const durationLabel = formatDurationMinutes(exam.examPattern?.duration_minutes ?? undefined);
-    if (durationLabel) merged.duration = durationLabel;
+    const durationLabel = formatExamPatternDurationHours(exam.examPattern?.duration_minutes ?? undefined);
+    if (durationLabel !== "—") merged.duration = durationLabel;
 
     const attemptsLabel = formatAttemptLimit(exam);
     if (attemptsLabel) merged.attempts = attemptsLabel;
@@ -607,7 +599,7 @@ export default function ExamDetailPage() {
                     <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{model.mode}</p>
                   </div>
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Duration (in Hours)</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{model.duration}</p>
                   </div>
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
@@ -654,7 +646,7 @@ export default function ExamDetailPage() {
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Mode: {model.mode}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Questions: {model.questionCount}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Marking: {model.markingScheme}</p>
-                      <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Duration: {model.duration}</p>
+                      <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Duration (in Hours): {model.duration}</p>
                       {exam?.examPattern?.weightage_of_subjects != null && String(exam.examPattern.weightage_of_subjects).trim() !== "" ? (
                         <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">
                           Subject weightage: {exam.examPattern.weightage_of_subjects}

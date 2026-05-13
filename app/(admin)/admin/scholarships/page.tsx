@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
@@ -19,15 +19,16 @@ import {
   type ScholarshipApplicableState,
   type ScholarshipDocumentRequired,
 } from '@/api/admin/scholarships';
-import { getAllExamsAdmin, type Exam } from '@/api/admin/exams';
-import { getAllCollegesAdmin, type College } from '@/api/admin/colleges';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
+import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
-type FormTab = 'basic' | 'details' | 'categories' | 'states' | 'documents' | 'exams' | 'colleges';
+const ADMIN_SCHOLARSHIP_LIST_PAGE_SIZE = 10;
+
+type FormTab = 'basic' | 'details' | 'categories' | 'states' | 'documents';
 
 const toDateInput = (val: string | null | undefined): string => {
   if (val == null || val === '') return '';
@@ -41,11 +42,10 @@ export default function ScholarshipsPage() {
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [allScholarships, setAllScholarships] = useState<Scholarship[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [colleges, setColleges] = useState<College[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listPage, setListPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingScholarship, setEditingScholarship] = useState<Scholarship | null>(null);
   const [viewingData, setViewingData] = useState<{
@@ -54,9 +54,7 @@ export default function ScholarshipsPage() {
     eligibleCategories: ScholarshipEligibleCategory[];
     applicableStates: ScholarshipApplicableState[];
     documentsRequired: ScholarshipDocumentRequired[];
-    examIds: number[];
     examNames?: string[];
-    collegeIds?: number[];
     collegeNames?: string[];
   } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
@@ -89,8 +87,6 @@ export default function ScholarshipsPage() {
     eligibleCategories: [] as { category: string }[],
     applicableStates: [] as { state_name: string }[],
     documentsRequired: [] as { document_name: string }[],
-    examIds: [] as number[],
-    collegeIds: [] as number[],
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -146,14 +142,26 @@ export default function ScholarshipsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, allScholarships]);
 
+  useEffect(() => {
+    setListPage(1);
+  }, [searchQuery]);
+
+  const scholarshipsTotalPages = Math.max(1, Math.ceil(scholarships.length / ADMIN_SCHOLARSHIP_LIST_PAGE_SIZE));
+  useEffect(() => {
+    if (listPage > scholarshipsTotalPages) setListPage(scholarshipsTotalPages);
+  }, [scholarships.length, scholarshipsTotalPages, listPage]);
+
+  const paginatedScholarships = useMemo(() => {
+    const start = (listPage - 1) * ADMIN_SCHOLARSHIP_LIST_PAGE_SIZE;
+    return scholarships.slice(start, start + ADMIN_SCHOLARSHIP_LIST_PAGE_SIZE);
+  }, [scholarships, listPage]);
+
   const fetchData = async (silent = false) => {
     try {
       if (!silent) setIsLoading(true);
-      const [schRes, streamsRes, examsRes, collegesRes] = await Promise.all([
+      const [schRes, streamsRes] = await Promise.all([
         getAllScholarshipsAdmin(),
         getAllStreams(),
-        getAllExamsAdmin(),
-        getAllCollegesAdmin().catch(() => null),
       ]);
       if (schRes.success && schRes.data) {
         setAllScholarships(schRes.data.scholarships);
@@ -161,14 +169,6 @@ export default function ScholarshipsPage() {
       }
       if (streamsRes.success && streamsRes.data) {
         setStreams((streamsRes.data.streams || []).filter((s: Stream) => s.status !== false));
-      }
-      if (examsRes.success && examsRes.data) {
-        setExams(examsRes.data.exams || []);
-      }
-      if (collegesRes && collegesRes.success && collegesRes.data) {
-        setColleges(collegesRes.data.colleges || []);
-      } else {
-        setColleges([]);
       }
     } catch (err) {
       setError('Failed to fetch scholarships');
@@ -211,8 +211,6 @@ export default function ScholarshipsPage() {
         eligibleCategories: formData.eligibleCategories.filter((c) => c.category?.trim()),
         applicableStates: formData.applicableStates.filter((s) => s.state_name?.trim()),
         documentsRequired: formData.documentsRequired.filter((d) => d.document_name?.trim()),
-        examIds: formData.examIds,
-        collegeIds: formData.collegeIds,
       };
       if (editingScholarship) {
         const response = await updateScholarship(editingScholarship.id, payload);
@@ -261,9 +259,7 @@ export default function ScholarshipsPage() {
           eligibleCategories: response.data.eligibleCategories || [],
           applicableStates: response.data.applicableStates || [],
           documentsRequired: response.data.documentsRequired || [],
-          examIds: response.data.examIds || [],
           examNames: response.data.examNames,
-          collegeIds: response.data.collegeIds,
           collegeNames: response.data.collegeNames,
         });
       } else {
@@ -309,8 +305,6 @@ export default function ScholarshipsPage() {
           eligibleCategories: (d.eligibleCategories || []).map((c) => ({ category: c.category ?? '' })),
           applicableStates: (d.applicableStates || []).map((s) => ({ state_name: s.state_name ?? '' })),
           documentsRequired: (d.documentsRequired || []).map((doc) => ({ document_name: doc.document_name ?? '' })),
-          examIds: d.examIds ?? [],
-          collegeIds: d.collegeIds ?? [],
         });
         setEditingScholarship(d.scholarship);
         setActiveTab('basic');
@@ -376,8 +370,6 @@ export default function ScholarshipsPage() {
       eligibleCategories: [],
       applicableStates: [],
       documentsRequired: [],
-      examIds: [],
-      collegeIds: [],
     });
     setError(null);
     setActiveTab('basic');
@@ -492,8 +484,6 @@ export default function ScholarshipsPage() {
     { id: 'categories', label: 'Categories' },
     { id: 'states', label: 'States' },
     { id: 'documents', label: 'Documents' },
-    { id: 'exams', label: 'Exams' },
-    { id: 'colleges', label: 'Colleges' },
   ];
 
   if (error && !isLoading) {
@@ -518,7 +508,8 @@ export default function ScholarshipsPage() {
           <div className="mb-3">
             <h1 className="text-xl font-bold text-slate-900 mb-1">Scholarships Manager</h1>
             <p className="text-sm text-slate-600">
-              Manage scholarships with eligibility, states, documents, related exams and colleges. CRUD and Excel bulk upload.
+              Manage scholarships with eligibility, states, and documents. Link exams and colleges via{' '}
+              <strong>Admin → Mapping → Scholarship Exams & Colleges</strong>. CRUD and Excel bulk upload.
             </p>
           </div>
 
@@ -590,26 +581,27 @@ export default function ScholarshipsPage() {
             {isLoading ? (
               <div className="p-4 text-center text-sm text-slate-500">Loading scholarships...</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#F6F8FA] border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">APPLICATION PERIOD</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {scholarships.length === 0 ? (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#F6F8FA] border-b border-slate-200">
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
-                          {scholarships.length < allScholarships.length ? 'No scholarships match your search' : 'No scholarships yet'}
-                        </td>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">APPLICATION PERIOD</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                       </tr>
-                    ) : (
-                      scholarships.map((s) => (
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {scholarships.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-4 text-center text-sm text-slate-500">
+                            {scholarships.length < allScholarships.length ? 'No scholarships match your search' : 'No scholarships yet'}
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedScholarships.map((s) => (
                         <tr key={s.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{s.scholarship_name}</span>
@@ -636,11 +628,18 @@ export default function ScholarshipsPage() {
                             />
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <AdminListPagination
+                  total={scholarships.length}
+                  page={listPage}
+                  pageSize={ADMIN_SCHOLARSHIP_LIST_PAGE_SIZE}
+                  onPageChange={setListPage}
+                />
+              </>
             )}
           </div>
         </main>
@@ -1014,36 +1013,6 @@ export default function ScholarshipsPage() {
                 </>
               )}
 
-              {activeTab === 'exams' && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Related Exams</label>
-                  <MultiSelect
-                    options={exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` }))}
-                    value={formData.examIds.map(String)}
-                    onChange={(vals) => setFormData({ ...formData, examIds: vals.map(Number) })}
-                    placeholder="Select exams"
-                  />
-                </div>
-              )}
-
-              {activeTab === 'colleges' && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Related Colleges</label>
-                  {colleges.length === 0 ? (
-                    <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                      No colleges loaded. Ensure your admin role includes the Colleges module so the list can be fetched.
-                    </p>
-                  ) : (
-                    <MultiSelect
-                      options={colleges.map((c) => ({ value: String(c.id), label: c.college_name }))}
-                      value={formData.collegeIds.map(String)}
-                      onChange={(vals) => setFormData({ ...formData, collegeIds: vals.map(Number) })}
-                      placeholder="Select colleges"
-                    />
-                  )}
-                </div>
-              )}
-
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <button type="button" onClick={handleModalClose} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-[#F6F8FA]">Cancel</button>
                 <button type="submit" disabled={isSaving} className="px-3 py-1.5 text-sm bg-brand-ink text-white rounded-lg hover:bg-brand-ink/90 disabled:opacity-50">
@@ -1126,6 +1095,11 @@ export default function ScholarshipsPage() {
                 <p className="text-sm text-slate-600">{(viewingData.documentsRequired ?? []).map((d) => d.document_name).filter(Boolean).join(', ')}</p>
               </div>
             )}
+            {(((viewingData.examNames ?? []).length > 0) || ((viewingData.collegeNames ?? []).length > 0)) && (
+              <p className="mt-3 text-xs text-slate-500">
+                To edit exam and college links, use <strong>Admin → Mapping → Scholarship Exams & Colleges</strong>.
+              </p>
+            )}
             {((viewingData.examNames ?? []).length > 0) && (
               <div className="mt-3 pt-3 border-t border-slate-200">
                 <p className="text-sm font-medium text-slate-700">Related exams</p>
@@ -1154,7 +1128,8 @@ export default function ScholarshipsPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Upload an Excel file. Use the template; columns include scholarship fields, exam_names, and college_names (comma or semicolon separated; names must match colleges in the database, case-insensitive). Optional college_ids column accepts comma-separated IDs.
+              Upload an Excel file using the template. Scholarship fields only — exam and college links are managed under{' '}
+              <strong>Admin → Mapping → Scholarship Exams & Colleges</strong>.
             </p>
             <div className="space-y-3">
               <div>

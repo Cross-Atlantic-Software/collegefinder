@@ -565,20 +565,20 @@ const validateUpdateAcademics = [
 ];
 
 /**
- * Validation rules for updating career goals
+ * Validation rules for updating career goals (exactly 3 distinct taxonomy IDs)
  */
 const validateUpdateCareerGoals = [
   body('interests')
-    .optional()
-    .isArray()
-    .withMessage('Interests must be an array'),
+    .notEmpty()
+    .withMessage('Interests are required')
+    .isArray({ min: 3, max: 3 })
+    .withMessage('You must select exactly 3 interests'),
   body('interests.*')
-    .optional()
     .custom((value) => {
       const n = parseInt(String(value), 10);
       return Number.isInteger(n) && n >= 1;
     })
-    .withMessage('Each interest must be a valid interest id')
+    .withMessage('Each interest must be a valid interest id'),
 ];
 
 /**

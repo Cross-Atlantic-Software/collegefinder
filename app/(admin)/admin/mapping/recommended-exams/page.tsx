@@ -1,26 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import {
   getAllRecommendedMappings,
   downloadRecommendedMappingTemplate,
+  downloadRecommendedMappingsExcel,
   bulkUploadRecommendedMappings,
   deleteRecommendedMapping,
   deleteAllRecommendedMappings,
   type StreamInterestRecommendedMapping,
 } from '@/api/admin/recommended-mappings';
+import MappingExcelDownloadButton from '@/components/admin/mapping/MappingExcelDownloadButton';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { FiDownload, FiTrash2, FiUpload } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+
+const MAPPING_LIST_PAGE_SIZE = 10;
 
 export default function RecommendedExamsMappingPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const { canDownloadExcel } = useAdminPermissions();
   const [mappings, setMappings] = useState<StreamInterestRecommendedMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [downloadingMappingExcel, setDownloadingMappingExcel] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{
@@ -30,6 +38,7 @@ export default function RecommendedExamsMappingPage() {
   } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [listPage, setListPage] = useState(1);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -69,6 +78,19 @@ export default function RecommendedExamsMappingPage() {
       console.error(e);
     } finally {
       setDownloadingTemplate(false);
+    }
+  };
+
+  const handleDownloadMappingExcel = async () => {
+    setDownloadingMappingExcel(true);
+    try {
+      await downloadRecommendedMappingsExcel();
+      showSuccess('Mapping Excel download started');
+    } catch (e) {
+      showError('Could not download mapping Excel');
+      console.error(e);
+    } finally {
+      setDownloadingMappingExcel(false);
     }
   };
 
@@ -149,6 +171,16 @@ export default function RecommendedExamsMappingPage() {
     }
   };
 
+  const mappingTotalPages = Math.max(1, Math.ceil(mappings.length / MAPPING_LIST_PAGE_SIZE));
+  useEffect(() => {
+    if (listPage > mappingTotalPages) setListPage(mappingTotalPages);
+  }, [mappings.length, mappingTotalPages, listPage]);
+
+  const paginatedMappings = useMemo(() => {
+    const start = (listPage - 1) * MAPPING_LIST_PAGE_SIZE;
+    return mappings.slice(start, start + MAPPING_LIST_PAGE_SIZE);
+  }, [mappings, listPage]);
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
       <AdminSidebar />
@@ -173,6 +205,13 @@ export default function RecommendedExamsMappingPage() {
                 <FiDownload className="h-4 w-4" />
                 {downloadingTemplate ? 'Preparing…' : 'Download Excel template'}
               </button>
+              {canDownloadExcel && (
+                <MappingExcelDownloadButton
+                  onClick={handleDownloadMappingExcel}
+                  loading={downloadingMappingExcel}
+                  disabled={downloadingTemplate}
+                />
+              )}
             </div>
 
             <form
@@ -245,48 +284,57 @@ export default function RecommendedExamsMappingPage() {
               ) : mappings.length === 0 ? (
                 <p className="p-4 text-sm text-slate-500">No mappings yet. Import an Excel file to add rows.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                      <tr>
-                        <th className="px-3 py-2">Stream</th>
-                        <th className="px-3 py-2">Interest</th>
-                        <th className="px-3 py-2">Programs</th>
-                        <th className="px-3 py-2">Exams</th>
-                        <th className="px-3 py-2 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mappings.map((m) => (
-                        <tr
-                          key={m.id}
-                          className="border-t border-slate-100 dark:border-slate-800/80"
-                        >
-                          <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{m.stream_name}</td>
-                          <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{m.interest_label}</td>
-                          <td className="max-w-xs px-3 py-2 text-slate-600 dark:text-slate-400">
-                            {m.program_names || '—'}
-                          </td>
-                          <td className="max-w-xs px-3 py-2 text-slate-600 dark:text-slate-400">
-                            {m.exam_names || '—'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRow(m)}
-                              disabled={deletingId === m.id || deletingAll}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50 dark:border-slate-600 dark:text-red-400 dark:hover:bg-red-950/30"
-                              title="Delete this row"
-                            >
-                              <FiTrash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </button>
-                          </td>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px] text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                        <tr>
+                          <th className="px-3 py-2">Stream</th>
+                          <th className="px-3 py-2">Interest</th>
+                          <th className="px-3 py-2">Programs</th>
+                          <th className="px-3 py-2">Exams</th>
+                          <th className="px-3 py-2 text-right">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {paginatedMappings.map((m) => (
+                          <tr
+                            key={m.id}
+                            className="border-t border-slate-100 dark:border-slate-800/80"
+                          >
+                            <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{m.stream_name}</td>
+                            <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{m.interest_label}</td>
+                            <td className="max-w-xs px-3 py-2 text-slate-600 dark:text-slate-400">
+                              {m.program_names || '—'}
+                            </td>
+                            <td className="max-w-xs px-3 py-2 text-slate-600 dark:text-slate-400">
+                              {m.exam_names || '—'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRow(m)}
+                                disabled={deletingId === m.id || deletingAll}
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50 dark:border-slate-600 dark:text-red-400 dark:hover:bg-red-950/30"
+                                title="Delete this row"
+                              >
+                                <FiTrash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <AdminListPagination
+                    total={mappings.length}
+                    page={listPage}
+                    pageSize={MAPPING_LIST_PAGE_SIZE}
+                    onPageChange={setListPage}
+                    className="rounded-b-xl"
+                  />
+                </>
               )}
             </div>
           </div>

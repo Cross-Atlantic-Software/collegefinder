@@ -13,9 +13,20 @@ type TopBarProps = {
   onToggleSidebar: () => void;
   onToggleCollapse: () => void;
   isSidebarCollapsed: boolean;
+  /** When user is on Exam Shortlist, sync search/filters with that section */
+  examShortlistToolbar?: {
+    searchValue: string;
+    onSearchChange: (value: string) => void;
+    onFiltersClick?: () => void;
+  };
 };
 
-export default function TopBar({ onToggleSidebar, onToggleCollapse, isSidebarCollapsed }: TopBarProps) {
+export default function TopBar({
+  onToggleSidebar,
+  onToggleCollapse,
+  isSidebarCollapsed,
+  examShortlistToolbar,
+}: TopBarProps) {
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -55,12 +66,36 @@ export default function TopBar({ onToggleSidebar, onToggleCollapse, isSidebarCol
         <div className="flex-1 flex items-center gap-3">
           <div className="hidden md:flex flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20">
             <BiSearch className="h-4 w-4 flex-shrink-0" />
-            <input
-              placeholder="Search exams, tutorials, colleges..."
-              className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-            />
+            {examShortlistToolbar ? (
+              <input
+                placeholder="Search exams (name, code, mode, type…)"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
+                value={examShortlistToolbar.searchValue}
+                onChange={(e) => examShortlistToolbar.onSearchChange(e.target.value)}
+              />
+            ) : (
+              <input
+                placeholder="Search opens on Exam Shortlist (sidebar)"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
+                disabled
+              />
+            )}
           </div>
-          <Button variant="secondary" size="sm" className="hidden md:flex gap-2"> <IoFunnel /> Filters</Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className={`hidden md:flex gap-2 ${examShortlistToolbar?.onFiltersClick ? "" : "opacity-60"}`}
+            type="button"
+            disabled={!examShortlistToolbar?.onFiltersClick}
+            onClick={() => examShortlistToolbar?.onFiltersClick?.()}
+            title={
+              examShortlistToolbar?.onFiltersClick
+                ? "Scroll to exam type filters"
+                : "Open Exam Shortlist to use filters"
+            }
+          >
+            <IoFunnel /> Filters
+          </Button>
         </div>
 
         {/* Right side */}

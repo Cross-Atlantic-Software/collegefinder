@@ -190,7 +190,9 @@ const runMigrations = async () => {
     'add_user_shortlisted_exams_to_user_academics.sql',
     'add_user_shortlisted_colleges_to_user_academics.sql',
     'add_institute_cityname.sql',
-    'add_scholarship_extra_fields.sql'
+    'add_scholarship_extra_fields.sql',
+    'add_user_shortlisted_institutes_scholarships.sql',
+    'institute_metrics_to_text.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
@@ -210,9 +212,11 @@ const runMigrations = async () => {
       .trim();
 
     try {
-      // If file contains dollar-quoted blocks (e.g. DO $$ ... END $$), run entire file as one script
-      // so that semicolons inside the block don't break the migration
-      if (cleanedSql.includes('$$')) {
+      // If file contains dollar-quoted blocks (e.g. DO $$ ... END $$ or DO $BODY$ ... END $BODY$),
+      // run entire file as one script so semicolons inside the block don't break the migration.
+      const hasDollarQuotedDo =
+        /\bDO\s+\$[^$\s]*\$/i.test(cleanedSql) || cleanedSql.includes('$$');
+      if (hasDollarQuotedDo) {
         await pool.query(cleanedSql);
       } else {
         const statements = cleanedSql
