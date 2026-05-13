@@ -14,6 +14,21 @@
 
 const API_BASE = 'http://localhost:5001/api';
 
+// ─── Hardcoded fallback exam list ────────────────────────────────
+// These are always detected even when the backend is offline.
+// The backend list (fetched below) supplements / overrides this.
+const FALLBACK_EXAMS = [
+  { exam_id: 'nata',          exam_name: 'NATA 2026',             portal_url_pattern: 'stureg.nata-app.org',           has_published_adapter: true,  status: 'published' },
+  { exam_id: 'srmjeee_2026',  exam_name: 'SRMJEEE 2026',          portal_url_pattern: 'applications.srmist.edu.in',    has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'jee_main',      exam_name: 'JEE Main 2026',         portal_url_pattern: 'jeemain.nta.nic.in',            has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'neet',          exam_name: 'NEET UG 2026',          portal_url_pattern: 'neet.nta.nic.in',               has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'cuet',          exam_name: 'CUET 2026',             portal_url_pattern: 'cuet.samarth.ac.in',            has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'mhtcet',        exam_name: 'MHT-CET 2026',          portal_url_pattern: 'mhtcet2025.mahacet.org',        has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'bitsat',        exam_name: 'BITSAT 2026',           portal_url_pattern: 'bitsadmission.com',             has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'viteee',        exam_name: 'VITEEE 2026',           portal_url_pattern: 'viteee.vit.ac.in',              has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'kiitee_2026',   exam_name: 'KIITEE 2026',           portal_url_pattern: 'kiitee.eduquity.com',           has_published_adapter: false, status: 'draft'     },
+];
+
 // ─── In-memory cache (never persisted to disk for privacy) ───
 
 let cachedProfile = null;
@@ -21,7 +36,8 @@ let cachedProfileTimestamp = 0;
 const PROFILE_CACHE_TTL = 10 * 60 * 1000; // 10 min
 
 let cachedAdapters = {};   // keyed by exam_id
-let registeredExams = [];  // [{exam_id, exam_name, portal_url_pattern, has_published_adapter, status, version}]
+// Start with fallback list; backend fetch merges/overrides below
+let registeredExams = [...FALLBACK_EXAMS];
 let registeredExamsFetchedAt = 0;
 const REGISTERED_TTL = 10 * 60 * 1000; // 10 min
 
@@ -35,21 +51,28 @@ async function ensureRegisteredExamsFresh(force = false) {
   if (!force && registeredExams.length > 0 && (now - registeredExamsFetchedAt) < REGISTERED_TTL) {
     return registeredExams;
   }
-  const token = await getToken();
-  if (!token) return registeredExams; // can't fetch without login; return whatever we cached
 
+  // This endpoint is public — no token needed for URL-pattern detection
   try {
-    const res = await fetch(`${API_BASE}/extension/adapters/registered`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) return registeredExams;
-    const data = await res.json();
-    if (data.success && Array.isArray(data.data)) {
-      registeredExams = data.data;
-      registeredExamsFetchedAt = now;
+    const headers = {};
+    const token = await getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/extension/adapters/registered`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        // Merge: backend data takes priority over fallback, keyed by exam_id
+        const merged = new Map(FALLBACK_EXAMS.map(e => [e.exam_id, e]));
+        for (const exam of data.data) {
+          if (exam && exam.exam_id) merged.set(exam.exam_id, exam);
+        }
+        registeredExams = Array.from(merged.values());
+        registeredExamsFetchedAt = now;
+      }
     }
   } catch (err) {
-    console.warn('[ExamFill] Failed to refresh registered exams:', err.message);
+    console.warn('[ExamFill] Failed to refresh registered exams (using fallback list):', err.message);
   }
   return registeredExams;
 }
@@ -396,7 +419,7 @@ async function publishAdapter({ exam_id, status }) {
   if (!token) return { success: false, error: 'Not authenticated' };
 
   try {
-    const res = await fetch(`${API_BASE}/admin/exam-adapters/${exam_id}/status`, {
+    const res = await fetch(`${API_BASE}/extension/adapters/${exam_id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

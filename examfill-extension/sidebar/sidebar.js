@@ -174,7 +174,7 @@
   // ─── State: No portal ───
 
   function renderSupportedExams() {
-    const exams = ['JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA'];
+    const exams = ['JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA', 'SRMJEEE'];
     const container = $('supportedExamsList');
     container.innerHTML = '';
     exams.forEach(name => {
@@ -551,7 +551,40 @@
     builderState.fillReports = {};
 
     renderBuilderSection(builderState.section);
-    showBuilderResult('success', `Mapped ${builderState.section.fields.length} fields. Click "Apply & Fill" to test or "Save Section" to persist edits.`);
+
+    // Auto-fill immediately after building — no extra click needed
+    const mappedFields = builderState.section.fields.filter(f => f.source);
+    if (mappedFields.length > 0) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Filling form…');
+      showBuilderResult('info', `AI mapped ${builderState.section.fields.length} fields. Auto-filling ${mappedFields.length} now…`);
+
+      const result = await msg('FILL_SECTION', {
+        section: builderState.section.section_id,
+        page_indicator: builderState.section.page_indicator || null,
+        fields: mappedFields,
+        userData: profile
+      });
+
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
+
+      if (result?.success) {
+        builderState.fillReports = {};
+        for (const r of result.report?.results || []) {
+          builderState.fillReports[r.field_id] =
+            r.status === 'filled' ? 'filled' :
+            r.status === 'check'  ? 'check'  : 'failed';
+        }
+        renderBuilderSection(builderState.section);
+        const s = result.report?.summary || {};
+        showBuilderResult('success',
+          `Done! ${s.filled || 0} filled · ${s.check || 0} check · ${(s.failed || 0) + (s.not_found || 0)} failed`
+        );
+      } else {
+        showBuilderResult('error', result?.error || 'Fill failed after build');
+      }
+    } else {
+      showBuilderResult('success', `Mapped ${builderState.section.fields.length} fields but none had a matching source. Review the mappings and click "Apply & Fill".`);
+    }
   }
 
   function renderBuilderSection(section) {
@@ -708,10 +741,11 @@
     hasPublishedAdapter = true;
   }
 
-  function showBuilderResult(kind, msg) {
+  function showBuilderResult(kind, message) {
+    $('builderResultArea').style.display = 'block';
     const el = $('builderResult');
     el.className = `alert alert-${kind === 'error' ? 'error' : kind === 'success' ? 'success' : 'info'}`;
-    el.textContent = msg;
+    el.textContent = message;
     el.style.display = 'flex';
   }
 

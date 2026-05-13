@@ -1,23 +1,18 @@
 /**
  * AdapterBuilderService
  *
- * Wraps the existing GeminiService to produce ExamFill adapter sections from
- * a scraped page. The flow is:
+ * Uses OpenAI (gpt-4o-mini) to produce ExamFill adapter sections from a
+ * scraped page. Falls back to Gemini if OPENAI_API_KEY is not set.
  *
  *   1. Caller sends { exam_name, page: { url, title, headings, fields[] } }
  *   2. We build a strict prompt that lists the profile schema (whitelist) and
- *      the scraped fields, asking Gemini to emit one adapter section as JSON.
+ *      the scraped fields, asking the model to emit one adapter section as JSON.
  *   3. We parse + validate the JSON, dropping any field whose `source` is
  *      not on the whitelist.
  *   4. Return the sanitized section spec, ready to persist into
  *      `exam_adapters.adapter_config.sections[]`.
- *
- * Why a separate service: keeps the Gemini prompt and validation co-located,
- * keeps GeminiService generic, and lets us swap the LLM later without
- * touching the controller.
  */
 
-const GeminiService = require('../geminiService/GeminiService');
 const { getPromptSchema, isValidSource } = require('./profileSchema');
 
 const ALLOWED_FIELD_TYPES = new Set([
@@ -30,35 +25,84 @@ const ALLOWED_FORMATS = new Set([
 
 class AdapterBuilderService {
   constructor() {
-    this.gemini = new GeminiService();
+    this.model = 'gpt-4o-mini';
   }
 
-  /**
-   * Build a single adapter section from a scraped page.
-   *
-   * @param {object} args
-   * @param {string} args.exam_name
-   * @param {object} args.page  { url, title, headings:[], fields:[{label,id,name,placeholder,type,options?,idx,required?}] }
-   * @returns {Promise<object>} sanitized section spec
-   */
+  _getOpenAIKey() {
+    return process.env.OPENAI_API_KEY || null;
+  }
+
   async generateSection({ exam_name, page }) {
     if (!page || !Array.isArray(page.fields) || page.fields.length === 0) {
       throw new Error('AdapterBuilderService.generateSection: page.fields[] is required and must be non-empty');
     }
 
     const prompt = buildAdapterPrompt({ exam_name, page });
-    const parsed = await this.gemini.generateJSON(prompt, { temperature: 0.15, maxOutputTokens: 8192 });
-    return sanitizeSection(parsed, page);
+    const key = this._getOpenAIKey();
+
+    if (key) {
+      const parsed = await this._callOpenAI(prompt, key);
+      return sanitizeSection(parsed, page);
+    }
+
+    // Fallback: try Gemini
+    try {
+      const GeminiService = require('../geminiService/GeminiService');
+      const gemini = new GeminiService();
+      const parsed = await gemini.generateJSON(prompt, { temperature: 0.15, maxOutputTokens: 8192 });
+      return sanitizeSection(parsed, page);
+    } catch (err) {
+      throw new Error(`No AI service available. Set OPENAI_API_KEY in .env. (${err.message})`);
+    }
   }
 
-  /**
-   * True if the GeminiService can serve a request. We check `genAI` directly
-   * (rather than relying on `gemini.isAvailable()`) because the latter also
-   * requires the model to be resolved, which only happens lazily after the
-   * first `ensureInitialized()` call.
-   */
+  async _callOpenAI(prompt, apiKey) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: 'system', content: 'You are an expert at mapping HTML form fields to a student profile schema. You ONLY output valid JSON, never prose or markdown.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 8192,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`OpenAI API error (${res.status}): ${errBody.slice(0, 300)}`);
+    }
+
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('OpenAI returned empty response');
+
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      // Try extracting JSON from markdown fences
+      const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (match) return JSON.parse(match[1]);
+      throw new Error(`Failed to parse OpenAI JSON: ${e.message}`);
+    }
+  }
+
   isAvailable() {
-    return this.gemini.genAI !== null;
+    if (this._getOpenAIKey()) return true;
+    try {
+      const GeminiService = require('../geminiService/GeminiService');
+      const g = new GeminiService();
+      return g.genAI !== null;
+    } catch (_) {
+      return false;
+    }
   }
 }
 
