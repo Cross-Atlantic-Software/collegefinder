@@ -8,6 +8,7 @@ import { FiCheck, FiCheckCircle } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 import { useAuth } from "@/contexts/AuthContext";
+import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 import {
     getBasicInfo,
     updateBasicInfo,
@@ -27,10 +28,6 @@ import {
     type StreamPublic,
 } from "@/api";
 import { getAllCities } from "@/lib/data/indianStatesDistricts";
-import {
-    LANDING_FROM_HOME_PARAM,
-    LANDING_FROM_HOME_VALUE,
-} from "@/lib/landingNav";
 
 const OTP_LEN = 6;
 const QUERY_TYPES = [
@@ -50,8 +47,6 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
     const sectionRef = useRef<HTMLElement>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
-    const allowLandingFromWelcome =
-        searchParams.get(LANDING_FROM_HOME_PARAM) === LANDING_FROM_HOME_VALUE;
 
     const { isAuthenticated, user, login, refreshUser } = useAuth();
     const onboardingDone = Boolean(user?.onboarding_completed);
@@ -205,12 +200,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         }
     }, [streamId, fetchInterestOptions]);
 
-    useEffect(() => {
-        if (!isAuthenticated || !onboardingDone || allowLandingFromWelcome) {
-            return;
-        }
-        router.replace("/");
-    }, [allowLandingFromWelcome, isAuthenticated, onboardingDone, router]);
+    // No longer redirect away — authenticated users should stay on landing if they navigated here.
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -428,7 +418,8 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
             }
 
             await refreshUser();
-            router.push("/");
+            try { sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1"); } catch { /* ignore */ }
+            window.location.href = "/";
             return;
         } catch (err) {
             setFormMessage({
@@ -494,22 +485,7 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
         }));
     };
 
-    if (isAuthenticated && onboardingDone && !allowLandingFromWelcome) {
-        return (
-            <section
-                id="contact"
-                ref={sectionRef}
-                className="landing-section scroll-mt-20 bg-white md:scroll-mt-24"
-                aria-busy="true"
-            >
-                <div className="appContainer py-16">
-                    <p className="sr-only">Continuing…</p>
-                </div>
-            </section>
-        );
-    }
-
-    if (isAuthenticated && onboardingDone && allowLandingFromWelcome) {
+    if (isAuthenticated && onboardingDone) {
         return (
             <section
                 id="contact"

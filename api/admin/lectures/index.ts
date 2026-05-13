@@ -202,6 +202,7 @@ export interface LectureHookSummaryQueueStatus {
   totalVideoLectures: number;
   completedVideoHookSummaries: number;
   pendingVideoHookSummaries: number;
+  workerPaused?: boolean;
 }
 
 export async function getLectureHookSummaryQueueStatus(): Promise<ApiResponse<LectureHookSummaryQueueStatus>> {
@@ -217,6 +218,18 @@ export async function enqueuePendingLectureHookSummaries(): Promise<ApiResponse<
   failed: number;
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/generate-pending`, {
+    method: 'POST',
+  });
+}
+
+export async function pauseHookSummaryWorker(): Promise<ApiResponse<{ paused: boolean }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/pause`, {
+    method: 'POST',
+  });
+}
+
+export async function resumeHookSummaryWorker(): Promise<ApiResponse<{ paused: boolean }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.LECTURES}/hook-summary-queue/resume`, {
     method: 'POST',
   });
 }

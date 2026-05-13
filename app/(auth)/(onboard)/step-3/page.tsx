@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-// Remove WelcomeLayout import
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
 
 export default function StepThree() {
   const router = useRouter();
@@ -79,7 +79,10 @@ export default function StepThree() {
       </ul>
 
       <button
-        onClick={() => router.replace("/")}
+        onClick={() => {
+          try { sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1"); } catch { /* ignore */ }
+          window.location.href = "/";
+        }}
         className="landing-cta w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] mt-auto"
       >
         Go to Dashboard

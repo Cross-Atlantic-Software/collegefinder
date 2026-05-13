@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { initiateFacebookAuth, initiateGoogleAuth, loginWithPassword, startSignup } from "@/api";
+import {
+  checkEmailRegistrationStatus,
+  initiateFacebookAuth,
+  initiateGoogleAuth,
+  loginWithPassword,
+  sendOTP,
+  startSignup,
+  verifyOTP,
+} from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PasswordStrengthIndicator } from "@/components/admin/PasswordStrengthIndicator";
 import { isPasswordStrong } from "@/lib/passwordStrength";
@@ -11,6 +19,8 @@ import { isPasswordStrong } from "@/lib/passwordStrength";
 type LoginStepOneFormProps = {
   mode?: "login" | "signup";
 };
+
+const OTP_LENGTH = 6;
 
 const authFormMemory: Record<"login" | "signup", { email: string; password: string; agree: boolean }> = {
   login: { email: "", password: "", agree: false },
@@ -30,7 +40,15 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
-  // Persist ?ref= referral code so it survives the OTP flow and OAuth redirects
+  // OTP login state
+  const [otpMode, setOtpMode] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   useEffect(() => {
     const ref = searchParams.get("ref");
     if (ref) {
@@ -38,7 +56,6 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
     }
   }, [searchParams]);
 
-  // Prefill email from /signup?email= (e.g. landing footer)
   useEffect(() => {
     if (mode !== "signup") return;
     const raw = searchParams.get("email");
@@ -53,14 +70,13 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
     if (decoded) setEmail(decoded);
   }, [searchParams, mode]);
 
-  // Restore typed values when coming back from legal links (or from memory fallback).
   useEffect(() => {
     let shouldRestore = false;
     try {
       shouldRestore = sessionStorage.getItem(LEGAL_RETURN_FLAG) === "1";
       if (shouldRestore) sessionStorage.removeItem(LEGAL_RETURN_FLAG);
     } catch {
-      // ignore flag read errors
+      // ignore
     }
 
     const mem = authFormMemory[mode];
@@ -83,31 +99,26 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
       if (typeof parsed.password === "string") setPassword(parsed.password);
       if (typeof parsed.agree === "boolean") setAgree(parsed.agree);
     } catch {
-      // ignore parse/storage errors
+      // ignore
     }
   }, [FORM_STORAGE_KEY, LEGAL_RETURN_FLAG, mode]);
 
-  // Keep current values in session storage for back-navigation resilience.
   useEffect(() => {
     authFormMemory[mode] = { email, password, agree };
     try {
       sessionStorage.setItem(
         FORM_STORAGE_KEY,
-        JSON.stringify({
-          email,
-          password,
-          agree,
-        }),
+        JSON.stringify({ email, password, agree }),
       );
     } catch {
-      // ignore storage errors
+      // ignore
     }
   }, [FORM_STORAGE_KEY, email, password, agree, mode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (mode === "signup" && !agree) return;
-    
+
     setIsLoading(true);
     setError(null);
 
@@ -121,28 +132,29 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
         }
         const response = await startSignup(email, password);
         if (response.success) {
-          try {
-            sessionStorage.removeItem(FORM_STORAGE_KEY);
-          } catch {
-            // ignore storage errors
-          }
+          try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch { /* ignore */ }
           const otpRoute = `/otpverification?email=${encodeURIComponent(email)}`;
           router.prefetch(otpRoute);
           setIsLeaving(true);
-          setTimeout(() => {
-            router.push(otpRoute);
-          }, 260);
+          setTimeout(() => { router.push(otpRoute); }, 260);
         } else {
           setError(response.message || "Could not start signup. Please try again.");
         }
       } else {
+        // Login mode: check if user has a password set
+        const checkRes = await checkEmailRegistrationStatus(email);
+        if (checkRes.success && checkRes.data?.exists && checkRes.data.hasPassword === false) {
+          setOtpEmail(email);
+          setOtpMode(true);
+          setIsLoading(false);
+          await handleSendOtp(email);
+          return;
+        }
+
+        // Normal password login
         const response = await loginWithPassword(email, password);
         if (response.success && response.data?.token && response.data.user) {
-          try {
-            sessionStorage.removeItem(FORM_STORAGE_KEY);
-          } catch {
-            // ignore storage errors
-          }
+          try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch { /* ignore */ }
           const normalizedUser = {
             ...response.data.user,
             name: response.data.user.name ?? undefined
@@ -151,19 +163,108 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
           const target = normalizedUser.onboarding_completed ? "/" : "/step-1";
           router.prefetch(target);
           setIsLeaving(true);
-          setTimeout(() => {
-            router.replace(target);
-          }, 220);
+          setTimeout(() => { router.replace(target); }, 220);
         } else {
           setError(response.message || "Login failed. Please check your credentials.");
         }
       }
     } catch (err) {
       setError(mode === "signup" ? "Unable to sign up right now. Please try again." : "An unexpected error occurred. Please try again.");
-      console.error("Error sending OTP:", err);
+      console.error("Auth error:", err);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleSendOtp(overrideEmail?: string) {
+    const target = overrideEmail || otpEmail || email;
+    if (!target.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setError(null);
+    setOtpSending(true);
+    try {
+      const res = await sendOTP(target.trim().toLowerCase());
+      if (res.success) {
+        setOtpSent(true);
+        setOtp(Array(OTP_LENGTH).fill(""));
+        if (overrideEmail) setOtpEmail(overrideEmail);
+      } else {
+        setError(res.message || "Could not send verification code.");
+      }
+    } catch {
+      setError("Could not send verification code. Please try again.");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    const code = otp.join("");
+    if (code.length !== OTP_LENGTH) {
+      setError("Enter the full 6-digit code.");
+      return;
+    }
+    setOtpVerifying(true);
+    setError(null);
+    try {
+      let pendingRef: string | undefined;
+      try { pendingRef = sessionStorage.getItem("cf_pending_ref") || undefined; } catch { pendingRef = undefined; }
+
+      const target = (otpEmail || email).trim().toLowerCase();
+      const res = await verifyOTP(target, code, pendingRef);
+      if (res.success && res.data?.token && res.data.user) {
+        try { sessionStorage.removeItem("cf_pending_ref"); } catch { /* ignore */ }
+        try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch { /* ignore */ }
+        const normalizedUser = {
+          ...res.data.user,
+          name: res.data.user.name ?? undefined
+        };
+        login(res.data.token, normalizedUser);
+        const target = normalizedUser.onboarding_completed ? "/" : "/step-1";
+        router.prefetch(target);
+        setIsLeaving(true);
+        setTimeout(() => { router.replace(target); }, 220);
+      } else {
+        setError(res.message || "Invalid code. Please try again.");
+        setOtp(Array(OTP_LENGTH).fill(""));
+        otpRefs.current[0]?.focus();
+      }
+    } catch {
+      setError("Verification failed. Please try again.");
+    } finally {
+      setOtpVerifying(false);
+    }
+  }
+
+  function handleOtpChange(index: number, value: string) {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...otp];
+    next[index] = value;
+    setOtp(next);
+    if (value && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index: number, ev: React.KeyboardEvent<HTMLInputElement>) {
+    if (ev.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleOtpPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+    if (!pasted) return;
+    e.preventDefault();
+    const next = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < OTP_LENGTH; i++) {
+      next[i] = pasted[i] || "";
+    }
+    setOtp(next);
+    const focusIdx = Math.min(pasted.length, OTP_LENGTH) - 1;
+    if (focusIdx >= 0) otpRefs.current[focusIdx]?.focus();
   }
 
   function handleGoogleButtonClick() {
@@ -175,11 +276,149 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
   }
 
   function markLegalNavigation() {
-    try {
-      sessionStorage.setItem(LEGAL_RETURN_FLAG, "1");
-    } catch {
-      // ignore storage errors
-    }
+    try { sessionStorage.setItem(LEGAL_RETURN_FLAG, "1"); } catch { /* ignore */ }
+  }
+
+  function resetOtpMode() {
+    setOtpMode(false);
+    setOtpSent(false);
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setOtpEmail("");
+    setOtpSending(false);
+    setError(null);
+  }
+
+  function handleManualOtpLogin() {
+    setOtpEmail(email || "");
+    setOtpMode(true);
+    setOtpSent(false);
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setError(null);
+  }
+
+  if (mode === "login" && otpMode) {
+    return (
+      <section
+        className={`mx-auto w-full max-w-[460px] transform-gpu transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isLeaving ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+        }`}
+      >
+        <div className="relative">
+          <div className="hidden sm:block absolute -bottom-3 -left-3 z-0 h-full w-full rounded-[20px] bg-sky-200" />
+          <div className="hidden sm:block absolute -top-3 -right-3 z-0 h-full w-full rounded-[20px] bg-[#f0c544]/60" />
+          <div className="relative z-10 space-y-5 rounded-t-[32px] sm:rounded-[20px] border-t-2 sm:border-2 border-black bg-white p-6 pb-8 sm:p-7 text-start shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-sm">
+            <div className="mx-auto mb-1 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
+
+            <div className="space-y-1">
+              <p className="text-lg font-bold text-slate-900">Login via OTP</p>
+              <p className="text-sm text-slate-500">
+                {otpSent
+                  ? <>We&apos;ve sent a 6-digit code to <span className="font-semibold text-slate-700">{otpEmail}</span>.</>
+                  : "Enter your email and we'll send you a one-time code to log in."}
+              </p>
+            </div>
+
+            {!otpSent && (
+              <div className="space-y-4">
+                <div className="space-y-1.5 text-sm">
+                  <label htmlFor="otp-email" className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                    Email
+                  </label>
+                  <input
+                    id="otp-email"
+                    type="email"
+                    required
+                    value={otpEmail}
+                    onChange={(e) => setOtpEmail(e.target.value)}
+                    className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition duration-300 placeholder:text-slate-400 focus:border-slate-900"
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                {error && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleSendOtp()}
+                  disabled={otpSending || !otpEmail.trim()}
+                  className={`landing-cta w-full rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    otpSending ? "animate-pulse" : ""
+                  }`}
+                >
+                  {otpSending ? "Sending..." : "Send verification code"}
+                </button>
+              </div>
+            )}
+
+            {otpSent && (
+              <div className="space-y-4">
+                <div className="flex gap-1.5 justify-center">
+                  {otp.map((d, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={d}
+                      onChange={(ev) => handleOtpChange(i, ev.target.value.replace(/\D/g, ""))}
+                      onKeyDown={(ev) => handleOtpKeyDown(i, ev)}
+                      onPaste={i === 0 ? handleOtpPaste : undefined}
+                      className="h-12 w-10 rounded-xl border border-slate-300 bg-white text-center text-lg font-semibold text-slate-900 outline-none transition focus:border-slate-900"
+                    />
+                  ))}
+                </div>
+
+                {error && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={otpVerifying || otp.join("").length !== OTP_LENGTH}
+                  className={`landing-cta w-full rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    otpVerifying ? "animate-pulse" : ""
+                  }`}
+                >
+                  {otpVerifying ? "Verifying..." : "Login"}
+                </button>
+
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSendOtp()}
+                    disabled={otpSending}
+                    className="font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                  >
+                    Resend code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetOtpMode}
+                    className="font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                  >
+                    Use password instead
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className="pt-1 text-center text-xs text-slate-500">
+              New here?{" "}
+              <Link href="/signup" className="font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2">
+                Sign up
+              </Link>
+            </p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -366,6 +605,16 @@ export function LoginStepOneForm({ mode = "login" }: LoginStepOneFormProps) {
           </span>
         </button>
         </div>
+
+        {mode === "login" && (
+          <button
+            type="button"
+            onClick={handleManualOtpLogin}
+            className="w-full text-center text-xs font-semibold text-slate-600 transition hover:text-slate-900 underline underline-offset-2"
+          >
+            Login via OTP (Email)
+          </button>
+        )}
 
         {mode === "login" ? (
           <p className="pt-1 text-center text-xs text-slate-500">

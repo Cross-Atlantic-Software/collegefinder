@@ -26,6 +26,11 @@ const {
   enqueueLectureHookSummaryIfPending,
   getLectureHookSummaryQueue,
 } = require('../../jobs/queues/lectureHookSummaryQueue');
+const {
+  pauseLectureHookSummaryWorker,
+  resumeLectureHookSummaryWorker,
+  isLectureHookSummaryWorkerPaused,
+} = require('../../jobs/workers/lectureHookSummaryWorker');
 const UploadJob = require('../../models/UploadJob');
 const { enqueueLectureBulkUploadJob } = require('../../jobs/queues/lectureBulkUploadQueue');
 
@@ -218,6 +223,7 @@ class LectureController {
           totalVideoLectures: summary.total_video_lectures || 0,
           completedVideoHookSummaries: summary.completed_video_hook_summaries || 0,
           pendingVideoHookSummaries: summary.pending_video_hook_summaries || 0,
+          workerPaused: isLectureHookSummaryWorkerPaused(),
         },
       });
     } catch (error) {
@@ -226,6 +232,40 @@ class LectureController {
         success: false,
         message: 'Failed to fetch lecture hook summary queue status',
       });
+    }
+  }
+
+  /**
+   * Pause the lecture hook summary worker.
+   * POST /api/admin/lectures/hook-summary-queue/pause
+   */
+  static async pauseHookSummaryWorker(req, res) {
+    try {
+      const result = await pauseLectureHookSummaryWorker();
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message || 'Worker not available' });
+      }
+      res.json({ success: true, data: { paused: true }, message: 'Worker paused' });
+    } catch (error) {
+      console.error('Error pausing hook summary worker:', error);
+      res.status(500).json({ success: false, message: 'Failed to pause worker' });
+    }
+  }
+
+  /**
+   * Resume the lecture hook summary worker.
+   * POST /api/admin/lectures/hook-summary-queue/resume
+   */
+  static async resumeHookSummaryWorker(req, res) {
+    try {
+      const result = await resumeLectureHookSummaryWorker();
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message || 'Worker not available' });
+      }
+      res.json({ success: true, data: { paused: false }, message: 'Worker resumed' });
+    } catch (error) {
+      console.error('Error resuming hook summary worker:', error);
+      res.status(500).json({ success: false, message: 'Failed to resume worker' });
     }
   }
 

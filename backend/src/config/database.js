@@ -188,7 +188,9 @@ const runMigrations = async () => {
     'add_admin_resolution_to_user_queries.sql',
     'add_show_on_site_to_streams.sql',
     'add_user_shortlisted_exams_to_user_academics.sql',
-    'add_user_shortlisted_colleges_to_user_academics.sql'
+    'add_user_shortlisted_colleges_to_user_academics.sql',
+    'add_institute_cityname.sql',
+    'add_scholarship_extra_fields.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

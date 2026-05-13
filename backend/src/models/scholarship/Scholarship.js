@@ -38,14 +38,28 @@ class Scholarship {
       application_start_date,
       application_end_date,
       mode,
-      official_website
+      official_website,
+      official_notification_link,
+      application_link,
+      active_status,
+      academic_year,
+      eligible_degree,
+      number_of_awards,
+      renewal_available,
+      renewal_conditions,
+      scope,
+      value_category,
+      education_level
     } = data;
     const result = await db.query(
       `INSERT INTO scholarships (
         scholarship_name, conducting_authority, scholarship_type, description,
         stream_id, income_limit, minimum_marks_required, scholarship_amount,
-        selection_process, application_start_date, application_end_date, mode, official_website
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+        selection_process, application_start_date, application_end_date, mode, official_website,
+        official_notification_link, application_link, active_status, academic_year,
+        eligible_degree, number_of_awards, renewal_available, renewal_conditions,
+        scope, value_category, education_level
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING *`,
       [
         scholarship_name || null,
         conducting_authority || null,
@@ -59,7 +73,18 @@ class Scholarship {
         application_start_date || null,
         application_end_date || null,
         mode || null,
-        official_website || null
+        official_website || null,
+        official_notification_link || null,
+        application_link || null,
+        active_status || 'active',
+        academic_year || null,
+        eligible_degree || null,
+        number_of_awards || null,
+        renewal_available != null ? renewal_available : false,
+        renewal_conditions || null,
+        scope || null,
+        value_category || null,
+        education_level || null
       ]
     );
     return result.rows[0];
@@ -69,7 +94,10 @@ class Scholarship {
     const fields = [
       'scholarship_name', 'conducting_authority', 'scholarship_type', 'description',
       'stream_id', 'income_limit', 'minimum_marks_required', 'scholarship_amount',
-      'selection_process', 'application_start_date', 'application_end_date', 'mode', 'official_website'
+      'selection_process', 'application_start_date', 'application_end_date', 'mode', 'official_website',
+      'official_notification_link', 'application_link', 'active_status', 'academic_year',
+      'eligible_degree', 'number_of_awards', 'renewal_available', 'renewal_conditions',
+      'scope', 'value_category', 'education_level'
     ];
     const updates = [];
     const values = [];

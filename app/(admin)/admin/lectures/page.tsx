@@ -25,6 +25,8 @@ import {
   fetchYoutubeLectureMetadata,
   getLectureHookSummaryQueueStatus,
   enqueuePendingLectureHookSummaries,
+  pauseHookSummaryWorker,
+  resumeHookSummaryWorker,
   type LectureHookSummaryQueueStatus,
   type LecturesBulkUploadJobStatus,
   type Subject,
@@ -104,6 +106,7 @@ export default function LecturesPage() {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [hookSummaryProgress, setHookSummaryProgress] = useState<LectureHookSummaryQueueStatus | null>(null);
   const [generatingHookSummaries, setGeneratingHookSummaries] = useState(false);
+  const [togglingWorkerPause, setTogglingWorkerPause] = useState(false);
 
   /** Avoid refetching YouTube metadata when opening edit with unchanged iframe */
   const lastFetchedIframeRef = useRef('');
@@ -215,12 +218,28 @@ export default function LecturesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const hookSummaryPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchHookSummaryProgress();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    if (hookSummaryProgress?.workerPaused) {
+      if (hookSummaryPollRef.current) {
+        clearInterval(hookSummaryPollRef.current);
+        hookSummaryPollRef.current = null;
+      }
+    } else {
+      if (!hookSummaryPollRef.current) {
+        hookSummaryPollRef.current = setInterval(() => {
+          fetchHookSummaryProgress();
+        }, 10000);
+      }
+    }
+    return () => {
+      if (hookSummaryPollRef.current) {
+        clearInterval(hookSummaryPollRef.current);
+        hookSummaryPollRef.current = null;
+      }
+    };
+  }, [hookSummaryProgress?.workerPaused]);
 
   const fetchTaxonomyOptions = async () => {
     try {
@@ -468,6 +487,24 @@ export default function LecturesPage() {
       showError('Failed to queue hook summary jobs');
     } finally {
       setGeneratingHookSummaries(false);
+    }
+  };
+
+  const handleToggleWorkerPause = async () => {
+    const isPaused = hookSummaryProgress?.workerPaused;
+    try {
+      setTogglingWorkerPause(true);
+      const res = isPaused ? await resumeHookSummaryWorker() : await pauseHookSummaryWorker();
+      if (res.success) {
+        showSuccess(isPaused ? 'Worker resumed' : 'Worker paused');
+        await fetchHookSummaryProgress();
+      } else {
+        showError(res.message || 'Failed to toggle worker');
+      }
+    } catch {
+      showError('Failed to toggle worker');
+    } finally {
+      setTogglingWorkerPause(false);
     }
   };
 
@@ -934,17 +971,42 @@ export default function LecturesPage() {
                 {hookSummaryProgress.queueAvailable && hookSummaryProgress.queueCounts
                   ? ` | Queue waiting: ${hookSummaryProgress.queueCounts.waiting || 0}, active: ${hookSummaryProgress.queueCounts.active || 0}`
                   : ' | Queue unavailable'}
+                {hookSummaryProgress.workerPaused && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                    Paused
+                  </span>
+                )}
               </span>
-              {hookSummaryProgress.pendingVideoHookSummaries > 0 && (
-                <button
-                  type="button"
-                  onClick={handleEnqueuePendingHookSummaries}
-                  disabled={generatingHookSummaries}
-                  className="ml-auto inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  {generatingHookSummaries ? 'Queueing…' : 'Generate summaries'}
-                </button>
-              )}
+              <div className="ml-auto flex items-center gap-1.5">
+                {hookSummaryProgress.queueAvailable && (
+                  <button
+                    type="button"
+                    onClick={handleToggleWorkerPause}
+                    disabled={togglingWorkerPause}
+                    className={`inline-flex items-center rounded border px-2 py-1 text-[11px] font-medium disabled:opacity-50 ${
+                      hookSummaryProgress.workerPaused
+                        ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                        : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    }`}
+                  >
+                    {togglingWorkerPause
+                      ? '…'
+                      : hookSummaryProgress.workerPaused
+                        ? '▶ Resume'
+                        : '⏸ Pause'}
+                  </button>
+                )}
+                {hookSummaryProgress.pendingVideoHookSummaries > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleEnqueuePendingHookSummaries}
+                    disabled={generatingHookSummaries}
+                    className="inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {generatingHookSummaries ? 'Queueing…' : 'Generate summaries'}
+                  </button>
+                )}
+              </div>
             </div>
           ) : null}
 

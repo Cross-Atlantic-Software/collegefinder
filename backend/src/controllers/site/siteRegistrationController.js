@@ -32,7 +32,11 @@ class SiteRegistrationController {
 
       return res.json({
         success: true,
-        data: { exists: true, onboardingCompleted: Boolean(ob) },
+        data: {
+          exists: true,
+          onboardingCompleted: Boolean(ob),
+          hasPassword: Boolean(user.password_hash),
+        },
       });
     } catch (error) {
       console.error('site check-email:', error);
