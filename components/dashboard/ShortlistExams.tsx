@@ -49,7 +49,7 @@ function toRow(exam: Exam, from: string): ExamRow {
       : "—";
   const rankRaw = exam.exam_popularity_rank;
   const popularityRank =
-    rankRaw != null && rankRaw !== "" && !Number.isNaN(Number(rankRaw))
+    rankRaw != null && !Number.isNaN(Number(rankRaw))
       ? String(Number(rankRaw))
       : "—";
   return {
