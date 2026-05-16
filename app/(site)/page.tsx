@@ -36,7 +36,7 @@ export default function Home() {
       if (sessionStorage.getItem(SIGNUP_WELCOME_SESSION_KEY) === "1") {
         sessionStorage.removeItem(SIGNUP_WELCOME_SESSION_KEY);
         welcomeFlagConsumed.current = true;
-        setSignupWelcomeOpen(true);
+        queueMicrotask(() => setSignupWelcomeOpen(true));
       }
     } catch {
       /* ignore */
@@ -47,29 +47,33 @@ export default function Home() {
     if (isLoading) return;
 
     let cancelled = false;
-    (async () => {
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
       setLandingError(null);
-      try {
-        const res = await getLandingPageContent();
-        if (cancelled) return;
-        if (res.success && res.data?.content) {
-          setLanding(res.data.content);
-        } else {
-          setLandingError(res.message || "Could not load page content.");
+      const run = async () => {
+        try {
+          const res = await getLandingPageContent();
+          if (cancelled) return;
+          if (res.success && res.data?.content) {
+            setLanding(res.data.content);
+          } else {
+            setLandingError(res.message || "Could not load page content.");
+          }
+        } catch {
+          if (!cancelled) setLandingError("Could not load page content.");
         }
-      } catch {
-        if (!cancelled) setLandingError("Could not load page content.");
-      }
-      try {
-        const tRes = await getPublicTestimonials();
-        if (cancelled) return;
-        if (tRes.success && tRes.data?.testimonials) {
-          setTestimonials(tRes.data.testimonials);
+        try {
+          const tRes = await getPublicTestimonials();
+          if (cancelled) return;
+          if (tRes.success && tRes.data?.testimonials) {
+            setTestimonials(tRes.data.testimonials);
+          }
+        } catch {
+          /* testimonials optional; landing still works */
         }
-      } catch {
-        /* testimonials optional; landing still works */
-      }
-    })();
+      };
+      void run();
+    });
 
     return () => {
       cancelled = true;

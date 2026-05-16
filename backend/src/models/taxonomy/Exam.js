@@ -18,6 +18,11 @@ class Exam {
     return result.rows;
   }
 
+  static async countAll() {
+    const result = await db.query('SELECT COUNT(*)::int AS n FROM exams_taxonomies');
+    return result.rows[0]?.n ?? 0;
+  }
+
   /**
    * Exams whose eligibility stream_ids contains the given stream ID.
    */
@@ -31,6 +36,32 @@ class Exam {
        WHERE $1 = ANY(COALESCE(ec.stream_ids, '{}'))
        ORDER BY e.exam_popularity_rank ASC NULLS LAST, e.name ASC`,
       [n]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Exams eligible for the student's stream OR the taxonomy "Default" stream (stream_ids on eligibility row).
+   * @param {number|string} userStreamId Primary stream from profile
+   * @param {number|null} defaultStreamId Optional "Default" stream id from streams table
+   */
+  static async findEligibleForUserStreamOrDefault(userStreamId, defaultStreamId) {
+    const n = parseInt(userStreamId, 10);
+    if (!Number.isInteger(n) || n < 1) return [];
+    const d = defaultStreamId != null ? parseInt(defaultStreamId, 10) : NaN;
+    if (!Number.isInteger(d) || d < 1) {
+      return Exam.findAllByStreamId(n);
+    }
+    const result = await db.query(
+      `SELECT DISTINCT e.*
+       FROM exams_taxonomies e
+       INNER JOIN exam_eligibility_criteria ec ON ec.exam_id = e.id
+       WHERE (
+         $1::int = ANY (COALESCE(ec.stream_ids, '{}'))
+         OR $2::int = ANY (COALESCE(ec.stream_ids, '{}'))
+       )
+       ORDER BY e.exam_popularity_rank ASC NULLS LAST, e.name ASC`,
+      [n, d]
     );
     return result.rows;
   }

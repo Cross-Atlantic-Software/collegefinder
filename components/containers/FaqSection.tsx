@@ -15,8 +15,8 @@ export default function FaqSection({ faq }: { faq: LandingPageContent["faq"] }) 
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setIsVisible(true);
                     observer.disconnect();
+                    queueMicrotask(() => setIsVisible(true));
                 }
             },
             { threshold: 0.25 }

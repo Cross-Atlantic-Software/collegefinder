@@ -36,8 +36,8 @@ export default function ScrollRevealSection({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setIsVisible(true);
             observer.unobserve(entry.target);
+            queueMicrotask(() => setIsVisible(true));
           }
         });
       },

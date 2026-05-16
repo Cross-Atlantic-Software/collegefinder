@@ -145,7 +145,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
             const viewportGap = window.innerWidth >= 1024 ? 18 : 12;
             const nextStickyHeaderTop = siteHeaderHeight + viewportGap;
 
-            setStickyHeaderTop(nextStickyHeaderTop);
+            queueMicrotask(() => setStickyHeaderTop(nextStickyHeaderTop));
         };
 
         updateStickyMetrics();
@@ -183,8 +183,8 @@ export default function FeatureStackSection({ features }: { features: LandingPag
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setHeadingVisible(true);
                     observer.disconnect();
+                    queueMicrotask(() => setHeadingVisible(true));
                 }
             },
             { threshold: 0.1 }

@@ -12,10 +12,10 @@ const ExamCutoff = require('../../models/exam/ExamCutoff');
 const ExamCareerGoal = require('../../models/exam/ExamCareerGoal');
 const ExamProgram = require('../../models/exam/ExamProgram');
 const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
-const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
 const {
   sortExamsByPopularityRank,
-  computeRecommendedExamIdsTop20,
+  computeDashboardRecommendedExamOrder,
+  TOP_N,
 } = require('../../services/examDashboardRecommendation');
 const Stream = require('../../models/taxonomy/Stream');
 const Subject = require('../../models/taxonomy/Subject');
@@ -23,6 +23,7 @@ const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const { matchesExamSearchTokens } = require('../../utils/examSearchTokens');
 
 /** Allowed `exam_pattern.mode` values (must match DB CHECK after migration `exam_pattern_mode_add_online_cbt.sql`). */
 const EXAM_PATTERN_VALID_MODES = ['Offline', 'Online', 'Hybrid', 'Online (CBT)'];
@@ -46,6 +47,172 @@ function durationHoursStoredForExportCell(stored) {
   if (Number.isInteger(n)) return String(n);
   const rounded = Math.round(n * 10000) / 10000;
   return String(rounded);
+}
+
+/** Display-only: matches `formatExamPatternDurationHours` (lib/formatDuration.ts) for search haystack. */
+function formatExamPatternDurationHoursSearch(value) {
+  if (value == null) return '';
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (Number.isInteger(n)) return `${n} hrs`;
+  const rounded = Math.round(n * 100) / 100;
+  return `${rounded} hrs`;
+}
+
+async function loadDashboardExamShortlistContext(userId) {
+  const [academics, careerGoalsRow] = await Promise.all([
+    UserAcademics.findByUserId(userId),
+    UserCareerGoals.findByUserId(userId),
+  ]);
+
+  const streamId = academics?.stream_id ?? null;
+  if (streamId == null || streamId === '') {
+    return {
+      streamId: null,
+      streamExams: [],
+      recommendedExamIds: [],
+      shortlistedExamIds: [],
+      message: 'Select your stream in profile to view exams.',
+    };
+  }
+
+  const streamNum = Number(streamId);
+  const defaultRow = await Stream.findByName('Default');
+  const defaultStreamId = defaultRow?.id != null ? Number(defaultRow.id) : null;
+
+  const streamExams = await Exam.findEligibleForUserStreamOrDefault(streamNum, defaultStreamId);
+
+  const careerGoalIds = careerGoalsRow?.interests ?? [];
+  const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
+    ? careerGoalIds
+        .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+        .filter((id) => Number.isInteger(id))
+    : [];
+
+  const examIdsRaw = streamExams.map((e) => e.id).filter((id) => id != null);
+  let interestStreamById = new Map();
+  /** @type {Map<number, Set<number>>} */
+  let examTagsByExamId = new Map();
+  /** @type {Map<number, number[]>} */
+  let eligibilityStreamsByExamId = new Map();
+
+  if (examIdsRaw.length > 0) {
+    const [interestStreams, cgRows, eligRows] = await Promise.all([
+      normalizedCareerGoalIds.length > 0
+        ? CareerGoal.findStreamIdsForInterestIds(normalizedCareerGoalIds)
+        : Promise.resolve(new Map()),
+      ExamCareerGoal.findCareerGoalsForExamIds(examIdsRaw),
+      ExamEligibilityCriteria.findByExamIds(examIdsRaw),
+    ]);
+    interestStreamById = interestStreams;
+    for (const row of cgRows) {
+      const eid = Number(row.exam_id);
+      const gid = Number(row.career_goal_id);
+      if (!Number.isInteger(eid) || !Number.isInteger(gid)) continue;
+      if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
+      examTagsByExamId.get(eid).add(gid);
+    }
+    for (const row of eligRows) {
+      eligibilityStreamsByExamId.set(Number(row.exam_id), Array.isArray(row.stream_ids) ? row.stream_ids : []);
+    }
+  }
+
+  const recommendedOrdered = computeDashboardRecommendedExamOrder(
+    streamExams,
+    normalizedCareerGoalIds,
+    interestStreamById,
+    defaultStreamId,
+    streamNum,
+    examTagsByExamId,
+    eligibilityStreamsByExamId
+  );
+  /** Top N only for dashboard Recommended tab (All tab lists full pool sorted by popularity). */
+  const recommendedExamIds = recommendedOrdered.slice(0, TOP_N);
+  const allExamIdSet = new Set(streamExams.map((e) => Number(e.id)));
+
+  const shortlistedRaw = Array.isArray(academics?.user_shortlisted_exams)
+    ? academics.user_shortlisted_exams
+    : [];
+  const shortlistedExamIds = shortlistedRaw
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && allExamIdSet.has(id));
+
+  let message;
+  if (streamExams.length === 0) {
+    message = 'No exams are configured for your stream yet.';
+  } else if (normalizedCareerGoalIds.length === 0) {
+    message =
+      'Add your interests for richer recommendations (overlap + weighted match). Top exams by relevance are shown in Recommended (up to 20).';
+  }
+
+  return {
+    streamId: streamNum,
+    streamExams,
+    recommendedExamIds,
+    shortlistedExamIds,
+    message,
+  };
+}
+
+function buildOrderedExamsForTab(tab, ctx) {
+  const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
+  if (tab === 'all') {
+    return sortExamsByPopularityRank(ctx.streamExams);
+  }
+  if (tab === 'recommended') {
+    return ctx.recommendedExamIds.map((id) => examById.get(Number(id))).filter(Boolean);
+  }
+  if (tab === 'shortlisted') {
+    const rows = ctx.shortlistedExamIds.map((id) => examById.get(Number(id))).filter(Boolean);
+    return sortExamsByPopularityRank(rows);
+  }
+  return [];
+}
+
+async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
+  const search = String(searchRaw || '').trim();
+  if (!search) return orderedExams;
+  const ids = orderedExams.map((e) => e.id).filter((id) => id != null);
+  if (ids.length === 0) return [];
+
+  const [patterns, eligibilities] = await Promise.all([
+    ExamPattern.findByExamIds(ids),
+    ExamEligibilityCriteria.findByExamIds(ids),
+  ]);
+  const pMap = new Map(patterns.map((p) => [p.exam_id, p]));
+  const eMap = new Map(eligibilities.map((r) => [r.exam_id, r]));
+
+  return orderedExams.filter((ex) => {
+    const pat = pMap.get(ex.id);
+    const el = eMap.get(ex.id);
+    const mode =
+      pat?.mode != null && String(pat.mode).trim() !== '' ? String(pat.mode).trim() : '';
+    const duration = formatExamPatternDurationHoursSearch(pat?.duration_minutes);
+    const attempts =
+      el?.attempt_limit != null && String(el.attempt_limit).trim() !== ''
+        ? String(el.attempt_limit).trim()
+        : '';
+    const examType = ex.exam_type?.trim() || '';
+    const rankStr =
+      ex.exam_popularity_rank != null && !Number.isNaN(Number(ex.exam_popularity_rank))
+        ? String(Number(ex.exam_popularity_rank))
+        : '';
+
+    return matchesExamSearchTokens(
+      [
+        ex.name,
+        ex.code,
+        ex.description,
+        mode,
+        duration,
+        attempts,
+        examType,
+        ex.conducting_authority,
+        rankStr,
+      ],
+      search
+    );
+  });
 }
 
 class ExamsTaxonomyController {
@@ -164,6 +331,90 @@ class ExamsTaxonomyController {
         message: 'Failed to fetch exams'
       });
     }
+  }
+
+  /**
+   * Total exams in taxonomy (no enrichment).
+   * GET /api/exams/count
+   */
+  static async getCount(req, res) {
+    try {
+      const count = await Exam.countAll();
+      return res.json({
+        success: true,
+        data: { count },
+      });
+    } catch (error) {
+      console.error('Error fetching exam count:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch exam count',
+      });
+    }
+  }
+
+  /**
+   * Single enriched exam for detail pages.
+   * GET /api/exams/:id  (numeric id, code, exact name, or slug e.g. jee-main)
+   */
+  static async getById(req, res) {
+    try {
+      const row = await ExamsTaxonomyController.resolveExamFromRouteParam(req.params.id);
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          message: 'Exam not found',
+        });
+      }
+      const [exam] = await ExamsTaxonomyController.enrichExamRows([row]);
+      return res.json({
+        success: true,
+        data: { exam },
+      });
+    } catch (error) {
+      console.error('Error fetching exam by id:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch exam',
+      });
+    }
+  }
+
+  /** @param {string} param Route :id segment */
+  static async resolveExamFromRouteParam(param) {
+    const raw = String(param || '').trim();
+    if (!raw) return null;
+
+    const asInt = parseInt(raw, 10);
+    if (Number.isInteger(asInt) && asInt > 0) {
+      const byId = await Exam.findById(asInt);
+      if (byId) return byId;
+    }
+
+    const byCode = await Exam.findByCode(raw);
+    if (byCode) return byCode;
+
+    const byName = await Exam.findByName(raw);
+    if (byName) return byName;
+
+    const slugTarget = ExamsTaxonomyController.slugifyExamKey(raw);
+    if (!slugTarget) return null;
+
+    const all = await Exam.findAll();
+    for (const row of all) {
+      if (ExamsTaxonomyController.slugifyExamKey(row.name) === slugTarget) return row;
+      if (row.code && ExamsTaxonomyController.slugifyExamKey(row.code) === slugTarget) return row;
+    }
+    return null;
+  }
+
+  static slugifyExamKey(value) {
+    return String(value || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
   }
 
   /**
@@ -822,9 +1073,8 @@ class ExamsTaxonomyController {
 
   /**
    * Get recommended exams for the authenticated user.
-   * Uses admin mappings in stream_interest_recommendation_mappings (stream + interest → exam_ids),
-   * matched to user_academics.stream_id and user_career_goals.interests (career goal IDs).
-   * Returns exam IDs; frontend loads full exam rows from GET /api/exams.
+   * Same scoring as dashboard "Recommended exams" tab (overlap on exam interests, 33/25 weights,
+   * Default stream eligibility union), capped at top 20 IDs for this legacy endpoint.
    * GET /api/auth/profile/recommended-exams
    */
   static async getRecommendedExams(req, res) {
@@ -853,20 +1103,53 @@ class ExamsTaxonomyController {
       }
 
       const streamIdNum = Number(streamId);
-      const streamExams = await Exam.findAllByStreamId(streamIdNum);
-      const streamMappings = await StreamInterestRecommendation.findByStream(streamIdNum);
-      const rankedIds = computeRecommendedExamIdsTop20(
+      const defaultRow = await Stream.findByName('Default');
+      const defaultStreamId = defaultRow?.id != null ? Number(defaultRow.id) : null;
+      const streamExams = await Exam.findEligibleForUserStreamOrDefault(streamIdNum, defaultStreamId);
+
+      const examIdsRaw = streamExams.map((e) => e.id).filter((id) => id != null);
+      let interestStreamById = new Map();
+      let examTagsByExamId = new Map();
+      let eligibilityStreamsByExamId = new Map();
+
+      if (examIdsRaw.length > 0) {
+        const [interestStreams, cgRows, eligRows] = await Promise.all([
+          normalizedCareerGoalIds.length > 0
+            ? CareerGoal.findStreamIdsForInterestIds(normalizedCareerGoalIds)
+            : Promise.resolve(new Map()),
+          ExamCareerGoal.findCareerGoalsForExamIds(examIdsRaw),
+          ExamEligibilityCriteria.findByExamIds(examIdsRaw),
+        ]);
+        interestStreamById = interestStreams;
+        for (const row of cgRows) {
+          const eid = Number(row.exam_id);
+          const gid = Number(row.career_goal_id);
+          if (!Number.isInteger(eid) || !Number.isInteger(gid)) continue;
+          if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
+          examTagsByExamId.get(eid).add(gid);
+        }
+        for (const row of eligRows) {
+          eligibilityStreamsByExamId.set(Number(row.exam_id), Array.isArray(row.stream_ids) ? row.stream_ids : []);
+        }
+      }
+
+      const rankedAll = computeDashboardRecommendedExamOrder(
         streamExams,
         normalizedCareerGoalIds,
-        streamMappings
+        interestStreamById,
+        defaultStreamId,
+        streamIdNum,
+        examTagsByExamId,
+        eligibilityStreamsByExamId
       );
+      const rankedIds = rankedAll.slice(0, TOP_N);
 
       let message;
       if (streamExams.length === 0) {
         message = 'No exams are configured for your stream yet.';
       } else if (normalizedCareerGoalIds.length === 0) {
         message =
-          'Add your interests for interest-weighted recommendations; showing top popular exams for your stream.';
+          'Add your interests for richer recommendations; showing top-ranked exams by popularity and relevance.';
       }
 
       res.json({
@@ -887,22 +1170,16 @@ class ExamsTaxonomyController {
 
   /**
    * Dashboard exams payload:
-   * - allExams: stream-filtered exams, ordered by exam_popularity_rank (then name)
-   * - recommendedExamIds: top 20 by blended interest/default score (stream + mappings + popularity)
-   * - shortlistedExamIds: stored in user_academics.user_shortlisted_exams, intersected with stream-filtered set
+   * - allExams: exams eligible for profile stream ∪ Default stream, ordered by exam_popularity_rank
+   * - recommendedExamIds: up to 20 exams, ordered by recommendation logic only (no popularity_rank);
+   *     tags from exam_career_goal
+   * - shortlistedExamIds: stored in user_academics.user_shortlisted_exams, intersected with that pool
    * GET /api/auth/profile/dashboard-exams
    */
   static async getDashboardExams(req, res) {
     try {
-      const userId = req.user.id;
-
-      const [academics, careerGoalsRow] = await Promise.all([
-        UserAcademics.findByUserId(userId),
-        UserCareerGoals.findByUserId(userId)
-      ]);
-
-      const streamId = academics?.stream_id ?? null;
-      if (streamId == null || streamId === '') {
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      if (ctx.streamId == null) {
         return res.json({
           success: true,
           data: {
@@ -910,55 +1187,136 @@ class ExamsTaxonomyController {
             allExams: [],
             recommendedExamIds: [],
             shortlistedExamIds: [],
-            message: 'Select your stream in profile to view exams.'
-          }
+            message: ctx.message,
+          },
         });
       }
 
-      const streamExams = await Exam.findAllByStreamId(streamId);
-      const careerGoalIds = careerGoalsRow?.interests ?? [];
-      const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
-        ? careerGoalIds
-            .map(id => (typeof id === 'string' ? parseInt(id, 10) : id))
-            .filter(id => Number.isInteger(id))
-        : [];
-
-      const streamMappings = await StreamInterestRecommendation.findByStream(Number(streamId));
-      const recommendedExamIds = computeRecommendedExamIdsTop20(
-        streamExams,
-        normalizedCareerGoalIds,
-        streamMappings
-      );
-      const allExamIdSet = new Set(streamExams.map((e) => Number(e.id)));
-
-      const examsForAllTab = sortExamsByPopularityRank(streamExams);
+      const examsForAllTab = sortExamsByPopularityRank(ctx.streamExams);
       const allExams = await ExamsTaxonomyController.enrichExamRows(examsForAllTab);
-
-      const shortlistedRaw = Array.isArray(academics?.user_shortlisted_exams)
-        ? academics.user_shortlisted_exams
-        : [];
-      const shortlistedExamIds = shortlistedRaw
-        .map((id) => Number(id))
-        .filter((id) => Number.isInteger(id) && allExamIdSet.has(id));
 
       return res.json({
         success: true,
         data: {
-          streamId: Number(streamId),
+          streamId: ctx.streamId,
           allExams,
-          recommendedExamIds,
-          shortlistedExamIds,
+          recommendedExamIds: ctx.recommendedExamIds,
+          shortlistedExamIds: ctx.shortlistedExamIds,
           message:
             allExams.length === 0
               ? 'No exams are configured for your stream yet.'
-              : undefined
-        }
+              : ctx.message,
+        },
       });
     } catch (error) {
       console.error('Error fetching dashboard exams:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch dashboard exams'
+        message: 'Failed to fetch dashboard exams',
+      });
+    }
+  }
+
+  /**
+   * Lightweight dashboard exam shortlist metadata (sidebar badge, React Query dedupe).
+   * GET /api/auth/profile/dashboard-exams/meta
+   */
+  static async getDashboardExamsMeta(req, res) {
+    try {
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      return res.json({
+        success: true,
+        data: {
+          streamId: ctx.streamId,
+          shortlistedExamIds: ctx.shortlistedExamIds,
+          recommendedExamIds: ctx.recommendedExamIds,
+          message: ctx.message,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard exams meta:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch dashboard exams meta',
+      });
+    }
+  }
+
+  /**
+   * Paginated exams for one dashboard tab (enrich only current page).
+   * GET /api/auth/profile/dashboard-exams/tab?tab=recommended|shortlisted|all&page=1&limit=10&search=
+   */
+  static async getDashboardExamsTab(req, res) {
+    try {
+      const tab = String(req.query.tab || '').toLowerCase();
+      if (!['recommended', 'shortlisted', 'all'].includes(tab)) {
+        return res.status(400).json({
+          success: false,
+          message: 'tab must be recommended, shortlisted, or all',
+        });
+      }
+
+      const pageRaw = parseInt(req.query.page, 10);
+      const limitRaw = parseInt(req.query.limit, 10);
+      const page = Math.max(1, Number.isInteger(pageRaw) ? pageRaw : 1);
+      const limit = Math.min(50, Math.max(1, Number.isInteger(limitRaw) ? limitRaw : 10));
+      const search = String(req.query.search || '').trim();
+
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      if (ctx.streamId == null) {
+        return res.json({
+          success: true,
+          data: {
+            streamId: null,
+            tab,
+            exams: [],
+            shortlistedExamIds: [],
+            recommendedExamIds: [],
+            pagination: { page: 1, limit, total: 0, totalPages: 1 },
+            message: ctx.message,
+          },
+        });
+      }
+
+      let ordered = buildOrderedExamsForTab(tab, ctx);
+      ordered = await filterOrderedExamsBySearch(ordered, search);
+
+      const total = ordered.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const safePage = Math.min(page, totalPages);
+      const start = (safePage - 1) * limit;
+      const slice = ordered.slice(start, start + limit);
+      const exams = await ExamsTaxonomyController.enrichExamRows(slice);
+
+      const emptyPool = ctx.streamExams.length === 0;
+      const listMessage = emptyPool
+        ? 'No exams are configured for your stream yet.'
+        : total === 0 && search
+          ? 'No exams match your search.'
+          : undefined;
+
+      return res.json({
+        success: true,
+        data: {
+          streamId: ctx.streamId,
+          tab,
+          exams,
+          shortlistedExamIds: ctx.shortlistedExamIds,
+          recommendedExamIds: ctx.recommendedExamIds,
+          pagination: {
+            page: safePage,
+            limit,
+            total,
+            totalPages,
+          },
+          message: listMessage,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard exams tab:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch dashboard exams tab',
       });
     }
   }

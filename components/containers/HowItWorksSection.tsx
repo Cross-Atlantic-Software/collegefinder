@@ -91,8 +91,8 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0]?.isIntersecting) {
-                    setIsInView(true);
                     observer.unobserve(sectionNode);
+                    queueMicrotask(() => setIsInView(true));
                 }
             },
             {

@@ -1,3 +1,5 @@
+export { default as DashboardPageShell } from "./DashboardPageShell";
+export type { DashboardSectionId } from "./DashboardPageShell";
 export { default as Sidebar } from "./Sidebar";
 export { default as TopBar } from "./TopBar";
 export { default as DashboardHeader } from "./DashboardHeader";

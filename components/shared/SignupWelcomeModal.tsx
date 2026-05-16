@@ -24,7 +24,7 @@ export function SignupWelcomeModal({ open, message, durationSeconds, onClose }: 
   const durationMs = clampDuration(durationSeconds) * 1000;
 
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
   }, []);
 
   useEffect(() => {

@@ -112,6 +112,21 @@ export async function getAllExams(): Promise<ApiResponse<{
   });
 }
 
+/** Lightweight count for sidebar / badges (no enrichment). */
+export async function getExamsCount(): Promise<ApiResponse<{ count: number }>> {
+  return apiRequest<{ count: number }>('/exams/count', { method: 'GET' });
+}
+
+/**
+ * Single enriched exam for detail pages (id, code, name, or slug).
+ */
+export async function getExamById(
+  idOrSlug: string | number
+): Promise<ApiResponse<{ exam: Exam }>> {
+  const segment = encodeURIComponent(String(idOrSlug).trim());
+  return apiRequest<{ exam: Exam }>(`/exams/${segment}`, { method: 'GET' });
+}
+
 /**
  * Get user's exam preferences
  */
@@ -174,6 +189,59 @@ export async function getDashboardExams(): Promise<ApiResponse<{
     shortlistedExamIds: number[];
     message?: string;
   }>('/auth/profile/dashboard-exams', { method: 'GET' });
+}
+
+export type DashboardExamTabId = 'recommended' | 'shortlisted' | 'all';
+
+export interface DashboardExamsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** Lightweight meta for sidebar badge + React Query deduplication (no enriched exams). */
+export async function getDashboardExamsMeta(): Promise<ApiResponse<{
+  streamId: number | null;
+  shortlistedExamIds: number[];
+  recommendedExamIds: number[];
+  message?: string;
+}>> {
+  return apiRequest<{
+    streamId: number | null;
+    shortlistedExamIds: number[];
+    recommendedExamIds: number[];
+    message?: string;
+  }>('/auth/profile/dashboard-exams/meta', { method: 'GET' });
+}
+
+/** Single tab page; server enriches only rows for this page. */
+export async function getDashboardExamsTab(
+  tab: DashboardExamTabId,
+  params: { page?: number; limit?: number; search?: string } = {}
+): Promise<ApiResponse<{
+  streamId: number | null;
+  tab: DashboardExamTabId;
+  exams: Exam[];
+  shortlistedExamIds: number[];
+  recommendedExamIds: number[];
+  pagination: DashboardExamsPagination;
+  message?: string;
+}>> {
+  const sp = new URLSearchParams();
+  sp.set('tab', tab);
+  if (params.page != null) sp.set('page', String(params.page));
+  if (params.limit != null) sp.set('limit', String(params.limit));
+  if (params.search?.trim()) sp.set('search', params.search.trim());
+  return apiRequest<{
+    streamId: number | null;
+    tab: DashboardExamTabId;
+    exams: Exam[];
+    shortlistedExamIds: number[];
+    recommendedExamIds: number[];
+    pagination: DashboardExamsPagination;
+    message?: string;
+  }>(`/auth/profile/dashboard-exams/tab?${sp.toString()}`, { method: 'GET' });
 }
 
 export async function updateShortlistedExam(exam_id: number, shortlisted: boolean): Promise<ApiResponse<{

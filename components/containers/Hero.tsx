@@ -15,8 +15,8 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         const check = () => {
           setIsMobile(window.innerWidth <= 767);
         };
-      
-        check();
+
+        queueMicrotask(() => check());
         window.addEventListener("resize", check);
       
         return () => window.removeEventListener("resize", check);
@@ -26,13 +26,18 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setIsVisible(true);
-                    observer.disconnect();
+                    // Some browsers can invoke callbacks in the same turn as observe(); defer to avoid
+                    // "state update before mount" warnings with React concurrent rendering + RoughNotation.
+                    queueMicrotask(() => {
+                        setIsVisible(true);
+                        observer.disconnect();
+                    });
                 }
             },
             { threshold: 0.3 }
         );
-        if (sectionRef.current) observer.observe(sectionRef.current);
+        const el = sectionRef.current;
+        if (el) observer.observe(el);
         return () => observer.disconnect();
     }, []);
 

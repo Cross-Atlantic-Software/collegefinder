@@ -45,7 +45,7 @@ async function getDashboardStreamExamContext(userId) {
     streamId: Number(streamId),
     /** Stream-filtered exam IDs (dashboard "All exams" pool). */
     allExamIds,
-    /** Top-20 scored recommended exam IDs (dashboard "Recommended exams" pool). */
+    /** Recommended exam IDs (mapping-based scoring; colleges / institutes use top 20 from this elsewhere). */
     recommendedExamIds,
     message: undefined,
   };
