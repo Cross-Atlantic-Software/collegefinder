@@ -1000,7 +1000,8 @@ export default function AcademicsProfile() {
                                 placeholder="Select Stream"
                                 error={validationErrors.stream || validationErrors.stream_id}
                                 isSearchable={true}
-                                isClearable={true}
+                                isClearable={!postmatricData.stream}
+                                disabled={!!postmatricData.stream}
                             />
                         )}
                         {(validationErrors.stream || validationErrors.stream_id) && (

@@ -34,10 +34,15 @@ import {
 } from "react-icons/fa";
 import { IoPlayCircleOutline } from "react-icons/io5";
 import { MdSchool } from "react-icons/md";
-import { getProfileCompletion, getAllExams, getDashboardColleges } from "@/api";
-import { getDashboardExams } from "@/api/exams";
-import { getDashboardInstitutes, getDashboardScholarships } from "@/api/auth/profile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardExamsMetaQuery } from "@/lib/dashboardExamShortlistQueries";
+import { useExamsCountQuery } from "@/lib/examDetailQueries";
+import {
+  useDashboardCollegesQuery,
+  useDashboardInstitutesQuery,
+  useDashboardScholarshipsQuery,
+  useProfileCompletionQuery,
+} from "@/lib/dashboardSidebarQueries";
 
 type SectionId =
   | "dashboard"
@@ -90,14 +95,14 @@ const baseNavItems: {
   },
   {
     id: "exam-shortlist",
-    label: "Exam Shortlist",
+    label: "Exams",
     sub: "Exams selected",
     icon: FiClipboard,
     activeIcon: FaClipboardList,
   },
   {
     id: "college-shortlist",
-    label: "College Shortlist",
+    label: "Colleges",
     sub: "Colleges matched",
     icon: FiHome,
     activeIcon: FaUniversity,
@@ -184,12 +189,17 @@ export default function Sidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { logout } = useAuth();
-  const [completionPercentage, setCompletionPercentage] = useState(0);
-  const [examsCount, setExamsCount] = useState(0);
-  const [shortlistedExamsCount, setShortlistedExamsCount] = useState(0);
-  const [shortlistedCollegesCount, setShortlistedCollegesCount] = useState(0);
-  const [shortlistedInstitutesCount, setShortlistedInstitutesCount] = useState(0);
-  const [shortlistedScholarshipsCount, setShortlistedScholarshipsCount] = useState(0);
+  const { data: examShortlistMeta } = useDashboardExamsMetaQuery();
+  const shortlistedExamsCount = examShortlistMeta?.shortlistedExamIds?.length ?? 0;
+  const { data: completionData } = useProfileCompletionQuery();
+  const completionPercentage = completionData?.percentage ?? 0;
+  const { data: examsCount = 0 } = useExamsCountQuery();
+  const { data: collegesData, refetch: refetchColleges } = useDashboardCollegesQuery();
+  const { data: institutesData, refetch: refetchInstitutes } = useDashboardInstitutesQuery();
+  const { data: scholarshipsData, refetch: refetchScholarships } = useDashboardScholarshipsQuery();
+  const shortlistedCollegesCount = collegesData?.shortlistedCollegeIds?.length ?? 0;
+  const shortlistedInstitutesCount = institutesData?.shortlistedInstituteIds?.length ?? 0;
+  const shortlistedScholarshipsCount = scholarshipsData?.shortlistedScholarshipIds?.length ?? 0;
   const [examPrepExpanded, setExamPrepExpanded] = useState(false);
 
   useEffect(() => {
@@ -199,157 +209,17 @@ export default function Sidebar({
   }, [activeSection]);
 
   useEffect(() => {
-    const fetchCompletion = async () => {
-      try {
-        const response = await getProfileCompletion();
-        if (response.success && response.data) {
-          setCompletionPercentage(response.data.percentage);
-        }
-      } catch (err) {
-        console.error("Error fetching profile completion:", err);
-      }
-    };
-
-    fetchCompletion();
-  }, []);
+    if (activeSection === "college-shortlist") {
+      void refetchColleges();
+    }
+  }, [activeSection, refetchColleges]);
 
   useEffect(() => {
-    const fetchExamsCount = async () => {
-      try {
-        const response = await getAllExams();
-        if (response.success && response.data?.exams) {
-          setExamsCount(response.data.exams.length);
-        }
-      } catch (err) {
-        console.error("Error fetching exams count:", err);
-      }
-    };
-
-    fetchExamsCount();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchShortlistCount = async () => {
-      try {
-        const response = await getDashboardExams();
-        if (cancelled) return;
-        if (response.success && response.data?.shortlistedExamIds) {
-          setShortlistedExamsCount(response.data.shortlistedExamIds.length);
-        }
-      } catch (err) {
-        console.error("Error fetching exam shortlist count:", err);
-      }
-    };
-    void fetchShortlistCount();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeSection !== "exam-shortlist") return;
-    let cancelled = false;
-    const fetchShortlistCount = async () => {
-      try {
-        const response = await getDashboardExams();
-        if (cancelled) return;
-        if (response.success && response.data?.shortlistedExamIds) {
-          setShortlistedExamsCount(response.data.shortlistedExamIds.length);
-        }
-      } catch (err) {
-        console.error("Error fetching exam shortlist count:", err);
-      }
-    };
-    void fetchShortlistCount();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSection]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchCollegeShortlistCount = async () => {
-      try {
-        const response = await getDashboardColleges();
-        if (cancelled) return;
-        if (response.success && response.data?.shortlistedCollegeIds) {
-          setShortlistedCollegesCount(response.data.shortlistedCollegeIds.length);
-        }
-      } catch (err) {
-        console.error("Error fetching college shortlist count:", err);
-      }
-    };
-    void fetchCollegeShortlistCount();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeSection !== "college-shortlist") return;
-    let cancelled = false;
-    const fetchCollegeShortlistCount = async () => {
-      try {
-        const response = await getDashboardColleges();
-        if (cancelled) return;
-        if (response.success && response.data?.shortlistedCollegeIds) {
-          setShortlistedCollegesCount(response.data.shortlistedCollegeIds.length);
-        }
-      } catch (err) {
-        console.error("Error fetching college shortlist count:", err);
-      }
-    };
-    void fetchCollegeShortlistCount();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSection]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchInstituteScholarshipCounts = async () => {
-      try {
-        const [ir, sr] = await Promise.all([getDashboardInstitutes(), getDashboardScholarships()]);
-        if (cancelled) return;
-        if (ir.success && ir.data?.shortlistedInstituteIds) {
-          setShortlistedInstitutesCount(ir.data.shortlistedInstituteIds.length);
-        }
-        if (sr.success && sr.data?.shortlistedScholarshipIds) {
-          setShortlistedScholarshipsCount(sr.data.shortlistedScholarshipIds.length);
-        }
-      } catch (err) {
-        console.error("Error fetching institute/scholarship shortlist counts:", err);
-      }
-    };
-    void fetchInstituteScholarshipCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeSection !== "coaching-institutes" && activeSection !== "scholarships") return;
-    let cancelled = false;
-    const fetchInstituteScholarshipCounts = async () => {
-      try {
-        const [ir, sr] = await Promise.all([getDashboardInstitutes(), getDashboardScholarships()]);
-        if (cancelled) return;
-        if (ir.success && ir.data?.shortlistedInstituteIds) {
-          setShortlistedInstitutesCount(ir.data.shortlistedInstituteIds.length);
-        }
-        if (sr.success && sr.data?.shortlistedScholarshipIds) {
-          setShortlistedScholarshipsCount(sr.data.shortlistedScholarshipIds.length);
-        }
-      } catch (err) {
-        console.error("Error refreshing institute/scholarship shortlist counts:", err);
-      }
-    };
-    void fetchInstituteScholarshipCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSection]);
+    if (activeSection === "coaching-institutes" || activeSection === "scholarships") {
+      void refetchInstitutes();
+      void refetchScholarships();
+    }
+  }, [activeSection, refetchInstitutes, refetchScholarships]);
 
   // Create navItems with dynamic values (Mock Test: exam count; shortlists: shortlisted counts)
   const navItems = baseNavItems.map(item => ({

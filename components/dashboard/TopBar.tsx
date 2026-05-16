@@ -5,19 +5,16 @@ import { useEffect, useRef, useState } from "react";
 import { BiBell, BiChevronDown, BiMenu, BiSearch } from "react-icons/bi";
 import { FaUserCircle } from "react-icons/fa";
 import { FiLogOut, FiSettings, FiUser } from "react-icons/fi";
-import { Button } from "../shared";
-import { IoFunnel } from "react-icons/io5";
 import { useAuth } from "@/contexts/AuthContext";
 
 type TopBarProps = {
   onToggleSidebar: () => void;
   onToggleCollapse: () => void;
   isSidebarCollapsed: boolean;
-  /** When user is on Exam Shortlist, sync search/filters with that section */
+  /** When user is on Exam Shortlist, sync search with that section */
   examShortlistToolbar?: {
     searchValue: string;
     onSearchChange: (value: string) => void;
-    onFiltersClick?: () => void;
   };
 };
 
@@ -46,7 +43,7 @@ export default function TopBar({
     <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm">
       <div className="flex items-center gap-4 px-4 py-3 md:px-6">
         {/* Sidebar toggles */}
-        <button
+        {/* <button
           onClick={onToggleSidebar}
           aria-label="Open sidebar"
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200 md:hidden"
@@ -60,42 +57,30 @@ export default function TopBar({
           className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
         >
           <BiMenu className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-        </button>
+        </button> */}
 
         {/* Search */}
         <div className="flex-1 flex items-center gap-3">
-          <div className="hidden md:flex flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20">
-            <BiSearch className="h-4 w-4 flex-shrink-0" />
-            {examShortlistToolbar ? (
-              <input
-                placeholder="Search exams (name, code, mode, type…)"
-                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-                value={examShortlistToolbar.searchValue}
-                onChange={(e) => examShortlistToolbar.onSearchChange(e.target.value)}
-              />
-            ) : (
-              <input
-                placeholder="Search opens on Exam Shortlist (sidebar)"
-                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
-                disabled
-              />
-            )}
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className={`hidden md:flex gap-2 ${examShortlistToolbar?.onFiltersClick ? "" : "opacity-60"}`}
-            type="button"
-            disabled={!examShortlistToolbar?.onFiltersClick}
-            onClick={() => examShortlistToolbar?.onFiltersClick?.()}
-            title={
-              examShortlistToolbar?.onFiltersClick
-                ? "Scroll to exam type filters"
-                : "Open Exam Shortlist to use filters"
-            }
+          <div
+            className={`flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20 ${
+              examShortlistToolbar ? "flex" : "hidden md:flex"
+            }`}
           >
-            <IoFunnel /> Filters
-          </Button>
+            <BiSearch className="h-4 w-4 flex-shrink-0" />
+            {/* Single controlled input: switching branch left the disabled input uncontrolled
+                and the active one controlled, which triggered React's warning on section change. */}
+            <input
+              placeholder={
+                examShortlistToolbar
+                  ? "Search by name, mode, duration, attempts, type, authority…"
+                  : "Search opens on Exam Shortlist (sidebar)"
+              }
+              className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+              value={examShortlistToolbar?.searchValue ?? ""}
+              onChange={(e) => examShortlistToolbar?.onSearchChange(e.target.value)}
+              disabled={!examShortlistToolbar}
+            />
+          </div>
         </div>
 
         {/* Right side */}

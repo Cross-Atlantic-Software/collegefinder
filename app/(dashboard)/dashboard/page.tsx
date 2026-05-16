@@ -21,7 +21,6 @@ import {
   TestModule,
   TopBar,
 } from "@/components/dashboard";
-import type { ExamShortlistExamTypeFilter } from "@/components/dashboard/ShortlistExams";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
@@ -49,8 +48,6 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
   const [examShortlistSearch, setExamShortlistSearch] = useState("");
-  const [examShortlistTypeFilter, setExamShortlistTypeFilter] =
-    useState<ExamShortlistExamTypeFilter>("all");
   const [dashboardProfile, setDashboardProfile] = useState({
     fullName: "User",
     airRank: "—",
@@ -167,6 +164,14 @@ export default function DashboardPage() {
           onToggleSidebar={toggleSidebar}
           onToggleCollapse={toggleSidebarCollapse}
           isSidebarCollapsed={sidebarCollapsed}
+          examShortlistToolbar={
+            activeSection === "exam-shortlist"
+              ? {
+                  searchValue: examShortlistSearch,
+                  onSearchChange: setExamShortlistSearch,
+                }
+              : undefined
+          }
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
@@ -207,8 +212,6 @@ export default function DashboardPage() {
                   <ShortlistExams
                     searchQuery={examShortlistSearch}
                     onSearchQueryChange={setExamShortlistSearch}
-                    examTypeFilter={examShortlistTypeFilter}
-                    onExamTypeFilterChange={setExamShortlistTypeFilter}
                   />
                 )}
 

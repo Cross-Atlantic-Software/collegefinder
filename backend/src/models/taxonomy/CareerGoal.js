@@ -74,6 +74,24 @@ class CareerGoal {
     return result.rows[0] || null;
   }
 
+  /** interest id -> stream_id (nullable) for dashboard exam recommendation weighting */
+  static async findStreamIdsForInterestIds(ids) {
+    const clean = (Array.isArray(ids) ? ids : [])
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    if (!clean.length) return new Map();
+    const result = await db.query(
+      `SELECT id, stream_id FROM career_goals_taxonomies WHERE id = ANY($1::int[])`,
+      [clean]
+    );
+    return new Map(
+      result.rows.map((r) => [
+        Number(r.id),
+        r.stream_id != null && r.stream_id !== '' ? Number(r.stream_id) : null,
+      ])
+    );
+  }
+
   /**
    * Find career goal taxonomy by label
    */

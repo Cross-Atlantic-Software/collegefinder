@@ -139,6 +139,117 @@ function computeRecommendedExamIdsTop20(streamExams, userInterestIds, streamMapp
   return out;
 }
 
+/**
+ * Dashboard "Recommended exams" tab: order exams using interest tags on exams
+ * (exam_career_goal), overlap tiers, Default vs stream-wise weights (33 / 25, renormalized), stream
+ * relevance; ties broken by exam name only (exam_popularity_rank is not used here — that sort is for
+ * the "All exams" tab only).
+ *
+ * Overlap = |user ∩ exam tags|. If every selected interest belongs to the Default stream, overlap is forced to 0.
+ *
+ * @param {object[]} exams Pool rows (exams_taxonomies)
+ * @param {number[]} userInterestIds Up to student's chosen interests (e.g. 3)
+ * @param {ReadonlyMap<number, number|null>} interestStreamById career_goals_taxonomies.stream_id per interest id
+ * @param {number|null|undefined} defaultStreamId Streams row id for "Default"
+ * @param {number} userStreamId Profile stream id
+ * @param {ReadonlyMap<number, ReadonlySet<number>>} examTagsByExamId exam_id -> tagged career_goal_id set
+ * @param {ReadonlyMap<number, number[]>} eligibilityStreamsByExamId exam_id -> ec.stream_ids
+ * @returns {number[]} Ordered exam ids
+ */
+function computeDashboardRecommendedExamOrder(
+  exams,
+  userInterestIds,
+  interestStreamById,
+  defaultStreamId,
+  userStreamId,
+  examTagsByExamId,
+  eligibilityStreamsByExamId
+) {
+  const uid = Number(userStreamId);
+  const didRaw = defaultStreamId != null ? Number(defaultStreamId) : NaN;
+  const hasDefaultStream = Number.isInteger(didRaw) && didRaw >= 1;
+
+  const normalized = userInterestIds
+    .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+    .filter((id) => Number.isInteger(id));
+
+  const allInterestsTaggedWithDefault =
+    normalized.length > 0 &&
+    hasDefaultStream &&
+    normalized.every((id) => Number(interestStreamById.get(id)) === didRaw);
+
+  /** @type {(tags: ReadonlySet<number>) => number} */
+  function overlapCount(tags) {
+    if (allInterestsTaggedWithDefault) return 0;
+    return normalized.filter((iid) => tags.has(iid)).length;
+  }
+
+  /** 33% stream-wise + 25% common, renormalized to 100%; empty channel omitted from denominator */
+  function blendedWeightedPct(tags) {
+    const streamWiseInts = normalized.filter((iid) => Number(interestStreamById.get(iid)) === uid);
+    const commonInts = normalized.filter(
+      (iid) => hasDefaultStream && Number(interestStreamById.get(iid)) === didRaw
+    );
+    const pct = (hits, denom) => (denom > 0 ? (hits / denom) * 100 : 0);
+
+    const matchSw = streamWiseInts.filter((iid) => tags.has(iid)).length;
+    const matchCm = commonInts.filter((iid) => tags.has(iid)).length;
+
+    const swScore = pct(matchSw, streamWiseInts.length);
+    const cmScore = pct(matchCm, commonInts.length);
+
+    let wDenom = 0;
+    let wNum = 0;
+    if (streamWiseInts.length > 0) {
+      wDenom += 33;
+      wNum += 33 * swScore;
+    }
+    if (commonInts.length > 0) {
+      wDenom += 25;
+      wNum += 25 * cmScore;
+    }
+    if (wDenom <= 0) return 0;
+    return wNum / wDenom;
+  }
+
+  /** Eligibility lists user's stream → higher relevance */
+  function streamRelevant(eligStreams) {
+    const arr = Array.isArray(eligStreams) ? eligStreams : [];
+    return arr.map(Number).includes(uid);
+  }
+
+  const scored = exams.map((exam) => {
+    const id = Number(exam.id);
+    const tags = examTagsByExamId.get(id);
+    /** @type {ReadonlySet<number>} */
+    const tagSet =
+      tags instanceof Set
+        ? tags
+        : new Set(tags != null ? Array.from(tags).map(Number) : []);
+    const overlap = overlapCount(tagSet);
+    const blended = blendedWeightedPct(tagSet);
+    const elig = eligibilityStreamsByExamId.get(id) ?? [];
+    const sr = streamRelevant(elig);
+    return { id, overlap, blended, sr, exam };
+  });
+
+  scored.sort((a, b) => {
+    if (b.overlap !== a.overlap) return b.overlap - a.overlap;
+    if (a.sr !== b.sr) return a.sr ? -1 : 1;
+    if (b.blended !== a.blended) return b.blended - a.blended;
+    return String(a.exam.name || '').localeCompare(String(b.exam.name || ''));
+  });
+
+  const out = [];
+  const seen = new Set();
+  for (const row of scored) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.push(row.id);
+  }
+  return out;
+}
+
 module.exports = {
   TOP_N,
   getInterestDefaultWeights,
@@ -146,4 +257,5 @@ module.exports = {
   dashboardRecommendationFinalScore,
   sortExamsByPopularityRank,
   computeRecommendedExamIdsTop20,
+  computeDashboardRecommendedExamOrder,
 };

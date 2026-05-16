@@ -75,8 +75,8 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setHeadingVisible(true);
                     observer.disconnect();
+                    queueMicrotask(() => setHeadingVisible(true));
                 }
             },
             { threshold: 0.25 }

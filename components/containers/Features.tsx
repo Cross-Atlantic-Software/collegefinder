@@ -13,8 +13,8 @@ export default function Features() {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setIsVisible(true);
                     observer.disconnect();
+                    queueMicrotask(() => setIsVisible(true));
                 }
             },
             { threshold: 0.3 }

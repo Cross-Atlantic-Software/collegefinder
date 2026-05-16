@@ -42,7 +42,7 @@ function RotatingBodyBullets({ lines, inline = false }: { lines: string[]; inlin
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduceMotion(mq.matches);
+    queueMicrotask(() => setReduceMotion(mq.matches));
     const onChange = () => setReduceMotion(mq.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -223,8 +223,8 @@ export default function InfoSection({ info }: { info: LandingPageContent["info"]
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setIsVisible(true);
           observer.disconnect();
+          queueMicrotask(() => setIsVisible(true));
         }
       },
       { threshold: 0.25 },

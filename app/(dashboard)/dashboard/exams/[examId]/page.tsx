@@ -7,24 +7,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiExternalLink, FiTarget, FiTrendingUp } from "react-icons/fi";
 import { MdOutlineInsights, MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
-import { getAllExams, type Exam } from "@/api/exams";
+import type { Exam } from "@/api/exams";
+import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { formatExamPatternDurationHours } from "@/lib/formatDuration";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
-
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
+import DashboardPageShell, { type DashboardSectionId } from "@/components/dashboard/DashboardPageShell";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "profile-recommended": [
@@ -414,40 +401,15 @@ export default function ExamDetailPage() {
   const examId = decodeURIComponent(params.examId || "");
   const from = searchParams.get("from") || "";
 
-  const [allExams, setAllExams] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [tracking, setTracking] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      setLoading(true);
-      const res = await getAllExams();
-      if (cancelled) return;
-      setAllExams(res.success && res.data ? res.data.exams : []);
-      setLoading(false);
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const exam = useMemo(() => {
-    const normalized = slugify(examId);
-    return (
-      allExams.find((item) => String(item.id) === examId) ||
-      allExams.find((item) => slugify(item.name) === normalized) ||
-      allExams.find((item) => slugify(item.code || "") === normalized) ||
-      null
-    );
-  }, [allExams, examId]);
+  const {
+    data: exam,
+    isLoading: loading,
+    isError: examLoadError,
+    error: examLoadErrorDetail,
+  } = useExamDetailQuery(examId);
 
   const logoSrc = useMemo(
     () => (exam?.exam_logo?.trim() ? exam.exam_logo.trim() : "/cbse.png"),
@@ -455,7 +417,7 @@ export default function ExamDetailPage() {
   );
   const logoRemote = logoSrc.startsWith("http");
 
-  const model = useMemo(() => getModel(exam, examId), [exam, examId]);
+  const model = useMemo(() => getModel(exam ?? null, examId), [exam, examId]);
   const examName = exam?.name || examId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
   const examStream = getExamStream(examName);
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
@@ -463,7 +425,7 @@ export default function ExamDetailPage() {
     { label: "Exam Directory", href: "/dashboard/exams" },
   ];
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
@@ -492,52 +454,41 @@ export default function ExamDetailPage() {
     localStorage.setItem(`exam-detail-state:${examId}`, JSON.stringify({ saved, tracking }));
   }, [examId, saved, tracking]);
 
-  if (loading) {
+  if (loading && !exam) {
     return (
-      <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-        <Sidebar
-          sidebarOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen((v) => !v)}
-          isCollapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          activeSection="exam-shortlist"
-          onSectionChange={handleSectionChange}
-        />
-        <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
-          <TopBar
-            onToggleSidebar={() => setSidebarOpen((v) => !v)}
-            onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-            isSidebarCollapsed={sidebarCollapsed}
-          />
-          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
-            <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-              Loading exam details...
-            </div>
+      <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
+        <div className="px-4 py-4 md:px-6">
+          <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+            Loading exam details...
           </div>
         </div>
-      </div>
+      </DashboardPageShell>
+    );
+  }
+
+  if (examLoadError || (!loading && !exam)) {
+    const errMsg =
+      examLoadErrorDetail instanceof Error ? examLoadErrorDetail.message : "Exam not found";
+    return (
+      <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
+        <div className="px-4 py-4 md:px-6">
+          <div className="mx-auto max-w-6xl rounded-2xl border border-red-200 bg-red-50 p-8 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+            <p className="font-semibold">Could not load this exam</p>
+            <p className="mt-2">{errMsg}</p>
+            <Link
+              href="/dashboard?section=exam-shortlist"
+              className="mt-4 inline-block font-semibold text-[#341050] underline dark:text-violet-300"
+            >
+              Back to exams
+            </Link>
+          </div>
+        </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-      <Sidebar
-        sidebarOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen((v) => !v)}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-        activeSection="exam-shortlist"
-        onSectionChange={handleSectionChange}
-      />
-
-      <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
-        <TopBar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
-
-        <div className="flex-1 overflow-y-auto bg-[#F6F8FA] dark:bg-slate-950">
+    <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
           <section className="bg-white dark:bg-slate-900">
             <div className="px-4 py-3 md:px-6">
               <div className="flex items-center gap-3">
@@ -870,8 +821,6 @@ export default function ExamDetailPage() {
               </aside>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }

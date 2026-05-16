@@ -134,8 +134,8 @@ export default function TestimonialsSection({ testimonials, copy }: Props) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setHeadingVisible(true);
           observer.disconnect();
+          queueMicrotask(() => setHeadingVisible(true));
         }
       },
       { threshold: 0.2 },

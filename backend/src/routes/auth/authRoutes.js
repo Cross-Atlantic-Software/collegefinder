@@ -309,8 +309,22 @@ router.put('/profile/exam-preferences', authenticate, ExamsController.updateExam
 router.get('/profile/recommended-exams', authenticate, ExamsController.getRecommendedExams);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-exams/meta
+ * @desc    Sidebar / cache: stream + shortlisted + recommended IDs only (no enriched exams)
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/meta', authenticate, ExamsController.getDashboardExamsMeta);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-exams/tab
+ * @desc    Paginated enriched exams for one dashboard tab (recommended | shortlisted | all)
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/tab', authenticate, ExamsController.getDashboardExamsTab);
+
+/**
  * @route   GET /api/auth/profile/dashboard-exams
- * @desc    Stream-filtered exams + recommended + shortlisted IDs for dashboard tabs
+ * @desc    Stream-filtered exams + recommended + shortlisted IDs for dashboard tabs (legacy full payload)
  * @access  Private
  */
 router.get('/profile/dashboard-exams', authenticate, ExamsController.getDashboardExams);

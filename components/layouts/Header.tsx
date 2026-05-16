@@ -41,7 +41,8 @@ export default function Header() {
             setIsScrolled(window.scrollY > 16);
         };
 
-        handleScroll();
+        // Avoid synchronous setState in the same turn as passive effects mount (React 19 can warn).
+        queueMicrotask(() => handleScroll());
         window.addEventListener("scroll", handleScroll, { passive: true });
 
         return () => {

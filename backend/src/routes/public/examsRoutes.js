@@ -9,5 +9,19 @@ const ExamsController = require('../../controllers/profile/examsController');
  */
 router.get('/', ExamsController.getAll);
 
+/**
+ * @route   GET /api/exams/count
+ * @desc    Total exam count (lightweight; sidebar badges)
+ * @access  Public
+ */
+router.get('/count', ExamsController.getCount);
+
+/**
+ * @route   GET /api/exams/:id
+ * @desc    Single exam by id, code, name, or slug (enriched)
+ * @access  Public
+ */
+router.get('/:id', ExamsController.getById);
+
 module.exports = router;
 
