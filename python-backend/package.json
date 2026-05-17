@@ -1,0 +1,9 @@
+{
+  "name": "python-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Exam automation orchestration (LangGraph + Gemini). Run with: npm run dev",
+  "scripts": {
+    "dev": "venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+  }
+}
