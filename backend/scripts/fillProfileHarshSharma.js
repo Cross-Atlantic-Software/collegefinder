@@ -13,6 +13,8 @@ const UserAddress = require('../src/models/user/UserAddress');
 const UserCareerGoals = require('../src/models/user/UserCareerGoals');
 const UserOtherInfo = require('../src/models/user/UserOtherInfo');
 const Stream = require('../src/models/taxonomy/Stream');
+const CategoryAndReservation = require('../src/models/user/CategoryAndReservation');
+const GovernmentIdentification = require('../src/models/user/GovernmentIdentification');
 
 const EMAIL = 'sharmaharsh634@gmail.com';
 
@@ -21,17 +23,36 @@ const PROFILE = {
   name: 'Harsh Sharma',
   first_name: 'Harsh',
   last_name: 'Sharma',
-  date_of_birth: '2005-06-15',
+  date_of_birth: '2004-08-07',
   gender: 'Male',
   phone_number: '+91 6374589527',
   state: 'Delhi',
   district: 'Central Delhi',
   nationality: 'Indian',
-  // Academics
-  matric_school_name: 'Delhi Public School',
+  father_full_name: 'Rajesh Sharma',
+  mother_full_name: 'Sunita Sharma',
+  // Academics — 10th
+  matric_board: 'CBSE',
+  matric_school_name: 'Delhi Public School, New Delhi',
+  matric_school_pincode: '110022',
   matric_passing_year: 2021,
-  postmatric_school_name: 'Delhi Public School',
+  matric_roll_number: '1234567',
+  matric_total_marks: 500,
+  matric_obtained_marks: 450,
+  matric_percentage: 90.0,
+  matric_marks_type: 'Percentage',
+  matric_result_status: 'passed',
+  // Academics — 12th
+  postmatric_board: 'CBSE',
+  postmatric_school_name: 'Delhi Public School, New Delhi',
+  postmatric_school_pincode: '110022',
   postmatric_passing_year: 2023,
+  postmatric_roll_number: '7654321',
+  postmatric_total_marks: 500,
+  postmatric_obtained_marks: 465,
+  postmatric_percentage: 93.0,
+  postmatric_marks_type: 'Percentage',
+  postmatric_result_status: 'passed',
   is_pursuing_12th: false,
   stream_name: 'Science (PCM)',
   // Address
@@ -43,6 +64,11 @@ const PROFILE = {
   // Other
   medium: 'English',
   language: 'English',
+  // Category & reservation (category_id 4 = ST)
+  category_id: 4,
+  pwbd_status: true,
+  // Government ID
+  aadhar_number: '1234 5678 9012',
 };
 
 async function main() {
@@ -61,8 +87,9 @@ async function main() {
       `UPDATE users SET
         name = $1, first_name = $2, last_name = $3, date_of_birth = $4::DATE,
         gender = $5, phone_number = $6, state = $7, district = $8,
-        nationality = $9, onboarding_completed = TRUE, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $10`,
+        nationality = $9, father_full_name = $10, mother_full_name = $11,
+        onboarding_completed = TRUE, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12`,
       [
         PROFILE.name,
         PROFILE.first_name,
@@ -73,6 +100,8 @@ async function main() {
         PROFILE.state,
         PROFILE.district,
         PROFILE.nationality,
+        PROFILE.father_full_name,
+        PROFILE.mother_full_name,
         userId,
       ]
     );
@@ -84,12 +113,30 @@ async function main() {
     if (stream) streamId = stream.id;
 
     await UserAcademics.upsert(userId, {
-      matric_school_name: PROFILE.matric_school_name,
-      matric_passing_year: PROFILE.matric_passing_year,
-      postmatric_school_name: PROFILE.postmatric_school_name,
-      postmatric_passing_year: PROFILE.postmatric_passing_year,
+      // 10th
+      matric_board:          PROFILE.matric_board,
+      matric_school_name:    PROFILE.matric_school_name,
+      matric_school_pincode: PROFILE.matric_school_pincode,
+      matric_passing_year:   PROFILE.matric_passing_year,
+      matric_roll_number:    PROFILE.matric_roll_number,
+      matric_total_marks:    PROFILE.matric_total_marks,
+      matric_obtained_marks: PROFILE.matric_obtained_marks,
+      matric_percentage:     PROFILE.matric_percentage,
+      matric_marks_type:     PROFILE.matric_marks_type,
+      matric_result_status:  PROFILE.matric_result_status,
+      // 12th
+      postmatric_board:          PROFILE.postmatric_board,
+      postmatric_school_name:    PROFILE.postmatric_school_name,
+      postmatric_school_pincode: PROFILE.postmatric_school_pincode,
+      postmatric_passing_year:   PROFILE.postmatric_passing_year,
+      postmatric_roll_number:    PROFILE.postmatric_roll_number,
+      postmatric_total_marks:    PROFILE.postmatric_total_marks,
+      postmatric_obtained_marks: PROFILE.postmatric_obtained_marks,
+      postmatric_percentage:     PROFILE.postmatric_percentage,
+      postmatric_marks_type:     PROFILE.postmatric_marks_type,
+      postmatric_result_status:  PROFILE.postmatric_result_status,
       is_pursuing_12th: PROFILE.is_pursuing_12th,
-      stream: PROFILE.stream_name,
+      stream:    PROFILE.stream_name,
       stream_id: streamId,
     });
     console.log('Upserted user_academics');
@@ -116,6 +163,20 @@ async function main() {
     // 5. Career goals - ensure record exists (empty interests is valid)
     await UserCareerGoals.upsert(userId, { interests: [] });
     console.log('Upserted user_career_goals');
+
+    // 6. Category & reservation
+    await CategoryAndReservation.upsert(userId, {
+      category_id: PROFILE.category_id,
+      pwbd_status: PROFILE.pwbd_status,
+      ews_status: false,
+    });
+    console.log('Upserted category_and_reservation');
+
+    // 7. Government identification (Aadhar)
+    await GovernmentIdentification.upsert(userId, {
+      aadhar_number: PROFILE.aadhar_number,
+    });
+    console.log('Upserted government_identification');
 
     console.log('\nProfile fill complete for', EMAIL);
   } catch (err) {

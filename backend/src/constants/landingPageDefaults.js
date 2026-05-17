@@ -8,15 +8,15 @@ const landingPageDefaults = {
     headingLine2: 'Finally Under Control',
     painPoints: ['No scattered portals', 'No forgotten forms', 'No last minute chaos'],
     ctaLabel: 'Find My Fit',
-    ctaHref: '/signup',
+    ctaHref: '/login',
   },
   info: {
     label: 'THE REALITY',
-    statsLine: '1K+ Exams\n20M Students\n40K+ Colleges',
+    statsLine: '1K+ Exams • 40K+ Colleges • 20M Students',
     highlightQuestion: 'Still tracking it all manually?',
     body: 'UniTracko brings it all into one place - nothing slips, nothing gets missed.\nNo scattered portals · No forgotten forms · No last-minute chaos',
     ctaLabel: 'Let\'s Figure This Out',
-    ctaHref: '/signup',
+    ctaHref: '/login',
   },
   features: {
     sectionTitleBefore: 'Unlock the',
@@ -78,8 +78,7 @@ const landingPageDefaults = {
     headingBuiltFor: 'Built For',
     headingBoth: 'Both',
     headingStudents: 'Students',
-    headingAnd: 'And',
-    headingParents: 'Parents',
+    headingAndParents: 'And Parents',
     subtitle: 'Every feature, designed for both sides of the journey.',
     tabStudents: 'For Students',
     tabParents: 'For Parents',
@@ -90,8 +89,7 @@ const landingPageDefaults = {
       'Personalised exam prep, built in',
     ],
     parentPoints: [
-      'No missed forms, no surprises',
-      'Cost and scholarship clarity',
+      'No missed forms, no surprises Cost and scholarship clarity',
       'Live progress tracking',
       'Confidence at every step',
     ],
@@ -124,15 +122,10 @@ const landingPageDefaults = {
       },
     ],
     formTitle: 'Personal data',
-    formSubtitle: 'Please enter the details correctly to the best of your knowledge.',
+    formSubtitle: 'Specify details as in your passport',
     formSubmit: 'Map My Admission',
     formPrivacy:
       'Your Data stays private. No spam. No pressure. No promotional calls',
-  },
-  testimonials: {
-    titleBefore: 'Students & Parents Experience with',
-    titleHighlight: 'UniTracko',
-    subtitle: 'From missed deadlines and confusion to clarity and control.',
   },
   faq: {
     titleLine1: 'Frequently Asked',
@@ -175,11 +168,6 @@ const landingPageDefaults = {
           'Accuracy improves with profile completeness and usage behavior, giving increasingly relevant recommendations over time.',
       },
     ],
-  },
-  /** Shown on the home page after successful email signup (OTP verified); auto-dismisses. */
-  signupWelcome: {
-    message: 'Thank you for signing up with Unitracko',
-    durationSeconds: 5,
   },
 };
 

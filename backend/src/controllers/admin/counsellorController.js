@@ -8,18 +8,6 @@ const XLSX = require('xlsx');
 const db = require('../../config/database');
 const { parsePdfsFromZip } = require('../../utils/logoUploadUtils');
 
-/** Non–super-admins may only assign experts they created (Strength Masters CRM). */
-async function validateExpertIdsForAdmin(admin, expertIds) {
-  if (!expertIds || expertIds.length === 0) return null;
-  if (admin.type === 'super_admin') return null;
-  const allowed = new Set(await AdmissionExpert.findIdsCreatedByAdmin(admin.id));
-  const bad = expertIds.filter((id) => !allowed.has(id));
-  if (bad.length) {
-    return `You can only assign experts you added. Invalid id(s): ${bad.join(', ')}`;
-  }
-  return null;
-}
-
 class CounsellorController {
   /**
    * GET /api/admin/counsellor/search/:userId
@@ -109,11 +97,6 @@ class CounsellorController {
         if (!isNaN(single)) expertIds = [single];
       }
 
-      const expertErr = await validateExpertIdsForAdmin(req.admin, expertIds);
-      if (expertErr) {
-        return res.status(403).json({ success: false, message: expertErr });
-      }
-
       let reportUrl = null;
       if (req.file) {
         const base64 = req.file.buffer.toString('base64');
@@ -189,11 +172,6 @@ class CounsellorController {
       } else if (assigned_expert_id !== undefined && assigned_expert_id !== '' && assigned_expert_id != null) {
         const single = parseInt(assigned_expert_id, 10);
         if (!isNaN(single)) expertIds = [single];
-      }
-
-      const expertErr = await validateExpertIdsForAdmin(req.admin, expertIds);
-      if (expertErr) {
-        return res.status(403).json({ success: false, message: expertErr });
       }
 
       const updateData = {
@@ -323,7 +301,7 @@ class CounsellorController {
       const allExpertIds = [...new Set(result.rows.flatMap(r => (r.assigned_expert_ids && Array.isArray(r.assigned_expert_ids) ? r.assigned_expert_ids : [])))];
       const expertIdToName = {};
       if (allExpertIds.length > 0) {
-        const experts = await AdmissionExpert.findAllVisibleToAdmin(req.admin);
+        const experts = await AdmissionExpert.findAll();
         experts.forEach(e => { expertIdToName[e.id] = e.name || ''; });
       }
 
@@ -421,7 +399,7 @@ class CounsellorController {
         return res.status(400).json({ success: false, message: 'Excel file is empty' });
       }
 
-      const allExperts = await AdmissionExpert.findAllVisibleToAdmin(req.admin);
+      const allExperts = await AdmissionExpert.findAll();
       const nameToId = {};
       allExperts.forEach(e => {
         if (e.name && String(e.name).trim()) {

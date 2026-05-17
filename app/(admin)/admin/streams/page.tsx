@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllStreams, createStream, updateStream, deleteStream, deleteAllStreams, downloadStreamsBulkTemplate, bulkUploadStreams, Stream } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiUpload, FiDownload } from 'react-icons/fi';
+import { getAllStreams, createStream, updateStream, deleteStream, Stream } from '@/api';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye } from 'react-icons/fi';
 import { ConfirmationModal, useToast } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function StreamsPage() {
   const router = useRouter();
@@ -20,26 +19,12 @@ export default function StreamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingStream, setEditingStream] = useState<Stream | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', status: true, show_on_site: true, sort_order: '' as string });
+  const [formData, setFormData] = useState({ name: '', status: true });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
-  const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkError, setBulkError] = useState<string | null>(null);
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{
-    created: number;
-    createdStreams: { id: number; name: string }[];
-    errors: number;
-    errorDetails: { row: number; message: string }[];
-  } | null>(null);
   const [viewingStream, setViewingStream] = useState<Stream | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const { canDelete } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -102,16 +87,8 @@ export default function StreamsPage() {
     }
 
     try {
-      const sortParsed = parseInt(formData.sort_order.trim(), 10);
-      const sortOrderNum = Number.isNaN(sortParsed) ? 0 : sortParsed;
-
       if (editingStream) {
-        const response = await updateStream(editingStream.id, {
-          name: formData.name,
-          status: formData.status,
-          show_on_site: formData.show_on_site,
-          sort_order: sortOrderNum,
-        });
+        const response = await updateStream(editingStream.id, formData);
         if (response.success) {
           showSuccess('Stream updated successfully');
           setShowModal(false);
@@ -123,15 +100,7 @@ export default function StreamsPage() {
           showError(errorMsg);
         }
       } else {
-        const createPayload: Parameters<typeof createStream>[0] = {
-          name: formData.name,
-          status: formData.status,
-          show_on_site: formData.show_on_site,
-        };
-        if (formData.sort_order.trim() !== '') {
-          createPayload.sort_order = sortOrderNum;
-        }
-        const response = await createStream(createPayload);
+        const response = await createStream(formData);
         if (response.success) {
           showSuccess('Stream created successfully');
           setShowModal(false);
@@ -193,12 +162,7 @@ export default function StreamsPage() {
 
   const handleEdit = (stream: Stream) => {
     setEditingStream(stream);
-    setFormData({
-      name: stream.name,
-      status: stream.status,
-      show_on_site: stream.show_on_site !== false,
-      sort_order: String(stream.sort_order ?? 0),
-    });
+    setFormData({ name: stream.name, status: stream.status });
     setShowModal(true);
   };
 
@@ -209,7 +173,7 @@ export default function StreamsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', status: true, show_on_site: true, sort_order: '' });
+    setFormData({ name: '', status: true });
     setError(null);
   };
 
@@ -217,70 +181,6 @@ export default function StreamsPage() {
     setShowModal(false);
     setEditingStream(null);
     resetForm();
-  };
-
-  const handleDeleteAllConfirm = async () => {
-    try {
-      setIsDeletingAll(true);
-      const response = await deleteAllStreams();
-      if (response.success) {
-        showSuccess(response.message || 'All streams deleted successfully');
-        setShowDeleteAllConfirm(false);
-        fetchStreams();
-      } else {
-        const errorMsg = response.message || 'Failed to delete all streams';
-        setError(errorMsg);
-        showError(errorMsg);
-      }
-    } catch (err) {
-      const errorMsg = 'An error occurred while deleting all streams';
-      setError(errorMsg);
-      showError(errorMsg);
-      console.error('Error deleting all streams:', err);
-    } finally {
-      setIsDeletingAll(false);
-    }
-  };
-
-  const handleDownloadTemplate = async () => {
-    try {
-      setDownloadingTemplate(true);
-      await downloadStreamsBulkTemplate();
-      showSuccess('Template downloaded');
-    } catch {
-      showError('Failed to download template');
-    } finally {
-      setDownloadingTemplate(false);
-    }
-  };
-
-  const handleBulkUpload = async () => {
-    if (!bulkExcelFile) {
-      setBulkError('Please select an Excel file');
-      return;
-    }
-    try {
-      setBulkUploading(true);
-      setBulkError(null);
-      setBulkResult(null);
-      const response = await bulkUploadStreams(bulkExcelFile);
-      if (response.success && response.data) {
-        setBulkResult(response.data);
-        showSuccess(response.message || `Created ${response.data.created} stream(s)`);
-        fetchStreams();
-        if (response.data.errors === 0) {
-          setBulkExcelFile(null);
-          setShowBulkModal(false);
-        }
-      } else {
-        setBulkError(response.message || 'Bulk upload failed');
-      }
-    } catch {
-      setBulkError('An error occurred during bulk upload');
-      showError('Bulk upload failed');
-    } finally {
-      setBulkUploading(false);
-    }
   };
 
   if (error && !isLoading) {
@@ -330,38 +230,13 @@ export default function StreamsPage() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
-                >
-                  <FiTrash2 className="h-4 w-4" />
-                  Delete All
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBulkModal(true);
-                  setBulkExcelFile(null);
-                  setBulkResult(null);
-                  setBulkError(null);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
-              >
-                <FiUpload className="h-4 w-4" />
-                Upload Excel
-              </button>
-              <button
-                onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-              >
-                <FiPlus className="h-4 w-4" />
-                Add Stream
-              </button>
-            </div>
+            <button
+              onClick={handleCreate}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <FiPlus className="h-4 w-4" />
+              Add Stream
+            </button>
           </div>
 
           {/* Error Message */}
@@ -384,13 +259,7 @@ export default function StreamsPage() {
                         NAME
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        SORT ORDER
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         STATUS
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
-                        SHOW ON SITE
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">
                         CREATED
@@ -409,7 +278,7 @@ export default function StreamsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {streams.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {streams.length < allStreams.length ? 'No streams found matching your search' : 'No streams found'}
                         </td>
                       </tr>
@@ -419,9 +288,6 @@ export default function StreamsPage() {
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{stream.name}</span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-slate-700 tabular-nums">
-                            {stream.sort_order ?? 0}
-                          </td>
                           <td className="px-4 py-2">
                             {stream.status ? (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -430,17 +296,6 @@ export default function StreamsPage() {
                             ) : (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                                 Inactive
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2">
-                            {stream.show_on_site !== false ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                                No
                               </span>
                             )}
                           </td>
@@ -515,24 +370,6 @@ export default function StreamsPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Sort order
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={formData.sort_order}
-                    onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })}
-                    placeholder={editingStream ? undefined : 'Leave blank for auto'}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Lower numbers appear first in lists. Leave blank when creating to assign the next available order.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
                     Status
                   </label>
                   <div className="flex items-center gap-4">
@@ -555,34 +392,6 @@ export default function StreamsPage() {
                         className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
                       />
                       <span className="text-sm text-slate-700">Inactive</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Show on site
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="show_on_site"
-                        checked={formData.show_on_site === true}
-                        onChange={() => setFormData({ ...formData, show_on_site: true })}
-                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
-                      />
-                      <span className="text-sm text-slate-700">Yes</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="show_on_site"
-                        checked={formData.show_on_site === false}
-                        onChange={() => setFormData({ ...formData, show_on_site: false })}
-                        className="w-4 h-4 text-[#341050] focus:ring-[#341050]/25"
-                      />
-                      <span className="text-sm text-slate-700">No</span>
                     </label>
                   </div>
                 </div>
@@ -634,102 +443,6 @@ export default function StreamsPage() {
         isLoading={isDeleting}
       />
 
-      <ConfirmationModal
-        isOpen={showDeleteAllConfirm}
-        onClose={() => setShowDeleteAllConfirm(false)}
-        onConfirm={handleDeleteAllConfirm}
-        title="Delete All Streams"
-        message="Are you sure you want to delete all streams? This action cannot be undone."
-        confirmText="Delete All"
-        cancelText="Cancel"
-        confirmButtonStyle="danger"
-        isLoading={isDeletingAll}
-      />
-
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Bulk Upload Streams</h2>
-              <button
-                onClick={() => {
-                  setShowBulkModal(false);
-                  setBulkExcelFile(null);
-                  setBulkResult(null);
-                  setBulkError(null);
-                }}
-                className="text-slate-500 hover:text-slate-800"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-4 space-y-4">
-              <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">Template columns</h3>
-                <p className="text-xs text-slate-600 mb-3">
-                  Use columns: <span className="font-mono">name</span>, optional <span className="font-mono">status</span> (TRUE/FALSE), optional <span className="font-mono">show_on_site</span> (TRUE/FALSE), and optional{' '}
-                  <span className="font-mono">sort_order</span> (non-negative integer). Rows without <span className="font-mono">sort_order</span> get sequential values after the current maximum.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  disabled={downloadingTemplate}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
-                >
-                  <FiDownload className="h-4 w-4" />
-                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
-                </button>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
-                />
-              </div>
-              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
-              {bulkResult && (
-                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
-                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
-                  {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
-                  {bulkResult.errorDetails?.length > 0 && (
-                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
-                      {bulkResult.errorDetails.map((err, i) => (
-                        <li key={i}>
-                          Row {err.row}: {err.message}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowBulkModal(false);
-                  setBulkExcelFile(null);
-                  setBulkResult(null);
-                  setBulkError(null);
-                }}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleBulkUpload}
-                disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-              >
-                {bulkUploading ? 'Uploading...' : 'Upload'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* View Stream Modal */}
       {showViewModal && viewingStream && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -756,12 +469,6 @@ export default function StreamsPage() {
                 <p className="text-lg font-bold text-slate-900">{viewingStream.name}</p>
               </div>
 
-              {/* Sort order */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Sort order</label>
-                <p className="text-sm text-slate-700 tabular-nums">{viewingStream.sort_order ?? 0}</p>
-              </div>
-
               {/* Status */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
@@ -769,15 +476,6 @@ export default function StreamsPage() {
                   viewingStream.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
                   {viewingStream.status ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Show on site</label>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  viewingStream.show_on_site !== false ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-700'
-                }`}>
-                  {viewingStream.show_on_site !== false ? 'Yes' : 'No'}
                 </span>
               </div>
 

@@ -27,6 +27,9 @@ const boardOptions: SelectOption[] = [
 
 const inputBase = "w-full rounded-xl border border-black/15 bg-[#f8fbff] px-4 py-3 text-sm text-black placeholder:text-black/40 transition focus:outline-none focus:border-[#FAD53C] focus:bg-white";
 
+/** Indian postal PIN: 6 digits, first digit 1–9 */
+const INDIAN_PIN_REGEX = /^[1-9][0-9]{5}$/;
+
 export default function AcademicsProfile() {
     const { showSuccess, showError } = useToast();
     const [loading, setLoading] = useState(true);
@@ -48,6 +51,7 @@ export default function AcademicsProfile() {
         matric_percentage: "",
         matric_state: "",
         matric_city: "",
+        matric_school_pincode: "",
     });
 
     // Post-Matric (12th) form data
@@ -61,6 +65,7 @@ export default function AcademicsProfile() {
         postmatric_percentage: "",
         postmatric_state: "",
         postmatric_city: "",
+        postmatric_school_pincode: "",
         stream: "",
     });
 
@@ -127,6 +132,7 @@ export default function AcademicsProfile() {
                             matric_percentage: data.matric_percentage?.toString() || "",
                             matric_state: data.matric_state || "",
                             matric_city: data.matric_city || "",
+                            matric_school_pincode: data.matric_school_pincode || "",
                         });
 
                         // Set post-matric data
@@ -144,6 +150,7 @@ export default function AcademicsProfile() {
                             postmatric_percentage: data.postmatric_percentage?.toString() || "",
                             postmatric_state: data.postmatric_state || "",
                             postmatric_city: data.postmatric_city || "",
+                            postmatric_school_pincode: data.postmatric_school_pincode || "",
                             stream: streamValue,
                         });
 
@@ -226,6 +233,23 @@ export default function AcademicsProfile() {
         setSuccess(false);
 
         try {
+            const pinErrors: Record<string, string> = {};
+            const matricPin = matricData.matric_school_pincode?.trim();
+            if (matricPin && !INDIAN_PIN_REGEX.test(matricPin)) {
+                pinErrors.matric_school_pincode = "Enter a valid 6-digit Indian PIN code";
+            }
+            if (!isPursuing12th) {
+                const postPin = postmatricData.postmatric_school_pincode?.trim();
+                if (postPin && !INDIAN_PIN_REGEX.test(postPin)) {
+                    pinErrors.postmatric_school_pincode = "Enter a valid 6-digit Indian PIN code";
+                }
+            }
+            if (Object.keys(pinErrors).length > 0) {
+                setValidationErrors(pinErrors);
+                setSaving(false);
+                return;
+            }
+
             const payload: Record<string, unknown> = {};
             
             // Matric fields
@@ -250,6 +274,7 @@ export default function AcademicsProfile() {
             }
             if (matricData.matric_state?.trim()) payload.matric_state = matricData.matric_state.trim();
             if (matricData.matric_city?.trim()) payload.matric_city = matricData.matric_city.trim();
+            payload.matric_school_pincode = matricData.matric_school_pincode?.trim() || null;
 
             // Post-Matric fields (only if not pursuing 12th)
             if (!isPursuing12th) {
@@ -274,6 +299,7 @@ export default function AcademicsProfile() {
                 }
                 if (postmatricData.postmatric_state?.trim()) payload.postmatric_state = postmatricData.postmatric_state.trim();
                 if (postmatricData.postmatric_city?.trim()) payload.postmatric_city = postmatricData.postmatric_city.trim();
+                payload.postmatric_school_pincode = postmatricData.postmatric_school_pincode?.trim() || null;
             }
             
             // Marks type, CGPA, and result status (separate for matric and postmatric)
@@ -509,6 +535,26 @@ export default function AcademicsProfile() {
                                 isSearchable={true}
                                 isClearable={true}
                             />
+                            </div>
+                        </div>
+
+                        {/* Matric School Pincode */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">School Pincode</label>
+                            <div className="flex-1 min-w-0">
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="postal-code"
+                                maxLength={6}
+                                value={matricData.matric_school_pincode}
+                                onChange={(e) => setMatricData({ ...matricData, matric_school_pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                                className={`${inputBase} ${validationErrors.matric_school_pincode ? 'border-red-500' : ''}`}
+                                placeholder="6-digit PIN"
+                            />
+                            {validationErrors.matric_school_pincode && (
+                                <p className="mt-1 text-xs text-red-400">{validationErrors.matric_school_pincode}</p>
+                            )}
                             </div>
                         </div>
 
@@ -852,6 +898,26 @@ export default function AcademicsProfile() {
                                         isSearchable={true}
                                         isClearable={true}
                                     />
+                                    </div>
+                                </div>
+
+                                {/* Post-Matric School Pincode */}
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <label className="shrink-0 text-xs font-semibold text-black/55 w-[90px] text-right">School Pincode</label>
+                                    <div className="flex-1 min-w-0">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        autoComplete="postal-code"
+                                        maxLength={6}
+                                        value={postmatricData.postmatric_school_pincode}
+                                        onChange={(e) => setPostmatricData({ ...postmatricData, postmatric_school_pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                                        className={`${inputBase} ${validationErrors.postmatric_school_pincode ? 'border-red-500' : ''}`}
+                                        placeholder="6-digit PIN"
+                                    />
+                                    {validationErrors.postmatric_school_pincode && (
+                                        <p className="mt-1 text-xs text-red-400">{validationErrors.postmatric_school_pincode}</p>
+                                    )}
                                     </div>
                                 </div>
 

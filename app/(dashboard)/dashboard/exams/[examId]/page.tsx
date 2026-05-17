@@ -4,14 +4,26 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiExternalLink, FiTarget, FiTrendingUp } from "react-icons/fi";
+import { FiBookmark, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiTarget, FiTrendingUp } from "react-icons/fi";
 import { MdOutlineInsights, MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
-import type { Exam } from "@/api/exams";
-import { useExamDetailQuery } from "@/lib/examDetailQueries";
-import { formatExamPatternDurationHours } from "@/lib/formatDuration";
+import { getAllExams, type Exam } from "@/api/exams";
 import { Button } from "@/components/shared";
-import DashboardPageShell, { type DashboardSectionId } from "@/components/dashboard/DashboardPageShell";
+import { Sidebar, TopBar } from "@/components/dashboard";
+
+type SectionId =
+  | "dashboard"
+  | "profile"
+  | "exam-shortlist"
+  | "college-shortlist"
+  | "coaching-institutes"
+  | "scholarships"
+  | "applications"
+  | "exam-prep"
+  | "test-module"
+  | "know-your-strengths"
+  | "admission-help"
+  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "profile-recommended": [
@@ -22,7 +34,17 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
   "dashboard-shortlist-recommended": [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-    { label: "Recommended exams" },
+    { label: "Recommended" },
+  ],
+  "dashboard-shortlist-shortlisted": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
+    { label: "Shortlisted" },
+  ],
+  "dashboard-shortlist-all": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
+    { label: "All Exams" },
   ],
   "dashboard-applications": [
     { label: "Dashboard", href: "/dashboard" },
@@ -182,112 +204,6 @@ function getExamStream(examName: string): string {
   return "General";
 }
 
-function scoreSummaryFromCutoff(exam: Exam | null): string | null {
-  if (!exam?.examCutoff) return null;
-  const c = exam.examCutoff;
-  const rp = c.ranks_percentiles != null && String(c.ranks_percentiles).trim();
-  if (rp) return String(c.ranks_percentiles).trim();
-  const tr = c.target_rank_range != null && String(c.target_rank_range).trim();
-  if (tr) return String(c.target_rank_range).trim();
-  return null;
-}
-
-function formatAttemptLimit(exam: Exam): string | null {
-  const v = exam.eligibilityCriteria?.attempt_limit;
-  if (v == null || String(v).trim() === "") return null;
-  return String(v).trim();
-}
-
-function formatQuestionCountLabel(exam: Exam): string | null {
-  const n = exam.examPattern?.number_of_questions;
-  if (n == null) return null;
-  const num = Number(n);
-  if (!Number.isFinite(num)) return null;
-  return `${Math.round(num)} questions`;
-}
-
-function formatMarkingSchemeLabel(exam: Exam): string | null {
-  const neg =
-    exam.examPattern?.negative_marking != null && String(exam.examPattern.negative_marking).trim()
-      ? String(exam.examPattern.negative_marking).trim()
-      : null;
-  const total = exam.examPattern?.total_marks;
-  const totalPart =
-    total != null && Number.isFinite(Number(total))
-      ? `${Math.round(Number(total))} total marks`
-      : null;
-  if (totalPart && neg) return `${totalPart}; ${neg}`;
-  if (totalPart) return totalPart;
-  if (neg) return neg;
-  return null;
-}
-
-function buildEligibilityRules(exam: Exam | null, fallback: string[]): string[] {
-  if (!exam?.eligibilityCriteria) return fallback;
-  const ec = exam.eligibilityCriteria;
-  const rules: string[] = [];
-  if (ec.stream_labels?.length) rules.push(`Eligible streams: ${ec.stream_labels.join(", ")}`);
-  if (ec.subject_labels?.length) rules.push(`Subject alignment: ${ec.subject_labels.join(", ")}`);
-  if (ec.age_limit?.trim()) rules.push(`Age limit: ${ec.age_limit.trim()}`);
-  if (ec.attempt_limit != null && String(ec.attempt_limit).trim() !== "")
-    rules.push(`Attempt limit: ${String(ec.attempt_limit).trim()}`);
-  if (ec.domicile?.trim()) rules.push(`Domicile / state rules: ${ec.domicile.trim()}`);
-  return rules.length ? rules : fallback;
-}
-
-function formatIsoDateLabel(raw: string | null | undefined): string | null {
-  if (!raw || !String(raw).trim()) return null;
-  try {
-    const dt = new Date(raw);
-    if (Number.isNaN(dt.getTime())) return String(raw).trim();
-    return dt.toLocaleDateString(undefined, { dateStyle: "medium" });
-  } catch {
-    return String(raw).trim();
-  }
-}
-
-function buildTimelineFromExamDates(exam: Exam | null, fallback: TimelineItem[]): TimelineItem[] {
-  const dates = exam?.examDates;
-  if (!dates) return fallback;
-  const items: TimelineItem[] = [];
-  const add = (label: string, raw: string | null | undefined, note: string, critical?: boolean) => {
-    const formatted = formatIsoDateLabel(raw || undefined);
-    if (!formatted) return;
-    items.push({ label, month: formatted, note, critical });
-  };
-  add("Application opens", dates.application_start_date, "Start of the registration window.", true);
-  add("Application closes", dates.application_close_date, "Last date to submit the application form.", true);
-  add("Exam date", dates.exam_date, "Main examination day.", true);
-  add("Result", dates.result_date, "Scorecard / merit outcome.", false);
-  if (dates.application_fees != null && String(dates.application_fees).trim() !== "") {
-    const fee = Number(dates.application_fees);
-    if (!Number.isNaN(fee)) {
-      items.push({
-        label: "Application fee",
-        month: "See note",
-        note: `₹${fee} — confirm on the official notification.`,
-      });
-    }
-  }
-  return items.length ? items : fallback;
-}
-
-function buildCutoffLines(exam: Exam | null, fallback: string[]): string[] {
-  const c = exam?.examCutoff;
-  if (!c) return fallback;
-  const lines: string[] = [];
-  const push = (label: string, val: string | null | undefined) => {
-    if (val != null && String(val).trim() !== "") lines.push(`${label}: ${String(val).trim()}`);
-  };
-  push("Ranks / percentiles", c.ranks_percentiles);
-  push("General", c.cutoff_general);
-  push("OBC", c.cutoff_obc);
-  push("SC", c.cutoff_sc);
-  push("ST", c.cutoff_st);
-  push("Target rank range", c.target_rank_range);
-  return lines.length ? lines : fallback;
-}
-
 function getModel(exam: Exam | null, examId: string): DetailModel {
   const key = exam ? slugify(exam.name) : slugify(examId);
   const now = new Date();
@@ -344,7 +260,7 @@ function getModel(exam: Exam | null, examId: string): DetailModel {
 
   const preset = PRESETS[key] || {};
 
-  const merged: DetailModel = {
+  return {
     ...base,
     ...preset,
     competitiveness: {
@@ -352,46 +268,6 @@ function getModel(exam: Exam | null, examId: string): DetailModel {
       ...preset.competitiveness,
     },
   };
-
-  if (exam) {
-    const mode =
-      exam.examPattern?.mode != null && String(exam.examPattern.mode).trim()
-        ? String(exam.examPattern.mode).trim()
-        : null;
-    if (mode) merged.mode = mode;
-
-    const durationLabel = formatExamPatternDurationHours(exam.examPattern?.duration_minutes ?? undefined);
-    if (durationLabel !== "—") merged.duration = durationLabel;
-
-    const attemptsLabel = formatAttemptLimit(exam);
-    if (attemptsLabel) merged.attempts = attemptsLabel;
-
-    const scoreLabel = scoreSummaryFromCutoff(exam);
-    if (scoreLabel) merged.scoreWindow = scoreLabel;
-
-    const qc = formatQuestionCountLabel(exam);
-    if (qc) merged.questionCount = qc;
-
-    const marking = formatMarkingSchemeLabel(exam);
-    if (marking) merged.markingScheme = marking;
-
-    if (exam.exam_type?.trim()) merged.examType = exam.exam_type.trim();
-    if (exam.conducting_authority?.trim()) merged.conductingAuthority = exam.conducting_authority.trim();
-
-    merged.eligibility = buildEligibilityRules(exam, merged.eligibility);
-    merged.timeline = buildTimelineFromExamDates(exam, merged.timeline);
-    merged.cutoffBenchmarks = buildCutoffLines(exam, merged.cutoffBenchmarks);
-
-    const cg = exam.examCutoff?.cutoff_general;
-    if (cg != null && String(cg).trim() !== "") {
-      merged.competitiveness = {
-        ...merged.competitiveness,
-        typicalCutoff: String(cg).trim(),
-      };
-    }
-  }
-
-  return merged;
 }
 
 export default function ExamDetailPage() {
@@ -401,23 +277,42 @@ export default function ExamDetailPage() {
   const examId = decodeURIComponent(params.examId || "");
   const from = searchParams.get("from") || "";
 
+  const [allExams, setAllExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [tracking, setTracking] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
-  const {
-    data: exam,
-    isLoading: loading,
-    isError: examLoadError,
-    error: examLoadErrorDetail,
-  } = useExamDetailQuery(examId);
+  useEffect(() => {
+    let cancelled = false;
 
-  const logoSrc = useMemo(
-    () => (exam?.exam_logo?.trim() ? exam.exam_logo.trim() : "/cbse.png"),
-    [exam]
-  );
-  const logoRemote = logoSrc.startsWith("http");
+    const run = async () => {
+      setLoading(true);
+      const res = await getAllExams();
+      if (cancelled) return;
+      setAllExams(res.success && res.data ? res.data.exams : []);
+      setLoading(false);
+    };
 
-  const model = useMemo(() => getModel(exam ?? null, examId), [exam, examId]);
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const exam = useMemo(() => {
+    const normalized = slugify(examId);
+    return (
+      allExams.find((item) => String(item.id) === examId) ||
+      allExams.find((item) => slugify(item.name) === normalized) ||
+      allExams.find((item) => item.code != null && slugify(item.code) === normalized) ||
+      null
+    );
+  }, [allExams, examId]);
+
+  const model = useMemo(() => getModel(exam, examId), [exam, examId]);
   const examName = exam?.name || examId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
   const examStream = getExamStream(examName);
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
@@ -425,7 +320,7 @@ export default function ExamDetailPage() {
     { label: "Exam Directory", href: "/dashboard/exams" },
   ];
 
-  const handleSectionChange = (section: DashboardSectionId) => {
+  const handleSectionChange = (section: SectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
@@ -454,53 +349,63 @@ export default function ExamDetailPage() {
     localStorage.setItem(`exam-detail-state:${examId}`, JSON.stringify({ saved, tracking }));
   }, [examId, saved, tracking]);
 
-  if (loading && !exam) {
+  if (loading) {
     return (
-      <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
-        <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            Loading exam details...
+      <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen((v) => !v)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+          activeSection="exam-shortlist"
+          onSectionChange={handleSectionChange}
+        />
+        <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
+          <TopBar
+            onToggleSidebar={() => setSidebarOpen((v) => !v)}
+            onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+            isSidebarCollapsed={sidebarCollapsed}
+          />
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
+            <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+              Loading exam details...
+            </div>
           </div>
         </div>
-      </DashboardPageShell>
-    );
-  }
-
-  if (examLoadError || (!loading && !exam)) {
-    const errMsg =
-      examLoadErrorDetail instanceof Error ? examLoadErrorDetail.message : "Exam not found";
-    return (
-      <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
-        <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto max-w-6xl rounded-2xl border border-red-200 bg-red-50 p-8 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
-            <p className="font-semibold">Could not load this exam</p>
-            <p className="mt-2">{errMsg}</p>
-            <Link
-              href="/dashboard?section=exam-shortlist"
-              className="mt-4 inline-block font-semibold text-[#341050] underline dark:text-violet-300"
-            >
-              Back to exams
-            </Link>
-          </div>
-        </div>
-      </DashboardPageShell>
+      </div>
     );
   }
 
   return (
-    <DashboardPageShell activeSection="exam-shortlist" onSectionChange={handleSectionChange}>
+    <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        activeSection="exam-shortlist"
+        onSectionChange={handleSectionChange}
+      />
+
+      <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
+        <TopBar
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+          isSidebarCollapsed={sidebarCollapsed}
+        />
+
+        <div className="flex-1 overflow-y-auto bg-[#F6F8FA] dark:bg-slate-950">
           <section className="bg-white dark:bg-slate-900">
             <div className="px-4 py-3 md:px-6">
               <div className="flex items-center gap-3">
                 <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
                   <Image
-                    src={logoSrc}
+                    src="/cbse.png"
                     alt="Exam logo"
                     fill
                     className="object-cover"
                     sizes="44px"
                     priority
-                    unoptimized={logoRemote}
                   />
                 </div>
                 <div>
@@ -535,22 +440,13 @@ export default function ExamDetailPage() {
           <div className="px-4 py-4 md:px-6">
             <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
               <section className="space-y-5">
-                {exam?.description && String(exam.description).trim() !== "" && (
-                  <article className="rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">About this exam</h2>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                      {exam.description}
-                    </p>
-                  </article>
-                )}
-
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Mode</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{model.mode}</p>
                   </div>
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Duration (in Hours)</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{model.duration}</p>
                   </div>
                   <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
@@ -563,33 +459,6 @@ export default function ExamDetailPage() {
                   </div>
                 </div>
 
-                {(exam?.linkedCareerGoals?.length || exam?.linkedPrograms?.length) ? (
-                  <article className="rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Career goals & programs</h2>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Linked interests and programs from admin configuration.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(exam?.linkedCareerGoals || []).map((g) => (
-                        <span
-                          key={`cg-${g.id}`}
-                          className="rounded-full bg-[#F6F8FA] px-3 py-1 text-xs font-medium text-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                        >
-                          {g.label}
-                        </span>
-                      ))}
-                      {(exam?.linkedPrograms || []).map((p) => (
-                        <span
-                          key={`pg-${p.id}`}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                        >
-                          {p.name}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
-                ) : null}
-
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Exam Pattern</h2>
@@ -597,12 +466,7 @@ export default function ExamDetailPage() {
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Mode: {model.mode}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Questions: {model.questionCount}</p>
                       <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Marking: {model.markingScheme}</p>
-                      <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Duration (in Hours): {model.duration}</p>
-                      {exam?.examPattern?.weightage_of_subjects != null && String(exam.examPattern.weightage_of_subjects).trim() !== "" ? (
-                        <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                          Subject weightage: {exam.examPattern.weightage_of_subjects}
-                        </p>
-                      ) : null}
+                      <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Duration: {model.duration}</p>
                     </div>
                   </article>
 
@@ -653,46 +517,12 @@ export default function ExamDetailPage() {
             </article>
           </div>
 
-          {exam?.documents_required?.trim() ? (
-            <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Documents required</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                {exam.documents_required.trim()}
-              </p>
-            </article>
-          ) : null}
-
-          {exam?.counselling?.trim() ? (
-            <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Counselling</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                {exam.counselling.trim()}
-              </p>
-            </article>
-          ) : null}
-
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Exam Type & Conducting Authority</h2>
               <div className="mt-3 space-y-2 text-sm">
                 <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Exam Type: {model.examType}</p>
                 <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">Conducting Authority: {model.conductingAuthority}</p>
-                {exam?.number_of_papers != null && exam.number_of_papers >= 1 ? (
-                  <p className="rounded-lg bg-[#F6F8FA] px-3 py-2 text-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                    Number of papers: {exam.number_of_papers}
-                  </p>
-                ) : null}
-                {exam?.website?.trim() ? (
-                  <a
-                    href={/^https?:\/\//i.test(exam.website.trim()) ? exam.website.trim() : `https://${exam.website.trim()}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
-                  >
-                    Official website
-                    <FiExternalLink className="h-4 w-4 shrink-0 opacity-70" />
-                  </a>
-                ) : null}
               </div>
             </article>
 
@@ -821,6 +651,8 @@ export default function ExamDetailPage() {
               </aside>
             </div>
           </div>
-    </DashboardPageShell>
+        </div>
+      </div>
+    </div>
   );
 }

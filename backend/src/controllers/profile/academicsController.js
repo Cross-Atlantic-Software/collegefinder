@@ -3,19 +3,6 @@ const Subject = require('../../models/taxonomy/Subject');
 const Stream = require('../../models/taxonomy/Stream');
 const { validationResult } = require('express-validator');
 
-/**
- * Display stream label: prefer `streams.name` from `user_academics.stream_id`,
- * else fall back to legacy `user_academics.stream` text.
- */
-async function streamDisplayFromAcademics(academics) {
-  if (!academics) return null;
-  if (academics.stream_id != null) {
-    const row = await Stream.findById(academics.stream_id);
-    if (row?.name) return row.name;
-  }
-  return academics.stream || null;
-}
-
 class AcademicsController {
   /**
    * Get academics
@@ -79,8 +66,6 @@ class AcademicsController {
         }
       }
 
-      const streamDisplay = await streamDisplayFromAcademics(academics);
-
       res.json({
         success: true,
         data: {
@@ -94,6 +79,7 @@ class AcademicsController {
           matric_percentage: academics.matric_percentage,
           matric_state: academics.matric_state,
           matric_city: academics.matric_city,
+          matric_school_pincode: academics.matric_school_pincode,
           // Post-Matric (12th) fields
           postmatric_board: academics.postmatric_board,
           postmatric_school_name: academics.postmatric_school_name,
@@ -104,17 +90,15 @@ class AcademicsController {
           postmatric_percentage: academics.postmatric_percentage,
           postmatric_state: academics.postmatric_state,
           postmatric_city: academics.postmatric_city,
+          postmatric_school_pincode: academics.postmatric_school_pincode,
           matric_marks_type: academics.matric_marks_type,
           matric_cgpa: academics.matric_cgpa,
           matric_result_status: academics.matric_result_status,
           postmatric_marks_type: academics.postmatric_marks_type,
           postmatric_cgpa: academics.postmatric_cgpa,
           postmatric_result_status: academics.postmatric_result_status,
-          stream: streamDisplay,
+          stream: academics.stream,
           stream_id: academics.stream_id,
-          user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
-            ? academics.user_shortlisted_exams
-            : [],
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false
@@ -193,8 +177,6 @@ class AcademicsController {
         }
       }
 
-      const streamDisplay = await streamDisplayFromAcademics(academics);
-
       res.json({
         success: true,
         message: 'Academics updated successfully',
@@ -209,6 +191,7 @@ class AcademicsController {
           matric_percentage: academics.matric_percentage,
           matric_state: academics.matric_state,
           matric_city: academics.matric_city,
+          matric_school_pincode: academics.matric_school_pincode,
           // Post-Matric (12th) fields
           postmatric_board: academics.postmatric_board,
           postmatric_school_name: academics.postmatric_school_name,
@@ -219,17 +202,15 @@ class AcademicsController {
           postmatric_percentage: academics.postmatric_percentage,
           postmatric_state: academics.postmatric_state,
           postmatric_city: academics.postmatric_city,
+          postmatric_school_pincode: academics.postmatric_school_pincode,
           matric_marks_type: academics.matric_marks_type,
           matric_cgpa: academics.matric_cgpa,
           matric_result_status: academics.matric_result_status,
           postmatric_marks_type: academics.postmatric_marks_type,
           postmatric_cgpa: academics.postmatric_cgpa,
           postmatric_result_status: academics.postmatric_result_status,
-          stream: streamDisplay,
+          stream: academics.stream,
           stream_id: academics.stream_id,
-          user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
-            ? academics.user_shortlisted_exams
-            : [],
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false

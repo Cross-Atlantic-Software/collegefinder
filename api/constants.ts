@@ -122,6 +122,7 @@ export const API_ENDPOINTS = {
     RECOMMENDED_MAPPINGS: '/admin/recommended-mappings',
     COACHING_EXAMS_MAPPINGS: '/admin/coaching-exams-mappings',
     SCHOLARSHIP_EXAMS_COLLEGES_MAPPINGS: '/admin/scholarship-exams-colleges-mappings',
+    EXAM_ADAPTERS: '/admin/exam-adapters',
   },
 
   // Strength endpoints (user-facing)

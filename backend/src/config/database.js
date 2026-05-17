@@ -36,10 +36,19 @@ pool.on('error', (err) => {
 const init = async () => {
   try {
     const dbDir = path.join(__dirname, '../database/schema');
+    const migrationsDir = path.join(__dirname, '../database/migrations');
 
-    // NOTE: Do not run destructive college DROP scripts on startup — that wiped all college
-    // data on every server restart. One-time fixes live under migrations/archive/ and must
-    // be run manually only when intentionally resetting college tables in dev.
+    // Run schema fixes first (for existing DBs with older schema)
+    const fixCollegesPath = path.join(migrationsDir, 'fix_colleges_college_name.sql');
+    if (fs.existsSync(fixCollegesPath)) {
+      try {
+        const sql = fs.readFileSync(fixCollegesPath, 'utf8');
+        await pool.query(sql);
+        console.log('✅ Applied schema fix: fix_colleges_college_name.sql');
+      } catch (e) {
+        if (e.code !== '42P07') console.log('ℹ️  Schema fix skipped:', e.message);
+      }
+    }
 
     // Define schema files in execution order
     const schemaFiles = [
@@ -61,7 +70,6 @@ const init = async () => {
       'topics.sql',           // Topics table (depends on subjects)
       'subtopics.sql',        // Subtopics table (depends on topics)
       'lectures.sql',         // Lectures table (depends on subtopics)
-      'upload_jobs.sql',      // Bulk upload jobs + per-row results (references lectures, admin_users)
       'purposes.sql',         // Purposes table and lecture_purposes junction table
       'levels.sql',           // Levels taxonomy table
       'programs.sql',         // Programs taxonomy table
@@ -70,7 +78,7 @@ const init = async () => {
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)
       'institutes.sql',       // Institutes (Coachings) module: institutes + institute_details + institute_exams + institute_exam_specialization + institute_statistics + institute_courses
-      'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams + scholarship_colleges
+      'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams
       'loans.sql',            // Loans module: loan_providers + disbursement_process + eligible_countries + eligible_course_types
       'user_address.sql',      // User address table (depends on users)
       'government_identification.sql', // Government ID table (depends on users)
@@ -155,44 +163,11 @@ const runMigrations = async () => {
     'add_branch_id_to_college_programs.sql',
     'add_institute_referral_contact_email.sql',
     'add_referral_uses_table.sql',
-    'add_referral_codes_table.sql',
-    'add_referral_codes_module.sql',
     'add_institute_google_maps_link.sql',
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',
-    'add_legal_page_content.sql',
-    'add_branch_programs_junction.sql',
-    'add_scholarship_colleges.sql',
-    'add_expert_linkedin_website.sql',
-    'add_photo_file_name_to_admission_experts.sql',
-    'add_user_code_to_users.sql',
-    'add_college_institute_state_city.sql',
-    'add_stream_id_to_career_goals_taxonomies.sql',
-    'add_stream_interests_to_programs_branches.sql',
-    'add_password_reset_to_users.sql',
-    'add_referred_by_code_to_users.sql',
-    'add_youtube_meta_to_lectures.sql',
-    'add_key_topics_to_be_covered_to_lectures.sql',
-    'add_hook_summary_to_lectures.sql',
-    'remove_name_from_lectures_use_youtube_title.sql',
-    'restructure_exams_module_fields_2026.sql',
-    'add_stream_interest_recommendation_mappings_2026.sql',
-    'remove_colleges_google_map_link.sql',
-    'add_parent_university_to_colleges.sql',
-    'rename_colleges_logo_filename_to_logo_url.sql',
-    'add_upload_job_rows_college_id.sql',
-    'add_testimonials_table.sql',
-    'add_profile_image_to_testimonials.sql',
-    'add_sort_order_to_streams.sql',
-    'add_user_queries_table.sql',
-    'add_admin_resolution_to_user_queries.sql',
-    'add_show_on_site_to_streams.sql',
-    'add_user_shortlisted_exams_to_user_academics.sql',
-    'add_user_shortlisted_colleges_to_user_academics.sql',
-    'add_institute_cityname.sql',
-    'add_scholarship_extra_fields.sql',
-    'add_user_shortlisted_institutes_scholarships.sql',
-    'institute_metrics_to_text.sql'
+    'add_exam_adapters_and_fill_reports.sql',
+    'add_exam_adapter_drafts.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
@@ -212,11 +187,9 @@ const runMigrations = async () => {
       .trim();
 
     try {
-      // If file contains dollar-quoted blocks (e.g. DO $$ ... END $$ or DO $BODY$ ... END $BODY$),
-      // run entire file as one script so semicolons inside the block don't break the migration.
-      const hasDollarQuotedDo =
-        /\bDO\s+\$[^$\s]*\$/i.test(cleanedSql) || cleanedSql.includes('$$');
-      if (hasDollarQuotedDo) {
+      // If file contains dollar-quoted blocks (e.g. DO $$ ... END $$), run entire file as one script
+      // so that semicolons inside the block don't break the migration
+      if (cleanedSql.includes('$$')) {
         await pool.query(cleanedSql);
       } else {
         const statements = cleanedSql

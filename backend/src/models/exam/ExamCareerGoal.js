@@ -2,24 +2,6 @@ const db = require('../../config/database');
 
 class ExamCareerGoal {
   /**
-   * Career goals for many exams (batch). Rows: exam_id, career_goal_id, label, logo
-   */
-  static async findCareerGoalsForExamIds(examIds) {
-    if (!examIds || examIds.length === 0) {
-      return [];
-    }
-    const result = await db.query(
-      `SELECT ecg.exam_id, ecg.career_goal_id, cg.label, cg.logo
-       FROM exam_career_goal ecg
-       JOIN career_goals_taxonomies cg ON cg.id = ecg.career_goal_id
-       WHERE ecg.exam_id = ANY($1::int[])
-       ORDER BY ecg.exam_id ASC, cg.label ASC`,
-      [examIds]
-    );
-    return result.rows;
-  }
-
-  /**
    * Find all career goals for an exam
    */
   static async findByExamId(examId) {

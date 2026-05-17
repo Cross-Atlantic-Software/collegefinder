@@ -1,6 +1,5 @@
 const User = require('../../models/user/User');
 const Otp = require('../../models/user/Otp');
-const Referral = require('../../models/referral/Referral');
 const { validationResult } = require('express-validator');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator');
@@ -27,7 +26,6 @@ class BasicInfoController {
         success: true,
         data: {
           id: user.id,
-          user_code: user.user_code,
           email: user.email,
           name: user.name,
           first_name: user.first_name,
@@ -45,8 +43,7 @@ class BasicInfoController {
           mother_full_name: user.mother_full_name,
           guardian_name: user.guardian_name,
           alternate_mobile_number: user.alternate_mobile_number,
-          automation_password: user.automation_password,
-          referred_by_code: user.referred_by_code || null
+          automation_password: user.automation_password
         }
       });
     } catch (error) {
@@ -189,25 +186,8 @@ class BasicInfoController {
         father_full_name,
         mother_full_name,
         guardian_name,
-        alternate_mobile_number,
-        referred_by_code
+        alternate_mobile_number
       } = req.body;
-
-      if (referred_by_code !== undefined) {
-        const userRow = await User.findById(userId);
-        const refResult = await Referral.updateReferredByCode(
-          userId,
-          userRow?.email || null,
-          referred_by_code,
-          { silent: false }
-        );
-        if (refResult.ok === false && refResult.message) {
-          return res.status(400).json({
-            success: false,
-            message: refResult.message
-          });
-        }
-      }
 
       // Build update query dynamically
       const updates = [];
@@ -294,38 +274,30 @@ class BasicInfoController {
         values.push(alternate_mobile_number || null);
       }
 
-      if (updates.length === 0 && referred_by_code === undefined) {
+      if (updates.length === 0) {
         return res.status(400).json({
           success: false,
           message: 'No fields to update'
         });
       }
 
+      values.push(userId);
       const db = require('../../config/database');
-      let updatedUser;
-
-      if (updates.length === 0) {
-        const fresh = await User.findById(userId);
-        updatedUser = fresh;
-      } else {
-        values.push(userId);
-        const query = `
+      const query = `
         UPDATE users 
         SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
         WHERE id = $${paramCount}
         RETURNING *
       `;
 
-        const result = await db.query(query, values);
-        updatedUser = result.rows[0];
-      }
+      const result = await db.query(query, values);
+      const updatedUser = result.rows[0];
 
       res.json({
         success: true,
         message: 'Basic info updated successfully',
         data: {
           id: updatedUser.id,
-          user_code: updatedUser.user_code,
           email: updatedUser.email,
           name: updatedUser.name,
           first_name: updatedUser.first_name,
@@ -341,8 +313,7 @@ class BasicInfoController {
           father_full_name: updatedUser.father_full_name,
           mother_full_name: updatedUser.mother_full_name,
           guardian_name: updatedUser.guardian_name,
-          alternate_mobile_number: updatedUser.alternate_mobile_number,
-          referred_by_code: updatedUser.referred_by_code || null
+          alternate_mobile_number: updatedUser.alternate_mobile_number
         }
       });
     } catch (error) {
@@ -383,15 +354,6 @@ class BasicInfoController {
 
       const otpLength = parseInt(process.env.OTP_LENGTH) || 6;
       const otpExpiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
-
-      // Check rate limiting (max 3 OTPs per 10 minutes)
-      const recentOtpCount = await Otp.getRecentOtpCount(email, 10);
-      if (recentOtpCount >= 3) {
-        return res.status(429).json({
-          success: false,
-          message: 'Too many OTP requests. Please wait before requesting again.'
-        });
-      }
 
       // Generate OTP
       const code = generateOTP(otpLength);

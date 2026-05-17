@@ -12,22 +12,22 @@ export default function LoginStepOnePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If user is authenticated, land on home.
+    // If user is authenticated, always go to dashboard
     if (!isLoading && isAuthenticated) {
-      router.replace("/");
+      router.replace("/dashboard");
     }
   }, [isAuthenticated, isLoading, router]);
 
   // Show loader while checking auth or redirecting
   if (isLoading || isAuthenticated) {
-    return <OnboardingLoader message="Redirecting to home..." />;
+    return <OnboardingLoader message="Redirecting to dashboard..." />;
   }
 
   return (
     <AuthShell variant="minimal" showMinimalHeader={false} contentClassName="items-center justify-center">
       <div className="flex w-full flex-col items-center justify-center gap-6">
         <Logo mode="light" width={190} height={42} className="h-auto w-[170px] sm:w-[190px]" />
-        <LoginStepOneForm mode="login" />
+        <LoginStepOneForm />
       </div>
     </AuthShell>
   );

@@ -126,6 +126,12 @@ const navGroups: NavGroup[] = [
         icon: <FiCpu className="h-4 w-4" />,
         moduleCode: 'exams',
       },
+      {
+        label: 'Form Adapters',
+        href: '/admin/exam-adapters',
+        icon: <FiCpu className="h-4 w-4" />,
+        moduleCode: 'exam_adapters',
+      },
     ],
   },
   {

@@ -97,6 +97,23 @@ const EXAMS = [
       },
     },
   },
+  {
+    name: 'NATA',
+    code: 'NATA',
+    description: 'National Aptitude Test in Architecture',
+    exam_type: 'National',
+    conducting_authority: 'Council of Architecture (COA)',
+    number_of_papers: 1,
+    website: 'https://www.nata.in/',
+    format: {
+      default: {
+        name: 'NATA',
+        duration_minutes: 180,
+        total_questions: 50,
+        total_marks: 200,
+      },
+    },
+  },
 ];
 
 const SUBJECTS = [
@@ -112,7 +129,6 @@ const SUBJECTS = [
 
 const SAMPLE_USERS = [
   {
-    user_code: 'UT10000001',
     email: 'demo.pcm@student.com',
     name: 'Aarav Sharma',
     first_name: 'Aarav',
@@ -130,7 +146,6 @@ const SAMPLE_USERS = [
     phone: '+91-9000000001',
   },
   {
-    user_code: 'UT10000002',
     email: 'demo.pcb@student.com',
     name: 'Ishita Verma',
     first_name: 'Ishita',
@@ -148,7 +163,6 @@ const SAMPLE_USERS = [
     phone: '+91-9000000002',
   },
   {
-    user_code: 'UT10000003',
     email: 'demo.commerce@student.com',
     name: 'Rohan Gupta',
     first_name: 'Rohan',
@@ -209,13 +223,12 @@ async function upsertUsersAndProfiles(client, refs) {
   for (const u of SAMPLE_USERS) {
     const userResult = await client.query(
       `INSERT INTO users (
-          user_code, email, name, first_name, last_name, phone_number, state, district,
+          email, name, first_name, last_name, phone_number, state, district,
           email_verified, auth_provider, onboarding_completed
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'email', TRUE)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, 'email', TRUE)
        ON CONFLICT (email)
        DO UPDATE SET
-         user_code = COALESCE(users.user_code, EXCLUDED.user_code),
          name = EXCLUDED.name,
          first_name = EXCLUDED.first_name,
          last_name = EXCLUDED.last_name,
@@ -226,7 +239,7 @@ async function upsertUsersAndProfiles(client, refs) {
          onboarding_completed = TRUE,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id`,
-      [u.user_code, u.email, u.name, u.first_name, u.last_name, u.phone, u.state, u.district]
+      [u.email, u.name, u.first_name, u.last_name, u.phone, u.state, u.district]
     );
     const userId = userResult.rows[0].id;
 

@@ -1,8 +1,8 @@
 'use client'
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
-import { Select } from "@/components/shared";
+import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
+import { Button, Select } from "@/components/shared";
 import { upsertUserAddress, getUserAddress } from "@/api";
 import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,12 +19,13 @@ export default function StepTwoD() {
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  /** When true, the next `selectedState` effect run should not clear district (server / initial hydrate). */
-  const skipDistrictReset = useRef(false);
 
   useEffect(() => {
     const states = getAllStates();
-    setStateOptions(states.map(state => ({ value: state, label: state })));
+    setStateOptions(states.map(state => ({
+      value: state,
+      label: state
+    })));
   }, []);
 
   useEffect(() => {
@@ -33,26 +34,34 @@ export default function StepTwoD() {
         const response = await getUserAddress();
         if (response.success && response.data) {
           if (response.data.state) {
-            skipDistrictReset.current = true;
             setSelectedState(response.data.state);
             const districts = getDistrictsForState(response.data.state);
-            setDistrictOptions(districts.map(district => ({ value: district, label: district })));
-            if (response.data.district) setSelectedDistrict(response.data.district);
+            setDistrictOptions(districts.map(district => ({
+              value: district,
+              label: district
+            })));
+            if (response.data.district) {
+              setSelectedDistrict(response.data.district);
+            }
           }
         }
-      } catch (err) { console.error("Error loading address data:", err); }
+      } catch (err) {
+        console.error("Error loading address data:", err);
+      }
     };
-    if (!isLoading && user) loadAddressData();
+
+    if (!isLoading && user) {
+      loadAddressData();
+    }
   }, [isLoading, user]);
 
   useEffect(() => {
     if (selectedState) {
       const districts = getDistrictsForState(selectedState);
-      setDistrictOptions(districts.map(district => ({ value: district, label: district })));
-      if (skipDistrictReset.current) {
-        skipDistrictReset.current = false;
-        return;
-      }
+      setDistrictOptions(districts.map(district => ({
+        value: district,
+        label: district
+      })));
       setSelectedDistrict("");
     } else {
       setDistrictOptions([]);
@@ -63,24 +72,43 @@ export default function StepTwoD() {
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
       setIsRedirecting(true);
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
+      router.prefetch('/dashboard');
+      const timer = setTimeout(() => {
+        router.replace('/dashboard');
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToStep3, saving]);
 
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
+
   if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
-    return <OnboardingLoader message="Taking you home..." />;
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
+  if (saving || isNavigatingToStep3) {
+    return <OnboardingLoader message="Saving your location..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedState)    { setError("Please select your state"); return; }
-    if (!selectedDistrict) { setError("Please select your district"); return; }
-    if (!user)             { setError("You must be logged in to save your location"); return; }
+
+    if (!selectedState) {
+      setError("Please select your state");
+      return;
+    }
+
+    if (!selectedDistrict) {
+      setError("Please select your district");
+      return;
+    }
+
+    if (!user) {
+      setError("You must be logged in to save your location");
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -92,6 +120,7 @@ export default function StepTwoD() {
         district: selectedDistrict,
         country: "India",
       });
+
       if (response.success) {
         router.prefetch("/step-3");
         router.replace("/step-3");
@@ -108,63 +137,56 @@ export default function StepTwoD() {
     }
   };
 
-  const isBusy = saving || isNavigatingToStep3;
-
-  if (isBusy) return <CardShimmer />;
-
   return (
-    <>
-      {!isBusy && (
-        <>
-          <p className="mb-5 text-sm text-slate-500 -mt-1">
-            We&apos;ll show you the best options near you
-          </p>
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
+      <WelcomeLayout progress={95}>
+        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
+          <div className="flex-shrink-0">
+            <Robot variant="five" />
+          </div>
 
-          {error && (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+          <div className="flex flex-col gap-5 w-full max-w-xl">
+            <Bubble>Where are you located? Select your state and district.</Bubble>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
-            <Select
-              options={stateOptions}
-              value={selectedState}
-              onChange={(value) => setSelectedState(value || "")}
-              placeholder="Select your state"
-              isSearchable={true}
-              isClearable={false}
-            />
-            <Select
-              options={districtOptions}
-              value={selectedDistrict}
-              onChange={(value) => setSelectedDistrict(value || "")}
-              placeholder={selectedState ? "Select your district" : "Select state first"}
-              isSearchable={true}
-              isClearable={false}
-              disabled={!selectedState}
-            />
-            <div className="flex items-center gap-3 mt-auto pt-4">
-              <button
-                type="button"
-                onClick={() => router.push('/step-2c')}
-                className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
+            {error && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <Select
+                options={stateOptions}
+                value={selectedState}
+                onChange={(value) => setSelectedState(value || "")}
+                placeholder="Select your state"
+                isSearchable={true}
+                isClearable={false}
+              />
+
+              <Select
+                options={districtOptions}
+                value={selectedDistrict}
+                onChange={(value) => setSelectedDistrict(value || "")}
+                placeholder={selectedState ? "Select your district" : "Select state first"}
+                isSearchable={true}
+                isClearable={false}
+                disabled={!selectedState}
+              />
+
+              <Button
                 type="submit"
+                variant="DarkGradient"
+                size="lg"
+                className="w-full rounded-full"
                 disabled={saving || !selectedState || !selectedDistrict}
-                className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continue
-              </button>
-            </div>
-          </form>
-        </>
-      )}
-    </>
+                {saving ? "Saving..." : "Continue"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </WelcomeLayout>
+    </div>
   );
 }

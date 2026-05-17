@@ -1,6 +1,9 @@
 const db = require('../../config/database');
 
 class ExamPattern {
+  /**
+   * Find exam pattern by exam ID
+   */
   static async findByExamId(examId) {
     const result = await db.query(
       'SELECT * FROM exam_pattern WHERE exam_id = $1',
@@ -9,17 +12,9 @@ class ExamPattern {
     return result.rows[0] || null;
   }
 
-  static async findByExamIds(examIds) {
-    if (!examIds || examIds.length === 0) {
-      return [];
-    }
-    const result = await db.query(
-      'SELECT * FROM exam_pattern WHERE exam_id = ANY($1::int[])',
-      [examIds]
-    );
-    return result.rows;
-  }
-
+  /**
+   * Find exam pattern by ID
+   */
   static async findById(id) {
     const result = await db.query(
       'SELECT * FROM exam_pattern WHERE id = $1',
@@ -28,27 +23,30 @@ class ExamPattern {
     return result.rows[0] || null;
   }
 
+  /**
+   * Create exam pattern
+   */
   static async create(data) {
-    const { exam_id, mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects } = data;
+    const { exam_id, mode, number_of_questions, marking_scheme, duration_minutes } = data;
     const result = await db.query(
-      `INSERT INTO exam_pattern (exam_id, mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      'INSERT INTO exam_pattern (exam_id, mode, number_of_questions, marking_scheme, duration_minutes) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [
         exam_id,
         mode || null,
-        number_of_questions != null && number_of_questions !== '' && !Number.isNaN(parseInt(String(number_of_questions), 10)) ? parseInt(String(number_of_questions), 10) : null,
-        negative_marking != null && String(negative_marking).trim() ? String(negative_marking).trim() : null,
-        duration_minutes != null && duration_minutes !== '' && !Number.isNaN(parseInt(String(duration_minutes), 10)) ? parseInt(String(duration_minutes), 10) : null,
-        total_marks != null && total_marks !== '' && !Number.isNaN(parseInt(String(total_marks), 10)) ? parseInt(String(total_marks), 10) : null,
-        weightage_of_subjects != null && String(weightage_of_subjects).trim() ? String(weightage_of_subjects).trim() : null
+        number_of_questions || null,
+        marking_scheme || null,
+        duration_minutes || null
       ]
     );
     return result.rows[0];
   }
 
+  /**
+   * Update exam pattern
+   */
   static async update(examId, data) {
-    const { mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects } = data;
-
+    const { mode, number_of_questions, marking_scheme, duration_minutes } = data;
+    
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -58,29 +56,16 @@ class ExamPattern {
       values.push(mode);
     }
     if (number_of_questions !== undefined) {
-      const n = number_of_questions != null && number_of_questions !== '' ? parseInt(String(number_of_questions), 10) : null;
       updates.push(`number_of_questions = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
+      values.push(number_of_questions);
     }
-    if (negative_marking !== undefined) {
-      const v = negative_marking != null && String(negative_marking).trim() ? String(negative_marking).trim() : null;
-      updates.push(`negative_marking = $${paramCount++}`);
-      values.push(v);
+    if (marking_scheme !== undefined) {
+      updates.push(`marking_scheme = $${paramCount++}`);
+      values.push(marking_scheme);
     }
     if (duration_minutes !== undefined) {
-      const n = duration_minutes != null && duration_minutes !== '' ? parseInt(String(duration_minutes), 10) : null;
       updates.push(`duration_minutes = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
-    }
-    if (total_marks !== undefined) {
-      const n = total_marks != null && total_marks !== '' ? parseInt(String(total_marks), 10) : null;
-      updates.push(`total_marks = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
-    }
-    if (weightage_of_subjects !== undefined) {
-      const v = weightage_of_subjects != null && String(weightage_of_subjects).trim() ? String(weightage_of_subjects).trim() : null;
-      updates.push(`weightage_of_subjects = $${paramCount++}`);
-      values.push(v);
+      values.push(duration_minutes);
     }
 
     if (updates.length === 0) {
@@ -91,7 +76,7 @@ class ExamPattern {
     values.push(examId);
 
     const query = `
-      UPDATE exam_pattern
+      UPDATE exam_pattern 
       SET ${updates.join(', ')}
       WHERE exam_id = $${paramCount}
       RETURNING *
@@ -101,16 +86,23 @@ class ExamPattern {
     return result.rows[0] || null;
   }
 
+  /**
+   * Upsert exam pattern (create or update)
+   */
   static async upsert(data) {
-    const { exam_id, mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects } = data;
+    const { exam_id, mode, number_of_questions, marking_scheme, duration_minutes } = data;
     const existing = await this.findByExamId(exam_id);
-
+    
     if (existing) {
-      return await this.update(exam_id, { mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects });
+      return await this.update(exam_id, { mode, number_of_questions, marking_scheme, duration_minutes });
+    } else {
+      return await this.create({ exam_id, mode, number_of_questions, marking_scheme, duration_minutes });
     }
-    return await this.create({ exam_id, mode, number_of_questions, negative_marking, duration_minutes, total_marks, weightage_of_subjects });
   }
 
+  /**
+   * Delete exam pattern
+   */
   static async delete(examId) {
     const result = await db.query(
       'DELETE FROM exam_pattern WHERE exam_id = $1 RETURNING *',

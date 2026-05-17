@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
-import DashboardQueryProvider from "@/components/dashboard/DashboardQueryProvider";
 
 export default function DashboardLayout({
   children,
@@ -30,7 +29,7 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-      <DashboardQueryProvider>{children}</DashboardQueryProvider>
+      {children}
     </ProtectedRoute>
   );
 }

@@ -1,26 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
-import legalDocumentFallback from "@/data/legal-document.json";
-import { getLegalPageDocument } from "@/api";
-import type { LegalDocument } from "@/types/legalDocument";
-import { LegalRichHtml } from "@/components/legal/LegalRichHtml";
-import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import legalDocument from "@/data/legal-document.json";
 
 type LegalSection = {
     id: string;
     title: string;
     paragraphs: string[];
-    bodyHtml?: string;
 };
 
-const fallbackDoc = legalDocumentFallback as LegalDocument;
-
-// Match admin RichTextEditor: indented lists without markers (Tailwind preflight + TipTap use list-style none).
-const legalRichAreaClass =
-  "legal-content max-w-none text-base leading-relaxed text-black/80 [&_p]:mb-4 [&_ul]:my-3 [&_ul]:list-none [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-none [&_ol]:pl-6 [&_li]:my-1.5 [&_a]:font-semibold [&_a]:text-black [&_a]:underline [&_strong]:font-bold [&_h1]:text-[1.75rem] [&_h1]:font-extrabold [&_h1]:leading-tight [&_h1]:text-black [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-black [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-black [&_h3]:text-black";
+const doc = legalDocument as { intro: string[]; sections: LegalSection[] };
 
 function isDecorativeLine(s: string): boolean {
     const t = s.trim();
@@ -29,7 +20,7 @@ function isDecorativeLine(s: string): boolean {
 }
 
 function isNumberedSubheading(s: string): boolean {
-    return /^\d+(\.\d+)?\s/.test(s.trim());
+    return /^\d+\.\d+(\.\d+)?\s/.test(s.trim());
 }
 
 function isLetterSubheading(s: string): boolean {
@@ -47,17 +38,6 @@ function isMetaLine(s: string): boolean {
 
 function isTldrLine(s: string): boolean {
     return /^TL;DR\b/i.test(s.trim());
-}
-
-function isLikelyListItem(s: string): boolean {
-    const t = s.trim();
-    if (!t) return false;
-    if (isDecorativeLine(t) || isMetaLine(t) || isTldrLine(t)) return false;
-    if (isNumberedSubheading(t) || isLetterSubheading(t)) return false;
-    if (t.endsWith(":")) return false;
-    if (/[.!?]$/.test(t)) return false;
-    if (t.length > 95) return false;
-    return true;
 }
 
 function linkify(text: string): ReactNode {
@@ -103,16 +83,6 @@ function IntroBlock({ lines }: { lines: string[] }) {
     return (
         <header id="legal-top" className="scroll-mt-20 md:scroll-mt-24">
             {lines.map((line, i) => {
-                if (i === 0) {
-                    return (
-                        <h1
-                            key={i}
-                            className="text-[1.75rem] font-extrabold leading-tight text-black sm:text-4xl md:text-[2.35rem]"
-                        >
-                            {line}
-                        </h1>
-                    );
-                }
                 if (isDecorativeLine(line)) {
                     return (
                         <div
@@ -122,6 +92,26 @@ function IntroBlock({ lines }: { lines: string[] }) {
                         >
                             · · ·
                         </div>
+                    );
+                }
+                if (i === 0 && line === "UniTracko") {
+                    return (
+                        <p
+                            key={i}
+                            className="text-xs font-bold uppercase tracking-[0.25em] text-black/55"
+                        >
+                            {line}
+                        </p>
+                    );
+                }
+                if (i === 1 || line === "Legal & Policy Documents") {
+                    return (
+                        <h1
+                            key={i}
+                            className="mt-3 text-[1.75rem] font-extrabold leading-tight text-black sm:text-4xl md:text-[2.35rem]"
+                        >
+                            {line}
+                        </h1>
                     );
                 }
                 if (line === "Documents Included:") {
@@ -141,7 +131,7 @@ function IntroBlock({ lines }: { lines: string[] }) {
                 return (
                     <p
                         key={i}
-                        className={`mt-3 text-base leading-relaxed text-black/80 ${line.startsWith('"') ? "font-medium text-black/85" : ""}`}
+                        className={`mt-3 text-base leading-relaxed text-black/80 ${line.startsWith('"') ? "rounded-lg border border-black/10 bg-amber-50/80 px-4 py-3 font-medium text-black/85" : ""}`}
                     >
                         {linkify(line)}
                     </p>
@@ -152,135 +142,65 @@ function IntroBlock({ lines }: { lines: string[] }) {
 }
 
 function SectionBody({ paragraphs }: { paragraphs: string[] }) {
-    const lines = paragraphs.map((x) => x.trim()).filter(Boolean);
-    const nodes: ReactNode[] = [];
-    let i = 0;
-
-    while (i < lines.length) {
-        const line = lines[i];
-
-        if (isDecorativeLine(line)) {
-            nodes.push(
-                <div
-                    key={`sep-${i}`}
-                    className="my-6 text-center text-xs tracking-[0.35em] text-black/35"
-                    aria-hidden
-                >
-                    · · ·
-                </div>
-            );
-            i += 1;
-            continue;
-        }
-
-        if (isNumberedSubheading(line) || isLetterSubheading(line)) {
-            nodes.push(
-                <h3
-                    key={`h-${i}`}
-                    className="mt-9 scroll-mt-24 text-lg font-black leading-snug text-black first:mt-0 md:text-xl md:scroll-mt-28"
-                >
-                    {linkify(line)}
-                </h3>
-            );
-            i += 1;
-            continue;
-        }
-
-        if (isTldrLine(line)) {
-            nodes.push(
-                <p key={`tldr-${i}`} className="mt-6 text-base font-semibold text-black">
-                    {linkify(line)}
-                </p>
-            );
-            i += 1;
-            continue;
-        }
-
-        if (isMetaLine(line)) {
-            nodes.push(
-                <p key={`meta-${i}`} className="text-sm text-black/60">
-                    {linkify(line)}
-                </p>
-            );
-            i += 1;
-            continue;
-        }
-
-        if (line.endsWith(":")) {
-            nodes.push(
-                <p key={`label-${i}`} className="mt-5 text-base font-bold text-black md:text-[1.04rem]">
-                    {linkify(line)}
-                </p>
-            );
-
-            const items: string[] = [];
-            let j = i + 1;
-            while (j < lines.length) {
-                const next = lines[j];
-                if (
-                    next.endsWith(":") ||
-                    isDecorativeLine(next) ||
-                    isMetaLine(next) ||
-                    isTldrLine(next) ||
-                    isNumberedSubheading(next) ||
-                    isLetterSubheading(next)
-                ) {
-                    break;
-                }
-                if (!isLikelyListItem(next)) break;
-                items.push(next);
-                j += 1;
-            }
-
-            if (items.length > 0) {
-                nodes.push(
-                    <ul
-                        key={`ul-after-label-${i}`}
-                        className="mt-2 list-none space-y-1.5 pl-5 text-black/85"
-                    >
-                        {items.map((item, idx) => (
-                            <li key={`li-after-label-${i}-${idx}`}>{linkify(item)}</li>
-                        ))}
-                    </ul>
-                );
-                i = j;
-            } else {
-                i += 1;
-            }
-            continue;
-        }
-
-        if (isLikelyListItem(line)) {
-            const items: string[] = [line];
-            let j = i + 1;
-            while (j < lines.length && isLikelyListItem(lines[j])) {
-                items.push(lines[j]);
-                j += 1;
-            }
-            nodes.push(
-                <ul
-                    key={`ul-${i}`}
-                    className="list-none space-y-1.5 pl-5 text-black/85"
-                >
-                    {items.map((item, idx) => (
-                        <li key={`li-${i}-${idx}`}>{linkify(item)}</li>
-                    ))}
-                </ul>
-            );
-            i = j;
-            continue;
-        }
-
-        nodes.push(
-            <p key={`p-${i}`} className="text-base leading-relaxed text-black/80">
-                {linkify(line)}
-            </p>
-        );
-        i += 1;
-    }
+    const body =
+        paragraphs.length > 0 && /^\d+\.\s/.test(paragraphs[0].trim())
+            ? paragraphs.slice(1)
+            : paragraphs;
 
     return (
-        <div className="mt-6 space-y-3">{nodes}</div>
+        <div className="mt-6 space-y-3">
+            {body.map((line, i) => {
+                if (!line.trim()) {
+                    return null;
+                }
+                if (isDecorativeLine(line)) {
+                    return (
+                        <div
+                            key={i}
+                            className="my-6 text-center text-xs tracking-[0.35em] text-black/35"
+                            aria-hidden
+                        >
+                            · · ·
+                        </div>
+                    );
+                }
+                if (isNumberedSubheading(line) || isLetterSubheading(line)) {
+                    return (
+                        <h3
+                            key={i}
+                            className="mt-8 scroll-mt-24 text-lg font-bold text-black first:mt-0 md:scroll-mt-28"
+                        >
+                            {linkify(line)}
+                        </h3>
+                    );
+                }
+                if (isTldrLine(line)) {
+                    return (
+                        <p
+                            key={i}
+                            className="mt-6 text-base font-semibold text-black"
+                        >
+                            {linkify(line)}
+                        </p>
+                    );
+                }
+                if (isMetaLine(line)) {
+                    return (
+                        <p key={i} className="text-sm text-black/60">
+                            {linkify(line)}
+                        </p>
+                    );
+                }
+                return (
+                    <p
+                        key={i}
+                        className="text-base leading-relaxed text-black/80"
+                    >
+                        {linkify(line)}
+                    </p>
+                );
+            })}
+        </div>
     );
 }
 
@@ -299,47 +219,12 @@ function scrollToHash() {
 }
 
 export default function LegalPageClient() {
-    const [legalDoc, setLegalDoc] = useState<LegalDocument | null>(null);
-
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const res = await getLegalPageDocument();
-                if (cancelled) return;
-                if (res.success && res.data?.document) {
-                    setLegalDoc(res.data.document);
-                } else {
-                    setLegalDoc(fallbackDoc);
-                }
-            } catch {
-                if (!cancelled) setLegalDoc(fallbackDoc);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!legalDoc) return;
         scrollToHash();
         const onHash = () => scrollToHash();
         window.addEventListener("hashchange", onHash);
         return () => window.removeEventListener("hashchange", onHash);
-    }, [legalDoc]);
-
-    if (!legalDoc) {
-        return (
-            <main className="min-h-screen bg-white pb-24">
-                <div className="appContainer py-20">
-                    <OnboardingLoader message="Loading policies…" />
-                </div>
-            </main>
-        );
-    }
-
-    const doc = legalDoc;
+    }, []);
 
     return (
         <main className="min-h-screen bg-white pb-24">
@@ -353,17 +238,16 @@ export default function LegalPageClient() {
                 </Link>
 
                 <article className="mx-auto mt-10 max-w-3xl">
-                    {doc.introHtml?.trim() ? (
-                        <LegalRichHtml html={doc.introHtml} className={legalRichAreaClass} />
-                    ) : (
-                        <IntroBlock lines={doc.intro} />
-                    )}
+                    <IntroBlock lines={doc.intro} />
 
-                    <nav className="mt-8" aria-label="On this page">
+                    <nav
+                        className="mt-10 rounded-2xl border border-black/10 bg-amber-50/60 px-5 py-5 md:px-6"
+                        aria-label="On this page"
+                    >
                         <p className="text-xs font-bold uppercase tracking-wide text-black/55">
                             On this page
                         </p>
-                        <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                             {doc.sections.map((s) => (
                                 <li key={s.id}>
                                     <a
@@ -381,24 +265,28 @@ export default function LegalPageClient() {
                         <section
                             key={section.id}
                             id={section.id}
-                            className="scroll-mt-20 pt-12 first:pt-10 md:scroll-mt-24"
+                            className="scroll-mt-20 border-t border-black/10 pt-12 first:border-t-0 md:scroll-mt-24"
                             aria-labelledby={`${section.id}-heading`}
                         >
                             <h2
                                 id={`${section.id}-heading`}
-                                className="text-2xl font-extrabold leading-tight text-black md:text-3xl"
+                                className="text-2xl font-extrabold text-black md:text-3xl"
                             >
                                 {section.title}
                             </h2>
-                            {section.bodyHtml?.trim() ? (
-                                <LegalRichHtml
-                                    html={section.bodyHtml}
-                                    className={`mt-6 ${legalRichAreaClass}`}
-                                />
-                            ) : (
-                                <SectionBody paragraphs={section.paragraphs} />
+                            <SectionBody paragraphs={section.paragraphs} />
+                            {idx < doc.sections.length - 1 ? null : (
+                                <p className="mt-12 text-sm text-black/50">
+                                    End of legal documents. For questions, contact{" "}
+                                    <a
+                                        href="mailto:privacy@unitracko.com"
+                                        className="font-semibold text-black underline"
+                                    >
+                                        privacy@unitracko.com
+                                    </a>
+                                    .
+                                </p>
                             )}
-                            {idx < doc.sections.length - 1 ? null : null}
                         </section>
                     ))}
                 </article>

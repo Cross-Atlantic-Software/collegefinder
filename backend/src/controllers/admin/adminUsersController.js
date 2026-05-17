@@ -81,7 +81,6 @@ class AdminUsersController {
         usersWithAcademics.push({
           user: {
             id: user.id,
-            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },
@@ -94,6 +93,7 @@ class AdminUsersController {
             matric_total_marks: academics.matric_total_marks,
             matric_obtained_marks: academics.matric_obtained_marks,
             matric_percentage: academics.matric_percentage,
+            matric_school_pincode: academics.matric_school_pincode,
             // Post-Matric (12th) fields
             postmatric_board: academics.postmatric_board,
             postmatric_school_name: academics.postmatric_school_name,
@@ -102,6 +102,7 @@ class AdminUsersController {
             postmatric_total_marks: academics.postmatric_total_marks,
             postmatric_obtained_marks: academics.postmatric_obtained_marks,
             postmatric_percentage: academics.postmatric_percentage,
+            postmatric_school_pincode: academics.postmatric_school_pincode,
             stream: academics.stream,
             subjects: subjects
           } : null
@@ -163,7 +164,6 @@ class AdminUsersController {
         usersWithCareerGoals.push({
           user: {
             id: user.id,
-            user_code: user.user_code,
             email: user.email,
             name: user.name,
           },
@@ -456,6 +456,7 @@ class AdminUsersController {
             matric_percentage: academics.matric_percentage,
             matric_state: academics.matric_state,
             matric_city: academics.matric_city,
+            matric_school_pincode: academics.matric_school_pincode,
             matric_marks_type: academics.matric_marks_type,
             matric_cgpa: academics.matric_cgpa,
             matric_result_status: academics.matric_result_status,
@@ -469,6 +470,7 @@ class AdminUsersController {
             postmatric_percentage: academics.postmatric_percentage,
             postmatric_state: academics.postmatric_state,
             postmatric_city: academics.postmatric_city,
+            postmatric_school_pincode: academics.postmatric_school_pincode,
             postmatric_marks_type: academics.postmatric_marks_type,
             postmatric_cgpa: academics.postmatric_cgpa,
             postmatric_result_status: academics.postmatric_result_status,
@@ -582,61 +584,6 @@ class AdminUsersController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch user details'
-      });
-    }
-  }
-
-  /**
-   * PATCH /api/admin/users/:id
-   * Body: { is_active: boolean }
-   */
-  static async updateSiteUserStatus(req, res) {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ success: false, message: 'Invalid user id' });
-      }
-      const { is_active: isActive } = req.body;
-      if (typeof isActive !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'is_active (boolean) is required' });
-      }
-      const user = await User.findById(id);
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-      await User.updateActiveStatus(id, isActive);
-      const updated = await User.findById(id);
-      res.json({
-        success: true,
-        message: `User ${isActive ? 'activated' : 'deactivated'}`,
-        data: { user: updated }
-      });
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      res.status(500).json({ success: false, message: 'Failed to update user status' });
-    }
-  }
-
-  /**
-   * DELETE /api/admin/users/:id — Super Admin only (route also uses requireCanDelete)
-   */
-  static async deleteSiteUser(req, res) {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ success: false, message: 'Invalid user id' });
-      }
-      const user = await User.findById(id);
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-      await User.deleteById(id);
-      res.json({ success: true, message: 'User deleted permanently' });
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Failed to delete user'
       });
     }
   }

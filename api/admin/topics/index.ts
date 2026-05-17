@@ -41,7 +41,7 @@ export async function getTopicById(id: number): Promise<ApiResponse<{
 /**
  * Create new topic (name + subject only; optional home_display, status, sort_order)
  */
-export async function createTopic(data: {
+export async function createTopic(data: FormData | {
   sub_id: number;
   name: string;
   home_display?: boolean;
@@ -50,6 +50,12 @@ export async function createTopic(data: {
 }): Promise<ApiResponse<{
   topic: Topic;
 }>> {
+  if (data instanceof FormData) {
+    return apiRequest(API_ENDPOINTS.ADMIN.TOPICS, {
+      method: 'POST',
+      body: data,
+    });
+  }
   return apiRequest(API_ENDPOINTS.ADMIN.TOPICS, {
     method: 'POST',
     body: JSON.stringify(data),
@@ -61,7 +67,7 @@ export async function createTopic(data: {
  */
 export async function updateTopic(
   id: number,
-  data: Partial<{
+  data: FormData | Partial<{
     sub_id: number;
     name: string;
     home_display: boolean;
@@ -71,6 +77,12 @@ export async function updateTopic(
 ): Promise<ApiResponse<{
   topic: Topic;
 }>> {
+  if (data instanceof FormData) {
+    return apiRequest(`${API_ENDPOINTS.ADMIN.TOPICS}/${id}`, {
+      method: 'PUT',
+      body: data,
+    });
+  }
   return apiRequest(`${API_ENDPOINTS.ADMIN.TOPICS}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
