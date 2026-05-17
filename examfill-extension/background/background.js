@@ -12,7 +12,7 @@
  * - Drive the admin-only "Build Adapter" flow that calls Gemini server-side.
  */
 
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = 'https://unitracko.com/api';
 
 // ─── Hardcoded fallback exam list ────────────────────────────────
 // These are always detected even when the backend is offline.
