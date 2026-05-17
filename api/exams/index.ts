@@ -9,7 +9,7 @@ export interface ExamDatesPublic {
   application_close_date: string | null;
   exam_date: string | null;
   result_date: string | null;
-  application_fees: number | null;
+  application_fees: string | number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -33,12 +33,12 @@ export interface ExamPatternPublic {
   id: number;
   exam_id: number;
   mode: string | null;
-  number_of_questions: number | null;
-  total_marks: number | null;
+  number_of_questions: string | number | null;
+  total_marks: string | number | null;
   negative_marking: string | null;
   weightage_of_subjects: string | null;
   /** Hours as entered in admin/Excel; column name is legacy (`duration_minutes`). */
-  duration_minutes: number | null;
+  duration_minutes: string | number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -67,6 +67,20 @@ export interface ExamProgramLink {
   name: string;
 }
 
+/** College row linked via college_recommended_exams (dashboard shape). */
+export interface ExamLinkedCollege {
+  id: number;
+  college_name: string;
+  college_location: string | null;
+  college_type: string | null;
+  college_logo: string | null;
+  logo_url?: string | null;
+  city?: string | null;
+  state?: string | null;
+  parent_university?: string | null;
+  linkedExams?: Array<{ id: number; name: string; code: string | null }>;
+}
+
 /**
  * Exam taxonomy row plus full admin-linked payload from GET /api/exams and dashboard-exams.
  */
@@ -81,7 +95,7 @@ export interface Exam {
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
-  number_of_papers?: number;
+  number_of_papers?: string | number | null;
   website?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
@@ -93,6 +107,7 @@ export interface Exam {
   examCutoff?: ExamCutoffPublic | null;
   linkedCareerGoals?: ExamCareerGoalLink[];
   linkedPrograms?: ExamProgramLink[];
+  linkedColleges?: ExamLinkedCollege[];
 }
 
 export interface PreviousExamAttempt {
@@ -122,9 +137,23 @@ export async function getExamsCount(): Promise<ApiResponse<{ count: number }>> {
  */
 export async function getExamById(
   idOrSlug: string | number
-): Promise<ApiResponse<{ exam: Exam }>> {
+): Promise<ApiResponse<{ exam: Exam; linkedColleges?: ExamLinkedCollege[] }>> {
   const segment = encodeURIComponent(String(idOrSlug).trim());
-  return apiRequest<{ exam: Exam }>(`/exams/${segment}`, { method: 'GET' });
+  return apiRequest<{ exam: Exam; linkedColleges?: ExamLinkedCollege[] }>(
+    `/exams/${segment}`,
+    { method: 'GET' }
+  );
+}
+
+/** Enriched exam for dashboard detail (logged-in users; same payload as shortlist cards). */
+export async function getDashboardExamById(
+  idOrSlug: string | number
+): Promise<ApiResponse<{ exam: Exam; linkedColleges?: ExamLinkedCollege[] }>> {
+  const segment = encodeURIComponent(String(idOrSlug).trim());
+  return apiRequest<{ exam: Exam }>(
+    `/auth/profile/dashboard-exams/exam/${segment}`,
+    { method: 'GET' }
+  );
 }
 
 /**

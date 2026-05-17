@@ -1,5 +1,11 @@
 const db = require('../../config/database');
 
+function optionalText(val) {
+  if (val == null) return null;
+  const t = String(val).trim();
+  return t || null;
+}
+
 class ExamDates {
   static async findByExamId(examId) {
     const result = await db.query(
@@ -35,11 +41,11 @@ class ExamDates {
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [
         exam_id,
-        application_start_date || null,
-        application_close_date || null,
-        exam_date || null,
-        result_date || null,
-        application_fees != null && application_fees !== '' ? parseFloat(String(application_fees)) : null
+        optionalText(application_start_date),
+        optionalText(application_close_date),
+        optionalText(exam_date),
+        optionalText(result_date),
+        optionalText(application_fees),
       ]
     );
     return result.rows[0];
@@ -54,24 +60,23 @@ class ExamDates {
 
     if (application_start_date !== undefined) {
       updates.push(`application_start_date = $${paramCount++}`);
-      values.push(application_start_date);
+      values.push(optionalText(application_start_date));
     }
     if (application_close_date !== undefined) {
       updates.push(`application_close_date = $${paramCount++}`);
-      values.push(application_close_date);
+      values.push(optionalText(application_close_date));
     }
     if (exam_date !== undefined) {
       updates.push(`exam_date = $${paramCount++}`);
-      values.push(exam_date);
+      values.push(optionalText(exam_date));
     }
     if (result_date !== undefined) {
       updates.push(`result_date = $${paramCount++}`);
-      values.push(result_date);
+      values.push(optionalText(result_date));
     }
     if (application_fees !== undefined) {
-      const v = application_fees == null || application_fees === '' ? null : parseFloat(String(application_fees));
       updates.push(`application_fees = $${paramCount++}`);
-      values.push(v != null && !Number.isNaN(v) ? v : null);
+      values.push(optionalText(application_fees));
     }
 
     if (updates.length === 0) {

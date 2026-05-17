@@ -1,5 +1,11 @@
 const db = require('../../config/database');
 
+function optionalText(val) {
+  if (val == null) return null;
+  const t = String(val).trim();
+  return t || null;
+}
+
 class ExamPattern {
   static async findByExamId(examId) {
     const result = await db.query(
@@ -35,12 +41,12 @@ class ExamPattern {
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [
         exam_id,
-        mode || null,
-        number_of_questions != null && number_of_questions !== '' && !Number.isNaN(parseInt(String(number_of_questions), 10)) ? parseInt(String(number_of_questions), 10) : null,
-        negative_marking != null && String(negative_marking).trim() ? String(negative_marking).trim() : null,
-        duration_minutes != null && duration_minutes !== '' && !Number.isNaN(parseInt(String(duration_minutes), 10)) ? parseInt(String(duration_minutes), 10) : null,
-        total_marks != null && total_marks !== '' && !Number.isNaN(parseInt(String(total_marks), 10)) ? parseInt(String(total_marks), 10) : null,
-        weightage_of_subjects != null && String(weightage_of_subjects).trim() ? String(weightage_of_subjects).trim() : null
+        optionalText(mode),
+        optionalText(number_of_questions),
+        optionalText(negative_marking),
+        optionalText(duration_minutes),
+        optionalText(total_marks),
+        optionalText(weightage_of_subjects),
       ]
     );
     return result.rows[0];
@@ -55,32 +61,27 @@ class ExamPattern {
 
     if (mode !== undefined) {
       updates.push(`mode = $${paramCount++}`);
-      values.push(mode);
+      values.push(optionalText(mode));
     }
     if (number_of_questions !== undefined) {
-      const n = number_of_questions != null && number_of_questions !== '' ? parseInt(String(number_of_questions), 10) : null;
       updates.push(`number_of_questions = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
+      values.push(optionalText(number_of_questions));
     }
     if (negative_marking !== undefined) {
-      const v = negative_marking != null && String(negative_marking).trim() ? String(negative_marking).trim() : null;
       updates.push(`negative_marking = $${paramCount++}`);
-      values.push(v);
+      values.push(optionalText(negative_marking));
     }
     if (duration_minutes !== undefined) {
-      const n = duration_minutes != null && duration_minutes !== '' ? parseInt(String(duration_minutes), 10) : null;
       updates.push(`duration_minutes = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
+      values.push(optionalText(duration_minutes));
     }
     if (total_marks !== undefined) {
-      const n = total_marks != null && total_marks !== '' ? parseInt(String(total_marks), 10) : null;
       updates.push(`total_marks = $${paramCount++}`);
-      values.push(n != null && !Number.isNaN(n) ? n : null);
+      values.push(optionalText(total_marks));
     }
     if (weightage_of_subjects !== undefined) {
-      const v = weightage_of_subjects != null && String(weightage_of_subjects).trim() ? String(weightage_of_subjects).trim() : null;
       updates.push(`weightage_of_subjects = $${paramCount++}`);
-      values.push(v);
+      values.push(optionalText(weightage_of_subjects));
     }
 
     if (updates.length === 0) {

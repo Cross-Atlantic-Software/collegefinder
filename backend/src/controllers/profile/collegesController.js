@@ -310,4 +310,5 @@ module.exports = {
   getRecommendedColleges,
   getDashboardColleges,
   updateShortlistedColleges,
+  enrichCollegeRows,
 };

@@ -212,10 +212,27 @@ export default function DashboardPage() {
                   <ShortlistExams
                     searchQuery={examShortlistSearch}
                     onSearchQueryChange={setExamShortlistSearch}
+                    initialTab={
+                      searchParams.get("tab") === "all" ||
+                      searchParams.get("tab") === "shortlisted" ||
+                      searchParams.get("tab") === "recommended"
+                        ? (searchParams.get("tab") as "recommended" | "shortlisted" | "all")
+                        : undefined
+                    }
                   />
                 )}
 
-                {activeSection === "college-shortlist" && <ShortlistColleges />}
+                {activeSection === "college-shortlist" && (
+                  <ShortlistColleges
+                    initialTab={
+                      searchParams.get("tab") === "all" ||
+                      searchParams.get("tab") === "shortlisted" ||
+                      searchParams.get("tab") === "recommended"
+                        ? (searchParams.get("tab") as "recommended" | "shortlisted" | "all")
+                        : undefined
+                    }
+                  />
+                )}
 
                 {activeSection === "coaching-institutes" && <ShortlistInstitutes />}
 

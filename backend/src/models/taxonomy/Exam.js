@@ -8,6 +8,15 @@ function ilikeContains(term) {
 }
 
 class Exam {
+  /** Mock tests: first integer in stored text, default 1 (e.g. "2 papers" → 2). */
+  static parsePaperCount(raw) {
+    if (raw == null || String(raw).trim() === '') return 1;
+    const match = String(raw).trim().match(/\d+/);
+    if (!match) return 1;
+    const n = parseInt(match[0], 10);
+    return Number.isInteger(n) && n > 0 ? n : 1;
+  }
+
   /**
    * Find all exams taxonomies
    */
@@ -199,7 +208,10 @@ class Exam {
       exam_popularity_rank,
     } = data;
     const codeVal = code != null && String(code).trim() ? String(code).trim() : null;
-    const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
+    const papers =
+      number_of_papers != null && String(number_of_papers).trim() !== ''
+        ? String(number_of_papers).trim()
+        : null;
     const rankVal =
       exam_popularity_rank != null && exam_popularity_rank !== '' && !Number.isNaN(parseInt(exam_popularity_rank, 10))
         ? parseInt(exam_popularity_rank, 10)
@@ -278,7 +290,10 @@ class Exam {
       values.push(logo_file_name);
     }
     if (number_of_papers !== undefined) {
-      const papers = Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1));
+      const papers =
+        number_of_papers != null && String(number_of_papers).trim() !== ''
+          ? String(number_of_papers).trim()
+          : null;
       updates.push(`number_of_papers = $${paramCount++}`);
       values.push(papers);
     }

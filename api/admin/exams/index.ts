@@ -9,11 +9,11 @@ export interface Exam {
   description: string | null;
   generation_prompt?: string | null;
   exam_logo?: string | null;
-  exam_type?: 'National' | 'State' | 'Institute' | null;
+  exam_type?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
-  number_of_papers?: number;
+  number_of_papers?: string | number | null;
   website?: string | null;
   /** Lower = more popular when sorting; null if unset */
   exam_popularity_rank?: number | null;
@@ -48,13 +48,13 @@ export interface ExamEligibilityCriteria {
 export interface ExamPattern {
   id: number;
   exam_id: number;
-  mode: 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | null;
-  number_of_questions: number | null;
-  total_marks: number | null;
+  mode: string | null;
+  number_of_questions: string | number | null;
+  total_marks: string | number | null;
   negative_marking: string | null;
   weightage_of_subjects: string | null;
   /** Hours as entered in admin/Excel; column name is legacy (`duration_minutes`). */
-  duration_minutes: number | null;
+  duration_minutes: string | number | null;
   created_at: string;
   updated_at: string;
 }
@@ -166,11 +166,11 @@ export async function createExam(data: {
   code?: string | null;
   description?: string;
   exam_logo?: string | null;
-  exam_type?: 'National' | 'State' | 'Institute' | null;
+  exam_type?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
-  number_of_papers?: number;
+  number_of_papers?: string | number | null;
   website?: string | null;
   exam_popularity_rank?: number | null;
   examDates?: Partial<ExamDates>;
@@ -203,11 +203,11 @@ export async function updateExam(
     code?: string | null;
     description?: string;
     exam_logo?: string | null;
-    exam_type?: 'National' | 'State' | 'Institute' | null;
+    exam_type?: string | null;
     conducting_authority?: string | null;
     documents_required?: string | null;
     counselling?: string | null;
-    number_of_papers?: number;
+    number_of_papers?: string | number | null;
     website?: string | null;
     exam_popularity_rank?: number | null;
     examDates?: Partial<ExamDates>;

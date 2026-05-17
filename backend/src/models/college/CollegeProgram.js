@@ -61,6 +61,27 @@ class CollegeProgram {
   static async deleteByCollegeId(collegeId) {
     await db.query('DELETE FROM college_programs WHERE college_id = $1', [collegeId]);
   }
+
+  /** Colleges that list this exam on any program (recommended_exam_ids CSV). */
+  static async getCollegeIdsByExamId(examId) {
+    const id = parseInt(examId, 10);
+    if (!Number.isInteger(id) || id < 1) return [];
+    const result = await db.query(
+      `SELECT DISTINCT college_id
+       FROM college_programs
+       WHERE recommended_exam_ids IS NOT NULL
+         AND TRIM(recommended_exam_ids) <> ''
+         AND EXISTS (
+           SELECT 1
+           FROM unnest(string_to_array(recommended_exam_ids, ',')) AS token(raw)
+           WHERE TRIM(raw) ~ '^[0-9]+$'
+             AND TRIM(raw)::int = $1
+         )
+       ORDER BY college_id`,
+      [id]
+    );
+    return result.rows.map((r) => r.college_id);
+  }
 }
 
 module.exports = CollegeProgram;

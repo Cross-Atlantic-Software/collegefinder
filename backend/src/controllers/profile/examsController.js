@@ -22,41 +22,20 @@ const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
+const CollegeProgram = require('../../models/college/CollegeProgram');
+const { enrichCollegeRows } = require('./collegesController');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { matchesExamSearchTokens } = require('../../utils/examSearchTokens');
 
-/** Allowed `exam_pattern.mode` values (must match DB CHECK after migration `exam_pattern_mode_add_online_cbt.sql`). */
-const EXAM_PATTERN_VALID_MODES = ['Offline', 'Online', 'Hybrid', 'Online (CBT)'];
-
-/**
- * Admin Excel / forms: duration in hours as entered (e.g. 3 → 3 Hrs in UI).
- * Stored without conversion in `exam_pattern.duration_minutes` (legacy column name).
- */
-function durationHoursStoredFromInput(raw) {
+/** Admin Excel / forms: store duration text as entered (`exam_pattern.duration_minutes` legacy column). */
+function durationStoredFromInput(raw) {
   if (raw == null || String(raw).trim() === '') return null;
-  const h = parseFloat(String(raw).trim());
-  if (Number.isNaN(h) || h < 0) return null;
-  return Math.round(h);
+  return String(raw).trim();
 }
 
-/** Stored hours → string cell for Excel export (same numeric value). */
-function durationHoursStoredForExportCell(stored) {
+function durationStoredForExportCell(stored) {
   if (stored == null || stored === '') return '';
-  const n = Number(stored);
-  if (Number.isNaN(n)) return '';
-  if (Number.isInteger(n)) return String(n);
-  const rounded = Math.round(n * 10000) / 10000;
-  return String(rounded);
-}
-
-/** Display-only: matches `formatExamPatternDurationHours` (lib/formatDuration.ts) for search haystack. */
-function formatExamPatternDurationHoursSearch(value) {
-  if (value == null) return '';
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return '';
-  if (Number.isInteger(n)) return `${n} hrs`;
-  const rounded = Math.round(n * 100) / 100;
-  return `${rounded} hrs`;
+  return String(stored).trim();
 }
 
 async function loadDashboardExamShortlistContext(userId) {
@@ -187,7 +166,10 @@ async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
     const el = eMap.get(ex.id);
     const mode =
       pat?.mode != null && String(pat.mode).trim() !== '' ? String(pat.mode).trim() : '';
-    const duration = formatExamPatternDurationHoursSearch(pat?.duration_minutes);
+    const duration =
+      pat?.duration_minutes != null && String(pat.duration_minutes).trim() !== ''
+        ? String(pat.duration_minutes).trim()
+        : '';
     const attempts =
       el?.attempt_limit != null && String(el.attempt_limit).trim() !== ''
         ? String(el.attempt_limit).trim()
@@ -220,6 +202,35 @@ class ExamsTaxonomyController {
    * Merge all admin-linked exam rows (dates, eligibility, pattern, cutoff, career goals, programs)
    * into public exam list items for GET /api/exams and dashboard-exams.
    */
+  /** Parse PostgreSQL INTEGER[] or JSON string arrays from admin saves. */
+  static parsePgIntArray(val) {
+    if (Array.isArray(val)) {
+      return val.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+    }
+    if (val == null || val === '') return [];
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return [];
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+        }
+      } catch {
+        /* fall through */
+      }
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const inner = trimmed.slice(1, -1).trim();
+        if (!inner) return [];
+        return inner
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((id) => Number.isInteger(id) && id > 0);
+      }
+    }
+    return [];
+  }
+
   static async enrichExamRows(exams) {
     if (!exams || exams.length === 0) return exams;
     const ids = exams.map((e) => e.id).filter((id) => id != null);
@@ -241,16 +252,37 @@ class ExamsTaxonomyController {
       ExamProgram.findProgramsForExamIds(ids),
     ]);
 
-    const dateMap = new Map(datesRows.map((d) => [d.exam_id, d]));
-    const pMap = new Map(patterns.map((p) => [p.exam_id, p]));
-    const eMap = new Map(eligibilities.map((r) => [r.exam_id, r]));
-    const cMap = new Map(cutoffs.map((r) => [r.exam_id, r]));
+    const toExamId = (id) => {
+      const n = Number(id);
+      return Number.isInteger(n) && n > 0 ? n : null;
+    };
+
+    const dateMap = new Map();
+    for (const d of datesRows) {
+      const eid = toExamId(d.exam_id);
+      if (eid != null) dateMap.set(eid, d);
+    }
+    const pMap = new Map();
+    for (const p of patterns) {
+      const eid = toExamId(p.exam_id);
+      if (eid != null) pMap.set(eid, p);
+    }
+    const eMap = new Map();
+    for (const r of eligibilities) {
+      const eid = toExamId(r.exam_id);
+      if (eid != null) eMap.set(eid, r);
+    }
+    const cMap = new Map();
+    for (const r of cutoffs) {
+      const eid = toExamId(r.exam_id);
+      if (eid != null) cMap.set(eid, r);
+    }
 
     const streamIdSet = new Set();
     const subjectIdSet = new Set();
     for (const el of eligibilities) {
-      (el.stream_ids || []).forEach((sid) => streamIdSet.add(Number(sid)));
-      (el.subject_ids || []).forEach((sid) => subjectIdSet.add(Number(sid)));
+      ExamsTaxonomyController.parsePgIntArray(el.stream_ids).forEach((sid) => streamIdSet.add(sid));
+      ExamsTaxonomyController.parsePgIntArray(el.subject_ids).forEach((sid) => subjectIdSet.add(sid));
     }
 
     const [streamRows, subjectRows] = await Promise.all([
@@ -262,10 +294,12 @@ class ExamsTaxonomyController {
 
     const careersByExam = new Map();
     for (const row of careerRows) {
-      if (!careersByExam.has(row.exam_id)) {
-        careersByExam.set(row.exam_id, []);
+      const eid = toExamId(row.exam_id);
+      if (eid == null) continue;
+      if (!careersByExam.has(eid)) {
+        careersByExam.set(eid, []);
       }
-      careersByExam.get(row.exam_id).push({
+      careersByExam.get(eid).push({
         id: row.career_goal_id,
         label: row.label,
         logo: row.logo ?? null,
@@ -274,27 +308,34 @@ class ExamsTaxonomyController {
 
     const programsByExam = new Map();
     for (const row of programRows) {
-      if (!programsByExam.has(row.exam_id)) {
-        programsByExam.set(row.exam_id, []);
+      const eid = toExamId(row.exam_id);
+      if (eid == null) continue;
+      if (!programsByExam.has(eid)) {
+        programsByExam.set(eid, []);
       }
-      programsByExam.get(row.exam_id).push({
+      programsByExam.get(eid).push({
         id: row.program_id,
         name: row.program_name,
       });
     }
 
     return exams.map((ex) => {
-      const elRaw = eMap.get(ex.id);
+      const examId = toExamId(ex.id);
+      const elRaw = examId != null ? eMap.get(examId) : null;
       let eligibilityCriteria = null;
       if (elRaw) {
-        const streamLabels = (elRaw.stream_ids || [])
+        const streamIds = ExamsTaxonomyController.parsePgIntArray(elRaw.stream_ids);
+        const subjectIds = ExamsTaxonomyController.parsePgIntArray(elRaw.subject_ids);
+        const streamLabels = streamIds
           .map((id) => streamNameById.get(Number(id)))
           .filter(Boolean);
-        const subjectLabels = (elRaw.subject_ids || [])
+        const subjectLabels = subjectIds
           .map((id) => subjectNameById.get(Number(id)))
           .filter(Boolean);
         eligibilityCriteria = {
           ...elRaw,
+          stream_ids: streamIds,
+          subject_ids: subjectIds,
           stream_labels: streamLabels,
           subject_labels: subjectLabels,
         };
@@ -302,14 +343,28 @@ class ExamsTaxonomyController {
 
       return {
         ...ex,
-        examDates: dateMap.get(ex.id) || null,
+        examDates: examId != null ? dateMap.get(examId) || null : null,
         eligibilityCriteria,
-        examPattern: pMap.get(ex.id) || null,
-        examCutoff: cMap.get(ex.id) || null,
-        linkedCareerGoals: careersByExam.get(ex.id) || [],
-        linkedPrograms: programsByExam.get(ex.id) || [],
+        examPattern: examId != null ? pMap.get(examId) || null : null,
+        examCutoff: examId != null ? cMap.get(examId) || null : null,
+        linkedCareerGoals: examId != null ? careersByExam.get(examId) || [] : [],
+        linkedPrograms: examId != null ? programsByExam.get(examId) || [] : [],
       };
     });
+  }
+
+  /** Colleges in admin that list this exam under recommended/accepted exams. */
+  static async loadLinkedCollegesForExamId(examId) {
+    const id = Number(examId);
+    if (!Number.isInteger(id) || id < 1) return [];
+    const [fromJunction, fromPrograms] = await Promise.all([
+      CollegeRecommendedExam.getCollegeIdsByExamIds([id]),
+      CollegeProgram.getCollegeIdsByExamId(id),
+    ]);
+    const collegeIds = [...new Set([...fromJunction, ...fromPrograms])];
+    if (!collegeIds.length) return [];
+    const colleges = await College.findByIds(collegeIds);
+    return enrichCollegeRows(colleges || []);
   }
 
   /**
@@ -367,9 +422,10 @@ class ExamsTaxonomyController {
         });
       }
       const [exam] = await ExamsTaxonomyController.enrichExamRows([row]);
+      const linkedColleges = await ExamsTaxonomyController.loadLinkedCollegesForExamId(row.id);
       return res.json({
         success: true,
-        data: { exam },
+        data: { exam, linkedColleges },
       });
     } catch (error) {
       console.error('Error fetching exam by id:', error);
@@ -1246,6 +1302,34 @@ class ExamsTaxonomyController {
    * Paginated exams for one dashboard tab (enrich only current page).
    * GET /api/auth/profile/dashboard-exams/tab?tab=recommended|shortlisted|all&page=1&limit=10&search=
    */
+  /**
+   * Single enriched exam for dashboard detail (same shape as tab list items).
+   * GET /api/auth/profile/dashboard-exams/exam/:examId
+   */
+  static async getDashboardExamById(req, res) {
+    try {
+      const row = await ExamsTaxonomyController.resolveExamFromRouteParam(req.params.examId);
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          message: 'Exam not found',
+        });
+      }
+      const [exam] = await ExamsTaxonomyController.enrichExamRows([row]);
+      const linkedColleges = await ExamsTaxonomyController.loadLinkedCollegesForExamId(row.id);
+      return res.json({
+        success: true,
+        data: { exam, linkedColleges },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard exam by id:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch exam',
+      });
+    }
+  }
+
   static async getDashboardExamsTab(req, res) {
     try {
       const tab = String(req.query.tab || '').toLowerCase();
@@ -1579,7 +1663,7 @@ class ExamsTaxonomyController {
           (pattern && pattern.total_marks != null) ? String(pattern.total_marks) : '',
           (pattern && pattern.negative_marking) || '',
           (pattern && pattern.weightage_of_subjects) || '',
-          (pattern && pattern.duration_minutes != null) ? durationHoursStoredForExportCell(pattern.duration_minutes) : '',
+          (pattern && pattern.duration_minutes != null) ? durationStoredForExportCell(pattern.duration_minutes) : '',
           (cutoff && cutoff.ranks_percentiles) || '',
           (cutoff && cutoff.cutoff_general) || '',
           (cutoff && cutoff.cutoff_obc) || '',
@@ -1802,8 +1886,6 @@ class ExamsTaxonomyController {
       const allCareerGoals = await CareerGoal.findAll();
 
       const allErrors = [];
-      const validTypes = ['National', 'State', 'Institute'];
-      const validModes = EXAM_PATTERN_VALID_MODES;
       const codesInFile = new Set();
       const namesInFile = new Set();
       const created = [];
@@ -1879,9 +1961,8 @@ class ExamsTaxonomyController {
         }
 
         const numPapersRaw = getCell(row, 'number_of_papers', 'Number_Of_Papers') || row.number_of_papers || row.Number_Of_Papers || '';
-        const numberOfPapers = (numPapersRaw !== '' && !isNaN(parseInt(String(numPapersRaw), 10)))
-          ? Math.max(1, Math.min(10, parseInt(String(numPapersRaw), 10)))
-          : 1;
+        const numberOfPapers =
+          numPapersRaw !== '' && String(numPapersRaw).trim() !== '' ? String(numPapersRaw).trim() : null;
 
         let examLogoUrl = null;
         if (logoFilename) {
@@ -1896,7 +1977,7 @@ class ExamsTaxonomyController {
           }
         }
 
-        const finalExamType = validTypes.find((t) => t.toLowerCase() === examType.toLowerCase()) || null;
+        const finalExamType = examType || null;
         let exam;
         try {
           exam = await Exam.create({
@@ -1924,20 +2005,28 @@ class ExamsTaxonomyController {
         const examId = exam.id;
 
         try {
-          const appStart = parseDate(row.application_start_date ?? row.Application_Start_Date);
-          const appClose = parseDate(row.application_close_date ?? row.Application_Close_Date);
-          const examDate = parseDate(row.exam_date ?? row.Exam_Date);
-          const resultDate = parseDate(row.result_date ?? row.Result_Date);
+          const storeDateCell = (val) => {
+            if (val == null || val === '') return null;
+            const normalized = parseDate(val);
+            if (normalized) return normalized;
+            const s = String(val).trim();
+            return s || null;
+          };
+          const appStart = storeDateCell(row.application_start_date ?? row.Application_Start_Date);
+          const appClose = storeDateCell(row.application_close_date ?? row.Application_Close_Date);
+          const examDate = storeDateCell(row.exam_date ?? row.Exam_Date);
+          const resultDate = storeDateCell(row.result_date ?? row.Result_Date);
           const feesRaw = row.application_fees ?? row.Application_Fees;
-          const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw)) : null;
-          if (appStart || appClose || examDate || resultDate || (application_fees != null && !Number.isNaN(application_fees))) {
+          const application_fees =
+            feesRaw != null && String(feesRaw).trim() !== '' ? String(feesRaw).trim() : null;
+          if (appStart || appClose || examDate || resultDate || application_fees) {
             await ExamDates.create({
               exam_id: examId,
               application_start_date: appStart,
               application_close_date: appClose,
               exam_date: examDate,
               result_date: resultDate,
-              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null
+              application_fees,
             });
           }
         } catch (e) {
@@ -1976,9 +2065,15 @@ class ExamsTaxonomyController {
         }
 
         try {
-          const mode = (row.mode ?? row.Mode ?? '').toString().trim();
-          const numQ = row.number_of_questions != null && row.number_of_questions !== '' ? parseInt(String(row.number_of_questions), 10) : null;
-          const totalMarks = row.total_marks != null && row.total_marks !== '' ? parseInt(String(row.total_marks), 10) : null;
+          const mode = (row.mode ?? row.Mode ?? '').toString().trim() || null;
+          const numQ =
+            row.number_of_questions != null && String(row.number_of_questions).trim() !== ''
+              ? String(row.number_of_questions).trim()
+              : null;
+          const totalMarks =
+            row.total_marks != null && String(row.total_marks).trim() !== ''
+              ? String(row.total_marks).trim()
+              : null;
           const negRaw = getCell(row, 'negative_marking', 'Negative_Marking') || getCell(row, 'marking_scheme', 'Marking_Scheme');
           const negative_marking = negRaw ? String(negRaw).trim() : null;
           const wRaw = getCell(row, 'weightage_of_subjects', 'Weightage_Of_Subjects', 'weightage') || getCellByKeyword(row, 'weightage');
@@ -1987,20 +2082,19 @@ class ExamsTaxonomyController {
           const durationLegacyRaw = getCell(row, 'duration_minutes', 'Duration_Minutes');
           let durationMinutes = null;
           if (durationHoursRaw !== '') {
-            durationMinutes = durationHoursStoredFromInput(durationHoursRaw);
+            durationMinutes = durationStoredFromInput(durationHoursRaw);
           } else if (durationLegacyRaw !== '') {
-            durationMinutes = durationHoursStoredFromInput(durationLegacyRaw);
+            durationMinutes = durationStoredFromInput(durationLegacyRaw);
           }
-          const finalMode = validModes.find((m) => m.toLowerCase() === mode.toLowerCase()) || null;
-          if (finalMode || numQ != null || totalMarks != null || negative_marking || weightage_of_subjects || durationMinutes != null) {
+          if (mode || numQ || totalMarks || negative_marking || weightage_of_subjects || durationMinutes) {
             await ExamPattern.create({
               exam_id: examId,
-              mode: finalMode,
-              number_of_questions: !isNaN(numQ) ? numQ : null,
-              total_marks: !isNaN(totalMarks) ? totalMarks : null,
+              mode,
+              number_of_questions: numQ,
+              total_marks: totalMarks,
               negative_marking,
               weightage_of_subjects,
-              duration_minutes: durationMinutes
+              duration_minutes: durationMinutes,
             });
           }
         } catch (e) {
