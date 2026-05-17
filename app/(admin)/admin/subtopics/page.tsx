@@ -4,26 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import {
-  getAllSubtopics,
-  createSubtopic,
-  updateSubtopic,
-  deleteSubtopic,
-  deleteAllSubtopics,
-  downloadSubtopicsBulkTemplate,
-  bulkUploadSubtopics,
-  Subtopic,
-} from '@/api';
+import { getAllSubtopics, getSubtopicsByTopicId, getSubtopicById, createSubtopic, updateSubtopic, deleteSubtopic, Subtopic } from '@/api';
 import { getAllTopics } from '@/api';
-import { FiPlus, FiSearch, FiX, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
+import { getAllExamsAdmin } from '@/api/admin/exams';
+import { FiPlus, FiSearch, FiX } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
-import { ConfirmationModal, useToast, Select, SelectOption } from '@/components/shared';
-import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
 
 export default function SubtopicsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
-  const { canEdit, canDelete } = useAdminPermissions();
   const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,27 +21,20 @@ export default function SubtopicsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingSubtopic, setEditingSubtopic] = useState<Subtopic | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({
-    topic_id: '',
-    name: '',
+  const [formData, setFormData] = useState({ 
+    topic_id: '', 
+    name: '', 
+    status: true,
+    description: '',
+    sort_order: 0,
+    exam_ids: [] as number[],
   });
   const [availableTopics, setAvailableTopics] = useState<SelectOption[]>([]);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
-  const [bulkUploading, setBulkUploading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{
-    created: number;
-    createdItems: { id: number; name: string; topic_id: number }[];
-    errors: number;
-    errorDetails: { row: number; message: string }[];
-  } | null>(null);
-  const [bulkError, setBulkError] = useState<string | null>(null);
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [availableExams, setAvailableExams] = useState<SelectOption[]>([]);
+  const MAX_EXAMS = 10;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [viewingSubtopic, setViewingSubtopic] = useState<Subtopic | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,8 +49,20 @@ export default function SubtopicsPage() {
 
     fetchSubtopics();
     fetchTopics();
+    fetchExams();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchExams = async () => {
+    try {
+      const res = await getAllExamsAdmin();
+      if (res.success && res.data?.exams) {
+        setAvailableExams(res.data.exams.map((e) => ({ value: String(e.id), label: `${e.name} (${e.code})` })));
+      }
+    } catch (err) {
+      console.error('Error fetching exams:', err);
+    }
+  };
 
   const fetchTopics = async () => {
     try {
@@ -127,26 +122,23 @@ export default function SubtopicsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!formData.topic_id || !formData.name.trim()) {
-      setError('Topic and name are required');
-      return;
-    }
     setIsSubmitting(true);
 
     try {
+      const data = {
+        topic_id: parseInt(formData.topic_id),
+        name: formData.name,
+        status: formData.status,
+        description: formData.description || undefined,
+        sort_order: formData.sort_order,
+        exam_ids: (formData.exam_ids || []).slice(0, MAX_EXAMS),
+      };
+
       let response;
       if (editingSubtopic) {
-        response = await updateSubtopic(editingSubtopic.id, {
-          topic_id: parseInt(formData.topic_id, 10),
-          name: formData.name.trim(),
-        });
+        response = await updateSubtopic(editingSubtopic.id, data);
       } else {
-        response = await createSubtopic({
-          topic_id: parseInt(formData.topic_id, 10),
-          name: formData.name.trim(),
-          status: true,
-          sort_order: 0,
-        });
+        response = await createSubtopic(data);
       }
 
       if (response.success) {
@@ -157,8 +149,8 @@ export default function SubtopicsPage() {
         setError(response.message || 'Failed to save subtopic');
         showError(response.message || 'Failed to save subtopic');
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while saving subtopic';
+    } catch (err: any) {
+      const errorMessage = err.message || 'An error occurred while saving subtopic';
       setError(errorMessage);
       showError(errorMessage);
     } finally {
@@ -172,11 +164,24 @@ export default function SubtopicsPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (subtopic: Subtopic) => {
+  const handleEdit = async (subtopic: Subtopic) => {
     setEditingSubtopic(subtopic);
+    let examIds = subtopic.exam_ids ?? [];
+    if (examIds.length === 0 && subtopic.id) {
+      try {
+        const res = await getSubtopicById(subtopic.id);
+        if (res.success && res.data?.subtopic?.exam_ids) {
+          examIds = res.data.subtopic.exam_ids;
+        }
+      } catch (_) {}
+    }
     setFormData({
       topic_id: String(subtopic.topic_id),
       name: subtopic.name,
+      status: subtopic.status,
+      description: subtopic.description || '',
+      sort_order: subtopic.sort_order,
+      exam_ids: examIds,
     });
     setShowModal(true);
   };
@@ -212,76 +217,16 @@ export default function SubtopicsPage() {
     }
   };
 
-  const handleDeleteAll = async () => {
-    try {
-      setIsDeletingAll(true);
-      const response = await deleteAllSubtopics();
-      if (response.success) {
-        showSuccess(response.message || 'All subtopics deleted successfully');
-        setShowDeleteAllConfirm(false);
-        fetchSubtopics();
-      } else {
-        showError(response.message || 'Failed to delete all subtopics');
-      }
-    } catch (err: any) {
-      showError(err.message || 'Failed to delete all subtopics');
-    } finally {
-      setIsDeletingAll(false);
-    }
-  };
-
   const resetForm = () => {
-    setFormData({
-      topic_id: '',
-      name: '',
+    setFormData({ 
+      topic_id: '', 
+      name: '', 
+      status: true,
+      description: '',
+      sort_order: 0,
+      exam_ids: [],
     });
     setError(null);
-  };
-
-  const handleDownloadSubtopicsTemplate = async () => {
-    try {
-      setDownloadingTemplate(true);
-      await downloadSubtopicsBulkTemplate();
-      showSuccess('Template downloaded');
-    } catch {
-      showError('Failed to download template');
-    } finally {
-      setDownloadingTemplate(false);
-    }
-  };
-
-  const handleBulkUploadSubtopics = async () => {
-    if (!bulkExcelFile) {
-      setBulkError('Please select an Excel file');
-      return;
-    }
-    try {
-      setBulkUploading(true);
-      setBulkError(null);
-      setBulkResult(null);
-      const response = await bulkUploadSubtopics(bulkExcelFile);
-      if (response.success && response.data) {
-        setBulkResult({
-          created: response.data.created,
-          createdItems: response.data.createdItems || [],
-          errors: response.data.errors || 0,
-          errorDetails: response.data.errorDetails || [],
-        });
-        showSuccess(response.message || `Created ${response.data.created} subtopic(s)`);
-        fetchSubtopics();
-        if (response.data.errors === 0) {
-          setBulkExcelFile(null);
-          setShowBulkModal(false);
-        }
-      } else {
-        setBulkError(response.message || 'Bulk upload failed');
-      }
-    } catch {
-      setBulkError('An error occurred during bulk upload');
-      showError('Bulk upload failed');
-    } finally {
-      setBulkUploading(false);
-    }
   };
 
   const handleModalClose = () => {
@@ -337,52 +282,13 @@ export default function SubtopicsPage() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {canEdit && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleDownloadSubtopicsTemplate}
-                    disabled={downloadingTemplate}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
-                  >
-                    <FiDownload className="h-4 w-4" />
-                    {downloadingTemplate ? 'Downloading…' : 'Template'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBulkModal(true);
-                      setBulkResult(null);
-                      setBulkError(null);
-                      setBulkExcelFile(null);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
-                  >
-                    <FiUpload className="h-4 w-4" />
-                    Upload Excel
-                  </button>
-                </>
-              )}
-              <button
-                onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-              >
-                <FiPlus className="h-4 w-4" />
-                Add Subtopic
-              </button>
-              {canDelete && allSubtopics.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  disabled={isDeletingAll}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
-                >
-                  <FiTrash2 className="h-4 w-4" />
-                  Delete All
-                </button>
-              )}
-            </div>
+            <button
+              onClick={handleCreate}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <FiPlus className="h-4 w-4" />
+              Add Subtopic
+            </button>
           </div>
 
           {/* Error Message */}
@@ -511,10 +417,56 @@ export default function SubtopicsPage() {
                   />
                 </div>
 
-                <p className="text-xs text-slate-500">
-                  Subtopic names must be unique everywhere. Excel: <span className="font-mono">subtopic_name</span>,{' '}
-                  <span className="font-mono">topic_name</span> (must match exactly one topic by name).
-                </p>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Exams (optional, max {MAX_EXAMS})
+                  </label>
+                  <MultiSelect
+                    options={availableExams}
+                    value={(formData.exam_ids || []).slice(0, MAX_EXAMS).map(String)}
+                    onChange={(values) => setFormData({ ...formData, exam_ids: values.map(Number).slice(0, MAX_EXAMS) })}
+                    placeholder="Search and select exams..."
+                    isSearchable
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Optional description"
+                    rows={3}
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Sort Order
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
+                      className="w-4 h-4 text-[#341050] border-slate-300 rounded focus:ring-[#341050]/25"
+                    />
+                    <span className="text-xs font-medium text-slate-700">Active</span>
+                  </label>
+                </div>
               </div>
 
               {/* Footer */}
@@ -572,8 +524,12 @@ export default function SubtopicsPage() {
                 )}
                 {(viewingSubtopic.exam_ids?.length ?? 0) > 0 && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Linked exam IDs (legacy)</label>
-                    <p className="text-sm text-slate-900">{viewingSubtopic.exam_ids!.join(', ')}</p>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Exams</label>
+                    <p className="text-sm text-slate-900">
+                      {viewingSubtopic.exam_ids!
+                        .map((id) => availableExams.find((e) => e.value === String(id))?.label ?? `Exam ${id}`)
+                        .join(', ')}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -598,62 +554,6 @@ export default function SubtopicsPage() {
         </div>
       )}
 
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Bulk upload subtopics</h2>
-              <button type="button" onClick={() => setShowBulkModal(false)} className="text-slate-500 hover:text-slate-800">
-                <FiX className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="p-4 overflow-auto space-y-3 text-sm text-slate-700">
-              <p>
-                Template columns: <span className="font-mono">subtopic_name</span>, <span className="font-mono">topic_name</span>.
-                Topic name must match one topic in the database. Each <span className="font-mono">subtopic_name</span> must be
-                unique in the file and in the system.
-              </p>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
-                className="block w-full text-xs"
-              />
-              {bulkError && <div className="text-red-600 text-xs">{bulkError}</div>}
-              {bulkResult && (
-                <div className="text-xs space-y-1 border border-slate-200 rounded p-2 bg-slate-50">
-                  <div>
-                    Created: <strong>{bulkResult.created}</strong>, errors: <strong>{bulkResult.errors}</strong>
-                  </div>
-                  {bulkResult.errorDetails.length > 0 && (
-                    <ul className="list-disc pl-4 max-h-32 overflow-auto">
-                      {bulkResult.errorDetails.slice(0, 30).map((e, i) => (
-                        <li key={i}>
-                          Row {e.row}: {e.message}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowBulkModal(false)} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg">
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkUploadSubtopics}
-                disabled={!bulkExcelFile || bulkUploading}
-                className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg disabled:opacity-50"
-              >
-                {bulkUploading ? 'Uploading…' : 'Upload'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteConfirm}
@@ -667,18 +567,6 @@ export default function SubtopicsPage() {
         confirmText="Delete"
         cancelText="Cancel"
         isLoading={isDeleting}
-        confirmButtonStyle="danger"
-      />
-
-      <ConfirmationModal
-        isOpen={showDeleteAllConfirm}
-        onClose={() => setShowDeleteAllConfirm(false)}
-        onConfirm={handleDeleteAll}
-        title="Delete All Subtopics"
-        message={`Are you sure you want to delete all ${allSubtopics.length} subtopic(s)? This action cannot be undone.`}
-        confirmText="Delete All"
-        cancelText="Cancel"
-        isLoading={isDeletingAll}
         confirmButtonStyle="danger"
       />
     </div>

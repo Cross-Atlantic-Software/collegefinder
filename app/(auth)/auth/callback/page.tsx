@@ -37,10 +37,11 @@ export default function AuthCallbackPage() {
             // Use login method which stores both token and user
             login(token, userData);
             
-            // If onboarding_completed is true → home
-            // If false/null → full app onboarding
+            // Check if user has completed onboarding
+            // If onboarding_completed is true → go to dashboard
+            // If onboarding_completed is false/null → go to onboarding step-1
             if (userData.onboarding_completed) {
-              router.push("/");
+              router.push("/dashboard");
             } else {
               router.push("/step-1");
             }

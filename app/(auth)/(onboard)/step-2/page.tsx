@@ -1,8 +1,9 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
-import { updateProfile, getBasicInfo } from "@/api";
+import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
+import { Button } from "@/components/shared";
+import { updateProfile } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -13,62 +14,64 @@ export default function StepTwo() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep2A, setIsNavigatingToStep2A] = useState(false);
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, refreshUser, isLoading } = useAuth();
 
+  // Redirect to dashboard if user has completed onboarding
+  // But NEVER redirect if we're saving or navigating to step-3
   useEffect(() => {
+    // Only redirect if we're not in the middle of saving or navigating to step-3
     if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
       queueMicrotask(() => setIsRedirecting(true));
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
+      // Prefetch dashboard for faster loading
+      router.prefetch('/dashboard');
+      // Small delay for smooth transition
+      const timer = setTimeout(() => {
+        router.replace('/dashboard');
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router, isNavigatingToStep2A, saving]);
 
-  /** Restore name when returning via Back so the field shows saved / typed value. */
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (isLoading || !user) return;
-      try {
-        const res = await getBasicInfo();
-        if (cancelled || !res.success || !res.data) return;
-        const d = res.data;
-        const display =
-          [d.first_name, d.last_name].filter(Boolean).join(" ").trim() ||
-          d.name?.trim() ||
-          "";
-        if (display) setName(display);
-      } catch {
-        /* non-blocking */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoading, user]);
-
+  // Show smooth loader while checking auth or redirecting (but NEVER while saving/navigating to step-3)
   if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
-  }
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
-    return <OnboardingLoader message="Taking you home..." />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
   }
 
-  const isBusy = saving || isNavigatingToStep2A;
+  // Don't render if user has completed onboarding and we're not saving/navigating to step-3
+  if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
+    return <OnboardingLoader message="Taking you to dashboard..." />;
+  }
+
+  // Show saving state if we're navigating to step-3
+  if (saving || isNavigatingToStep2A) {
+    return <OnboardingLoader message="Saving your name..." />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError("Please enter your name"); return; }
-    if (!user)        { setError("You must be logged in to save your name"); return; }
+    
+    if (!name) {
+      setError("Please enter your name");
+      return;
+    }
+
+    if (!user) {
+      setError("You must be logged in to save your name");
+      return;
+    }
 
     setSaving(true);
     setError(null);
-    setIsNavigatingToStep2A(true);
+    setIsNavigatingToStep2A(true); // Set flag immediately to prevent any redirects
 
     try {
-      const response = await updateProfile(name.trim());
+      const response = await updateProfile(name);
+      
       if (response.success) {
+        // Prefetch step-2a for faster loading
         router.prefetch("/step-2a");
+        // Navigate to step-2a immediately - don't refresh user data here
+        // The user data will be updated naturally when step-2a loads
         router.replace("/step-2a");
       } else {
         setError(response.message || "Failed to save name. Please try again.");
@@ -83,55 +86,50 @@ export default function StepTwo() {
     }
   };
 
-  if (isBusy) return <CardShimmer />;
-
   return (
-    <>
-      {!isBusy && (
-        <>
-          <p className="mb-5 text-sm text-slate-500 -mt-1">
-            We&apos;ll use this to make things feel personal
-          </p>
+    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
+      <WelcomeLayout progress={40}>
+        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
+          {/* Robot */}
+          <div className="flex-shrink-0">
+            <Robot variant="five" />
+          </div>
 
-          {error && (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+          {/* Input + Button */}
+          <div className="flex flex-col gap-5 w-full max-w-xl">
+            <Bubble>I am curious. What shall I call you?</Bubble>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
-            <input
-              type="text"
-              placeholder="Enter your full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition duration-300 placeholder:text-slate-400 focus:border-slate-900"
-              required
-              minLength={1}
-              maxLength={255}
-              autoFocus
-            />
-            <div className="flex items-center gap-3 mt-auto pt-4">
-              <button
-                type="button"
-                onClick={() => router.push('/step-1')}
-                className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
+            {error && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex gap-3">
+              <input
+                type="text"
+                placeholder="Type your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="block w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#341050] focus:ring-1 focus:ring-[#341050]/20 transition duration-300 shadow-sm"
+                required
+                minLength={1}
+                maxLength={255}
+              />
+
+              <Button
                 type="submit"
-                disabled={!name.trim()}
-                className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="DarkGradient"
+                size="lg"
+                className="w-40 rounded-full"
+                disabled={saving || !name}
               >
-                Continue
-              </button>
-            </div>
-          </form>
-        </>
-      )}
-    </>
+                {saving ? "Saving..." : "Sounds Good"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </WelcomeLayout>
+    </div>
   );
 }

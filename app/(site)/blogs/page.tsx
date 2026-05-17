@@ -88,22 +88,7 @@ function BlogsListing() {
                 {error ? (
                     <p className="text-sm text-red-600">{error}</p>
                 ) : blogs.length === 0 ? (
-                    <div className="mx-auto flex max-w-xl flex-col items-center justify-center py-12 md:py-20">
-                        <LandingCardFrame showSquiggles squiggleVariant="lg">
-                            <div className="relative mx-auto w-full overflow-hidden rounded-[30px] border border-black/15 bg-white px-8 py-12 text-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-black/5 sm:px-12 sm:py-14">
-                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">
-                                    Blogs
-                                </p>
-                                <h1 className="mt-4 text-balance text-3xl font-extrabold tracking-tight text-black sm:text-4xl">
-                                    Coming Soon
-                                </h1>
-                                <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-black/60">
-                                    We&apos;re lining up stories, guides, and updates for you. Check back shortly.
-                                </p>
-                                <div className="mx-auto mt-8 h-1 w-16 rounded-full bg-[#f0c544]" aria-hidden />
-                            </div>
-                        </LandingCardFrame>
-                    </div>
+                    <p className="text-sm text-black/50">No posts yet. Check back soon.</p>
                 ) : (
                     <>
                         <ul className="grid gap-6 overflow-visible sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">

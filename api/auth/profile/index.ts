@@ -137,6 +137,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   matric_percentage: number | null;
   matric_state: string | null;
   matric_city: string | null;
+  matric_school_pincode: string | null;
   matric_marks_type: string | null;
   matric_cgpa: number | null;
   matric_result_status: string | null;
@@ -151,6 +152,7 @@ export async function getAcademics(): Promise<ApiResponse<{
   postmatric_percentage: number | null;
   postmatric_state: string | null;
   postmatric_city: string | null;
+  postmatric_school_pincode: string | null;
   postmatric_marks_type: string | null;
   postmatric_cgpa: number | null;
   postmatric_result_status: string | null;

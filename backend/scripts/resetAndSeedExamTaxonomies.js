@@ -219,6 +219,39 @@ function buildCuetFormat() {
   };
 }
 
+function buildNataFormat() {
+  return {
+    default: {
+      name: 'NATA',
+      duration_minutes: 180,
+      total_questions: 50,
+      total_marks: 200,
+      marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
+      rules: [
+        'National Aptitude Test in Architecture — aptitude for B.Arch programmes per Council of Architecture norms.',
+        'Assesses cognitive skills, visual perception, aesthetic sensitivity, logical reasoning, and critical thinking.',
+        'Actual pattern (sessions, drawing component, marking) is defined in the official brochure each year.',
+        'Official site: https://www.nata.in/',
+      ],
+      sections: {
+        'Aptitude (representative MCQ block)': {
+          name: 'Aptitude (representative MCQ block)',
+          total_questions: 50,
+          marks: 200,
+          subsections: {
+            'Section A': {
+              type: 'mcq_single',
+              questions: 50,
+              marks_per_question: 4,
+              required: 50,
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 const EXAMS = [
   {
     name: 'JEE Main',
@@ -256,6 +289,17 @@ const EXAMS = [
     number_of_papers: 1,
     format: buildCuetFormat(),
   },
+  {
+    name: 'NATA',
+    code: 'NATA',
+    description:
+      'National Aptitude Test in Architecture — for admission to architecture programmes as per Council of Architecture regulations.',
+    exam_type: 'National',
+    conducting_authority: 'Council of Architecture (COA)',
+    number_of_papers: 1,
+    format: buildNataFormat(),
+    website: 'https://www.nata.in/',
+  },
 ];
 
 async function main() {
@@ -272,8 +316,8 @@ async function main() {
 
     for (const exam of EXAMS) {
       const result = await db.query(
-        `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format, number_of_papers)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+        `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format, number_of_papers, website)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
          RETURNING id, name, code`,
         [
           exam.name,
@@ -283,6 +327,7 @@ async function main() {
           exam.conducting_authority || null,
           JSON.stringify(exam.format),
           exam.number_of_papers || 1,
+          exam.website ?? null,
         ]
       );
 

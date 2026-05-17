@@ -208,11 +208,11 @@ class BlogController {
         video_file = await uploadToS3(fileBuffer, fileName, 'blog_videos');
       }
 
-      // Validate content_type specific fields (second_part is optional for TEXT)
-      if (content_type === 'TEXT' && (!first_part || !String(first_part).trim())) {
+      // Validate content_type specific fields
+      if (content_type === 'TEXT' && (!first_part || !second_part)) {
         return res.status(400).json({
           success: false,
-          message: 'first_part is required when content_type is TEXT'
+          message: 'first_part and second_part are required when content_type is TEXT'
         });
       }
 
@@ -268,7 +268,7 @@ class BlogController {
         summary: summary || null,
         content_type,
         first_part: content_type === 'TEXT' ? first_part : null,
-        second_part: content_type === 'TEXT' ? (second_part && String(second_part).trim() ? second_part : null) : null,
+        second_part: content_type === 'TEXT' ? second_part : null,
         video_file: content_type === 'VIDEO' ? video_file : null,
         streams: streamsArray,
         careers: careersArray,
@@ -410,17 +410,12 @@ class BlogController {
         }
       }
 
-      // Validate content_type specific fields (second_part is optional for TEXT)
-      const effectiveContentType = content_type || existingBlog.content_type;
-      if (effectiveContentType === 'TEXT') {
-        const fp =
-          first_part !== undefined ? first_part : existingBlog.first_part;
-        if (!fp || !String(fp).trim()) {
-          return res.status(400).json({
-            success: false,
-            message: 'first_part is required when content_type is TEXT'
-          });
-        }
+      // Validate content_type specific fields
+      if (content_type === 'TEXT' && (!first_part || !second_part)) {
+        return res.status(400).json({
+          success: false,
+          message: 'first_part and second_part are required when content_type is TEXT'
+        });
       }
 
       if (content_type === 'VIDEO' && !video_file) {
@@ -455,13 +450,7 @@ class BlogController {
       if (summary !== undefined) updateData.summary = summary;
       if (content_type !== undefined) updateData.content_type = content_type;
       if (first_part !== undefined) updateData.first_part = content_type === 'TEXT' ? final_first_part : null;
-      if (second_part !== undefined) {
-        const ct = content_type || existingBlog.content_type;
-        updateData.second_part =
-          ct === 'TEXT' && final_second_part && String(final_second_part).trim()
-            ? final_second_part
-            : null;
-      }
+      if (second_part !== undefined) updateData.second_part = content_type === 'TEXT' ? final_second_part : null;
       if (video_file !== undefined) updateData.video_file = content_type === 'VIDEO' ? video_file : null;
       if (streamsArray !== undefined) updateData.streams = streamsArray;
       if (careersArray !== undefined) updateData.careers = careersArray;

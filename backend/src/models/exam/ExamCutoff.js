@@ -1,5 +1,6 @@
 const db = require('../../config/database');
 
+/** Ensure TEXT columns get a string (allow JSON object from API to be stored as string) */
 function toCutoffText(val) {
   if (val == null || val === '') return null;
   if (typeof val === 'string') return val;
@@ -8,6 +9,9 @@ function toCutoffText(val) {
 }
 
 class ExamCutoff {
+  /**
+   * Find exam cutoff by exam ID
+   */
   static async findByExamId(examId) {
     const result = await db.query(
       'SELECT * FROM exam_cutoff WHERE exam_id = $1',
@@ -16,17 +20,9 @@ class ExamCutoff {
     return result.rows[0] || null;
   }
 
-  static async findByExamIds(examIds) {
-    if (!examIds || examIds.length === 0) {
-      return [];
-    }
-    const result = await db.query(
-      'SELECT * FROM exam_cutoff WHERE exam_id = ANY($1::int[])',
-      [examIds]
-    );
-    return result.rows;
-  }
-
+  /**
+   * Find exam cutoff by ID
+   */
   static async findById(id) {
     const result = await db.query(
       'SELECT * FROM exam_cutoff WHERE id = $1',
@@ -35,50 +31,45 @@ class ExamCutoff {
     return result.rows[0] || null;
   }
 
+  /**
+   * Create exam cutoff
+   */
   static async create(data) {
-    const { exam_id, ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range } = data;
+    const { exam_id, previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range } = data;
     const result = await db.query(
-      `INSERT INTO exam_cutoff (exam_id, ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      'INSERT INTO exam_cutoff (exam_id, previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [
         exam_id,
+        toCutoffText(previous_year_cutoff),
         toCutoffText(ranks_percentiles),
-        toCutoffText(cutoff_general),
-        toCutoffText(cutoff_obc),
-        toCutoffText(cutoff_sc),
-        toCutoffText(cutoff_st),
+        toCutoffText(category_wise_cutoff),
         toCutoffText(target_rank_range)
       ]
     );
     return result.rows[0];
   }
 
+  /**
+   * Update exam cutoff
+   */
   static async update(examId, data) {
-    const { ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range } = data;
-
+    const { previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range } = data;
+    
     const updates = [];
     const values = [];
     let paramCount = 1;
 
+    if (previous_year_cutoff !== undefined) {
+      updates.push(`previous_year_cutoff = $${paramCount++}`);
+      values.push(toCutoffText(previous_year_cutoff));
+    }
     if (ranks_percentiles !== undefined) {
       updates.push(`ranks_percentiles = $${paramCount++}`);
       values.push(toCutoffText(ranks_percentiles));
     }
-    if (cutoff_general !== undefined) {
-      updates.push(`cutoff_general = $${paramCount++}`);
-      values.push(toCutoffText(cutoff_general));
-    }
-    if (cutoff_obc !== undefined) {
-      updates.push(`cutoff_obc = $${paramCount++}`);
-      values.push(toCutoffText(cutoff_obc));
-    }
-    if (cutoff_sc !== undefined) {
-      updates.push(`cutoff_sc = $${paramCount++}`);
-      values.push(toCutoffText(cutoff_sc));
-    }
-    if (cutoff_st !== undefined) {
-      updates.push(`cutoff_st = $${paramCount++}`);
-      values.push(toCutoffText(cutoff_st));
+    if (category_wise_cutoff !== undefined) {
+      updates.push(`category_wise_cutoff = $${paramCount++}`);
+      values.push(toCutoffText(category_wise_cutoff));
     }
     if (target_rank_range !== undefined) {
       updates.push(`target_rank_range = $${paramCount++}`);
@@ -93,7 +84,7 @@ class ExamCutoff {
     values.push(examId);
 
     const query = `
-      UPDATE exam_cutoff
+      UPDATE exam_cutoff 
       SET ${updates.join(', ')}
       WHERE exam_id = $${paramCount}
       RETURNING *
@@ -103,16 +94,23 @@ class ExamCutoff {
     return result.rows[0] || null;
   }
 
+  /**
+   * Upsert exam cutoff (create or update)
+   */
   static async upsert(data) {
-    const { exam_id, ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range } = data;
+    const { exam_id, previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range } = data;
     const existing = await this.findByExamId(exam_id);
-
+    
     if (existing) {
-      return await this.update(exam_id, { ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range });
+      return await this.update(exam_id, { previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range });
+    } else {
+      return await this.create({ exam_id, previous_year_cutoff, ranks_percentiles, category_wise_cutoff, target_rank_range });
     }
-    return await this.create({ exam_id, ranks_percentiles, cutoff_general, cutoff_obc, cutoff_sc, cutoff_st, target_rank_range });
   }
 
+  /**
+   * Delete exam cutoff
+   */
   static async delete(examId) {
     const result = await db.query(
       'DELETE FROM exam_cutoff WHERE exam_id = $1 RETURNING *',

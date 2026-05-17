@@ -47,7 +47,12 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$REPO"
-git pull
+# Set SKIP_GIT_PULL=1 when the instance cannot reach GitHub (sync code via rsync/scp instead).
+if [ "${SKIP_GIT_PULL:-0}" != "1" ]; then
+  git pull
+else
+  echo "SKIP_GIT_PULL=1 — skipping git pull"
+fi
 
 export npm_config_fetch_retries=20
 export npm_config_fetch_timeout=600000
