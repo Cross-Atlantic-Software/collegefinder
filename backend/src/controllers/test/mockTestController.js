@@ -36,7 +36,7 @@ class MockTestController {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
 
-      const numberOfPapers = exam.number_of_papers || 1;
+      const numberOfPapers = Exam.parsePaperCount(exam.number_of_papers);
       const completedCount = await MockTestController._countCompletedMocks(userId, examId, numberOfPapers);
       const nextMockNumber = completedCount + 1;
 
@@ -103,7 +103,7 @@ class MockTestController {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
 
-      const numberOfPapers = exam.number_of_papers || 1;
+      const numberOfPapers = Exam.parsePaperCount(exam.number_of_papers);
       const paperNumber = parseInt(req.body?.paper_number, 10) || 1;
 
       if (paperNumber < 1 || paperNumber > numberOfPapers) {
@@ -328,7 +328,7 @@ class MockTestController {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
 
-      const numberOfPapers = exam.number_of_papers || 1;
+      const numberOfPapers = Exam.parsePaperCount(exam.number_of_papers);
       const mockRows = await MockTest.findByExamOrderAndPapers(examId, mockNumber);
 
       const papers = [];

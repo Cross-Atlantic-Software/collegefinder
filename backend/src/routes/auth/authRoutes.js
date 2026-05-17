@@ -316,6 +316,13 @@ router.get('/profile/recommended-exams', authenticate, ExamsController.getRecomm
 router.get('/profile/dashboard-exams/meta', authenticate, ExamsController.getDashboardExamsMeta);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-exams/exam/:examId
+ * @desc    Single enriched exam for dashboard detail pages
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/exam/:examId', authenticate, ExamsController.getDashboardExamById);
+
+/**
  * @route   GET /api/auth/profile/dashboard-exams/tab
  * @desc    Paginated enriched exams for one dashboard tab (recommended | shortlisted | all)
  * @access  Private

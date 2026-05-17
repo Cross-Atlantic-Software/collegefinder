@@ -33,6 +33,25 @@ async function resolveRecommendedExamIds(body) {
   return [];
 }
 
+/** Sync college_recommended_exams from program-level recommended_exam_ids (+ optional college-level ids). */
+async function syncCollegeRecommendedExamsForCollege(collegeId, extraExamIds = []) {
+  const examIdSet = new Set(
+    (extraExamIds || []).map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0)
+  );
+  const programs = await CollegeProgram.findByCollegeId(collegeId);
+  for (const prog of programs) {
+    const raw = prog.recommended_exam_ids != null ? String(prog.recommended_exam_ids).trim() : '';
+    if (!raw) continue;
+    for (const part of raw.split(',')) {
+      const eid = parseInt(part.trim(), 10);
+      if (Number.isInteger(eid) && eid > 0) examIdSet.add(eid);
+    }
+  }
+  const ids = [...examIdSet].sort((a, b) => a - b);
+  await CollegeRecommendedExam.setExamsForCollege(collegeId, ids);
+  return ids;
+}
+
 async function resolveCollegePrograms(collegeId, collegePrograms) {
   if (!collegePrograms || !Array.isArray(collegePrograms)) return;
   for (const prog of collegePrograms) {
@@ -288,12 +307,10 @@ class CollegesController {
         }
       }
 
-      const resolvedExamIds = await resolveRecommendedExamIds(req.body);
-      if (resolvedExamIds.length > 0) {
-        await CollegeRecommendedExam.setExamsForCollege(college.id, resolvedExamIds);
-      }
-
       await resolveCollegePrograms(college.id, collegePrograms);
+
+      const resolvedExamIds = await resolveRecommendedExamIds(req.body);
+      await syncCollegeRecommendedExamsForCollege(college.id, resolvedExamIds);
 
       res.status(201).json({
         success: true,
@@ -406,7 +423,7 @@ class CollegesController {
       await resolveCollegePrograms(collegeId, collegePrograms);
 
       const resolvedExamIds = await resolveRecommendedExamIds(req.body);
-      await CollegeRecommendedExam.setExamsForCollege(collegeId, resolvedExamIds);
+      await syncCollegeRecommendedExamsForCollege(collegeId, resolvedExamIds);
 
       const college = await College.findById(collegeId);
       res.json({ success: true, data: { college }, message: 'College updated successfully' });

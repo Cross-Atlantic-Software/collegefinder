@@ -7,6 +7,7 @@ import { getExamFormats, getTestRules, getUserAnalyticsSummary, getNextMockNumbe
 import TestInterface from "./TestInterface";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
 import { formatDurationMinutes } from "@/lib/formatDuration";
+import { parseExamPaperCount } from "@/lib/examDisplay";
 
 type ViewState = 'exam-selection' | 'format-selection' | 'test-active';
 
@@ -154,7 +155,7 @@ export default function TestModule() {
       if (formatsResponse.success && formatsResponse.data && Object.keys(formatsResponse.data.formats).length > 0) {
         setAvailableFormats(formatsResponse.data.formats);
         const formatEntries = Object.entries(formatsResponse.data.formats);
-        const examNumberOfPapers = exam.number_of_papers ?? 1;
+        const examNumberOfPapers = parseExamPaperCount(exam.number_of_papers);
         // For multi-paper exams, always use the first format (MultiPaperTestInterface handles paper selection)
         // For single-paper exams with multiple format variants, rotate based on analytics
         let formatIndex = 0;
@@ -270,7 +271,7 @@ export default function TestModule() {
 
   // Render different views based on state
   if (viewState === 'test-active' && selectedExam) {
-    const examNumberOfPapers = selectedExam.number_of_papers ?? 1;
+    const examNumberOfPapers = parseExamPaperCount(selectedExam.number_of_papers);
     return (
       <TestInterface 
         exam={{ id: selectedExam.id, name: selectedExam.name, description: selectedExam.description ?? '', code: selectedExam.code ?? '' }}

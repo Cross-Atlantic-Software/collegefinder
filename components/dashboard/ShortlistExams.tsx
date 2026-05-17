@@ -1,27 +1,25 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  FiBell,
-  FiCalendar,
-  FiChevronRight,
-  FiClock,
-  FiHelpCircle,
-  FiInfo,
-  FiMinusCircle,
-  FiSearch,
-  FiShare2,
-  FiShield,
-  FiStar,
-  FiTarget,
-} from "react-icons/fi";
+import { FiSearch } from "react-icons/fi";
 import { FaCheckCircle, FaHeart, FaRegHeart } from "react-icons/fa";
-import { MdComputer, MdCurrencyRupee, MdMenuBook, MdOutlineLightbulb, MdOutlineRepeat, MdSchool } from "react-icons/md";
+import { MdSchool } from "react-icons/md";
 import type { Exam } from "@/api/exams";
+import { Button } from "@/components/shared";
 import { ExamApplicationModal } from "./ExamApplicationModal";
-import { formatExamPatternDurationHours } from "@/lib/formatDuration";
+import {
+  examLogoSrc,
+  formatApplicationFee,
+  formatDuration,
+  formatExamTypeLabel,
+  formatMode,
+  formatPopularityRank,
+  formatQuestionCount,
+  formatTotalMarks,
+  streamLabelsLine,
+  textOrDash,
+} from "@/lib/examDisplay";
 import {
   dashboardExamTabKey,
   fetchDashboardExamsTabData,
@@ -43,176 +41,83 @@ type ShortlistExamsProps = {
   /** Controlled from dashboard TopBar search (server-side filter on tab API). */
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
+  /** Optional deep link from exam detail "View more". */
+  initialTab?: TabId;
 };
 
 type ExamRow = {
   examId: number;
   name: string;
-  subtitle: string;
+  code: string;
   detailHref: string;
-  mode: string;
-  duration: string;
-  attempts: string;
   conductingAuthority: string;
   popularityRank: string;
-  logoSrc: string | null;
-  tabSource: string;
-  levelBadge: string;
-  /** Short copy for yellow insight strip. */
+  logoSrc: string;
+  examType: string;
   calloutText: string;
-  program: string;
+  programTags: string[];
+  careerGoalTags: string[];
+  mode: string;
+  duration: string;
   questions: string;
   totalMarks: string;
-  negativeMarking: string;
-  applicationDates: string;
   applicationFee: string;
   streamRequired: string;
+  attempts: string;
+  papers: string;
 };
 
 function calloutFromDescription(description: string): string {
   const d = description.trim();
-  if (!d) return "Open this exam for dates, eligibility, and how to apply.";
+  if (!d) return "";
   return d.length > 180 ? `${d.slice(0, 177)}…` : d;
 }
 
-function examLevelBadge(examType: string | null | undefined): string {
-  const raw = (examType || "").trim();
-  if (!raw) return "ENTRANCE EXAM";
-  const t = raw.toLowerCase();
-  if (t.includes("national")) return "NATIONAL LEVEL EXAM";
-  if (t.includes("state")) return "STATE LEVEL EXAM";
-  if (t.includes("institute")) return "INSTITUTE LEVEL EXAM";
-  return raw.toUpperCase().slice(0, 28);
-}
-
-function formatApplicationDateRange(exam: Exam): string {
-  const d = exam.examDates;
-  if (!d) return "—";
-  const s = d.application_start_date;
-  const e = d.application_close_date;
-  if (!s && !e) return "—";
-  try {
-    const fmt = (iso: string) => {
-      const x = new Date(iso);
-      if (Number.isNaN(x.getTime())) return null;
-      return x.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-    };
-    const a = s ? fmt(s) : null;
-    const b = e ? fmt(e) : null;
-    if (a && b) return `${a} – ${b}`;
-    return a || b || "—";
-  } catch {
-    return "—";
-  }
-}
-
-function formatApplicationFee(exam: Exam): string {
-  const raw = exam.examDates?.application_fees;
-  if (raw == null) return "—";
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function programLine(exam: Exam): string {
-  const names = (exam.linkedPrograms ?? []).map((p) => p.name?.trim()).filter(Boolean);
-  if (!names.length) return "—";
-  return names.slice(0, 2).join(" · ");
-}
-
-function streamRequiredLine(exam: Exam): string {
-  const el = exam.eligibilityCriteria;
-  const subs = el?.subject_labels?.filter(Boolean) ?? [];
-  const streams = el?.stream_labels?.filter(Boolean) ?? [];
-  if (subs.length) return subs.slice(0, 4).join(", ");
-  if (streams.length) return streams.slice(0, 3).join(", ");
-  return "—";
-}
-
-function patternNum(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(Number(n))) return "—";
-  return String(n);
-}
-
-function examLogoSrc(exam: Exam): string | null {
-  const u = exam.exam_logo?.trim() || exam.logo_file_name?.trim();
-  return u || null;
-}
-
-function toRow(exam: Exam, from: string, tabSource: string): ExamRow {
+function toRow(exam: Exam, from: string): ExamRow {
   const attemptsRaw = exam.eligibilityCriteria?.attempt_limit;
-  const attempts =
-    attemptsRaw != null && String(attemptsRaw).trim() !== ""
-      ? String(attemptsRaw).trim()
-      : "—";
-  const mode =
-    exam.examPattern?.mode != null && String(exam.examPattern.mode).trim() !== ""
-      ? String(exam.examPattern.mode).trim()
-      : "—";
-  const rankRaw = exam.exam_popularity_rank;
-  const popularityRank =
-    rankRaw != null && !Number.isNaN(Number(rankRaw)) ? String(Number(rankRaw)) : "—";
-  const desc = exam.description || "";
-  const neg = exam.examPattern?.negative_marking;
-  const negativeMarking =
-    neg != null && String(neg).trim() !== "" ? String(neg).trim() : "—";
+  const popularity = formatPopularityRank(exam);
+  const papers = textOrDash(
+    exam.number_of_papers != null ? String(exam.number_of_papers) : null
+  );
   return {
     examId: Number(exam.id),
     name: exam.name,
-    subtitle: exam.code?.trim() || "—",
+    code: textOrDash(exam.code),
     detailHref: `/dashboard/exams/${exam.id}?from=${from}`,
-    mode,
-    duration: formatExamPatternDurationHours(exam.examPattern?.duration_minutes ?? undefined),
-    attempts,
-    conductingAuthority: exam.conducting_authority?.trim() || "—",
-    popularityRank,
+    conductingAuthority: textOrDash(exam.conducting_authority),
+    popularityRank: popularity ? `#${popularity}` : "—",
     logoSrc: examLogoSrc(exam),
-    tabSource,
-    levelBadge: examLevelBadge(exam.exam_type),
-    calloutText: calloutFromDescription(desc),
-    program: programLine(exam),
-    questions:
-      exam.examPattern?.number_of_questions != null
-        ? `${patternNum(exam.examPattern.number_of_questions)} Questions`
-        : "—",
-    totalMarks:
-      exam.examPattern?.total_marks != null
-        ? `${patternNum(exam.examPattern.total_marks)} Marks`
-        : "—",
-    negativeMarking,
-    applicationDates: formatApplicationDateRange(exam),
+    examType: textOrDash(formatExamTypeLabel(exam.exam_type)),
+    calloutText: calloutFromDescription(exam.description || ""),
+    programTags: (exam.linkedPrograms ?? [])
+      .map((p) => p.name?.trim())
+      .filter((t): t is string => Boolean(t))
+      .slice(0, 4),
+    careerGoalTags: (exam.linkedCareerGoals ?? [])
+      .map((g) => g.label?.trim())
+      .filter((t): t is string => Boolean(t))
+      .slice(0, 4),
+    mode: formatMode(exam),
+    duration: formatDuration(exam),
+    questions: formatQuestionCount(exam),
+    totalMarks: formatTotalMarks(exam),
     applicationFee: formatApplicationFee(exam),
-    streamRequired: streamRequiredLine(exam),
+    streamRequired: streamLabelsLine(exam),
+    attempts:
+      attemptsRaw != null && String(attemptsRaw).trim() !== "" ? String(attemptsRaw).trim() : "—",
+    papers,
   };
 }
 
-function DetailCell({
-  icon: Icon,
-  label,
-  value,
-  iconBg,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: ReactNode;
-  iconBg: string;
-}) {
+function DetailPill({ label, value }: { label: string; value: string }) {
+  if (!value || value === "—") return null;
   return (
-    <div className="flex min-w-0 flex-col items-center rounded-lg border border-slate-100 bg-white px-1 py-1.5 text-center shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-700/80 dark:bg-slate-800/50">
-      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${iconBg}`} aria-hidden>
-        <Icon className="h-3 w-3 text-white" />
-      </div>
-      <p className="mt-1 text-[6px] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
-        {label}
-      </p>
-      <div className="mt-0.5 line-clamp-2 w-full text-[9px] font-semibold leading-snug text-slate-900 dark:text-slate-100">
-        {value}
-      </div>
-    </div>
+    <span
+      className="max-w-full truncate rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+      title={`${label}: ${value}`}
+    >
+      {label}: {value}
+    </span>
   );
 }
 
@@ -222,19 +127,22 @@ function tabToFrom(tab: TabId): string {
   return "dashboard-shortlist-all";
 }
 
-function tabSourceLabel(tab: TabId): string {
-  if (tab === "recommended") return "Recommended";
-  if (tab === "shortlisted") return "Shortlisted";
-  return "All exams";
-}
-
 export default function ShortlistExams({
   searchQuery: controlledSearch = "",
+  initialTab,
 }: ShortlistExamsProps = {}) {
   const queryClient = useQueryClient();
   const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>("recommended");
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    initialTab && TABS.some((t) => t.id === initialTab) ? initialTab : "recommended"
+  );
+
+  useEffect(() => {
+    if (initialTab && TABS.some((t) => t.id === initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const rawQuery = controlledSearch ?? "";
   const [debouncedSearch, setDebouncedSearch] = useState(rawQuery);
 
@@ -316,10 +224,7 @@ export default function ShortlistExams({
   };
 
   const rowFrom = tabToFrom(activeTab);
-  const sourceLabel = tabSourceLabel(activeTab);
-  const pagedRows: ExamRow[] = (tabData?.exams ?? []).map((exam) =>
-    toRow(exam, rowFrom, sourceLabel)
-  );
+  const pagedRows: ExamRow[] = (tabData?.exams ?? []).map((exam) => toRow(exam, rowFrom));
 
   const streamEmpty = tabData?.streamId == null;
   const emptyHint =
@@ -341,25 +246,8 @@ export default function ShortlistExams({
     updateShortlist.mutate({ examId, shortlisted: nextShortlisted });
   };
 
-  const shareExamLink = (title: string, path: string) => {
-    void (async () => {
-      const url =
-        typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
-      try {
-        if (typeof navigator !== "undefined" && navigator.share) {
-          await navigator.share({ title, text: title, url });
-          return;
-        }
-        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(url);
-        }
-      } catch {
-        /* user cancelled share or clipboard unavailable */
-      }
-    })();
-  };
-
   const showLoadingShell = isLoading && !tabData;
+  const viewFrom = tabToFrom(activeTab);
   const effectivePage = Math.min(serverPage, Math.max(1, totalPages));
   const shortlistedCount = shortlistedIds.length;
 
@@ -464,154 +352,140 @@ export default function ShortlistExams({
                     </div>
                   ) : null}
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                   {pagedRows.map((row) => (
                     <article
                       key={`${activeTab}-${row.examId}`}
-                      className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900 dark:shadow-none"
+                      className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900"
                     >
-                      {/* Hero */}
-                      <div className="bg-white p-2.5 dark:bg-slate-900">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="inline-flex max-w-[85%] items-center gap-1 rounded-full bg-brand-ink px-1.5 py-0.5 text-[7px] font-bold uppercase leading-tight tracking-wide text-white shadow-sm">
-                              <FiShield className="h-2.5 w-2.5 shrink-0 opacity-90" aria-hidden />
-                              <span className="truncate">{row.levelBadge}</span>
+                      <div className="relative flex aspect-[23/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 pr-2">
+                          {row.examType !== "—" ? (
+                            <span className="mb-0.5 inline-flex w-fit rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                              {row.examType}
                             </span>
-                            <div className="flex shrink-0 gap-1">
-                              <button
-                                type="button"
-                                onClick={() => shareExamLink(row.name, row.detailHref)}
-                                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                                aria-label={`Share ${row.name}`}
-                              >
-                                <FiShare2 className="h-3 w-3" />
-                              </button>
-                              <Link
-                                href={row.detailHref}
-                                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                                aria-label={`About ${row.name}`}
-                              >
-                                <FiInfo className="h-3 w-3" />
-                              </Link>
-                            </div>
-                          </div>
-                          <div className="pt-1.5">
-                            <p className="text-[8px] font-semibold uppercase tracking-wider text-action-700 dark:text-action-400">
-                              {row.subtitle !== "—" ? row.subtitle : "Entrance exam"}
+                          ) : null}
+                          <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                            {row.name}
+                          </h3>
+                          {row.code !== "—" ? (
+                            <p className="truncate text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                              {row.code}
                             </p>
-                            <h3 className="mt-0.5 line-clamp-2 text-sm font-extrabold leading-tight tracking-tight text-brand-ink dark:text-slate-50">
-                              {row.name}
-                            </h3>
-                            {row.conductingAuthority !== "—" ? (
-                              <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-brand-ink/75 dark:text-slate-300">
-                                Conducted by{" "}
-                                <span className="font-semibold text-brand-ink dark:text-white">
-                                  {row.conductingAuthority}
-                                </span>
-                              </p>
-                            ) : null}
-                          </div>
+                          ) : null}
+                          {row.conductingAuthority !== "—" ? (
+                            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                              {row.conductingAuthority}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex w-[38%] max-w-[120px] shrink-0 items-center justify-end py-2 pl-1 pr-3">
+                          <img
+                            src={row.logoSrc}
+                            alt=""
+                            className="max-h-full max-w-full object-contain object-right transition duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
                         </div>
                       </div>
 
-                      {/* Insight */}
-                      <div className="mx-2 mt-2 flex gap-1.5 rounded-lg border border-highlight-200/90 bg-highlight-100/70 px-2 py-1.5 dark:border-highlight-300/20 dark:bg-highlight-300/10">
-                        <MdOutlineLightbulb
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-ink dark:text-highlight-300"
-                          aria-hidden
-                        />
-                        <p className="line-clamp-2 min-w-0 flex-1 text-[9px] leading-snug text-brand-ink/90 dark:text-slate-200">
-                          {row.calloutText}
-                        </p>
-                        <span className="shrink-0 self-start rounded-full border border-black/10 bg-white px-1.5 py-px text-[7px] font-semibold uppercase leading-tight tracking-wide text-brand-ink dark:border-white/15 dark:bg-slate-800 dark:text-highlight-300">
-                          {row.tabSource}
-                        </span>
-                      </div>
-
-                      {/* Detail grid — 3 per row; 4 on wider viewports */}
-                      <div className="grid grid-cols-3 gap-1.5 p-2 min-[1280px]:grid-cols-4">
-                        <DetailCell icon={MdSchool} label="Program" value={row.program} iconBg="bg-gradient-to-br from-violet-500 to-violet-600" />
-                        <DetailCell icon={MdComputer} label="Exam mode" value={row.mode} iconBg="bg-gradient-to-br from-sky-500 to-blue-600" />
-                        <DetailCell icon={FiClock} label="Duration" value={row.duration} iconBg="bg-gradient-to-br from-amber-500 to-orange-500" />
-                        <DetailCell icon={FiHelpCircle} label="Questions" value={row.questions} iconBg="bg-gradient-to-br from-emerald-500 to-teal-600" />
-                        <DetailCell icon={FiTarget} label="Total marks" value={row.totalMarks} iconBg="bg-gradient-to-br from-rose-500 to-red-600" />
-                        <DetailCell icon={FiMinusCircle} label="Negative marking" value={row.negativeMarking} iconBg="bg-gradient-to-br from-indigo-500 to-indigo-700" />
-                        <DetailCell icon={FiCalendar} label="Application dates" value={row.applicationDates} iconBg="bg-gradient-to-br from-action-500 to-action-700" />
-                        <DetailCell icon={MdCurrencyRupee} label="Application fee" value={row.applicationFee} iconBg="bg-gradient-to-br from-pink-500 to-rose-600" />
-                        <DetailCell icon={MdMenuBook} label="Stream required" value={row.streamRequired} iconBg="bg-gradient-to-br from-lime-600 to-green-700" />
-                        <DetailCell icon={MdOutlineRepeat} label="Attempt limit" value={row.attempts} iconBg="bg-gradient-to-br from-cyan-500 to-blue-600" />
-                        {activeTab === "all" && row.popularityRank !== "—" ? (
-                          <DetailCell icon={FiStar} label="Popularity rank" value={`#${row.popularityRank}`} iconBg="bg-gradient-to-br from-amber-500 to-amber-700" />
+                      <div className="flex flex-1 flex-col gap-2 p-3">
+                        {row.calloutText ? (
+                          <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                            {row.calloutText}
+                          </p>
                         ) : null}
-                      </div>
 
-                      {/* Actions */}
-                      <div className="flex flex-col gap-1.5 px-2 pb-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedExam({ name: row.name, id: String(row.examId) });
-                            setIsModalOpen(true);
-                          }}
-                          className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-black px-2 py-2 text-[11px] font-bold text-[#FAD53C] shadow-sm transition hover:bg-black/90"
-                        >
-                          Apply Now
-                          <FiChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleShortlist(row.examId)}
-                          disabled={savingId === row.examId}
-                          className={`inline-flex w-full items-center justify-center gap-1 rounded-lg border-2 px-2 py-2 text-[11px] font-bold transition ${
-                            isShortlisted(row.examId)
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
-                              : "border-black bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                          }`}
-                        >
-                          {savingId === row.examId ? (
-                            "Saving…"
-                          ) : isShortlisted(row.examId) ? (
-                            <>
-                              <FaHeart className="h-3.5 w-3.5 shrink-0 text-rose-500" aria-hidden />
-                              Shortlisted
-                            </>
-                          ) : (
-                            <>
-                              <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                              Shortlist
-                            </>
-                          )}
-                        </button>
-                      </div>
+                        {row.careerGoalTags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {row.careerGoalTags.map((tag) => (
+                              <span
+                                key={`cg-${tag}`}
+                                className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                title={tag}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
 
-                      <div className="px-2 pb-1.5">
-                        <Link
-                          href={row.detailHref}
-                          onMouseEnter={() => prefetchExamDetail(String(row.examId))}
-                          onFocus={() => prefetchExamDetail(String(row.examId))}
-                          className="block text-center text-[9px] font-semibold text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-                        >
-                          Full details
-                        </Link>
-                      </div>
+                        {row.programTags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {row.programTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                title={tag}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
 
-                      {/* Footer strip */}
-                      <div className="mt-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-t border-slate-100 bg-slate-50/80 px-2 py-1.5 text-[8px] font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
-                        <span className="inline-flex items-center gap-0.5">
-                          <FiShield className="h-3 w-3 text-brand-ink dark:text-highlight-300" aria-hidden />
-                          Trusted
-                        </span>
-                        <span className="h-2 w-px bg-slate-200 dark:bg-slate-600" aria-hidden />
-                        <span className="inline-flex items-center gap-0.5">
-                          <FiStar className="h-3 w-3 text-[#FAD53C]" aria-hidden />
-                          Picks
-                        </span>
-                        <span className="h-2 w-px bg-slate-200 dark:bg-slate-600" aria-hidden />
-                        <span className="inline-flex items-center gap-0.5">
-                          <FiBell className="h-3 w-3 text-action-600 dark:text-action-400" aria-hidden />
-                          Updates
-                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <DetailPill label="Mode" value={row.mode} />
+                          <DetailPill label="Duration" value={row.duration} />
+                          <DetailPill label="Questions" value={row.questions} />
+                          <DetailPill label="Marks" value={row.totalMarks} />
+                          <DetailPill label="Papers" value={row.papers} />
+                          <DetailPill label="Fee" value={row.applicationFee} />
+                          <DetailPill label="Streams" value={row.streamRequired} />
+                          <DetailPill label="Attempts" value={row.attempts} />
+                          {activeTab === "all" && row.popularityRank !== "—" ? (
+                            <DetailPill label="Popularity" value={row.popularityRank} />
+                          ) : null}
+                        </div>
+
+                        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+                          <Button
+                            variant="themeButtonOutline"
+                            size="sm"
+                            href={row.detailHref.replace(/from=[^&]*/, `from=${viewFrom}`)}
+                            onMouseEnter={() => prefetchExamDetail(String(row.examId))}
+                            onFocus={() => prefetchExamDetail(String(row.examId))}
+                            className="min-w-[72px] flex-1 justify-center !rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                          >
+                            View
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => toggleShortlist(row.examId)}
+                            disabled={savingId === row.examId}
+                            className={`inline-flex min-w-[88px] flex-1 items-center justify-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                              isShortlisted(row.examId)
+                                ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                : "border border-black bg-black text-[#FAD53C] hover:bg-black/90"
+                            }`}
+                          >
+                            {savingId === row.examId ? (
+                              "Saving..."
+                            ) : isShortlisted(row.examId) ? (
+                              <>
+                                <FaHeart className="h-3.5 w-3.5 shrink-0 text-rose-500" aria-hidden />
+                                Shortlisted
+                              </>
+                            ) : (
+                              <>
+                                <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                Shortlist
+                              </>
+                            )}
+                          </button>
+                          <Button
+                            variant="themeButton"
+                            size="sm"
+                            type="button"
+                            onClick={() => {
+                              setSelectedExam({ name: row.name, id: String(row.examId) });
+                              setIsModalOpen(true);
+                            }}
+                            className="min-w-[72px] flex-1 justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
+                          >
+                            Apply
+                          </Button>
+                        </div>
                       </div>
                     </article>
                   ))}

@@ -34,22 +34,22 @@ import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
-import { formatExamPatternDurationHours } from '@/lib/formatDuration';
 
 const EXAMS_PAGE_SIZE = 10;
 
-/** `exam_pattern.duration_minutes` holds hours as entered (no ×60). */
-function storedDurationHoursToFormValue(stored: number | null | undefined): string {
-  if (stored == null || Number.isNaN(Number(stored))) return '';
-  return String(Number(stored));
+function storedDurationToFormValue(stored: string | number | null | undefined): string {
+  if (stored == null) return '';
+  return String(stored).trim();
 }
 
-function formHoursToStoredDuration(hoursStr: string): number | null {
-  const t = hoursStr.trim();
-  if (t === '') return null;
-  const h = parseFloat(t);
-  if (Number.isNaN(h) || h < 0) return null;
-  return Math.round(h);
+function formDurationToStored(value: string): string | null {
+  const t = value.trim();
+  return t || null;
+}
+
+function storedTextField(val: string | Date | number | null | undefined): string {
+  if (val == null) return '';
+  return String(val).trim();
 }
 
 export default function ExamsPage() {
@@ -90,7 +90,7 @@ export default function ExamsPage() {
     code: '',
     description: '',
     exam_logo: '',
-    exam_type: '' as 'National' | 'State' | 'Institute' | '',
+    exam_type: '',
     conducting_authority: '',
     documents_required: '',
     counselling: '',
@@ -112,7 +112,7 @@ export default function ExamsPage() {
       domicile: '',
     },
     examPattern: {
-      mode: '' as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | '',
+      mode: '',
       number_of_questions: '',
       total_marks: '',
       negative_marking: '',
@@ -326,7 +326,7 @@ export default function ExamsPage() {
         conducting_authority: formData.conducting_authority || null,
         documents_required: formData.documents_required?.trim() || null,
         counselling: formData.counselling?.trim() || null,
-        number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
+        number_of_papers: formData.number_of_papers?.trim() || null,
         website: formData.website || null,
         exam_popularity_rank,
         examDates: {
@@ -334,9 +334,7 @@ export default function ExamsPage() {
           application_close_date: formData.examDates.application_close_date || null,
           exam_date: formData.examDates.exam_date || null,
           result_date: formData.examDates.result_date || null,
-          application_fees: formData.examDates.application_fees?.trim()
-            ? parseFloat(formData.examDates.application_fees)
-            : null,
+          application_fees: formData.examDates.application_fees?.trim() || null,
         },
         eligibilityCriteria: {
           stream_ids: formData.eligibilityCriteria.stream_ids,
@@ -347,11 +345,11 @@ export default function ExamsPage() {
         },
         examPattern: {
           mode: formData.examPattern.mode || null,
-          number_of_questions: formData.examPattern.number_of_questions ? parseInt(formData.examPattern.number_of_questions, 10) : null,
-          total_marks: formData.examPattern.total_marks ? parseInt(formData.examPattern.total_marks, 10) : null,
+          number_of_questions: formData.examPattern.number_of_questions?.trim() || null,
+          total_marks: formData.examPattern.total_marks?.trim() || null,
           negative_marking: formData.examPattern.negative_marking?.trim() || null,
           weightage_of_subjects: formData.examPattern.weightage_of_subjects?.trim() || null,
-          duration_minutes: formHoursToStoredDuration(formData.examPattern.duration_hours),
+          duration_minutes: formDurationToStored(formData.examPattern.duration_hours),
         },
         examCutoff: {
           ranks_percentiles: formData.examCutoff.ranks_percentiles || null,
@@ -366,7 +364,7 @@ export default function ExamsPage() {
       };
 
       if (editingExam) {
-        const response = await updateExam(editingExam.id, submitData);
+        const response = await updateExam(editingExam.id, submitData as Parameters<typeof updateExam>[1]);
         if (response.success && response.data) {
           showSuccess('Exam updated successfully');
           await loadExams(true);
@@ -376,7 +374,7 @@ export default function ExamsPage() {
           showError(response.message || 'Failed to update exam');
         }
       } else {
-        const response = await createExam(submitData);
+        const response = await createExam(submitData as Parameters<typeof createExam>[0]);
         if (response.success && response.data) {
           showSuccess('Exam created successfully');
           await loadExams(true);
@@ -413,16 +411,6 @@ export default function ExamsPage() {
     }
   };
 
-  const toDateInputValue = (val: string | Date | null | undefined): string => {
-    if (val == null || val === '') return '';
-    if (typeof val === 'string') {
-      const match = val.slice(0, 10).match(/^\d{4}-\d{2}-\d{2}$/);
-      return match ? val.slice(0, 10) : val;
-    }
-    const d = val as Date;
-    return d.toISOString ? d.toISOString().slice(0, 10) : '';
-  };
-
   const toNumArray = (val: unknown): number[] => {
     if (!val) return [];
     if (Array.isArray(val)) return val.map((n) => (typeof n === 'number' ? n : parseInt(String(n), 10))).filter((n) => !isNaN(n));
@@ -441,25 +429,22 @@ export default function ExamsPage() {
           code: e?.code ?? '',
           description: e?.description ?? '',
           exam_logo: e?.exam_logo ?? '',
-          exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
+          exam_type: e?.exam_type ?? '',
           conducting_authority: e?.conducting_authority ?? '',
           documents_required: e?.documents_required ?? '',
           counselling: e?.counselling ?? '',
-          number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
+          number_of_papers: storedTextField(e?.number_of_papers),
           website: e?.website ?? '',
           exam_popularity_rank:
             e?.exam_popularity_rank != null && !Number.isNaN(Number(e.exam_popularity_rank))
               ? String(e.exam_popularity_rank)
               : '',
           examDates: {
-            application_start_date: toDateInputValue(data.examDates?.application_start_date),
-            application_close_date: toDateInputValue(data.examDates?.application_close_date),
-            exam_date: toDateInputValue(data.examDates?.exam_date),
-            result_date: toDateInputValue(data.examDates?.result_date),
-            application_fees:
-              data.examDates?.application_fees != null && !Number.isNaN(Number(data.examDates.application_fees))
-                ? String(data.examDates.application_fees)
-                : '',
+            application_start_date: storedTextField(data.examDates?.application_start_date),
+            application_close_date: storedTextField(data.examDates?.application_close_date),
+            exam_date: storedTextField(data.examDates?.exam_date),
+            result_date: storedTextField(data.examDates?.result_date),
+            application_fees: storedTextField(data.examDates?.application_fees),
           },
           eligibilityCriteria: {
             stream_ids: toNumArray(data.eligibilityCriteria?.stream_ids),
@@ -469,12 +454,12 @@ export default function ExamsPage() {
             domicile: data.eligibilityCriteria?.domicile ?? '',
           },
           examPattern: {
-            mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)') ?? '',
-            number_of_questions: data.examPattern?.number_of_questions != null ? String(data.examPattern.number_of_questions) : '',
-            total_marks: data.examPattern?.total_marks != null ? String(data.examPattern.total_marks) : '',
+            mode: data.examPattern?.mode ?? '',
+            number_of_questions: storedTextField(data.examPattern?.number_of_questions),
+            total_marks: storedTextField(data.examPattern?.total_marks),
             negative_marking: data.examPattern?.negative_marking ?? '',
             weightage_of_subjects: data.examPattern?.weightage_of_subjects ?? '',
-            duration_hours: storedDurationHoursToFormValue(data.examPattern?.duration_minutes ?? undefined),
+            duration_hours: storedDurationToFormValue(data.examPattern?.duration_minutes),
           },
           examCutoff: {
             ranks_percentiles: data.examCutoff?.ranks_percentiles ?? '',
@@ -1085,16 +1070,12 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam Type
                       </label>
-                      <Dropdown
-                        value={formData.exam_type || null}
-                        onChange={(v) => setFormData({ ...formData, exam_type: v })}
-                        options={[
-                          { value: 'National', label: 'National' },
-                          { value: 'State', label: 'State' },
-                          { value: 'Institute', label: 'Institute' },
-                        ]}
-                        placeholder="Select type"
-                        className="w-full"
+                      <input
+                        type="text"
+                        value={formData.exam_type}
+                        onChange={(e) => setFormData({ ...formData, exam_type: e.target.value })}
+                        placeholder="e.g. National, State, Institute, or any label"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
@@ -1116,12 +1097,10 @@ export default function ExamsPage() {
                         Number of papers (mock tests)
                       </label>
                       <input
-                        type="number"
-                        min={1}
-                        max={10}
+                        type="text"
                         value={formData.number_of_papers}
                         onChange={(e) => setFormData({ ...formData, number_of_papers: e.target.value })}
-                        placeholder="1"
+                        placeholder="e.g. 1, 2, or Two papers"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                       <p className="text-xs text-slate-500 mt-1">Use 2 for exams like JEE Advanced that have 2 papers per mock.</p>
@@ -1159,12 +1138,13 @@ export default function ExamsPage() {
                         Application Start Date
                       </label>
                       <input
-                        type="date"
+                        type="text"
                         value={formData.examDates.application_start_date}
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, application_start_date: e.target.value }
                         })}
+                        placeholder="e.g. 2026-01-15 or 15 Jan 2026"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1174,12 +1154,13 @@ export default function ExamsPage() {
                         Application Close Date
                       </label>
                       <input
-                        type="date"
+                        type="text"
                         value={formData.examDates.application_close_date}
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, application_close_date: e.target.value }
                         })}
+                        placeholder="e.g. 2026-02-20 or March 2026"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1189,12 +1170,13 @@ export default function ExamsPage() {
                         Exam date
                       </label>
                       <input
-                        type="date"
+                        type="text"
                         value={formData.examDates.exam_date}
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, exam_date: e.target.value }
                         })}
+                        placeholder="e.g. 2026-04-05 or 5 Apr 2026"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1202,12 +1184,13 @@ export default function ExamsPage() {
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">Result date</label>
                       <input
-                        type="date"
+                        type="text"
                         value={formData.examDates.result_date}
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, result_date: e.target.value }
                         })}
+                        placeholder="e.g. 2026-05-10 or May 2026"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1215,37 +1198,30 @@ export default function ExamsPage() {
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">Application fee (₹)</label>
                       <input
-                        type="number"
-                        min={0}
-                        step="0.01"
+                        type="text"
                         value={formData.examDates.application_fees}
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, application_fees: e.target.value }
                         })}
-                        placeholder="e.g., 2000"
+                        placeholder="e.g. 2000 or ₹1,500 (General)"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Mode (Online / Offline)
+                        Mode
                       </label>
-                      <Dropdown
-                        value={formData.examPattern.mode || null}
-                        onChange={(v) => setFormData({
+                      <input
+                        type="text"
+                        value={formData.examPattern.mode}
+                        onChange={(e) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, mode: v }
+                          examPattern: { ...formData.examPattern, mode: e.target.value }
                         })}
-                        options={[
-                          { value: 'Offline', label: 'Offline' },
-                          { value: 'Online', label: 'Online' },
-                          { value: 'Online (CBT)', label: 'Online (CBT)' },
-                          { value: 'Hybrid', label: 'Hybrid' },
-                        ]}
-                        placeholder="Select mode"
-                        className="w-full"
+                        placeholder="e.g. Online, Offline, Hybrid, CBT"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
@@ -1357,13 +1333,13 @@ export default function ExamsPage() {
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">Number of questions</label>
                       <input
-                        type="number"
+                        type="text"
                         value={formData.examPattern.number_of_questions}
                         onChange={(e) => setFormData({
                           ...formData,
                           examPattern: { ...formData.examPattern, number_of_questions: e.target.value }
                         })}
-                        placeholder="e.g., 90"
+                        placeholder="e.g. 90 or ~75 MCQs"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1371,13 +1347,13 @@ export default function ExamsPage() {
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">Total marks</label>
                       <input
-                        type="number"
+                        type="text"
                         value={formData.examPattern.total_marks}
                         onChange={(e) => setFormData({
                           ...formData,
                           examPattern: { ...formData.examPattern, total_marks: e.target.value }
                         })}
-                        placeholder="e.g., 300"
+                        placeholder="e.g. 300 or 300 marks"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1411,19 +1387,18 @@ export default function ExamsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Duration (in Hours)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Duration</label>
                       <p className="text-xs text-slate-500 mb-1.5">
-                        Enter exam length in hours (decimals allowed, e.g. 3 or 3.5). Stored internally as minutes.
+                        Shown on cards and detail exactly as entered (e.g. 3 hours, 180 min, Half day).
                       </p>
                       <input
                         type="text"
-                        inputMode="decimal"
                         value={formData.examPattern.duration_hours}
                         onChange={(e) => setFormData({
                           ...formData,
                           examPattern: { ...formData.examPattern, duration_hours: e.target.value }
                         })}
-                        placeholder="e.g., 3 or 3.5"
+                        placeholder="e.g. 3 hours or 180 minutes"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
@@ -1717,7 +1692,7 @@ export default function ExamsPage() {
                     {viewingExamData.examPattern.negative_marking && <p className="whitespace-pre-wrap">Negative marking: {viewingExamData.examPattern.negative_marking}</p>}
                     {viewingExamData.examPattern.weightage_of_subjects && <p className="whitespace-pre-wrap">Weightage of subject: {viewingExamData.examPattern.weightage_of_subjects}</p>}
                     {viewingExamData.examPattern.duration_minutes != null && (
-                      <p>Duration (in Hours): {formatExamPatternDurationHours(viewingExamData.examPattern.duration_minutes)}</p>
+                      <p>Duration: {viewingExamData.examPattern.duration_minutes ?? '—'}</p>
                     )}
                   </div>
                 </div>

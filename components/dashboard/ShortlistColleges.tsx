@@ -86,8 +86,20 @@ function toTabCollege(
   };
 }
 
-export default function ShortlistColleges() {
-  const [activeTab, setActiveTab] = useState<TabId>("recommended");
+type ShortlistCollegesProps = {
+  initialTab?: TabId;
+};
+
+export default function ShortlistColleges({ initialTab }: ShortlistCollegesProps = {}) {
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    initialTab && TABS.some((t) => t.id === initialTab) ? initialTab : "recommended"
+  );
+
+  useEffect(() => {
+    if (initialTab && TABS.some((t) => t.id === initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [emptyHint, setEmptyHint] = useState<string | null>(null);
