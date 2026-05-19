@@ -169,6 +169,11 @@ const landingPageDefaults = {
       },
     ],
   },
+  signupWelcome: {
+    message:
+      'Thank you for trusting us with something this important.\n\nWe\'ll do our best to make the journey clearer from here.',
+    durationSeconds: 5,
+  },
 };
 
 module.exports = { landingPageDefaults };

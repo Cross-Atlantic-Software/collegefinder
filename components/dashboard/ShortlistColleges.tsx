@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { FiSearch } from "react-icons/fi";
 import { FaCheckCircle } from "react-icons/fa";
 import { MdSchool } from "react-icons/md";
@@ -10,6 +11,7 @@ import {
   type DashboardCollege,
 } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
+import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
 
 type TabId = "recommended" | "shortlisted" | "all";
 
@@ -49,9 +51,7 @@ function slugify(value: string): string {
 }
 
 function collegeLogo(c: DashboardCollege): string {
-  const url = c.college_logo?.trim() || c.logo_url?.trim();
-  if (url) return url;
-  return getLocalCollegeImage(c.id);
+  return resolveCollegeLogoSrc(c) ?? getLocalCollegeImage(c.id);
 }
 
 function overviewText(c: DashboardCollege): string {
@@ -86,8 +86,18 @@ function toTabCollege(
   };
 }
 
+function parseCollegeTabParam(value: string | null): TabId | null {
+  if (value === "recommended" || value === "shortlisted" || value === "all") {
+    return value;
+  }
+  return null;
+}
+
 export default function ShortlistColleges() {
-  const [activeTab, setActiveTab] = useState<TabId>("recommended");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    return parseCollegeTabParam(searchParams.get("collegeTab")) ?? "recommended";
+  });
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [emptyHint, setEmptyHint] = useState<string | null>(null);
@@ -100,6 +110,11 @@ export default function ShortlistColleges() {
     shortlisted: 1,
     all: 1,
   });
+
+  useEffect(() => {
+    const tab = parseCollegeTabParam(searchParams.get("collegeTab"));
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
 
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     recommended: null,

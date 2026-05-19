@@ -16,6 +16,9 @@ export type LandingNavItem = { label: string; href: string };
 export const LANDING_FROM_HOME_PARAM = "from";
 export const LANDING_FROM_HOME_VALUE = "home";
 
+/** Waitlist screen shown when authenticated users open "My Dashboard" from the marketing site. */
+export const DASHBOARD_WELCOME_PATH = "/welcome?from=dashboard";
+
 /** Same-origin URL for a landing section; includes `from=home` so ContactSection does not send completed users to `/welcome`. */
 export function landingPageSectionHref(sectionId: string): string {
     return `/?${LANDING_FROM_HOME_PARAM}=${LANDING_FROM_HOME_VALUE}#${sectionId}`;
@@ -73,7 +76,7 @@ export function smoothScrollToY(targetY: number) {
 export function scrollToLandingSection(sectionId: string) {
     const targetSection = document.getElementById(sectionId);
     if (!targetSection) {
-        return;
+        return false;
     }
 
     const siteHeader = document.querySelector("header");
@@ -87,6 +90,43 @@ export function scrollToLandingSection(sectionId: string) {
         HEADER_SCROLL_OFFSET_PX;
 
     smoothScrollToY(targetY);
+    return true;
+}
+
+/** Retry scroll until the section mounts (landing CMS content loads asynchronously). */
+export function scheduleScrollToLandingSection(sectionId: string, maxAttempts = 24) {
+    let attempts = 0;
+
+    const tryScroll = () => {
+        if (scrollToLandingSection(sectionId)) {
+            return;
+        }
+        attempts += 1;
+        if (attempts < maxAttempts) {
+            requestAnimationFrame(tryScroll);
+        }
+    };
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(tryScroll);
+    });
+}
+
+export function getLandingHashFromLocation(): string | null {
+    if (typeof window === "undefined") return null;
+    const raw = window.location.hash?.replace(/^#/, "").trim();
+    return raw || null;
+}
+
+export function replaceLandingUrlHash(sectionId: string, href: string) {
+    let pathWithSearch = "";
+    try {
+        const resolved = new URL(href, window.location.href);
+        pathWithSearch = resolved.pathname + resolved.search;
+    } catch {
+        pathWithSearch = window.location.pathname + window.location.search;
+    }
+    window.history.replaceState(null, "", `${pathWithSearch}#${sectionId}`);
 }
 
 /**
@@ -109,21 +149,23 @@ export function handleLandingHashClick(
         return;
     }
 
-    const sectionExists = document.getElementById(targetId);
-    if (!sectionExists) {
-        return;
-    }
-
     event.preventDefault();
+    replaceLandingUrlHash(targetId, href);
+    scheduleScrollToLandingSection(targetId);
+}
 
-    let pathWithSearch = "";
-    try {
-        const resolved = new URL(href, window.location.href);
-        pathWithSearch = resolved.pathname + resolved.search;
-    } catch {
-        pathWithSearch = window.location.pathname + window.location.search;
-    }
+/** Call on the home page after landing sections have mounted. */
+export function bindLandingHashScrollOnHome(ready: boolean) {
+    if (!ready || typeof window === "undefined") return () => {};
 
-    window.history.replaceState(null, "", `${pathWithSearch}#${targetId}`);
-    scrollToLandingSection(targetId);
+    const scrollFromHash = () => {
+        const id = getLandingHashFromLocation();
+        if (id) scheduleScrollToLandingSection(id);
+    };
+
+    scrollFromHash();
+
+    const onHashChange = () => scrollFromHash();
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
 }

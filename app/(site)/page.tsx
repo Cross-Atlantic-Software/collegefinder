@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLandingPageContent } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
@@ -15,23 +14,17 @@ import {
   InfoSection,
 } from "@/components/containers";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { HomeSignupWelcomeLayer } from "@/components/shared/HomeSignupWelcomeLayer";
 import ScrollRevealSection from "@/components/shared/ScrollRevealSection";
+import { bindLandingHashScrollOnHome } from "@/lib/landingNav";
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { isLoading } = useAuth();
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [landingError, setLandingError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.prefetch("/dashboard");
-      router.replace("/dashboard");
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  useEffect(() => {
-    if (isLoading || isAuthenticated) return;
+    if (isLoading) return;
 
     let cancelled = false;
     (async () => {
@@ -52,10 +45,15 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading]);
 
-  if (isLoading || isAuthenticated) {
-    return <OnboardingLoader message="Redirecting..." />;
+  useEffect(() => {
+    if (!landing) return;
+    return bindLandingHashScrollOnHome(true);
+  }, [landing]);
+
+  if (isLoading) {
+    return <OnboardingLoader message="Loading..." />;
   }
 
   if (!landing && !landingError) {
@@ -72,23 +70,28 @@ export default function Home() {
 
   return (
     <main className="bg-white">
+      <HomeSignupWelcomeLayer signupWelcome={landing.signupWelcome} />
       <Hero hero={landing.hero} />
       <ScrollRevealSection delayMs={0}>
         <InfoSection info={landing.info} />
       </ScrollRevealSection>
       <FeatureStackSection features={landing.features} />
-      <ScrollRevealSection delayMs={180}>
-        <HowItWorksSection howItWorks={landing.howItWorks} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={260}>
-        <AudienceSection audience={landing.audience} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={340}>
-        <ContactSection contact={landing.contact} />
-      </ScrollRevealSection>
-      <ScrollRevealSection delayMs={420}>
-        <FaqSection faq={landing.faq} />
-      </ScrollRevealSection>
+      <div id="our-edge" className="scroll-mt-20 md:scroll-mt-24">
+        <ScrollRevealSection delayMs={180}>
+          <HowItWorksSection howItWorks={landing.howItWorks} />
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={260}>
+          <AudienceSection audience={landing.audience} />
+        </ScrollRevealSection>
+      </div>
+      <div id="get-in-touch" className="scroll-mt-20 md:scroll-mt-24">
+        <ScrollRevealSection delayMs={340}>
+          <ContactSection contact={landing.contact} />
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={420}>
+          <FaqSection faq={landing.faq} />
+        </ScrollRevealSection>
+      </div>
     </main>
   );
 }

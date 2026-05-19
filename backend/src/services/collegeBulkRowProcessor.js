@@ -16,7 +16,7 @@ const Branch = require('../models/taxonomy/Branch');
 const Exam = require('../models/taxonomy/Exam');
 const { splitList, parseDate, getCell, splitProgramBlocks } = require('../utils/bulkUploadUtils');
 const { formatLocationLine } = require('./googlePlacesMapsLink');
-const { normalizeCollegeLogoFields } = require('../utils/collegeLogoFields');
+const { parseCollegeLogoBulkCells } = require('../utils/collegeLogoFields');
 
 const VALID_TYPES = ['Central', 'State', 'Private', 'Deemed'];
 
@@ -204,8 +204,9 @@ async function processCollegeBulkRow({ row, rowNum }) {
           .map((t) => VALID_TYPES.find((v) => v.toLowerCase() === t.toLowerCase()))
           .join(',')
       : null;
-  const logoUrlRaw = getCell(row, 'logo_url', 'Logo URL') || getCell(row, 'logo_filename', 'logo_Filename');
-  const logoFields = normalizeCollegeLogoFields(logoUrlRaw || null);
+  const logoUrlRaw = getCell(row, 'logo_url', 'Logo URL');
+  const logoFilenameRaw = getCell(row, 'logo_filename', 'logo_Filename');
+  const logoFields = parseCollegeLogoBulkCells(logoUrlRaw, logoFilenameRaw);
   const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
   const websiteVal = (row.website ?? '').toString().trim() || null;
   const parentUniversityVal = getCell(row, 'parent_university', 'Parent university');
@@ -288,6 +289,7 @@ async function processCollegeBulkRow({ row, rowNum }) {
       college_type: collegeType,
       college_logo: logoFields.college_logo,
       logo_url: logoFields.logo_url,
+      logo_filename: logoFields.logo_filename,
       website: websiteVal,
       parent_university: parentUniversityVal || null,
       state: stateTrim || null,

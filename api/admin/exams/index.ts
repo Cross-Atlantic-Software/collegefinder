@@ -9,7 +9,7 @@ export interface Exam {
   description: string | null;
   generation_prompt?: string | null;
   exam_logo?: string | null;
-  exam_type?: 'National' | 'State' | 'Institute' | null;
+  exam_type?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
@@ -48,7 +48,7 @@ export interface ExamEligibilityCriteria {
 export interface ExamPattern {
   id: number;
   exam_id: number;
-  mode: 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | null;
+  mode: string | null;
   number_of_questions: number | null;
   total_marks: number | null;
   negative_marking: string | null;
@@ -166,7 +166,7 @@ export async function createExam(data: {
   code?: string | null;
   description?: string;
   exam_logo?: string | null;
-  exam_type?: 'National' | 'State' | 'Institute' | null;
+  exam_type?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
@@ -203,7 +203,7 @@ export async function updateExam(
     code?: string | null;
     description?: string;
     exam_logo?: string | null;
-    exam_type?: 'National' | 'State' | 'Institute' | null;
+    exam_type?: string | null;
     conducting_authority?: string | null;
     documents_required?: string | null;
     counselling?: string | null;

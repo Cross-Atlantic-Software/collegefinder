@@ -1,11 +1,13 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button, Select, SelectOption } from "@/components/shared";
-import { updateAcademics, getAllStreamsPublic } from "@/api";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
+import { Select, SelectOption } from "@/components/shared";
+import { updateAcademics, getAllStreamsPublic, getAcademics } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
+import { goToOnboardingStep } from "@/components/auth/onboard/onboardingNav";
 
 export default function StepTwoA() {
   const [selectedStream, setSelectedStream] = useState<string>("");
@@ -13,12 +15,35 @@ export default function StepTwoA() {
   const [loadingStreams, setLoadingStreams] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep2B, setIsNavigatingToStep2B] = useState(false);
   const router = useRouter();
-  const { user, refreshUser, isLoading } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard({
+    saving,
+    isNavigatingForward: isNavigatingToStep2B,
+  });
 
-  // Fetch streams on mount
+  /** Restore stream when user taps Back from a later step. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user) return;
+      try {
+        const res = await getAcademics();
+        if (cancelled || !res.success || !res.data?.stream_id) return;
+        const sid = res.data.stream_id;
+        if (typeof sid === "number" && sid > 0) {
+          setSelectedStream(String(sid));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   useEffect(() => {
     const fetchStreams = async () => {
       try {
@@ -27,7 +52,7 @@ export default function StepTwoA() {
         if (response.success && response.data) {
           const options = response.data.streams.map(stream => ({
             value: stream.id.toString(),
-            label: stream.name
+            label: stream.name,
           }));
           setStreamOptions(options);
         }
@@ -38,49 +63,17 @@ export default function StepTwoA() {
         setLoadingStreams(false);
       }
     };
-
     fetchStreams();
   }, []);
 
-  // Redirect to dashboard if user has completed onboarding
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2B && !saving) {
-      setIsRedirecting(true);
-      router.prefetch('/dashboard');
-      const timer = setTimeout(() => {
-        router.replace('/dashboard');
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router, isNavigatingToStep2B, saving]);
-
-  // Show smooth loader while checking auth or redirecting
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2B)) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
-  }
-
-  // Don't render if user has completed onboarding and we're not saving/navigating
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep2B) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
-  }
-
-  // Show saving state if we're navigating to step-2b
-  if (saving || isNavigatingToStep2B) {
-    return <OnboardingLoader message="Saving your stream..." />;
+  if (showCompletedLoader) {
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedStream) {
-      setError("Please select your stream");
-      return;
-    }
-
-    if (!user) {
-      setError("You must be logged in to save your stream");
-      return;
-    }
+    if (!selectedStream) { setError("Please select your stream"); return; }
+    if (!user)            { setError("You must be logged in"); return; }
 
     setSaving(true);
     setError(null);
@@ -88,15 +81,11 @@ export default function StepTwoA() {
 
     try {
       const streamId = parseInt(selectedStream);
-      if (isNaN(streamId)) {
-        throw new Error("Invalid stream selected");
-      }
+      if (isNaN(streamId)) throw new Error("Invalid stream selected");
 
-      const response = await updateAcademics({
-        stream_id: streamId
-      });
-      
+      const response = await updateAcademics({ stream_id: streamId });
       if (response.success) {
+        await refreshUser();
         router.prefetch("/step-2b");
         router.replace("/step-2b");
       } else {
@@ -112,58 +101,81 @@ export default function StepTwoA() {
     }
   };
 
+  const isBusy = saving || isNavigatingToStep2B;
+
+  if (isBusy) return <CardShimmer />;
+
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
-      <WelcomeLayout progress={60}>
-        <div className="flex items-center justify-center gap-20 w-full max-w-6xl mx-auto">
-          {/* Robot */}
-          <div className="flex-shrink-0">
-            <Robot variant="five" />
-          </div>
+    <>
+      {!isBusy && (
+        <>
+          <p className="mb-5 text-sm text-slate-500 -mt-1">
+            Tell us what you&apos;re studying right now
+          </p>
 
-          {/* Select + Button */}
-          <div className="flex flex-col gap-5 w-full max-w-xl">
-            <Bubble className="w-full max-w-none">Which stream are you pursuing or have completed?</Bubble>
+          {error && (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-            {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-                {error}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 flex-1">
+            {loadingStreams ? (
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[72px] rounded-2xl shimmer-skeleton" />
+                ))}
+              </div>
+            ) : streamOptions.length === 0 ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                No streams available. Please contact support.
+              </div>
+            ) : (
+              <div className="max-h-[280px] overflow-y-auto scrollbar-hide -mx-1 px-1">
+                <div className="grid grid-cols-2 gap-3">
+                  {streamOptions.map((opt) => {
+                    const active = selectedStream === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSelectedStream(opt.value)}
+                        className={[
+                          "flex flex-col items-center justify-center rounded-2xl p-4 text-center transition-all duration-200 min-h-[76px] border",
+                          active
+                            ? "bg-[#f0c544] border-[#f0c544] text-slate-900 shadow-sm"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm hover:text-slate-800",
+                        ].join(" ")}
+                      >
+                        <span className="text-[13px] font-bold leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              {loadingStreams ? (
-                <div className="w-full min-h-[48px] flex items-center rounded-xl border border-slate-200 bg-white px-5 text-sm text-slate-400">
-                  Loading streams...
-                </div>
-              ) : streamOptions.length === 0 ? (
-                <div className="w-full min-h-[48px] flex items-center rounded-xl border border-amber-200 bg-amber-50 px-5 text-sm text-amber-700">
-                  No streams available. Please contact support.
-                </div>
-              ) : (
-                <Select
-                  options={streamOptions}
-                  value={selectedStream}
-                  onChange={(value) => setSelectedStream(value || "")}
-                  placeholder="Select your stream"
-                  isSearchable={true}
-                  isClearable={false}
-                />
-              )}
-
-              <Button
-                type="submit"
-                variant="DarkGradient"
-                size="lg"
-                className="w-full rounded-full min-h-[48px]"
-                disabled={saving || !selectedStream || loadingStreams}
+            <div className="flex items-center gap-3 mt-auto pt-4">
+              <button
+                type="button"
+                onClick={() => goToOnboardingStep(router, "/step-2")}
+                className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
-                {saving ? "Saving..." : "Continue"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </WelcomeLayout>
-    </div>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !selectedStream || loadingStreams}
+                className="landing-cta flex-1 rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </>
   );
 }

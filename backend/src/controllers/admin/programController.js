@@ -67,7 +67,7 @@ class ProgramController {
         });
       }
 
-      const { name, status } = req.body;
+      const { name } = req.body;
 
       // Check if name already exists
       const existing = await Program.findByName(name);
@@ -78,9 +78,11 @@ class ProgramController {
         });
       }
 
-      const program = await Program.create({ 
-        name, 
-        status: status !== undefined ? status : true 
+      const program = await Program.create({
+        name,
+        status: true,
+        stream_id: null,
+        interest_ids: []
       });
 
       res.status(201).json({
@@ -113,7 +115,7 @@ class ProgramController {
       }
 
       const { id } = req.params;
-      const { name, status } = req.body;
+      const { name } = req.body;
 
       const existing = await Program.findById(parseInt(id));
       if (!existing) {
@@ -123,7 +125,6 @@ class ProgramController {
         });
       }
 
-      // Check if name already exists (excluding current program)
       if (name && name !== existing.name) {
         const nameExists = await Program.findByName(name);
         if (nameExists) {
@@ -134,7 +135,11 @@ class ProgramController {
         }
       }
 
-      const program = await Program.update(parseInt(id), { name, status });
+      const program = await Program.update(parseInt(id), {
+        name,
+        stream_id: null,
+        interest_ids: []
+      });
 
       res.json({
         success: true,
@@ -182,19 +187,39 @@ class ProgramController {
   }
 
   /**
+   * Delete all programs
+   * DELETE /api/admin/programs/all
+   */
+  static async deleteAll(req, res) {
+    try {
+      const n = await Program.deleteAll();
+      res.json({
+        success: true,
+        message: n === 0 ? 'No programs to delete' : `All ${n} program(s) deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting all programs:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete all programs'
+      });
+    }
+  }
+
+  /**
    * Download bulk upload template
    * GET /api/admin/programs/bulk-upload-template
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const headers = ['name', 'status'];
+      const headers = ['name'];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['B.Tech', 'TRUE'],
-        ['B.E.', 'TRUE'],
-        ['MBBS', 'TRUE'],
-        ['BDS', 'TRUE']
+        ['B.Tech'],
+        ['B.E.'],
+        ['MBBS'],
+        ['BDS']
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Programs');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -214,13 +239,12 @@ class ProgramController {
   static async downloadAllExcel(req, res) {
     try {
       const programs = await Program.findAll();
-      const headers = ['id', 'name', 'status', 'created_at', 'updated_at'];
+      const headers = ['id', 'name', 'created_at', 'updated_at'];
       const rows = [headers];
       for (const p of programs) {
         rows.push([
           p.id,
           p.name || '',
-          p.status ? 'TRUE' : 'FALSE',
           p.created_at ? String(p.created_at).slice(0, 10) : '',
           p.updated_at ? String(p.updated_at).slice(0, 10) : ''
         ]);
@@ -288,11 +312,13 @@ class ProgramController {
           continue;
         }
 
-        const statusRaw = (row.status ?? '').toString().trim();
-        const status = /^(1|true|yes)$/i.test(statusRaw) ? true : (statusRaw === '' ? true : false);
-
         try {
-          const program = await Program.create({ name: nameRaw, status });
+          const program = await Program.create({
+            name: nameRaw,
+            status: true,
+            stream_id: null,
+            interest_ids: []
+          });
           created.push({ id: program.id, name: program.name });
           namesInFile.add(nameRaw.toLowerCase());
         } catch (createErr) {
@@ -321,4 +347,3 @@ class ProgramController {
 }
 
 module.exports = ProgramController;
-

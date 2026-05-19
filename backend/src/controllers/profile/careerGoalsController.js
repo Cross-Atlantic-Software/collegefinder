@@ -1,8 +1,11 @@
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
+const Stream = require('../../models/taxonomy/Stream');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
+const UserAcademics = require('../../models/user/UserAcademics');
 const User = require('../../models/user/User');
 const db = require('../../config/database');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const XLSX = require('xlsx');
 
 class CareerGoalsTaxonomyController {
   /**
@@ -12,7 +15,21 @@ class CareerGoalsTaxonomyController {
    */
   static async getAll(req, res) {
     try {
-      const careerGoals = await CareerGoal.findActive(); // Only active goals for public
+      const raw = req.query.stream_id;
+      const streamId =
+        raw !== undefined && raw !== null && String(raw).trim() !== ''
+          ? parseInt(String(raw), 10)
+          : NaN;
+      let careerGoals;
+      if (Number.isInteger(streamId) && streamId > 0) {
+        const defaultStream = await Stream.findByName('Default');
+        const streamIds = defaultStream && defaultStream.id !== streamId
+          ? [streamId, defaultStream.id]
+          : [streamId];
+        careerGoals = await CareerGoal.findActiveByStreamIds(streamIds);
+      } else {
+        careerGoals = await CareerGoal.findActive();
+      }
       res.json({
         success: true,
         data: { careerGoals }
@@ -81,13 +98,31 @@ class CareerGoalsTaxonomyController {
    */
   static async create(req, res) {
     try {
-      const { label, logo, logo_filename, description, status } = req.body;
+      const { label, logo, logo_filename, description, status, stream_id } = req.body;
 
       // Validate required fields (logo is optional)
       if (!label) {
         return res.status(400).json({
           success: false,
           message: 'Label is required'
+        });
+      }
+
+      const streamIdNum =
+        stream_id !== undefined && stream_id !== null && String(stream_id).trim() !== ''
+          ? parseInt(String(stream_id), 10)
+          : NaN;
+      if (!Number.isInteger(streamIdNum) || streamIdNum < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Stream is required — select which stream this interest belongs to'
+        });
+      }
+      const streamRow = await Stream.findById(streamIdNum);
+      if (!streamRow) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid stream'
         });
       }
 
@@ -106,7 +141,8 @@ class CareerGoalsTaxonomyController {
         logo_filename: logo_filename || null,
         description: description || null,
         status: status !== undefined ? status : true,
-        updated_by: req.admin?.id || null
+        updated_by: req.admin?.id || null,
+        stream_id: streamIdNum
       });
       res.status(201).json({
         success: true,
@@ -161,7 +197,7 @@ class CareerGoalsTaxonomyController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { label, logo, logo_filename, description, status } = req.body;
+      const { label, logo, logo_filename, description, status, stream_id } = req.body;
 
       const existing = await CareerGoal.findById(parseInt(id));
       if (!existing) {
@@ -182,9 +218,32 @@ class CareerGoalsTaxonomyController {
         }
       }
 
-      // If logo is being updated, delete old logo from S3
-      if (logo !== undefined && logo !== existing.logo && existing.logo) {
+      // If logo is cleared or replaced, delete old file from S3
+      if (
+        logo !== undefined &&
+        existing.logo &&
+        (logo === null || logo === '' || logo !== existing.logo)
+      ) {
         await deleteFromS3(existing.logo);
+      }
+
+      let streamIdForUpdate;
+      if (stream_id !== undefined) {
+        if (stream_id === null || stream_id === '') {
+          return res.status(400).json({
+            success: false,
+            message: 'Stream cannot be cleared — select which stream this interest belongs to'
+          });
+        }
+        const streamIdNum = parseInt(String(stream_id), 10);
+        if (!Number.isInteger(streamIdNum) || streamIdNum < 1) {
+          return res.status(400).json({ success: false, message: 'Invalid stream' });
+        }
+        const streamRow = await Stream.findById(streamIdNum);
+        if (!streamRow) {
+          return res.status(400).json({ success: false, message: 'Invalid stream' });
+        }
+        streamIdForUpdate = streamIdNum;
       }
 
       const careerGoal = await CareerGoal.update(parseInt(id), {
@@ -193,7 +252,8 @@ class CareerGoalsTaxonomyController {
         logo_filename,
         description,
         status,
-        updated_by: req.admin?.id || null
+        updated_by: req.admin?.id || null,
+        ...(stream_id !== undefined ? { stream_id: streamIdForUpdate } : {})
       });
       res.json({
         success: true,
@@ -297,13 +357,27 @@ class CareerGoalsTaxonomyController {
   static async downloadAllExcel(req, res) {
     try {
       const careerGoals = await CareerGoal.findAll();
-      const headers = ['id', 'label', 'logo', 'logo_filename', 'description', 'status', 'created_at', 'updated_at', 'updated_by_email'];
+      const headers = [
+        'id',
+        'label',
+        'stream_id',
+        'stream_name',
+        'logo',
+        'logo_filename',
+        'description',
+        'status',
+        'created_at',
+        'updated_at',
+        'updated_by_email'
+      ];
       const rows = [headers];
       for (const cg of careerGoals) {
         const logoFilename = cg.logo_filename || (cg.logo && typeof cg.logo === 'string' ? cg.logo.split('/').pop() : '') || '';
         rows.push([
           cg.id,
           cg.label || '',
+          cg.stream_id ?? '',
+          cg.stream_name || '',
           cg.logo || '',
           logoFilename,
           cg.description || '',
@@ -324,6 +398,183 @@ class CareerGoalsTaxonomyController {
     } catch (error) {
       console.error('Error generating interests export:', error);
       res.status(500).json({ success: false, message: 'Failed to export interests data' });
+    }
+  }
+
+  /**
+   * Download interests bulk upload template (label + stream)
+   * GET /api/admin/career-goals/bulk-upload-template
+   */
+  static async downloadBulkTemplate(req, res) {
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([
+        ['label', 'stream', 'logo_filename'],
+        ['Computer Science', 'Engineering', 'computer-science.png'],
+        ['Medical Sciences', 'Science', 'medical-sciences.png']
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Interests');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=interests-bulk-template.xlsx');
+      res.send(buf);
+    } catch (error) {
+      console.error('Error generating interests bulk template:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate template' });
+    }
+  }
+
+  /**
+   * Bulk upload interests from Excel (label, stream, optional logo_filename) + optional ZIP of logo images.
+   * POST /api/admin/career-goals/bulk-upload
+   */
+  static async bulkUpload(req, res) {
+    try {
+      const excelFile = req.files?.excel?.[0] || req.file;
+      if (!excelFile || !excelFile.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'No Excel file uploaded. Use field name "excel".'
+        });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(excelFile.buffer, { type: 'buffer', raw: true });
+      } catch {
+        return res.status(400).json({ success: false, message: 'Invalid Excel file or format.' });
+      }
+
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      if (!rows.length) {
+        return res.status(400).json({ success: false, message: 'Excel file has no data rows.' });
+      }
+
+      const logosZipFile = req.files?.logos_zip?.[0];
+      let prebuiltLogoMap = null;
+      if (logosZipFile && logosZipFile.buffer && logosZipFile.buffer.length) {
+        const { parseLogosFromZip } = require('../../utils/logoUploadUtils');
+        prebuiltLogoMap = parseLogosFromZip(logosZipFile.buffer);
+        if (prebuiltLogoMap.size === 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Logos ZIP is empty or has no image files (.png, .jpg, .webp, etc.). Remove the ZIP to import without logos, or fix the archive.'
+          });
+        }
+      }
+
+      const created = [];
+      const errors = [];
+      const labelsInFile = new Set();
+      const allStreams = await Stream.findAll();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const labelRaw = (row.label ?? row.Label ?? '').toString().trim();
+        const streamRaw = (row.stream ?? row.Stream ?? '').toString().trim();
+        const logoFilenameRaw = (
+          row.logo_filename ??
+          row.Logo_filename ??
+          row.logoFilename ??
+          row['logo filename'] ??
+          ''
+        )
+          .toString()
+          .trim();
+
+        if (!labelRaw) {
+          errors.push({ row: rowNum, message: 'label is required' });
+          continue;
+        }
+        if (!streamRaw) {
+          errors.push({ row: rowNum, message: 'stream is required' });
+          continue;
+        }
+
+        const normalizedLabel = labelRaw.toLowerCase();
+        if (labelsInFile.has(normalizedLabel)) {
+          errors.push({ row: rowNum, message: `duplicate label "${labelRaw}" in this file` });
+          continue;
+        }
+
+        const existing = await CareerGoal.findByLabel(labelRaw);
+        if (existing) {
+          errors.push({ row: rowNum, message: `interest "${labelRaw}" already exists` });
+          continue;
+        }
+
+        const stream = allStreams.find((s) => s.name && s.name.toLowerCase() === streamRaw.toLowerCase());
+        if (!stream) {
+          errors.push({ row: rowNum, message: `stream "${streamRaw}" not found` });
+          continue;
+        }
+
+        try {
+          const careerGoal = await CareerGoal.create({
+            label: labelRaw,
+            stream_id: stream.id,
+            logo: null,
+            logo_filename: logoFilenameRaw || null,
+            description: null,
+            status: true,
+            updated_by: req.admin?.id || null
+          });
+          created.push({ id: careerGoal.id, label: careerGoal.label, stream: stream.name });
+          labelsInFile.add(normalizedLabel);
+        } catch (createErr) {
+          errors.push({ row: rowNum, message: createErr.message || 'Failed to create interest' });
+        }
+      }
+
+      let logoZipResult = null;
+      // Only apply ZIP to interests created in this request (avoid attaching to unrelated rows)
+      if (prebuiltLogoMap && prebuiltLogoMap.size > 0 && created.length > 0) {
+        const { processMissingLogosFromZip } = require('../../utils/logoUploadUtils');
+        logoZipResult = await processMissingLogosFromZip(prebuiltLogoMap, {
+          findRecordsByFilename: (f) => CareerGoal.findMissingLogosByFilename(f),
+          uploadToS3,
+          s3Folder: 'career-goals-taxonomies',
+          logoColumn: 'logo',
+          updateRecord: (id, data) => CareerGoal.update(id, data),
+          toResultItem: (r) => ({ id: r.id, label: r.label, logo_filename: r.logo_filename })
+        });
+      }
+
+      const logoMsg =
+        logoZipResult != null
+          ? ` Attached ${logoZipResult.updated.length} logo(s) from ZIP.${
+              logoZipResult.skipped.length ? ` ${logoZipResult.skipped.length} ZIP file(s) had no matching row with that logo_filename (and empty logo).` : ''
+            }`
+          : '';
+
+      res.json({
+        success: true,
+        data: {
+          created: created.length,
+          createdInterests: created,
+          errors: errors.length,
+          errorDetails: errors,
+          logosFromZip: logoZipResult
+            ? {
+                updated: logoZipResult.updated,
+                skipped: logoZipResult.skipped,
+                errors: logoZipResult.errors,
+                summary: logoZipResult.summary
+              }
+            : null
+        },
+        message: `Created ${created.length} interest(s).${errors.length ? ` ${errors.length} row(s) had errors.` : ''}${logoMsg}`
+      });
+    } catch (error) {
+      console.error('Error in interests bulk upload:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Bulk upload failed'
+      });
     }
   }
 
@@ -409,8 +660,41 @@ class CareerGoalsTaxonomyController {
         });
       }
 
+      const rawIds = (interests || [])
+        .map((id) => parseInt(String(id), 10))
+        .filter((n) => Number.isInteger(n) && n > 0);
+      const interestIds = [...new Set(rawIds)];
+
+      if (interestIds.length !== 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'You must select exactly 3 distinct interests',
+        });
+      }
+
+      const academics = await UserAcademics.findByUserId(userId);
+      const userStreamId = academics?.stream_id;
+      if (!userStreamId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Select your stream (academics) before choosing interests',
+        });
+      }
+      const defaultStream = await Stream.findByName('Default');
+      const allowedStreamIds =
+        defaultStream && defaultStream.id !== userStreamId
+          ? [userStreamId, defaultStream.id]
+          : [userStreamId];
+      const matchCount = await CareerGoal.countActiveMatchingStreams(interestIds, allowedStreamIds);
+      if (matchCount !== interestIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more interests are not valid for your selected/default stream',
+        });
+      }
+
       const userCareerGoals = await UserCareerGoals.upsert(userId, {
-        interests: interests || []
+        interests: interestIds,
       });
 
       // Check if all onboarding steps are completed and mark onboarding as completed

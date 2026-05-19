@@ -4,13 +4,12 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FaEnvelope, FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { FiArrowLeft } from "react-icons/fi";
 import { getPublicBlogBySlug } from "@/api";
 import type { Blog } from "@/api/admin/blogs";
+import { BlogShareActions } from "@/components/blogs/BlogShareActions";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { LandingCardFrame } from "@/components/containers/LandingCardFrame";
-import { siteSocialLinks } from "@/lib/siteSocial";
 
 /** Extract YYYY-MM-DD from API (plain date or ISO string from DB/JSON). */
 function parseCustomPublishDate(raw: string | null | undefined): string | null {
@@ -193,42 +192,7 @@ export default function BlogPostPage() {
                     >
                         {displayDate.label}
                     </time>
-                    <div className="flex shrink-0 items-center gap-3 text-black/70">
-                        <Link
-                            href={siteSocialLinks.instagram}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="Instagram"
-                            className="transition-colors hover:text-black"
-                        >
-                            <FaInstagram className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.linkedin}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="LinkedIn"
-                            className="transition-colors hover:text-black"
-                        >
-                            <FaLinkedinIn className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.x}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="X"
-                            className="transition-colors hover:text-black"
-                        >
-                            <FaXTwitter className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                        <Link
-                            href={siteSocialLinks.email}
-                            aria-label="Email"
-                            className="transition-colors hover:text-black"
-                        >
-                            <FaEnvelope className="h-[1.1rem] w-[1.1rem]" />
-                        </Link>
-                    </div>
+                    <BlogShareActions slug={slug} title={blog.title} />
                 </div>
 
 

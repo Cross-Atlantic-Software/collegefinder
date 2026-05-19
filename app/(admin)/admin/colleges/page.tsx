@@ -29,6 +29,7 @@ import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { getAllStates, getDistrictsForState } from '@/lib/data/indianStatesDistricts';
+import { resolveCollegeLogoSrc } from '@/lib/collegeLogo';
 import Image from 'next/image';
 
 const COLLEGES_PAGE_SIZE = 10;
@@ -84,7 +85,10 @@ export default function CollegesPage() {
     website: '',
     parent_university: '',
     college_logo: '',
+    logo_url: '',
+    logo_filename: '',
     college_description: '',
+    recommendedExamIds: [] as number[],
     collegePrograms: [{ ...emptyProgram }] as (typeof emptyProgram)[],
   });
   const stateOptions = useMemo(
@@ -257,7 +261,10 @@ export default function CollegesPage() {
         website: formData.website.trim() || null,
         parent_university: formData.parent_university.trim() || null,
         college_logo: formData.college_logo.trim() || null,
+        logo_url: formData.logo_url.trim() || null,
+        logo_filename: formData.logo_filename.trim() || null,
         college_description: formData.college_description.trim() || null,
+        recommendedExamIds: formData.recommendedExamIds,
         collegePrograms: formData.collegePrograms.filter((p) => p.program_id).map((p) => ({
           program_id: p.program_id,
           branch_course: p.branch_course?.trim() || null,
@@ -323,7 +330,7 @@ export default function CollegesPage() {
           collegeKeyDates: response.data.collegeKeyDates,
           collegeDocumentsRequired: response.data.collegeDocumentsRequired,
           collegeCounsellingProcess: response.data.collegeCounsellingProcess,
-          recommendedExamIds: response.data.recommendedExamIds,
+          recommendedExamIds: response.data.recommendedExamIds ?? [],
         });
       } else {
         showError('Failed to load college');
@@ -354,7 +361,10 @@ export default function CollegesPage() {
           website: d.college.website ?? '',
           parent_university: d.college.parent_university ?? '',
           college_logo: d.college.college_logo ?? '',
+          logo_url: d.college.logo_url ?? '',
+          logo_filename: d.college.logo_filename ?? '',
           college_description: d.collegeDetails?.college_description ?? '',
+          recommendedExamIds: response.data.recommendedExamIds ?? [],
           collegePrograms: (d.collegePrograms || []).length > 0 ? (d.collegePrograms || []).map((p) => ({
             program_id: p.program_id,
             branch_course: p.branch_course ?? '',
@@ -378,7 +388,7 @@ export default function CollegesPage() {
             expectedCutoffs: (p.expectedCutoffs || []).map((c) => ({ exam_id: c.exam_id ?? 0, branch: (c as { branch?: string }).branch ?? '', category: c.category ?? '', expected_rank: c.expected_rank ?? null, year: c.year ?? null })),
           })) : [{ ...emptyProgram }],
         });
-        setLogoPreview(d.college.college_logo ?? null);
+        setLogoPreview(resolveCollegeLogoSrc(d.college));
         setEditingCollege(d.college);
         setShowModal(true);
       } else {
@@ -427,7 +437,10 @@ export default function CollegesPage() {
       website: '',
       parent_university: '',
       college_logo: '',
+      logo_url: '',
+      logo_filename: '',
       college_description: '',
+      recommendedExamIds: [],
       collegePrograms: [{ ...emptyProgram }],
     });
     setLogoPreview(null);
@@ -727,8 +740,8 @@ export default function CollegesPage() {
                         <tr key={college.id} className="hover:bg-[#F6F8FA]">
                           <td className="px-4 py-2">
                             <div className="h-12 w-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
-                              {college.college_logo ? (
-                                <Image src={college.college_logo} alt={college.college_name} width={48} height={48} className="object-contain" unoptimized />
+                              {resolveCollegeLogoSrc(college) ? (
+                                <Image src={resolveCollegeLogoSrc(college)!} alt={college.college_name} width={48} height={48} className="object-contain" unoptimized />
                               ) : (
                                 <span className="text-xs text-slate-400">No logo</span>
                               )}
@@ -867,15 +880,32 @@ export default function CollegesPage() {
                 <input type="url" value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} placeholder="https://www.college.ac.in" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Logo image URL</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Logo URL</label>
                 <input
                   type="url"
-                  value={formData.college_logo}
-                  onChange={(e) => setFormData({ ...formData, college_logo: e.target.value })}
+                  value={formData.logo_url}
+                  onChange={(e) => {
+                    const logo_url = e.target.value;
+                    setFormData((prev) => ({ ...prev, logo_url }));
+                    setLogoPreview(
+                      resolveCollegeLogoSrc({ ...formData, logo_url }) ??
+                        resolveCollegeLogoSrc(formData)
+                    );
+                  }}
                   placeholder="https://… (direct link to image)"
                   className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                 />
-                <p className="text-xs text-slate-500 mt-1">Paste a public image URL, or upload a file below to store the logo on S3.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Logo filename</label>
+                <input
+                  type="text"
+                  value={formData.logo_filename}
+                  onChange={(e) => setFormData({ ...formData, logo_filename: e.target.value })}
+                  placeholder="e.g. iit-delhi.png (for ZIP bulk upload)"
+                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Optional: file name for bulk ZIP matching. Upload below for S3-hosted logo.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Upload logo file (S3)</label>
@@ -894,6 +924,24 @@ export default function CollegesPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
                 <textarea value={formData.college_description} onChange={(e) => setFormData({ ...formData, college_description: e.target.value })} placeholder="Brief description..." rows={3} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Recommended exams (college-wide)</label>
+                <MultiSelect
+                  value={formData.recommendedExamIds.map(String)}
+                  onChange={(vals) =>
+                    setFormData({
+                      ...formData,
+                      recommendedExamIds: vals.map(Number).filter((n) => !isNaN(n)),
+                    })
+                  }
+                  options={recommendedExamOptions}
+                  placeholder="Select exams accepted by this college"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Shown on the exam detail page under &quot;Colleges you can get&quot;. Per-program exams can be set below.
+                </p>
               </div>
 
               {/* ── Program Details ── */}
@@ -1083,9 +1131,9 @@ export default function CollegesPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-auto p-4">
             <div className="flex justify-between items-start gap-4 mb-4">
               <div className="flex items-start gap-3 min-w-0">
-                {viewingData.college_logo && (
+                {resolveCollegeLogoSrc(viewingData) && (
                   <div className="h-14 w-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-                    <Image src={viewingData.college_logo} alt="" width={56} height={56} className="h-full w-full object-contain" unoptimized />
+                    <Image src={resolveCollegeLogoSrc(viewingData)!} alt="" width={56} height={56} className="h-full w-full object-contain" unoptimized />
                   </div>
                 )}
                 <div className="min-w-0">
@@ -1103,8 +1151,19 @@ export default function CollegesPage() {
                   {viewingData.website && <p className="text-sm text-slate-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.website}</a></p>}
                   {viewingData.college_logo && (
                     <p className="text-sm text-slate-600 break-all">
-                      <strong>Logo URL:</strong>{' '}
+                      <strong>S3 / uploaded logo:</strong>{' '}
                       <a href={viewingData.college_logo} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.college_logo}</a>
+                    </p>
+                  )}
+                  {viewingData.logo_url && (
+                    <p className="text-sm text-slate-600 break-all">
+                      <strong>Logo URL:</strong>{' '}
+                      <a href={viewingData.logo_url} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.logo_url}</a>
+                    </p>
+                  )}
+                  {viewingData.logo_filename && (
+                    <p className="text-sm text-slate-600">
+                      <strong>Logo filename:</strong> <span className="font-mono">{viewingData.logo_filename}</span>
                     </p>
                   )}
                 </div>
@@ -1129,6 +1188,17 @@ export default function CollegesPage() {
                     const pid = parseInt(id.trim(), 10);
                     return programs.find((pr) => pr.id === pid)?.name ?? `ID ${pid}`;
                   }).join(', ')}
+                </p>
+              </div>
+            )}
+
+            {(viewingData.recommendedExamIds?.length ?? 0) > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-1">Recommended exams (college-wide)</h3>
+                <p className="text-sm text-slate-700">
+                  {viewingData.recommendedExamIds!
+                    .map((eid) => exams.find((e) => e.id === eid)?.name ?? `ID ${eid}`)
+                    .join(', ')}
                 </p>
               </div>
             )}
@@ -1219,7 +1289,7 @@ export default function CollegesPage() {
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">expected_cutoff</code>, and{' '}
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">seat_matrix</code> are one block per program: separate programs with <strong>;</strong> when each block has no inner semicolons, or with <strong>||</strong> when a block needs semicolons inside (see template examples).{' '}
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">key_dates</code> is college-level (not per program).{' '}
-                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">logo_url</code> must be a direct link to an image (no ZIP upload). Other columns from exports still import.{' '}
+                <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">logo_url</code> is a direct image link; <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">logo_filename</code> is for ZIP matching (stored separately). Other columns from exports still import.{' '}
                 <strong>Programs_catalog</strong> is reference-only.{' '}
                 <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">state</code> and <code className="px-1 py-0.5 rounded bg-slate-100 text-[11px]">city</code> are optional on each row.
               </p>

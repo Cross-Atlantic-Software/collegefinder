@@ -382,6 +382,7 @@ export interface DashboardCollege {
   college_type: string | null;
   college_logo: string | null;
   logo_url?: string | null;
+  logo_filename?: string | null;
   website?: string | null;
   state?: string | null;
   city?: string | null;
@@ -399,6 +400,19 @@ export interface DashboardCollege {
 /**
  * Dashboard college shortlist: all / recommended (exam overlap with exam shortlist) / shortlisted IDs + rows
  */
+/** Colleges that list this exam as a recommended exam (college or program level). */
+export async function getCollegesForExam(
+  examId: number
+): Promise<ApiResponse<{
+  examId: number;
+  colleges: DashboardCollege[];
+  totalCount: number;
+}>> {
+  return apiRequest(`/auth/profile/exams/${examId}/colleges`, {
+    method: 'GET',
+  });
+}
+
 export async function getDashboardColleges(): Promise<ApiResponse<{
   streamId: number | null;
   allColleges: DashboardCollege[];

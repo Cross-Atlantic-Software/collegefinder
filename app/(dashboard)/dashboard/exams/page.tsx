@@ -7,6 +7,8 @@ import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { MdSchool } from "react-icons/md";
 import { getAllExams, type Exam } from "@/api/exams";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { ExamCardBody } from "@/components/dashboard/ExamCardBody";
+import { ExamLogo } from "@/components/dashboard/ExamLogo";
 
 type SectionId =
   | "dashboard"
@@ -148,20 +150,23 @@ export default function ExamDirectoryPage() {
                   <Link
                     key={exam.id}
                     href={`/dashboard/exams/${exam.id}?from=exam-directory`}
-                    className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#FAD53C] dark:border-slate-800 dark:bg-slate-900"
+                    className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#FAD53C] dark:border-slate-800 dark:bg-slate-900"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FAD53C]/25 text-black dark:bg-[#FAD53C]/20 dark:text-[#FAD53C]">
-                        <MdSchool className="h-5 w-5" />
-                      </div>
+                    <div className="flex gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{exam.name}</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{exam.code}</p>
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {exam.name}
+                        </p>
                       </div>
+                      <ExamLogo exam={exam} className="h-14 w-14 p-1" />
                     </div>
-                    <p className="mt-3 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
-                      {exam.description || "Exam details, fit checks, and preparation guidance."}
-                    </p>
+                    <div className="mt-3">
+                      <ExamCardBody
+                        exam={exam}
+                        detailHref={`/dashboard/exams/${exam.id}?from=exam-directory`}
+                        embedInLink
+                      />
+                    </div>
                     <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-slate-900 dark:text-slate-100">
                       Open details <FiArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                     </p>

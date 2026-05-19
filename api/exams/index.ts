@@ -1,3 +1,4 @@
+import type { DashboardCollege } from '@/api/auth/profile';
 import { apiRequest } from '../client';
 import { ApiResponse } from '../types';
 
@@ -125,6 +126,24 @@ export async function getExamById(
 ): Promise<ApiResponse<{ exam: Exam }>> {
   const segment = encodeURIComponent(String(idOrSlug).trim());
   return apiRequest<{ exam: Exam }>(`/exams/${segment}`, { method: 'GET' });
+}
+
+/** Dashboard detail: same enriched exam payload as shortlist tab cards (requires auth). */
+export type DashboardExamByIdData = {
+  exam: Exam;
+  shortlistedExamIds: number[];
+  linkedColleges: DashboardCollege[];
+  linkedCollegesTotal: number;
+};
+
+export async function getDashboardExamById(
+  idOrSlug: string | number
+): Promise<ApiResponse<DashboardExamByIdData>> {
+  const segment = encodeURIComponent(String(idOrSlug).trim());
+  return apiRequest<DashboardExamByIdData>(
+    `/auth/profile/dashboard-exams/exam/${segment}`,
+    { method: 'GET' }
+  );
 }
 
 /**

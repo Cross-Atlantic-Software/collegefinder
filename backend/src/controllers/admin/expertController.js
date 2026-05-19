@@ -1,8 +1,29 @@
 const XLSX = require('xlsx');
 const AdmissionExpert = require('../../models/admission/AdmissionExpert');
 const { parseLogosFromZip } = require('../../utils/logoUploadUtils');
+const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 
 const VALID_TYPES = ['career_consultant', 'essay_resume', 'travel_visa', 'accommodation', 'loans_finance'];
+
+function trimOrNull(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s || null;
+}
+
+function isLikelyS3ExpertPhotoUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('amazonaws.com');
+}
+
+async function removeExpertPhotoFromS3IfStored(photoUrl) {
+  if (!isLikelyS3ExpertPhotoUrl(photoUrl)) return;
+  try {
+    await deleteFromS3(photoUrl);
+  } catch (e) {
+    console.warn('Expert photo S3 delete:', e?.message);
+  }
+}
 
 class ExpertController {
   /**
@@ -10,7 +31,7 @@ class ExpertController {
    */
   static async getAll(req, res) {
     try {
-      const experts = await AdmissionExpert.findAll();
+      const experts = await AdmissionExpert.findAllVisibleToAdmin(req.admin);
       res.json({
         success: true,
         data: { experts, total: experts.length }
@@ -26,44 +47,74 @@ class ExpertController {
    */
   static async create(req, res) {
     try {
-      const { name, contact, phone, email, description, type } = req.body;
+      const { name, contact, phone, email, description, type, linkedin_url, website } = req.body;
 
-      if (!name || !type) {
+      const nameTrim = name != null ? String(name).trim() : '';
+      const typeNorm = type != null ? String(type).trim() : '';
+
+      if (!nameTrim || !typeNorm) {
         return res.status(400).json({ success: false, message: 'Name and type are required' });
       }
 
-      if (!VALID_TYPES.includes(type)) {
+      if (!VALID_TYPES.includes(typeNorm)) {
         return res.status(400).json({ success: false, message: 'Invalid expert type' });
       }
 
       let photoUrl = null;
-      if (req.file) {
-        const base64 = req.file.buffer.toString('base64');
-        photoUrl = `data:${req.file.mimetype};base64,${base64}`;
+      let photoUploadWarning = null;
+      if (req.file && req.file.buffer) {
+        try {
+          photoUrl = await uploadToS3(
+            req.file.buffer,
+            req.file.originalname || 'expert.jpg',
+            'expert-photos'
+          );
+        } catch (s3Err) {
+          console.error('Expert photo S3 upload failed (creating expert without photo):', s3Err?.message || s3Err);
+          photoUploadWarning =
+            s3Err?.message ||
+            'Photo could not be uploaded to storage. The expert was still saved without a photo; fix AWS/S3 or add a photo later.';
+        }
       }
 
+      const createdBy =
+        req.admin && req.admin.id != null ? (typeof req.admin.id === 'number' ? req.admin.id : parseInt(req.admin.id, 10)) : null;
+
       const expert = await AdmissionExpert.create({
-        name,
+        name: nameTrim,
         photo_url: photoUrl,
-        contact: contact || null,
-        phone: phone || null,
-        email: email || null,
-        description: description || null,
-        type,
-        created_by: req.admin.id
+        contact: contact != null ? String(contact).trim() || null : null,
+        phone: phone != null ? String(phone).trim() || null : null,
+        email: email != null ? String(email).trim() || null : null,
+        description: description != null ? String(description).trim() || null : null,
+        type: typeNorm,
+        created_by: Number.isFinite(createdBy) ? createdBy : null,
+        linkedin_url: trimOrNull(linkedin_url),
+        website: trimOrNull(website)
       });
 
       res.status(201).json({
         success: true,
-        message: 'Expert created successfully',
-        data: { expert }
+        message: photoUploadWarning
+          ? 'Expert created without photo (storage upload failed). You can edit the expert to add a photo later.'
+          : 'Expert created successfully',
+        data: {
+          expert,
+          ...(photoUploadWarning ? { photo_upload_warning: photoUploadWarning } : {})
+        }
       });
     } catch (error) {
       console.error('Error creating expert:', error?.message || error);
-      res.status(500).json({
-        success: false,
-        message: error?.message?.includes('value too long') ? 'Photo file is too large; try a smaller image.' : 'Failed to create expert'
-      });
+      const hint = error?.message || '';
+      let message = 'Failed to create expert';
+      if (hint.includes('value too long')) message = 'A field value is too long; shorten text or use a smaller image.';
+      else if (hint.includes('S3') || hint.includes('AWS') || hint.includes('bucket')) message = hint;
+      else if (hint.includes('violates foreign key') || hint.includes('foreign key constraint'))
+        message = 'Database rejected this record (invalid reference). Check that your admin account exists.';
+      else if (process.env.NODE_ENV === 'development' && hint) message = `Failed to create expert: ${hint}`;
+      const payload = { success: false, message };
+      if (process.env.NODE_ENV === 'development' && error?.code) payload.detail = `${error.code}: ${hint}`;
+      res.status(500).json(payload);
     }
   }
 
@@ -76,6 +127,15 @@ class ExpertController {
       const existing = await AdmissionExpert.findById(id);
       if (!existing) {
         return res.status(404).json({ success: false, message: 'Expert not found' });
+      }
+      if (req.admin.type !== 'super_admin') {
+        const owner = existing.created_by != null ? Number(existing.created_by) : null;
+        if (owner !== Number(req.admin.id)) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only edit experts you created.'
+          });
+        }
       }
 
       const updateData = {};
@@ -100,7 +160,10 @@ class ExpertController {
       });
     } catch (error) {
       console.error('Error updating expert:', error);
-      res.status(500).json({ success: false, message: 'Failed to update expert' });
+      const hint = error?.message || '';
+      let message = 'Failed to update expert';
+      if (hint.includes('S3') || hint.includes('AWS') || hint.includes('bucket')) message = hint;
+      res.status(500).json({ success: false, message });
     }
   }
 
@@ -110,10 +173,21 @@ class ExpertController {
   static async delete(req, res) {
     try {
       const id = parseInt(req.params.id, 10);
-      const expert = await AdmissionExpert.delete(id);
-      if (!expert) {
+      const existing = await AdmissionExpert.findById(id);
+      if (!existing) {
         return res.status(404).json({ success: false, message: 'Expert not found' });
       }
+      if (req.admin.type !== 'super_admin') {
+        const owner = existing.created_by != null ? Number(existing.created_by) : null;
+        if (owner !== Number(req.admin.id)) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only delete experts you created.'
+          });
+        }
+      }
+      await removeExpertPhotoFromS3IfStored(existing.photo_url);
+      const expert = await AdmissionExpert.delete(id);
       res.json({
         success: true,
         message: 'Expert deleted successfully',
@@ -130,11 +204,20 @@ class ExpertController {
    */
   static async downloadBulkTemplate(req, res) {
     try {
-      const headers = ['name', 'phone', 'email', 'description', 'type', 'photo_file_name'];
+      const headers = ['name', 'phone', 'email', 'description', 'type', 'photo_file_name', 'linkedin_url', 'website'];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
         headers,
-        ['John Doe', '+91 9876543210', 'john@example.com', 'Career coach with 10+ years experience', 'career_consultant', 'john_doe.jpg']
+        [
+          'John Doe',
+          '+91 9876543210',
+          'john@example.com',
+          'Career coach with 10+ years experience',
+          'career_consultant',
+          'john_doe.jpg',
+          'https://linkedin.com/in/johndoe',
+          'https://example.com'
+        ]
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Experts');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -152,8 +235,19 @@ class ExpertController {
    */
   static async downloadAllExcel(req, res) {
     try {
-      const experts = await AdmissionExpert.findAll();
-      const headers = ['id', 'name', 'phone', 'email', 'description', 'type', 'is_active', 'created_at'];
+      const experts = await AdmissionExpert.findAllVisibleToAdmin(req.admin);
+      const headers = [
+        'id',
+        'name',
+        'phone',
+        'email',
+        'description',
+        'type',
+        'is_active',
+        'linkedin_url',
+        'website',
+        'created_at'
+      ];
       const rows = [headers];
       for (const e of experts) {
         rows.push([
@@ -164,6 +258,8 @@ class ExpertController {
           (e.description || '').replace(/\r?\n/g, ' '),
           e.type || '',
           e.is_active !== false ? 'TRUE' : 'FALSE',
+          e.linkedin_url || '',
+          e.website || '',
           e.created_at ? String(e.created_at).slice(0, 10) : ''
         ]);
       }
@@ -227,6 +323,8 @@ class ExpertController {
         const email = (row.email ?? row.Email ?? '').toString().trim() || null;
         const description = (row.description ?? row.Description ?? '').toString().trim() || null;
         const photoFileName = (row.photo_file_name ?? row.Photo_file_name ?? '').toString().trim() || null;
+        const linkedinRaw = (row.linkedin_url ?? row.Linkedin_url ?? '').toString().trim() || null;
+        const websiteRaw = (row.website ?? row.Website ?? '').toString().trim() || null;
 
         try {
           const expert = await AdmissionExpert.create({
@@ -237,8 +335,10 @@ class ExpertController {
             email,
             description,
             type: typeRaw,
-            created_by: req.admin.id,
-            photo_file_name: photoFileName || null
+            created_by: req.admin?.id ?? null,
+            photo_file_name: photoFileName || null,
+            linkedin_url: linkedinRaw,
+            website: websiteRaw
           });
           created.push({ id: expert.id, name: expert.name });
         } catch (createErr) {
@@ -251,13 +351,11 @@ class ExpertController {
       if (photosZip && photosZip.buffer) {
         const logoMap = parseLogosFromZip(photosZip.buffer);
         for (const [, file] of logoMap) {
-          const experts = await AdmissionExpert.findByPhotoFileName(file.originalname);
+          const experts = await AdmissionExpert.findByPhotoFileNameForAdmin(file.originalname, req.admin);
           if (experts.length === 0) continue;
-          const base64 = file.buffer.toString('base64');
-          const buf = file.buffer;
-          const mime = buf[0] === 0xff && buf[1] === 0xd8 ? 'image/jpeg' : (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e ? 'image/png' : 'image/jpeg');
-          const photoUrl = `data:${mime};base64,${base64}`;
           for (const ex of experts) {
+            await removeExpertPhotoFromS3IfStored(ex.photo_url);
+            const photoUrl = await uploadToS3(file.buffer, file.originalname || 'expert.jpg', 'expert-photos');
             await AdmissionExpert.update(ex.id, { photo_url: photoUrl });
             photosAdded++;
           }
@@ -314,17 +412,15 @@ class ExpertController {
       const errors = [];
 
       for (const [, file] of logoMap) {
-        const experts = await AdmissionExpert.findByPhotoFileName(file.originalname);
+        const experts = await AdmissionExpert.findByPhotoFileNameForAdmin(file.originalname, req.admin);
         if (!experts || experts.length === 0) {
           skipped.push(file.originalname);
           continue;
         }
         try {
-          const base64 = file.buffer.toString('base64');
-          const buf = file.buffer;
-          const mime = buf[0] === 0xff && buf[1] === 0xd8 ? 'image/jpeg' : (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e ? 'image/png' : 'image/jpeg');
-          const photoUrl = `data:${mime};base64,${base64}`;
           for (const ex of experts) {
+            await removeExpertPhotoFromS3IfStored(ex.photo_url);
+            const photoUrl = await uploadToS3(file.buffer, file.originalname || 'expert.jpg', 'expert-photos');
             await AdmissionExpert.update(ex.id, { photo_url: photoUrl });
             updated.push({ id: ex.id, name: ex.name, photo_file_name: file.originalname });
           }
