@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bubble, Robot, WelcomeLayout } from "@/components/auth/onboard";
-import { Button } from "@/components/shared";
+import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 
@@ -11,63 +10,34 @@ export default function StepOne() {
   const { user, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect to dashboard if user has completed onboarding
   useEffect(() => {
     if (!isLoading && user?.onboarding_completed) {
       queueMicrotask(() => setIsRedirecting(true));
-      // Prefetch dashboard for faster loading
-      router.prefetch('/dashboard');
-      // Small delay for smooth transition
-      const timer = setTimeout(() => {
-        router.replace('/dashboard');
-      }, 100);
+      router.prefetch('/');
+      const timer = setTimeout(() => { router.replace('/'); }, 100);
       return () => clearTimeout(timer);
     }
   }, [user, isLoading, router]);
 
-  // Show smooth loader while checking auth or redirecting
   if (isLoading || isRedirecting) {
-    return <OnboardingLoader message={isRedirecting ? "Taking you to dashboard..." : "Loading..."} />;
+    return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
   }
-
-  // Don't render if user has completed onboarding (will redirect)
   if (user?.onboarding_completed) {
-    return <OnboardingLoader message="Taking you to dashboard..." />;
+    return <OnboardingLoader message="Taking you home..." />;
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F6F8FA]">
-      <WelcomeLayout progress={20}>
-        <div className="flex items-center justify-center gap-20 w-full max-w-6xl">
-          {/* Robot */}
-          <Robot variant="three" />
+    <>
+      <p className="mb-6 text-sm text-slate-500 leading-relaxed -mt-1">
+        Your shortcut to clarity - no more endless research
+      </p>
 
-          {/* Bubbles + Button */}
-          <div className="flex flex-col gap-6 w-[500px]">
-            <Bubble>
-              Welcome!, I’m Support Agent
-              <br />
-              I’ll be your companion throughout your Learning journey.
-            </Bubble>
-
-            <Bubble>
-              Exam Preparation is one of the best expertise that we have.
-            </Bubble>
-
-            <div className="flex justify-end mt-2">
-              <Button
-                type="submit"
-                variant="DarkGradient"
-                size="lg"
-                href="/step-2"
-                className="px-10 rounded-full"
-              >
-                Continue
-              </Button>
-            </div>
-          </div>
-        </div>
-      </WelcomeLayout>
-    </div>
+      <button
+        onClick={() => router.push("/step-2")}
+        className="landing-cta mt-auto w-full rounded-full bg-slate-900 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
+      >
+        Start Now
+      </button>
+    </>
   );
 }

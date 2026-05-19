@@ -13,10 +13,20 @@ class ReferralController {
   static async getMyCode(req, res) {
     try {
       const userId = req.user.id;
-
-      let referralCode = await Referral.getUserCode(userId);
+      const referralCode = await Referral.getUserCode(userId);
       if (!referralCode) {
-        referralCode = await Referral.generateAndSaveUserCode(userId);
+        return res.json({
+          success: true,
+          data: {
+            hasCode: false,
+            referralCode: null,
+            qrCodeDataUrl: null,
+            shareUrl: null,
+            emailSubject: null,
+            whatsappShareText: null,
+          },
+          message: 'No referral code generated yet. Click "Generate my referral code".',
+        });
       }
 
       const baseUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -42,6 +52,7 @@ class ReferralController {
       res.json({
         success: true,
         data: {
+          hasCode: true,
           referralCode,
           qrCodeDataUrl,
           shareUrl,
@@ -52,6 +63,51 @@ class ReferralController {
     } catch (error) {
       console.error('Error fetching referral code:', error);
       res.status(500).json({ success: false, message: 'Failed to retrieve referral code' });
+    }
+  }
+
+  /**
+   * POST /api/referral/generate-my-code
+   * Generates and saves referral code on explicit user action.
+   */
+  static async generateMyCode(req, res) {
+    try {
+      const userId = req.user.id;
+      const referralCode = await Referral.generateAndSaveUserCode(userId);
+
+      const baseUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const shareUrl = `${baseUrl}/login?ref=${encodeURIComponent(referralCode)}`;
+
+      const vars = EmailTemplate.buildReferralVariables(req.user, referralCode);
+      let inviteTpl = await EmailTemplate.findReferralInviteRow();
+      if (!inviteTpl) inviteTpl = EmailTemplate.getReferralInviteDefaultTemplate();
+      const emailSubject = EmailTemplate.replaceVariables(inviteTpl.subject, vars);
+      const waTpl = await EmailTemplate.findReferralWhatsAppRow();
+      const waBody =
+        waTpl?.body_html || EmailTemplate.getReferralWhatsAppDefaultTemplate().body_html;
+      const whatsappShareText = EmailTemplate.replaceVariables(waBody, vars);
+
+      const qrCodeDataUrl = await QRCode.toDataURL(shareUrl, {
+        width: 256,
+        margin: 2,
+        color: { dark: '#341050', light: '#ffffff' },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Referral code generated successfully',
+        data: {
+          hasCode: true,
+          referralCode,
+          qrCodeDataUrl,
+          shareUrl,
+          emailSubject,
+          whatsappShareText,
+        },
+      });
+    } catch (error) {
+      console.error('Error generating referral code:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate referral code' });
     }
   }
 
@@ -89,7 +145,10 @@ class ReferralController {
       // ── Get sender's referral code ───────────────────────────────────────────
       let referralCode = await Referral.getUserCode(user.id);
       if (!referralCode) {
-        referralCode = await Referral.generateAndSaveUserCode(user.id);
+        return res.status(400).json({
+          success: false,
+          message: 'Generate your referral code first from Refer & Earn.',
+        });
       }
 
       // ── Sender display name ──────────────────────────────────────────────────
