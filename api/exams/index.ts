@@ -22,7 +22,8 @@ export interface ExamEligibilityPublic {
   stream_ids: number[];
   subject_ids: number[];
   age_limit: string | null;
-  attempt_limit: string | null;
+  /** Free text in admin; legacy rows may still be numeric from DB. */
+  attempt_limit: string | number | null;
   domicile?: string | null;
   stream_labels?: string[];
   subject_labels?: string[];
@@ -94,6 +95,8 @@ export interface Exam {
   examCutoff?: ExamCutoffPublic | null;
   linkedCareerGoals?: ExamCareerGoalLink[];
   linkedPrograms?: ExamProgramLink[];
+  /** Up to 3 college names for dashboard exam cards. */
+  linkedCollegeNames?: string[];
 }
 
 export interface PreviousExamAttempt {

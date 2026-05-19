@@ -101,6 +101,31 @@ export function examCardMode(exam: Exam): string | null {
   return mode || null;
 }
 
+/** DB/API scalar (string, number, etc.) for card labels — not always a string. */
+function displayScalar(value: unknown): string | null {
+  if (!hasDisplayValue(value)) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t || null;
+  }
+  const t = String(value).trim();
+  return t || null;
+}
+
+export function examCardAttemptLimit(exam: Exam): string | null {
+  return displayScalar(exam.eligibilityCriteria?.attempt_limit);
+}
+
+export function examCardNegativeMarking(exam: Exam): string | null {
+  return displayScalar(exam.examPattern?.negative_marking);
+}
+
+/** Up to 3 linked college names for exam cards. */
+export function examCardLinkedCollegeNames(exam: Exam): string[] {
+  return (exam.linkedCollegeNames ?? []).map((n) => String(n).trim()).filter(Boolean).slice(0, 3);
+}
+
 /** College-style card overview paragraph. */
 export function examCardOverview(exam: Exam): string {
   const d = exam.description?.trim();
@@ -128,8 +153,6 @@ export function examCardTagChips(exam: Exam): string[] {
   if (duration) chips.push(duration);
   const programs = programLine(exam);
   if (programs) chips.push(programs);
-  const fee = formatInrFee(exam.examDates?.application_fees ?? null);
-  if (fee) chips.push(fee);
   return chips.slice(0, 4);
 }
 
