@@ -13,7 +13,15 @@
   ],
 
   "host_permissions": [
-    "<all_urls>"
+    "https://unitracko.com/*",
+    "https://*.nata-app.org/*",
+    "https://*.srmist.edu.in/*",
+    "https://*.nta.nic.in/*",
+    "https://*.samarth.ac.in/*",
+    "https://*.mahacet.org/*",
+    "https://*.bitsadmission.com/*",
+    "https://*.vit.ac.in/*",
+    "https://*.eduquity.com/*"
   ],
 
   "background": {
@@ -26,7 +34,16 @@
 
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://*.nata-app.org/*",
+        "https://*.srmist.edu.in/*",
+        "https://*.nta.nic.in/*",
+        "https://*.samarth.ac.in/*",
+        "https://*.mahacet.org/*",
+        "https://*.bitsadmission.com/*",
+        "https://*.vit.ac.in/*",
+        "https://*.eduquity.com/*"
+      ],
       "js": [
         "utils/resolver.js",
         "utils/formatter.js",
