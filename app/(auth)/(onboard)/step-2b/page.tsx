@@ -7,6 +7,8 @@ import { useToast } from "@/components/shared";
 import { updateCareerGoals, getAllCareerGoalsPublic, getAcademics, getCareerGoals } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
+import { goToOnboardingStep } from "@/components/auth/onboard/onboardingNav";
 
 interface CareerGoalOption {
   id: string;
@@ -20,11 +22,14 @@ export default function StepTwoB() {
   const [loadingInterests, setLoadingInterests] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const [needsStream, setNeedsStream] = useState(false);
   const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard({
+    saving,
+    isNavigatingForward: isNavigatingToStep3,
+  });
   const { showError } = useToast();
 
   useEffect(() => {
@@ -84,16 +89,7 @@ export default function StepTwoB() {
     return () => clearTimeout(t);
   }, [needsStream, isLoading, router]);
 
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
-      setIsRedirecting(true);
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router, isNavigatingToStep3, saving]);
-
-  if (isLoading || needsStream || (isRedirecting && !saving && !isNavigatingToStep3)) {
+  if (isLoading || needsStream || showCompletedLoader) {
     return (
       <OnboardingLoader
         message={
@@ -106,10 +102,6 @@ export default function StepTwoB() {
       />
     );
   }
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
-    return <OnboardingLoader message="Taking you home..." />;
-  }
-
   const toggleInterest = (id: string) => {
     if (selectedInterests.includes(id)) {
       setSelectedInterests((prev) => prev.filter((x) => x !== id));
@@ -188,7 +180,7 @@ export default function StepTwoB() {
                 <p>No interests are currently available for this stream.</p>
                 <button
                   type="button"
-                  onClick={() => router.push('/step-2a')}
+                  onClick={() => goToOnboardingStep(router, "/step-2a")}
                   className="rounded-full border border-amber-300 bg-white px-4 py-2 font-semibold text-amber-800 transition hover:bg-amber-100 active:scale-95"
                 >
                   ← Go back to stream
@@ -236,7 +228,7 @@ export default function StepTwoB() {
             <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.push('/step-2a')}
+                onClick={() => goToOnboardingStep(router, "/step-2a")}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

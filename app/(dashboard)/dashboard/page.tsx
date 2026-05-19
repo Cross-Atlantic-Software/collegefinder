@@ -1,9 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { ApplicationsPage, ExamPreparation, MiddleContent, ReferralCard, Sidebar, TopBar, TestModule } from "@/components/dashboard";
-import { ShortlistExams, ShortlistColleges } from "@/components/dashboard";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  ApplicationsPage,
+  ExamPreparation,
+  MiddleContent,
+  ReferralCard,
+  Sidebar,
+  TopBar,
+  TestModule,
+  ShortlistExams,
+  ShortlistColleges,
+  ShortlistInstitutes,
+  ShortlistScholarships,
+} from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
@@ -24,39 +35,81 @@ type SectionId =
   | "admission-help"
   | "referral";
 
-export default function DashboardPage() {
+const VALID_SECTIONS: SectionId[] = [
+  "dashboard",
+  "profile",
+  "exam-shortlist",
+  "college-shortlist",
+  "coaching-institutes",
+  "scholarships",
+  "applications",
+  "exam-prep",
+  "test-module",
+  "know-your-strengths",
+  "admission-help",
+  "referral",
+];
+
+function parseSectionFromSearchParams(searchParams: URLSearchParams): SectionId {
+  const section = searchParams.get("section");
+  if (section && VALID_SECTIONS.includes(section as SectionId)) {
+    return section as SectionId;
+  }
+  return "dashboard";
+}
+
+function DashboardPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
+  const [activeSection, setActiveSection] = useState<SectionId>(() =>
+    parseSectionFromSearchParams(searchParams)
+  );
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
+  const [examSearchQuery, setExamSearchQuery] = useState("");
 
   useEffect(() => {
-    const section = searchParams.get("section") as SectionId | null;
-    if (section) {
-      setActiveSection(section);
+    if (activeSection !== "exam-shortlist") {
+      setExamSearchQuery("");
     }
-    const mode = searchParams.get("mode") as "self" | "coaching" | null;
+  }, [activeSection]);
+
+  useEffect(() => {
+    setActiveSection(parseSectionFromSearchParams(searchParams));
+    const mode = searchParams.get("mode");
     if (mode === "self" || mode === "coaching") {
       setExamPrepMode(mode);
     }
   }, [searchParams]);
 
+  const navigateSection = useCallback(
+    (id: SectionId, mode?: "self" | "coaching") => {
+      setActiveSection(id);
+      if (mode) setExamPrepMode(mode);
+
+      const params = new URLSearchParams();
+      if (id !== "dashboard") {
+        params.set("section", id);
+      }
+      if (id === "exam-prep") {
+        params.set("mode", mode ?? examPrepMode);
+      }
+      const query = params.toString();
+      router.push(query ? `/dashboard?${query}` : "/dashboard", { scroll: false });
+    },
+    [router, examPrepMode]
+  );
+
   const toggleSidebar = () => setSidebarOpen((v) => !v);
   const toggleSidebarCollapse = () => setSidebarCollapsed((v) => !v);
-
-  const dashboardProfile = {
-    fullName: "Dinesh Sharma",
-    airRank: "#2,340",
-    stream: "Engineering",
-    targetIntake: "2026",
-    profileStrength: 85,
-  };
 
   const fullWidthSections: SectionId[] = [
     "profile",
     "exam-shortlist",
     "college-shortlist",
+    "coaching-institutes",
+    "scholarships",
     "applications",
     "exam-prep",
     "test-module",
@@ -69,39 +122,36 @@ export default function DashboardPage() {
     <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
       <Suspense fallback={null}>
         <StrengthPaymentReturnHandler
-          onNavigateToStrengths={() => setActiveSection("know-your-strengths")}
+          onNavigateToStrengths={() => navigateSection("know-your-strengths")}
         />
       </Suspense>
-      {/* LEFT SIDEBAR */}
       <Sidebar
         sidebarOpen={sidebarOpen}
         onToggle={toggleSidebar}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapse}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={navigateSection}
         activeSubSection={examPrepMode}
-        onSubSectionChange={(id) => setExamPrepMode(id as "self" | "coaching")}
+        onSubSectionChange={(id) => navigateSection("exam-prep", id as "self" | "coaching")}
       />
 
-      {/* MAIN AREA */}
       <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
         <TopBar
           onToggleSidebar={toggleSidebar}
           onToggleCollapse={toggleSidebarCollapse}
           isSidebarCollapsed={sidebarCollapsed}
+          examShortlistToolbar={
+            activeSection === "exam-shortlist"
+              ? { searchValue: examSearchQuery, onSearchChange: setExamSearchQuery }
+              : undefined
+          }
         />
 
         <div className="flex flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
           {activeSection === "dashboard" ? (
             <div className="flex flex-1 flex-col overflow-hidden">
-              <DashboardHeader
-                fullName={dashboardProfile.fullName}
-                airRank={dashboardProfile.airRank}
-                stream={dashboardProfile.stream}
-                targetIntake={dashboardProfile.targetIntake}
-                profileStrength={dashboardProfile.profileStrength}
-              />
+              <DashboardHeader />
 
               <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
                 <main className="min-w-0">
@@ -118,7 +168,6 @@ export default function DashboardPage() {
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}
             >
-              {/* MIDDLE BAR */}
               <main className="flex-1 min-w-0">
                 {activeSection === "profile" && (
                   <div className="w-full">
@@ -126,28 +175,34 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {activeSection === "exam-shortlist" && <ShortlistExams />}
+                {activeSection === "exam-shortlist" && (
+                  <ShortlistExams searchQuery={examSearchQuery} />
+                )}
 
                 {activeSection === "college-shortlist" && <ShortlistColleges />}
 
-                {activeSection === "applications" && (
-                  <ApplicationsPage />
-                )}
+                {activeSection === "coaching-institutes" && <ShortlistInstitutes />}
+
+                {activeSection === "scholarships" && <ShortlistScholarships />}
+
+                {activeSection === "applications" && <ApplicationsPage />}
 
                 {activeSection === "exam-prep" && (
                   <ExamPreparation initialMode={examPrepMode} />
                 )}
 
-                {activeSection === "test-module" && (
-                  <TestModule />
-                )}
+                {activeSection === "test-module" && <TestModule />}
 
                 {activeSection === "know-your-strengths" && (
-                  <KnowYourStrengths onSectionChange={(section) => setActiveSection(section as SectionId)} />
+                  <KnowYourStrengths
+                    onSectionChange={(section) => navigateSection(section as SectionId)}
+                  />
                 )}
 
                 {activeSection === "admission-help" && (
-                  <AdmissionHelp onSectionChange={(section) => setActiveSection(section as SectionId)} />
+                  <AdmissionHelp
+                    onSectionChange={(section) => navigateSection(section as SectionId)}
+                  />
                 )}
 
                 {activeSection === "referral" && <ReferralCard />}
@@ -157,5 +212,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

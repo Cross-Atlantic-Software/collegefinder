@@ -110,20 +110,22 @@ class College {
       college_type,
       college_logo,
       logo_url,
+      logo_filename,
       website,
       state,
       city,
       parent_university,
     } = data;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, website, state, city, parent_university)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, logo_filename, website, state, city, parent_university)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
         college_name,
         college_location || null,
         college_type || null,
         college_logo || null,
         logo_url || null,
+        logo_filename || null,
         website || null,
         state != null ? String(state).trim() || null : null,
         city != null ? String(city).trim() || null : null,
@@ -140,6 +142,7 @@ class College {
       college_type,
       college_logo,
       logo_url,
+      logo_filename,
       website,
       state,
       city,
@@ -167,6 +170,10 @@ class College {
     if (logo_url !== undefined) {
       updates.push(`logo_url = $${paramCount++}`);
       values.push(logo_url);
+    }
+    if (logo_filename !== undefined) {
+      updates.push(`logo_filename = $${paramCount++}`);
+      values.push(logo_filename);
     }
     if (website !== undefined) {
       updates.push(`website = $${paramCount++}`);

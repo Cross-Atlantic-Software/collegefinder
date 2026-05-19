@@ -7,30 +7,25 @@ import { getAllCities } from "@/lib/data/indianStatesDistricts";
 import { upsertUserAddress, getUserAddress } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
+import { goToOnboardingStep } from "@/components/auth/onboard/onboardingNav";
+import { REFERRAL_STEP_KEY } from "@/lib/onboardingFlow";
 
 export default function StepTwoC() {
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [cityOptions, setCityOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, refreshUser, isLoading } = useAuth();
   const fromReferralQuery = searchParams.get("from") === "referral";
-  const [allowFromReferralBack] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      const allow = sessionStorage.getItem("cf_onboarding_back_from_referral") === "1";
-      if (allow) {
-        sessionStorage.removeItem("cf_onboarding_back_from_referral");
-      }
-      return allow;
-    } catch {
-      return false;
-    }
-  });
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard({
+      saving,
+      isNavigatingForward: isNavigatingToHome,
+      fromReferralQuery,
+    });
 
   const cities = useMemo(() => getAllCities(), []);
 
@@ -52,27 +47,8 @@ export default function StepTwoC() {
     if (!isLoading && user) loadCity();
   }, [isLoading, user]);
 
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToHome && !saving) {
-      if (allowFromReferralBack || fromReferralQuery) return;
-      setIsRedirecting(true);
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router, isNavigatingToHome, saving, allowFromReferralBack, fromReferralQuery]);
-
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToHome)) {
+  if (isLoading || showCompletedLoader) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
-  }
-  if (
-    user?.onboarding_completed &&
-    !saving &&
-    !isNavigatingToHome &&
-    !allowFromReferralBack &&
-    !fromReferralQuery
-  ) {
-    return <OnboardingLoader message="Taking you home..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -134,7 +110,7 @@ export default function StepTwoC() {
             <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.push('/step-2b')}
+                onClick={() => goToOnboardingStep(router, "/step-2b")}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

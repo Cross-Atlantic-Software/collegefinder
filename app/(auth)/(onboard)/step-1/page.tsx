@@ -1,29 +1,14 @@
 'use client'
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
-import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
 
 export default function StepOne() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard();
 
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed) {
-      queueMicrotask(() => setIsRedirecting(true));
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading || isRedirecting) {
+  if (showCompletedLoader) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
-  }
-  if (user?.onboarding_completed) {
-    return <OnboardingLoader message="Taking you home..." />;
   }
 
   return (

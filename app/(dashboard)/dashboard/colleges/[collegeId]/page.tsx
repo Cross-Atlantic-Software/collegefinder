@@ -10,6 +10,7 @@ import { ChevronRight } from "lucide-react";
 import { getRecommendedColleges } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
 
 type SectionId =
   | "dashboard"
@@ -31,6 +32,8 @@ type CollegeApiItem = {
   college_location: string | null;
   college_type: string | null;
   college_logo: string | null;
+  logo_url?: string | null;
+  logo_filename?: string | null;
 };
 
 type CollegeCard = {
@@ -228,7 +231,7 @@ function mapApiCollege(college: CollegeApiItem): CollegeCard {
     college_name: college.college_name,
     college_location: college.college_location || "Location not set",
     college_type: college.college_type || "Recommended match",
-    college_logo: getLocalCollegeImage(college.id),
+    college_logo: resolveCollegeLogoSrc(college) ?? getLocalCollegeImage(college.id),
     subtitle: college.college_type || "Live recommendation",
   };
 }

@@ -5,30 +5,25 @@ import { CardShimmer } from "@/components/auth/onboard/WelcomeLayout";
 import { updateProfile, getBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
+import { goToOnboardingStep } from "@/components/auth/onboard/onboardingNav";
 
 export default function StepTwo() {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep2A, setIsNavigatingToStep2A] = useState(false);
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep2A && !saving) {
-      queueMicrotask(() => setIsRedirecting(true));
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router, isNavigatingToStep2A, saving]);
+  const { user, refreshUser } = useAuth();
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard({
+    saving,
+    isNavigatingForward: isNavigatingToStep2A,
+  });
 
   /** Restore name when returning via Back so the field shows saved / typed value. */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (isLoading || !user) return;
       try {
         const res = await getBasicInfo();
         if (cancelled || !res.success || !res.data) return;
@@ -45,13 +40,10 @@ export default function StepTwo() {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, user]);
+  }, []);
 
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep2A)) {
+  if (showCompletedLoader) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
-  }
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep2A) {
-    return <OnboardingLoader message="Taking you home..." />;
   }
 
   const isBusy = saving || isNavigatingToStep2A;
@@ -59,7 +51,7 @@ export default function StepTwo() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("Please enter your name"); return; }
-    if (!user)        { setError("You must be logged in to save your name"); return; }
+    if (!user) { setError("You must be logged in to save your name"); return; }
 
     setSaving(true);
     setError(null);
@@ -68,6 +60,7 @@ export default function StepTwo() {
     try {
       const response = await updateProfile(name.trim());
       if (response.success) {
+        await refreshUser();
         router.prefetch("/step-2a");
         router.replace("/step-2a");
       } else {
@@ -114,7 +107,7 @@ export default function StepTwo() {
             <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.push('/step-1')}
+                onClick={() => goToOnboardingStep(router, "/step-1")}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

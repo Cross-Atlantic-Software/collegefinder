@@ -1,18 +1,46 @@
-type DashboardHeaderProps = {
-  fullName: string;
-  airRank: string;
-  stream: string;
-  targetIntake: string;
-  profileStrength: number;
-};
+"use client";
 
-export default function DashboardHeader({
-  fullName,
-  airRank,
-  stream,
-  targetIntake,
-  profileStrength,
-}: DashboardHeaderProps) {
+import { useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  useDashboardAcademicsQuery,
+  useProfileCompletionQuery,
+} from "@/lib/dashboardSidebarQueries";
+
+export default function DashboardHeader() {
+  const { user } = useAuth();
+  const { data: completion, isLoading: completionLoading } = useProfileCompletionQuery();
+  const { data: academics, isLoading: academicsLoading } = useDashboardAcademicsQuery();
+
+  const fullName = useMemo(() => {
+    const name = user?.name?.trim();
+    if (name) return name;
+    return user?.email?.split("@")[0] || "User";
+  }, [user]);
+
+  const stream = useMemo(() => {
+    const label = academics?.stream?.trim();
+    if (label) return label;
+    if (academicsLoading) return "…";
+    return "Not set";
+  }, [academics?.stream, academicsLoading]);
+
+  const profileStrength = useMemo(() => {
+    if (completionLoading) return null;
+    return completion?.percentage ?? 0;
+  }, [completion?.percentage, completionLoading]);
+
+  const targetIntake = useMemo(() => {
+    const year = academics?.postmatric_passing_year;
+    if (year == null || Number.isNaN(Number(year))) {
+      return academicsLoading ? "…" : "—";
+    }
+    const y = Number(year);
+    return String(academics?.is_pursuing_12th ? y + 1 : y);
+  }, [academics?.postmatric_passing_year, academics?.is_pursuing_12th, academicsLoading]);
+
+  const airRank = "—";
+
   return (
     <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="px-4 py-2 md:px-6">
@@ -37,7 +65,9 @@ export default function DashboardHeader({
             </div>
             <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Profile</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{profileStrength}%</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {profileStrength === null ? "…" : `${profileStrength}%`}
+              </p>
             </div>
           </div>
         </div>

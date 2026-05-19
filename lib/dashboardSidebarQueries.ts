@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getProfileCompletion, getDashboardColleges } from "@/api";
+import { getAcademics, getProfileCompletion, getDashboardColleges } from "@/api";
 import { getDashboardInstitutes, getDashboardScholarships } from "@/api/auth/profile";
 
 export const PROFILE_COMPLETION_KEY = ["profile-completion"] as const;
+export const DASHBOARD_ACADEMICS_KEY = ["dashboard-academics"] as const;
 export const DASHBOARD_COLLEGES_KEY = ["dashboard-colleges"] as const;
 export const DASHBOARD_INSTITUTES_KEY = ["dashboard-institutes"] as const;
 export const DASHBOARD_SCHOLARSHIPS_KEY = ["dashboard-scholarships"] as const;
@@ -23,6 +24,20 @@ export function useProfileCompletionQuery() {
       const res = await getProfileCompletion();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load profile completion");
+      }
+      return res.data;
+    },
+    ...sidebarQueryDefaults,
+  });
+}
+
+export function useDashboardAcademicsQuery() {
+  return useQuery({
+    queryKey: DASHBOARD_ACADEMICS_KEY,
+    queryFn: async () => {
+      const res = await getAcademics();
+      if (!res.success) {
+        throw new Error(res.message || "Failed to load academics");
       }
       return res.data;
     },

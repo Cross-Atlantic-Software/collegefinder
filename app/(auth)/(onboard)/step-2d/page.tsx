@@ -7,6 +7,8 @@ import { upsertUserAddress, getUserAddress } from "@/api";
 import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
+import { useOnboardingCompletedGuard } from "@/hooks/useOnboardingCompletedGuard";
+import { goToOnboardingStep } from "@/components/auth/onboard/onboardingNav";
 
 export default function StepTwoD() {
   const [selectedState, setSelectedState] = useState<string>("");
@@ -60,20 +62,8 @@ export default function StepTwoD() {
     }
   }, [selectedState]);
 
-  useEffect(() => {
-    if (!isLoading && user?.onboarding_completed && !isNavigatingToStep3 && !saving) {
-      setIsRedirecting(true);
-      router.prefetch('/');
-      const timer = setTimeout(() => { router.replace('/'); }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, router, isNavigatingToStep3, saving]);
-
-  if (isLoading || (isRedirecting && !saving && !isNavigatingToStep3)) {
+  if (isLoading || showCompletedLoader) {
     return <OnboardingLoader message={isRedirecting ? "Taking you home..." : "Loading..."} />;
-  }
-  if (user?.onboarding_completed && !saving && !isNavigatingToStep3) {
-    return <OnboardingLoader message="Taking you home..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,7 +137,7 @@ export default function StepTwoD() {
             <div className="flex items-center gap-3 mt-auto pt-4">
               <button
                 type="button"
-                onClick={() => router.push('/step-2c')}
+                onClick={() => goToOnboardingStep(router, "/step-2c")}
                 className="flex shrink-0 h-[46px] w-[46px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

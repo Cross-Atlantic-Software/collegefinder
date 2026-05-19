@@ -90,7 +90,7 @@ export default function ExamsPage() {
     code: '',
     description: '',
     exam_logo: '',
-    exam_type: '' as 'National' | 'State' | 'Institute' | '',
+    exam_type: '',
     conducting_authority: '',
     documents_required: '',
     counselling: '',
@@ -112,7 +112,7 @@ export default function ExamsPage() {
       domicile: '',
     },
     examPattern: {
-      mode: '' as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)' | '',
+      mode: '',
       number_of_questions: '',
       total_marks: '',
       negative_marking: '',
@@ -441,7 +441,7 @@ export default function ExamsPage() {
           code: e?.code ?? '',
           description: e?.description ?? '',
           exam_logo: e?.exam_logo ?? '',
-          exam_type: (e?.exam_type as 'National' | 'State' | 'Institute') ?? '',
+          exam_type: e?.exam_type ?? '',
           conducting_authority: e?.conducting_authority ?? '',
           documents_required: e?.documents_required ?? '',
           counselling: e?.counselling ?? '',
@@ -469,7 +469,7 @@ export default function ExamsPage() {
             domicile: data.eligibilityCriteria?.domicile ?? '',
           },
           examPattern: {
-            mode: (data.examPattern?.mode as 'Offline' | 'Online' | 'Hybrid' | 'Online (CBT)') ?? '',
+            mode: data.examPattern?.mode ?? '',
             number_of_questions: data.examPattern?.number_of_questions != null ? String(data.examPattern.number_of_questions) : '',
             total_marks: data.examPattern?.total_marks != null ? String(data.examPattern.total_marks) : '',
             negative_marking: data.examPattern?.negative_marking ?? '',
@@ -1085,16 +1085,12 @@ export default function ExamsPage() {
                       <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam Type
                       </label>
-                      <Dropdown
-                        value={formData.exam_type || null}
-                        onChange={(v) => setFormData({ ...formData, exam_type: v })}
-                        options={[
-                          { value: 'National', label: 'National' },
-                          { value: 'State', label: 'State' },
-                          { value: 'Institute', label: 'Institute' },
-                        ]}
-                        placeholder="Select type"
-                        className="w-full"
+                      <input
+                        type="text"
+                        value={formData.exam_type}
+                        onChange={(e) => setFormData({ ...formData, exam_type: e.target.value })}
+                        placeholder="e.g., National, State, University"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
@@ -1230,22 +1226,17 @@ export default function ExamsPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Mode (Online / Offline)
+                        Mode
                       </label>
-                      <Dropdown
-                        value={formData.examPattern.mode || null}
-                        onChange={(v) => setFormData({
+                      <input
+                        type="text"
+                        value={formData.examPattern.mode}
+                        onChange={(e) => setFormData({
                           ...formData,
-                          examPattern: { ...formData.examPattern, mode: v }
+                          examPattern: { ...formData.examPattern, mode: e.target.value }
                         })}
-                        options={[
-                          { value: 'Offline', label: 'Offline' },
-                          { value: 'Online', label: 'Online' },
-                          { value: 'Online (CBT)', label: 'Online (CBT)' },
-                          { value: 'Hybrid', label: 'Hybrid' },
-                        ]}
-                        placeholder="Select mode"
-                        className="w-full"
+                        placeholder="e.g., Online, Offline, Hybrid, Online (CBT)"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 

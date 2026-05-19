@@ -20,7 +20,12 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const UploadJob = require('../../models/UploadJob');
 const { enqueueCollegeBulkUploadJob } = require('../../jobs/queues/collegeBulkUploadQueue');
-const { isLikelyS3Url, normalizeCollegeLogoFields } = require('../../utils/collegeLogoFields');
+const {
+  isLikelyS3Url,
+  normalizeCollegeLogoFields,
+  parseCollegeLogoFields,
+  resolveCollegeLogoDisplayUrl,
+} = require('../../utils/collegeLogoFields');
 
 const COLLEGE_BULK_UPLOAD_DIR = path.join(__dirname, '../../../uploads/college-bulk');
 
@@ -53,6 +58,7 @@ async function buildCollegesBulkTemplateBuffer() {
     'college_type',
     'website',
     'logo_url',
+    'logo_filename',
     'college_description',
     'program_names',
     'intake_capacities',
@@ -76,6 +82,7 @@ async function buildCollegesBulkTemplateBuffer() {
       'Central,State',
       'https://www.iitd.ac.in',
       'https://example.com/logos/iit-delhi.png',
+      'iit-delhi.png',
       'Premier engineering institute.',
       'B.Tech; M.Tech',
       '300; 150',
@@ -96,6 +103,7 @@ async function buildCollegesBulkTemplateBuffer() {
       'State',
       'https://www.sce.ac.in',
       'https://example.com/logos/state-college.png',
+      'state-college.png',
       'State level engineering college.',
       'B.Tech',
       '120',
@@ -129,6 +137,46 @@ async function resolveRecommendedExamIds(body) {
     return body.recommendedExamIds.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
   }
   return [];
+}
+
+/** Parse exam ids from program payloads (array of numbers or comma-separated string). */
+function parseExamIdsFromPrograms(collegePrograms) {
+  const ids = new Set();
+  if (!collegePrograms || !Array.isArray(collegePrograms)) return [];
+  for (const prog of collegePrograms) {
+    const raw = prog.recommended_exam_ids;
+    if (raw == null || raw === '') continue;
+    if (Array.isArray(raw)) {
+      for (const id of raw) {
+        const n = parseInt(id, 10);
+        if (!isNaN(n) && n > 0) ids.add(n);
+      }
+    } else {
+      for (const part of String(raw).split(',')) {
+        const n = parseInt(part.trim(), 10);
+        if (!isNaN(n) && n > 0) ids.add(n);
+      }
+    }
+  }
+  return [...ids];
+}
+
+/** College-level + program-level recommended exams → college_recommended_exams junction. */
+async function collectCollegeRecommendedExamIds(body, collegePrograms) {
+  const ids = new Set();
+  for (const id of await resolveRecommendedExamIds(body)) {
+    ids.add(id);
+  }
+  for (const id of parseExamIdsFromPrograms(collegePrograms)) {
+    ids.add(id);
+  }
+  return [...ids];
+}
+
+async function syncCollegeRecommendedExams(collegeId, body, collegePrograms) {
+  const examIds = await collectCollegeRecommendedExamIds(body, collegePrograms);
+  await CollegeRecommendedExam.setExamsForCollege(collegeId, examIds);
+  return examIds;
 }
 
 async function resolveCollegePrograms(collegeId, collegePrograms) {
@@ -380,7 +428,11 @@ class CollegesController {
       }
 
       const college_location = formatLocationLine(cityTrim, stateTrim);
-      const logoFields = normalizeCollegeLogoFields(college_logo);
+      const logoFields = parseCollegeLogoFields({
+        college_logo,
+        logo_url: req.body.logo_url,
+        logo_filename: req.body.logo_filename,
+      });
 
       const college = await College.create({
         college_name: college_name.trim(),
@@ -388,6 +440,7 @@ class CollegesController {
         college_type: college_type || null,
         college_logo: logoFields.college_logo,
         logo_url: logoFields.logo_url,
+        logo_filename: logoFields.logo_filename,
         website: website ? website.trim() : null,
         parent_university: parent_university != null ? String(parent_university).trim() || null : null,
         state: stateTrim || null,
@@ -439,12 +492,8 @@ class CollegesController {
         }
       }
 
-      const resolvedExamIds = await resolveRecommendedExamIds(req.body);
-      if (resolvedExamIds.length > 0) {
-        await CollegeRecommendedExam.setExamsForCollege(college.id, resolvedExamIds);
-      }
-
       await resolveCollegePrograms(college.id, collegePrograms);
+      await syncCollegeRecommendedExams(college.id, req.body, collegePrograms);
 
       res.status(201).json({
         success: true,
@@ -453,7 +502,8 @@ class CollegesController {
       });
     } catch (error) {
       console.error('Error creating college:', error);
-      res.status(500).json({ success: false, message: 'Failed to create college' });
+      const msg = error?.message || 'Failed to create college';
+      res.status(500).json({ success: false, message: msg });
     }
   }
 
@@ -501,12 +551,25 @@ class CollegesController {
       const hasStateKey = Object.prototype.hasOwnProperty.call(req.body, 'state');
       const hasCityKey = Object.prototype.hasOwnProperty.call(req.body, 'city');
 
-      const logoNorm = college_logo !== undefined ? normalizeCollegeLogoFields(college_logo) : null;
+      const hasLogoUrl = Object.prototype.hasOwnProperty.call(req.body, 'logo_url');
+      const hasLogoFilename = Object.prototype.hasOwnProperty.call(req.body, 'logo_filename');
+      const logoNorm =
+        college_logo !== undefined || hasLogoUrl || hasLogoFilename
+          ? parseCollegeLogoFields({
+              college_logo:
+                college_logo !== undefined ? college_logo : existing.college_logo,
+              logo_url: hasLogoUrl ? req.body.logo_url : existing.logo_url,
+              logo_filename: hasLogoFilename
+                ? req.body.logo_filename
+                : existing.logo_filename,
+            })
+          : null;
       const updatePayload = {
         college_name: college_name !== undefined ? college_name.trim() : undefined,
         college_type: college_type !== undefined ? college_type || null : undefined,
         college_logo: logoNorm ? logoNorm.college_logo : undefined,
         logo_url: logoNorm ? logoNorm.logo_url : undefined,
+        logo_filename: logoNorm ? logoNorm.logo_filename : undefined,
         website: website !== undefined ? (website ? website.trim() : null) : undefined,
         parent_university: parent_university !== undefined
           ? (parent_university != null ? String(parent_university).trim() || null : null)
@@ -573,9 +636,7 @@ class CollegesController {
 
       await CollegeProgram.deleteByCollegeId(collegeId);
       await resolveCollegePrograms(collegeId, collegePrograms);
-
-      const resolvedExamIds = await resolveRecommendedExamIds(req.body);
-      await CollegeRecommendedExam.setExamsForCollege(collegeId, resolvedExamIds);
+      await syncCollegeRecommendedExams(collegeId, req.body, collegePrograms);
 
       const college = await College.findById(collegeId);
       res.json({ success: true, data: { college }, message: 'College updated successfully' });
@@ -651,7 +712,7 @@ class CollegesController {
       const colleges = await College.findAll();
       const headers = [
         'college_name', 'parent_university', 'state', 'city', 'college_location', 'college_type', 'major_program_names', 'website',
-        'logo_url', 'college_description',
+        'college_logo', 'logo_url', 'logo_filename', 'college_description',
         'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
         'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
         'fee_per_semesters', 'total_fees',
@@ -798,6 +859,8 @@ class CollegesController {
           majorProgramNamesStr,
           c.website || '',
           c.college_logo || '',
+          c.logo_url || '',
+          c.logo_filename || '',
           desc,
           programNamesArr.join('; '),
           branchCoursesArr.join('; '),

@@ -10,8 +10,10 @@ export interface College {
   city?: string | null;
   college_type: string | null;
   college_logo: string | null;
-  /** External / spreadsheet image URL; null when logo is S3-only */
+  /** External / spreadsheet direct image URL */
   logo_url: string | null;
+  /** File name for ZIP bulk logo matching (college_logo is S3 URL after upload) */
+  logo_filename: string | null;
   website: string | null;
   parent_university?: string | null;
   created_at: string;

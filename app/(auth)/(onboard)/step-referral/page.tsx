@@ -7,9 +7,13 @@ import { getBasicInfo, updateBasicInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { SIGNUP_WELCOME_SESSION_KEY } from "@/lib/signupWelcomeFlag";
-
-const STORAGE_KEY = "cf_onboarding_referral_step";
-const BACK_FROM_REFERRAL_KEY = "cf_onboarding_back_from_referral";
+import {
+  BACK_FROM_REFERRAL_KEY,
+  REFERRAL_STEP_KEY,
+  clearOnboardingFlow,
+  setOnboardingFlowActive,
+} from "@/lib/onboardingFlow";
+const STORAGE_KEY = REFERRAL_STEP_KEY;
 
 export default function StepReferral() {
   const router = useRouter();
@@ -43,7 +47,7 @@ export default function StepReferral() {
   }, []);
 
   const goHome = () => {
-    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    clearOnboardingFlow();
     try { sessionStorage.setItem(SIGNUP_WELCOME_SESSION_KEY, "1"); } catch { /* ignore */ }
     window.location.href = "/";
   };
@@ -55,6 +59,7 @@ export default function StepReferral() {
     } catch {
       /* ignore */
     }
+    setOnboardingFlowActive();
     router.replace("/step-2c?from=referral");
   };
 

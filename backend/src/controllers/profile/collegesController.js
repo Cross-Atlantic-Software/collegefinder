@@ -306,8 +306,52 @@ async function updateShortlistedColleges(req, res) {
   }
 }
 
+/**
+ * Colleges whose recommended exam id matches this exam (college + program level).
+ * GET /api/auth/profile/exams/:examId/colleges
+ */
+async function getCollegesForExam(req, res) {
+  try {
+    const examId = parseInt(req.params.examId, 10);
+    if (!Number.isInteger(examId) || examId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'examId must be a positive integer',
+      });
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    const collegeIds = await CollegeRecommendedExam.getCollegeIdsByRecommendedExamId(examId);
+    const colleges = await enrichCollegeRows(await College.findByIds(collegeIds));
+
+    return res.json({
+      success: true,
+      data: {
+        examId,
+        colleges,
+        totalCount: colleges.length,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching colleges for exam:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch colleges for exam',
+    });
+  }
+}
+
 module.exports = {
   getRecommendedColleges,
   getDashboardColleges,
+  getCollegesForExam,
   updateShortlistedColleges,
+  enrichCollegeRows,
 };

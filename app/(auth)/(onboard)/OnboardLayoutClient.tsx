@@ -1,10 +1,15 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { WelcomeLayout } from "@/components/auth/onboard/WelcomeLayout";
+import { setOnboardingFlowActive } from "@/lib/onboardingFlow";
 
 export function OnboardLayoutClient({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    setOnboardingFlowActive();
+  }, []);
   
   let progress = 0;
   let title = "";

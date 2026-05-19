@@ -134,6 +134,7 @@ const init = async () => {
 const runMigrations = async () => {
   const migrationsDir = path.join(__dirname, '../database/migrations');
   const migrationFiles = [
+    'ensure_colleges_columns_2026.sql',
     'update_government_identification_apaar_id.sql',
     'add_description_status_to_career_goals.sql',
     'add_exam_fields_and_related_tables.sql',
@@ -160,6 +161,7 @@ const runMigrations = async () => {
     'add_expert_phone_email_description.sql',
     'add_website_to_exams.sql',
     'restructure_colleges_programs.sql',
+    'add_colleges_logo_filename_and_logo_url_2026.sql',
     'add_branch_id_to_college_programs.sql',
     'add_institute_referral_contact_email.sql',
     'add_referral_uses_table.sql',

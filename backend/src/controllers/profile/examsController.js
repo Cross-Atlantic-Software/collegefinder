@@ -12,9 +12,13 @@ const ExamCutoff = require('../../models/exam/ExamCutoff');
 const ExamCareerGoal = require('../../models/exam/ExamCareerGoal');
 const ExamProgram = require('../../models/exam/ExamProgram');
 const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
+const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
 const {
   sortExamsByPopularityRank,
   computeDashboardRecommendedExamOrder,
+  buildExamTagsFromStreamInterestMappings,
+  mergeExamTagMaps,
+  collectMappedExamIdsForUserInterests,
   TOP_N,
 } = require('../../services/examDashboardRecommendation');
 const Stream = require('../../models/taxonomy/Stream');
@@ -22,11 +26,9 @@ const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
+const { enrichCollegeRows } = require('./collegesController');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { matchesExamSearchTokens } = require('../../utils/examSearchTokens');
-
-/** Allowed `exam_pattern.mode` values (must match DB CHECK after migration `exam_pattern_mode_add_online_cbt.sql`). */
-const EXAM_PATTERN_VALID_MODES = ['Offline', 'Online', 'Hybrid', 'Online (CBT)'];
 
 /**
  * Admin Excel / forms: duration in hours as entered (e.g. 3 → 3 Hrs in UI).
@@ -59,6 +61,88 @@ function formatExamPatternDurationHoursSearch(value) {
   return `${rounded} hrs`;
 }
 
+/**
+ * Interest tags for recommendation: exam_career_goal ∪ admin stream_interest_recommendation_mappings.
+ * Recommended ordering uses only exams listed in admin mappings when those exist for the student's interests.
+ */
+async function buildDashboardExamRecommendationInputs(
+  streamExams,
+  streamNum,
+  defaultStreamId,
+  normalizedCareerGoalIds
+) {
+  const examIdsRaw = streamExams.map((e) => e.id).filter((id) => id != null);
+  /** @type {Map<number, Set<number>>} */
+  let examTagsByExamId = new Map();
+  /** @type {Map<number, number[]>} */
+  let eligibilityStreamsByExamId = new Map();
+  let interestStreamById = new Map();
+
+  if (examIdsRaw.length === 0) {
+    return {
+      interestStreamById,
+      examTagsByExamId,
+      eligibilityStreamsByExamId,
+      examsForRecommendation: streamExams,
+    };
+  }
+
+  const mappingFetches = [StreamInterestRecommendation.findByStream(streamNum)];
+  if (defaultStreamId != null && Number(defaultStreamId) !== streamNum) {
+    mappingFetches.push(StreamInterestRecommendation.findByStream(defaultStreamId));
+  }
+
+  const [interestStreams, cgRows, eligRows, ...mappingLists] = await Promise.all([
+    normalizedCareerGoalIds.length > 0
+      ? CareerGoal.findStreamIdsForInterestIds(normalizedCareerGoalIds)
+      : Promise.resolve(new Map()),
+    ExamCareerGoal.findCareerGoalsForExamIds(examIdsRaw),
+    ExamEligibilityCriteria.findByExamIds(examIdsRaw),
+    ...mappingFetches,
+  ]);
+
+  interestStreamById = interestStreams;
+
+  for (const row of cgRows) {
+    const eid = Number(row.exam_id);
+    const gid = Number(row.career_goal_id);
+    if (!Number.isInteger(eid) || !Number.isInteger(gid)) continue;
+    if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
+    examTagsByExamId.get(eid).add(gid);
+  }
+
+  const adminMappingRows = mappingLists.flat();
+  mergeExamTagMaps(
+    examTagsByExamId,
+    buildExamTagsFromStreamInterestMappings(adminMappingRows, normalizedCareerGoalIds)
+  );
+
+  for (const row of eligRows) {
+    eligibilityStreamsByExamId.set(
+      Number(row.exam_id),
+      Array.isArray(row.stream_ids) ? row.stream_ids : []
+    );
+  }
+
+  let examsForRecommendation = streamExams;
+  const mappedExamIds = collectMappedExamIdsForUserInterests(
+    adminMappingRows,
+    normalizedCareerGoalIds,
+    streamNum,
+    defaultStreamId
+  );
+  if (mappedExamIds.size > 0) {
+    examsForRecommendation = streamExams.filter((e) => mappedExamIds.has(Number(e.id)));
+  }
+
+  return {
+    interestStreamById,
+    examTagsByExamId,
+    eligibilityStreamsByExamId,
+    examsForRecommendation,
+  };
+}
+
 async function loadDashboardExamShortlistContext(userId) {
   const [academics, careerGoalsRow] = await Promise.all([
     UserAcademics.findByUserId(userId),
@@ -89,36 +173,20 @@ async function loadDashboardExamShortlistContext(userId) {
         .filter((id) => Number.isInteger(id))
     : [];
 
-  const examIdsRaw = streamExams.map((e) => e.id).filter((id) => id != null);
-  let interestStreamById = new Map();
-  /** @type {Map<number, Set<number>>} */
-  let examTagsByExamId = new Map();
-  /** @type {Map<number, number[]>} */
-  let eligibilityStreamsByExamId = new Map();
-
-  if (examIdsRaw.length > 0) {
-    const [interestStreams, cgRows, eligRows] = await Promise.all([
-      normalizedCareerGoalIds.length > 0
-        ? CareerGoal.findStreamIdsForInterestIds(normalizedCareerGoalIds)
-        : Promise.resolve(new Map()),
-      ExamCareerGoal.findCareerGoalsForExamIds(examIdsRaw),
-      ExamEligibilityCriteria.findByExamIds(examIdsRaw),
-    ]);
-    interestStreamById = interestStreams;
-    for (const row of cgRows) {
-      const eid = Number(row.exam_id);
-      const gid = Number(row.career_goal_id);
-      if (!Number.isInteger(eid) || !Number.isInteger(gid)) continue;
-      if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
-      examTagsByExamId.get(eid).add(gid);
-    }
-    for (const row of eligRows) {
-      eligibilityStreamsByExamId.set(Number(row.exam_id), Array.isArray(row.stream_ids) ? row.stream_ids : []);
-    }
-  }
+  const {
+    interestStreamById,
+    examTagsByExamId,
+    eligibilityStreamsByExamId,
+    examsForRecommendation,
+  } = await buildDashboardExamRecommendationInputs(
+    streamExams,
+    streamNum,
+    defaultStreamId,
+    normalizedCareerGoalIds
+  );
 
   const recommendedOrdered = computeDashboardRecommendedExamOrder(
-    streamExams,
+    examsForRecommendation,
     normalizedCareerGoalIds,
     interestStreamById,
     defaultStreamId,
@@ -175,19 +243,30 @@ async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
   const ids = orderedExams.map((e) => e.id).filter((id) => id != null);
   if (ids.length === 0) return [];
 
-  const [patterns, eligibilities] = await Promise.all([
+  const [patterns, eligibilities, programRows] = await Promise.all([
     ExamPattern.findByExamIds(ids),
     ExamEligibilityCriteria.findByExamIds(ids),
+    ExamProgram.findProgramsForExamIds(ids),
   ]);
   const pMap = new Map(patterns.map((p) => [p.exam_id, p]));
   const eMap = new Map(eligibilities.map((r) => [r.exam_id, r]));
+  const programsByExam = new Map();
+  for (const row of programRows) {
+    if (!programsByExam.has(row.exam_id)) programsByExam.set(row.exam_id, []);
+    if (row.program_name) programsByExam.get(row.exam_id).push(String(row.program_name).trim());
+  }
 
   return orderedExams.filter((ex) => {
     const pat = pMap.get(ex.id);
     const el = eMap.get(ex.id);
     const mode =
       pat?.mode != null && String(pat.mode).trim() !== '' ? String(pat.mode).trim() : '';
-    const duration = formatExamPatternDurationHoursSearch(pat?.duration_minutes);
+    const durationStored = pat?.duration_minutes;
+    const durationLabel = formatExamPatternDurationHoursSearch(durationStored);
+    const durationRaw =
+      durationStored != null && Number.isFinite(Number(durationStored)) && Number(durationStored) > 0
+        ? String(Number(durationStored))
+        : '';
     const attempts =
       el?.attempt_limit != null && String(el.attempt_limit).trim() !== ''
         ? String(el.attempt_limit).trim()
@@ -197,6 +276,18 @@ async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
       ex.exam_popularity_rank != null && !Number.isNaN(Number(ex.exam_popularity_rank))
         ? String(Number(ex.exam_popularity_rank))
         : '';
+    const programNames = (programsByExam.get(ex.id) || []).join(' ');
+    const questions =
+      pat?.number_of_questions != null ? String(pat.number_of_questions) : '';
+    const totalMarks = pat?.total_marks != null ? String(pat.total_marks) : '';
+    const negativeMarking =
+      pat?.negative_marking != null && String(pat.negative_marking).trim() !== ''
+        ? String(pat.negative_marking).trim()
+        : '';
+    const ageLimit =
+      el?.age_limit != null && String(el.age_limit).trim() !== ''
+        ? String(el.age_limit).trim()
+        : '';
 
     return matchesExamSearchTokens(
       [
@@ -204,15 +295,28 @@ async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
         ex.code,
         ex.description,
         mode,
-        duration,
+        durationLabel,
+        durationRaw,
         attempts,
         examType,
         ex.conducting_authority,
         rankStr,
+        programNames,
+        questions,
+        totalMarks,
+        negativeMarking,
+        ageLimit,
+        ex.website,
+        ex.counselling,
       ],
       search
     );
   });
+}
+
+function normalizeExamId(id) {
+  const n = Number(id);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 class ExamsTaxonomyController {
@@ -222,7 +326,9 @@ class ExamsTaxonomyController {
    */
   static async enrichExamRows(exams) {
     if (!exams || exams.length === 0) return exams;
-    const ids = exams.map((e) => e.id).filter((id) => id != null);
+    const ids = exams
+      .map((e) => normalizeExamId(e.id))
+      .filter((id) => id != null);
     if (ids.length === 0) return exams;
 
     const [
@@ -241,10 +347,26 @@ class ExamsTaxonomyController {
       ExamProgram.findProgramsForExamIds(ids),
     ]);
 
-    const dateMap = new Map(datesRows.map((d) => [d.exam_id, d]));
-    const pMap = new Map(patterns.map((p) => [p.exam_id, p]));
-    const eMap = new Map(eligibilities.map((r) => [r.exam_id, r]));
-    const cMap = new Map(cutoffs.map((r) => [r.exam_id, r]));
+    const dateMap = new Map();
+    const pMap = new Map();
+    const eMap = new Map();
+    const cMap = new Map();
+    for (const d of datesRows) {
+      const k = normalizeExamId(d.exam_id);
+      if (k) dateMap.set(k, d);
+    }
+    for (const p of patterns) {
+      const k = normalizeExamId(p.exam_id);
+      if (k) pMap.set(k, p);
+    }
+    for (const r of eligibilities) {
+      const k = normalizeExamId(r.exam_id);
+      if (k) eMap.set(k, r);
+    }
+    for (const r of cutoffs) {
+      const k = normalizeExamId(r.exam_id);
+      if (k) cMap.set(k, r);
+    }
 
     const streamIdSet = new Set();
     const subjectIdSet = new Set();
@@ -262,10 +384,10 @@ class ExamsTaxonomyController {
 
     const careersByExam = new Map();
     for (const row of careerRows) {
-      if (!careersByExam.has(row.exam_id)) {
-        careersByExam.set(row.exam_id, []);
-      }
-      careersByExam.get(row.exam_id).push({
+      const k = normalizeExamId(row.exam_id);
+      if (!k) continue;
+      if (!careersByExam.has(k)) careersByExam.set(k, []);
+      careersByExam.get(k).push({
         id: row.career_goal_id,
         label: row.label,
         logo: row.logo ?? null,
@@ -274,17 +396,18 @@ class ExamsTaxonomyController {
 
     const programsByExam = new Map();
     for (const row of programRows) {
-      if (!programsByExam.has(row.exam_id)) {
-        programsByExam.set(row.exam_id, []);
-      }
-      programsByExam.get(row.exam_id).push({
+      const k = normalizeExamId(row.exam_id);
+      if (!k) continue;
+      if (!programsByExam.has(k)) programsByExam.set(k, []);
+      programsByExam.get(k).push({
         id: row.program_id,
         name: row.program_name,
       });
     }
 
     return exams.map((ex) => {
-      const elRaw = eMap.get(ex.id);
+      const eid = normalizeExamId(ex.id);
+      const elRaw = eid != null ? eMap.get(eid) : null;
       let eligibilityCriteria = null;
       if (elRaw) {
         const streamLabels = (elRaw.stream_ids || [])
@@ -302,12 +425,12 @@ class ExamsTaxonomyController {
 
       return {
         ...ex,
-        examDates: dateMap.get(ex.id) || null,
+        examDates: eid != null ? dateMap.get(eid) || null : null,
         eligibilityCriteria,
-        examPattern: pMap.get(ex.id) || null,
-        examCutoff: cMap.get(ex.id) || null,
-        linkedCareerGoals: careersByExam.get(ex.id) || [],
-        linkedPrograms: programsByExam.get(ex.id) || [],
+        examPattern: eid != null ? pMap.get(eid) || null : null,
+        examCutoff: eid != null ? cMap.get(eid) || null : null,
+        linkedCareerGoals: eid != null ? careersByExam.get(eid) || [] : [],
+        linkedPrograms: eid != null ? programsByExam.get(eid) || [] : [],
       };
     });
   }
@@ -1107,34 +1230,20 @@ class ExamsTaxonomyController {
       const defaultStreamId = defaultRow?.id != null ? Number(defaultRow.id) : null;
       const streamExams = await Exam.findEligibleForUserStreamOrDefault(streamIdNum, defaultStreamId);
 
-      const examIdsRaw = streamExams.map((e) => e.id).filter((id) => id != null);
-      let interestStreamById = new Map();
-      let examTagsByExamId = new Map();
-      let eligibilityStreamsByExamId = new Map();
-
-      if (examIdsRaw.length > 0) {
-        const [interestStreams, cgRows, eligRows] = await Promise.all([
-          normalizedCareerGoalIds.length > 0
-            ? CareerGoal.findStreamIdsForInterestIds(normalizedCareerGoalIds)
-            : Promise.resolve(new Map()),
-          ExamCareerGoal.findCareerGoalsForExamIds(examIdsRaw),
-          ExamEligibilityCriteria.findByExamIds(examIdsRaw),
-        ]);
-        interestStreamById = interestStreams;
-        for (const row of cgRows) {
-          const eid = Number(row.exam_id);
-          const gid = Number(row.career_goal_id);
-          if (!Number.isInteger(eid) || !Number.isInteger(gid)) continue;
-          if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
-          examTagsByExamId.get(eid).add(gid);
-        }
-        for (const row of eligRows) {
-          eligibilityStreamsByExamId.set(Number(row.exam_id), Array.isArray(row.stream_ids) ? row.stream_ids : []);
-        }
-      }
+      const {
+        interestStreamById,
+        examTagsByExamId,
+        eligibilityStreamsByExamId,
+        examsForRecommendation,
+      } = await buildDashboardExamRecommendationInputs(
+        streamExams,
+        streamIdNum,
+        defaultStreamId,
+        normalizedCareerGoalIds
+      );
 
       const rankedAll = computeDashboardRecommendedExamOrder(
-        streamExams,
+        examsForRecommendation,
         normalizedCareerGoalIds,
         interestStreamById,
         defaultStreamId,
@@ -1317,6 +1426,48 @@ class ExamsTaxonomyController {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch dashboard exams tab',
+      });
+    }
+  }
+
+  /**
+   * Single enriched exam for dashboard detail page (same payload shape as tab cards).
+   * GET /api/auth/profile/dashboard-exams/exam/:examId
+   */
+  static async getDashboardExamById(req, res) {
+    try {
+      const row = await ExamsTaxonomyController.resolveExamFromRouteParam(req.params.examId);
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          message: 'Exam not found',
+        });
+      }
+
+      const [exam] = await ExamsTaxonomyController.enrichExamRows([row]);
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+
+      const examIdNum = Number(row.id);
+      const collegeIds =
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? await CollegeRecommendedExam.getCollegeIdsByRecommendedExamId(examIdNum)
+          : [];
+      const linkedColleges = await enrichCollegeRows(await College.findByIds(collegeIds));
+
+      return res.json({
+        success: true,
+        data: {
+          exam,
+          shortlistedExamIds: ctx.shortlistedExamIds ?? [],
+          linkedColleges,
+          linkedCollegesTotal: linkedColleges.length,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard exam by id:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch exam details',
       });
     }
   }
@@ -1802,8 +1953,6 @@ class ExamsTaxonomyController {
       const allCareerGoals = await CareerGoal.findAll();
 
       const allErrors = [];
-      const validTypes = ['National', 'State', 'Institute'];
-      const validModes = EXAM_PATTERN_VALID_MODES;
       const codesInFile = new Set();
       const namesInFile = new Set();
       const created = [];
@@ -1896,7 +2045,7 @@ class ExamsTaxonomyController {
           }
         }
 
-        const finalExamType = validTypes.find((t) => t.toLowerCase() === examType.toLowerCase()) || null;
+        const finalExamType = examType || null;
         let exam;
         try {
           exam = await Exam.create({
@@ -1991,7 +2140,7 @@ class ExamsTaxonomyController {
           } else if (durationLegacyRaw !== '') {
             durationMinutes = durationHoursStoredFromInput(durationLegacyRaw);
           }
-          const finalMode = validModes.find((m) => m.toLowerCase() === mode.toLowerCase()) || null;
+          const finalMode = mode || null;
           if (finalMode || numQ != null || totalMarks != null || negative_marking || weightage_of_subjects || durationMinutes != null) {
             await ExamPattern.create({
               exam_id: examId,

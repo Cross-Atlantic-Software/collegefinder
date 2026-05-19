@@ -80,6 +80,73 @@ function countInterestMatchesForExam(examId, userInterestIds, mappingsByInterest
   return k;
 }
 
+/**
+ * Admin Mapping → Recommended exams: stream_interest_recommendation_mappings rows.
+ * For each (stream_id, interest_id) → exam_ids[], tag exams with that interest_id.
+ */
+function buildExamTagsFromStreamInterestMappings(mappingRows, userInterestIds) {
+  const userSet = new Set(
+    userInterestIds
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id) => Number.isInteger(id))
+  );
+  /** @type {Map<number, Set<number>>} */
+  const examTagsByExamId = new Map();
+  for (const row of mappingRows || []) {
+    const iid = Number(row.interest_id);
+    if (!Number.isInteger(iid) || !userSet.has(iid)) continue;
+    const examIds = Array.isArray(row.exam_ids) ? row.exam_ids : [];
+    for (const raw of examIds) {
+      const eid = Number(raw);
+      if (!Number.isInteger(eid)) continue;
+      if (!examTagsByExamId.has(eid)) examTagsByExamId.set(eid, new Set());
+      examTagsByExamId.get(eid).add(iid);
+    }
+  }
+  return examTagsByExamId;
+}
+
+function mergeExamTagMaps(target, source) {
+  for (const [eid, tags] of source.entries()) {
+    if (!target.has(eid)) target.set(eid, new Set());
+    for (const t of tags) target.get(eid).add(t);
+  }
+  return target;
+}
+
+/** Exam IDs listed in admin mappings for the student's interests (profile + Default stream rows). */
+function collectMappedExamIdsForUserInterests(
+  mappingRows,
+  userInterestIds,
+  userStreamId,
+  defaultStreamId
+) {
+  const userSet = new Set(
+    userInterestIds
+      .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id) => Number.isInteger(id))
+  );
+  const uid = Number(userStreamId);
+  const did =
+    defaultStreamId != null && Number.isInteger(Number(defaultStreamId))
+      ? Number(defaultStreamId)
+      : null;
+  const allowedStreams = new Set([uid]);
+  if (did != null && did >= 1) allowedStreams.add(did);
+
+  const ids = new Set();
+  for (const row of mappingRows || []) {
+    const iid = Number(row.interest_id);
+    const sid = Number(row.stream_id);
+    if (!userSet.has(iid) || !allowedStreams.has(sid)) continue;
+    for (const raw of Array.isArray(row.exam_ids) ? row.exam_ids : []) {
+      const eid = Number(raw);
+      if (Number.isInteger(eid)) ids.add(eid);
+    }
+  }
+  return ids;
+}
+
 function sortExamsByPopularityRank(exams) {
   return [...exams].sort((a, b) => {
     const ar = a.exam_popularity_rank;
@@ -141,11 +208,13 @@ function computeRecommendedExamIdsTop20(streamExams, userInterestIds, streamMapp
 
 /**
  * Dashboard "Recommended exams" tab: order exams using interest tags on exams
- * (exam_career_goal), overlap tiers, Default vs stream-wise weights (33 / 25, renormalized), stream
- * relevance; ties broken by exam name only (exam_popularity_rank is not used here — that sort is for
- * the "All exams" tab only).
+ * (exam_career_goal), overlap tiers, Default ("Any stream") vs stream-wise weights (33 / 25, renormalized),
+ * stream relevance; ties broken by exam_popularity_rank then name.
+ * exam_popularity_rank is not used as a primary sort here — only for tie-breaks (All / Shortlisted tabs sort by rank).
  *
- * Overlap = |user ∩ exam tags|. If every selected interest belongs to the Default stream, overlap is forced to 0.
+ * Overlap = |user ∩ exam tags|. Tags come from exam_career_goal and/or admin
+ * stream_interest_recommendation_mappings (Mapping → Recommended exams upload).
+ * When every interest is on the Default stream only, weighted match caps at 75%.
  *
  * @param {object[]} exams Pool rows (exams_taxonomies)
  * @param {number[]} userInterestIds Up to student's chosen interests (e.g. 3)
@@ -180,11 +249,10 @@ function computeDashboardRecommendedExamOrder(
 
   /** @type {(tags: ReadonlySet<number>) => number} */
   function overlapCount(tags) {
-    if (allInterestsTaggedWithDefault) return 0;
     return normalized.filter((iid) => tags.has(iid)).length;
   }
 
-  /** 33% stream-wise + 25% common, renormalized to 100%; empty channel omitted from denominator */
+  /** 33% stream-wise + 25% common (Default / "Any stream"), renormalized; all-Default interests → max 75%. */
   function blendedWeightedPct(tags) {
     const streamWiseInts = normalized.filter((iid) => Number(interestStreamById.get(iid)) === uid);
     const commonInts = normalized.filter(
@@ -198,6 +266,10 @@ function computeDashboardRecommendedExamOrder(
     const swScore = pct(matchSw, streamWiseInts.length);
     const cmScore = pct(matchCm, commonInts.length);
 
+    if (allInterestsTaggedWithDefault && streamWiseInts.length === 0 && commonInts.length > 0) {
+      return (cmScore * 75) / 100;
+    }
+
     let wDenom = 0;
     let wNum = 0;
     if (streamWiseInts.length > 0) {
@@ -210,6 +282,21 @@ function computeDashboardRecommendedExamOrder(
     }
     if (wDenom <= 0) return 0;
     return wNum / wDenom;
+  }
+
+  /** Lower exam_popularity_rank = more popular (tie-break only for Recommended tab). */
+  function comparePopularityRank(examA, examB) {
+    const ar = examA.exam_popularity_rank;
+    const br = examB.exam_popularity_rank;
+    const aNull = ar == null || ar === '';
+    const bNull = br == null || br === '';
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;
+    if (bNull) return -1;
+    const an = Number(ar);
+    const bn = Number(br);
+    if (an !== bn) return an - bn;
+    return 0;
   }
 
   /** Eligibility lists user's stream → higher relevance */
@@ -237,6 +324,8 @@ function computeDashboardRecommendedExamOrder(
     if (b.overlap !== a.overlap) return b.overlap - a.overlap;
     if (a.sr !== b.sr) return a.sr ? -1 : 1;
     if (b.blended !== a.blended) return b.blended - a.blended;
+    const pop = comparePopularityRank(a.exam, b.exam);
+    if (pop !== 0) return pop;
     return String(a.exam.name || '').localeCompare(String(b.exam.name || ''));
   });
 
@@ -255,6 +344,9 @@ module.exports = {
   getInterestDefaultWeights,
   popularityToDefaultScore,
   dashboardRecommendationFinalScore,
+  buildExamTagsFromStreamInterestMappings,
+  mergeExamTagMaps,
+  collectMappedExamIdsForUserInterests,
   sortExamsByPopularityRank,
   computeRecommendedExamIdsTop20,
   computeDashboardRecommendedExamOrder,

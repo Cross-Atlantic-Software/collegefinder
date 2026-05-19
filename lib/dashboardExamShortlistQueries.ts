@@ -85,6 +85,7 @@ export function useUpdateShortlistedExamMutation() {
         };
       });
       void qc.invalidateQueries({ queryKey: ["dashboard-exams-tab"], exact: false });
+      void qc.invalidateQueries({ queryKey: ["exam-detail"], exact: false });
     },
   });
 }

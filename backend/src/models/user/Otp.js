@@ -36,6 +36,17 @@ class Otp {
       [userId, email]
     );
   }
+
+  static async getRecentOtpCount(email, minutes = 10) {
+    const windowMinutes = Math.max(1, Math.min(60, Number(minutes) || 10));
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count FROM otps
+       WHERE email = $1
+         AND created_at > CURRENT_TIMESTAMP - ($2 * INTERVAL '1 minute')`,
+      [email, windowMinutes]
+    );
+    return result.rows[0]?.count ?? 0;
+  }
 }
 
 module.exports = Otp;

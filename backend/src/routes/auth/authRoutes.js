@@ -323,6 +323,20 @@ router.get('/profile/dashboard-exams/meta', authenticate, ExamsController.getDas
 router.get('/profile/dashboard-exams/tab', authenticate, ExamsController.getDashboardExamsTab);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-exams/exam/:examId
+ * @desc    Single enriched exam for dashboard detail (same enrichment as tab cards)
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/exam/:examId', authenticate, ExamsController.getDashboardExamById);
+
+/**
+ * @route   GET /api/auth/profile/exams/:examId/colleges
+ * @desc    Colleges linked to this exam (college_recommended_exams + program recommended_exam_ids)
+ * @access  Private
+ */
+router.get('/profile/exams/:examId/colleges', authenticate, ProfileCollegesController.getCollegesForExam);
+
+/**
  * @route   GET /api/auth/profile/dashboard-exams
  * @desc    Stream-filtered exams + recommended + shortlisted IDs for dashboard tabs (legacy full payload)
  * @access  Private

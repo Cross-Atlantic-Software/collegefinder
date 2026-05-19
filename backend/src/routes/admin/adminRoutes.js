@@ -844,21 +844,6 @@ router.post(
   requireCanEdit,
   LectureController.enqueuePendingHookSummaries
 );
-router.post(
-  '/lectures/hook-summary-queue/pause',
-  authenticateAdmin,
-  requireModuleAccess('lectures'),
-  requireCanEdit,
-  LectureController.pauseHookSummaryWorker
-);
-router.post(
-  '/lectures/hook-summary-queue/resume',
-  authenticateAdmin,
-  requireModuleAccess('lectures'),
-  requireCanEdit,
-  LectureController.resumeHookSummaryWorker
-);
-
 /**
  * @route   GET /api/admin/lectures/:id
  * @desc    Get lecture by ID
