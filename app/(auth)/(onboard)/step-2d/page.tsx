@@ -17,10 +17,13 @@ export default function StepTwoD() {
   const [districtOptions, setDistrictOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isNavigatingToStep3, setIsNavigatingToStep3] = useState(false);
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { showCompletedLoader, isRedirecting } = useOnboardingCompletedGuard({
+    saving,
+    isNavigatingForward: isNavigatingToStep3,
+  });
   /** When true, the next `selectedState` effect run should not clear district (server / initial hydrate). */
   const skipDistrictReset = useRef(false);
 
