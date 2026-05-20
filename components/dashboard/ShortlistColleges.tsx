@@ -24,7 +24,6 @@ const PER_PAGE = 10;
 type TabCollege = DashboardCollege & {
   detailHref: string;
   displayOverview: string;
-  displaySubtitle: string;
 };
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
