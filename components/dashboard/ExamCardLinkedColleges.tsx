@@ -1,25 +1,105 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Exam } from "@/api/exams";
-import { examCardLinkedCollegeNames } from "@/lib/examDisplay";
+import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
+import { collegeDetailHref } from "@/lib/collegeSlug";
+import { examCardLinkedColleges } from "@/lib/examDisplay";
 
 type ExamCardLinkedCollegesProps = {
   exam: Exam;
+  /**
+   * `inline` — "Colleges:" label + pills (ExamCardBody, same block as Mode/Duration).
+   * `chips` — pills only (ExamShortlistCard, same row style as mode/duration chips).
+   */
+  variant?: "inline" | "chips";
+  /** Parent card is a link — use button navigation to avoid nested anchors. */
+  embedInLink?: boolean;
+  /** Query param for college detail breadcrumbs. */
+  linkFrom?: "exam-card" | "exam-shortlist";
 };
 
-/** College names linked to this exam (max 3). */
-export function ExamCardLinkedColleges({ exam }: ExamCardLinkedCollegesProps) {
-  const names = examCardLinkedCollegeNames(exam);
-  if (!names.length) return null;
+function collegeChipClassName(): string {
+  return `${EXAM_CARD_CHIP_CLASS} cursor-pointer transition-colors hover:bg-slate-200 dark:hover:bg-slate-700`;
+}
+
+function CollegeNameChip({
+  name,
+  href,
+  embedInLink,
+}: {
+  name: string;
+  href: string;
+  embedInLink: boolean;
+}) {
+  const router = useRouter();
+  const className = collegeChipClassName();
+
+  if (embedInLink) {
+    return (
+      <span
+        role="link"
+        tabIndex={0}
+        className={className}
+        title={name}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          router.push(href);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            router.push(href);
+          }
+        }}
+      >
+        {name}
+      </span>
+    );
+  }
 
   return (
-    <div className="space-y-0.5">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Colleges you can get
-      </p>
-      <p className="line-clamp-2 text-[11px] leading-snug text-slate-700 dark:text-slate-300">
-        {names.join(" · ")}
-      </p>
-    </div>
+    <Link
+      href={href}
+      className={className}
+      title={name}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {name}
+    </Link>
+  );
+}
+
+/** Linked colleges on exam cards (max 3), each opens college detail. */
+export function ExamCardLinkedColleges({
+  exam,
+  variant = "inline",
+  embedInLink = false,
+  linkFrom = "exam-card",
+}: ExamCardLinkedCollegesProps) {
+  const colleges = examCardLinkedColleges(exam);
+  if (!colleges.length) return null;
+
+  const pills = colleges.map((college) => (
+    <CollegeNameChip
+      key={`${college.id}-${college.name}`}
+      name={college.name}
+      href={collegeDetailHref(college.name, linkFrom)}
+      embedInLink={embedInLink}
+    />
+  ));
+
+  if (variant === "chips") {
+    return <div className="flex flex-wrap gap-1">{pills}</div>;
+  }
+
+  return (
+    <p className="m-0 flex flex-wrap items-center gap-1">
+      <span className="font-medium text-slate-800 dark:text-slate-200">Colleges: </span>
+      {pills}
+    </p>
   );
 }

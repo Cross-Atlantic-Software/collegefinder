@@ -338,7 +338,7 @@ class ExamsTaxonomyController {
       cutoffs,
       careerRows,
       programRows,
-      collegeNamesByExam,
+      collegePreviewsByExam,
     ] = await Promise.all([
       ExamDates.findByExamIds(ids),
       ExamPattern.findByExamIds(ids),
@@ -346,7 +346,7 @@ class ExamsTaxonomyController {
       ExamCutoff.findByExamIds(ids),
       ExamCareerGoal.findCareerGoalsForExamIds(ids),
       ExamProgram.findProgramsForExamIds(ids),
-      CollegeRecommendedExam.getCollegeNamePreviewsByExamIds(ids, 3),
+      CollegeRecommendedExam.getCollegePreviewsByExamIds(ids, 3),
     ]);
 
     const dateMap = new Map();
@@ -433,7 +433,11 @@ class ExamsTaxonomyController {
         examCutoff: eid != null ? cMap.get(eid) || null : null,
         linkedCareerGoals: eid != null ? careersByExam.get(eid) || [] : [],
         linkedPrograms: eid != null ? programsByExam.get(eid) || [] : [],
-        linkedCollegeNames: eid != null ? collegeNamesByExam.get(eid) || [] : [],
+        linkedColleges: eid != null ? collegePreviewsByExam.get(eid) || [] : [],
+        linkedCollegeNames:
+          eid != null
+            ? (collegePreviewsByExam.get(eid) || []).map((c) => c.name)
+            : [],
       };
     });
   }

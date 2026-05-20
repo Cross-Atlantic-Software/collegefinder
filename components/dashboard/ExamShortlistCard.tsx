@@ -3,6 +3,7 @@
 import { FaHeart, FaRegHeart } from "react-icons/fa";
 import type { Exam } from "@/api/exams";
 import { Button } from "@/components/shared";
+import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import { ExamCardAttemptNegativeRow } from "@/components/dashboard/ExamCardAttemptNegativeRow";
 import { ExamCardLinkedColleges } from "@/components/dashboard/ExamCardLinkedColleges";
@@ -75,11 +76,7 @@ export function ExamShortlistCard({
         {chips.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {chips.map((chip) => (
-              <span
-                key={chip}
-                className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                title={chip}
-              >
+              <span key={chip} className={EXAM_CARD_CHIP_CLASS} title={chip}>
                 {chip}
               </span>
             ))}
@@ -91,7 +88,7 @@ export function ExamShortlistCard({
           negativeMarking={negativeMarking}
         />
 
-        <ExamCardLinkedColleges exam={exam} />
+        <ExamCardLinkedColleges exam={exam} variant="chips" linkFrom="exam-shortlist" />
 
         <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-2">

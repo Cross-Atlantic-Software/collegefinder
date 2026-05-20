@@ -121,9 +121,28 @@ export function examCardNegativeMarking(exam: Exam): string | null {
   return displayScalar(exam.examPattern?.negative_marking);
 }
 
+export type ExamLinkedCollegePreview = { id: number; name: string };
+
+/** Up to 3 linked colleges for exam cards. */
+export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
+  const fromRows = (exam.linkedColleges ?? [])
+    .map((c) => ({
+      id: Number(c.id),
+      name: String(c.name ?? "").trim(),
+    }))
+    .filter((c) => Number.isInteger(c.id) && c.id > 0 && c.name);
+  if (fromRows.length) return fromRows.slice(0, 3);
+
+  return (exam.linkedCollegeNames ?? [])
+    .map((n) => String(n).trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((name, index) => ({ id: -(index + 1), name }));
+}
+
 /** Up to 3 linked college names for exam cards. */
 export function examCardLinkedCollegeNames(exam: Exam): string[] {
-  return (exam.linkedCollegeNames ?? []).map((n) => String(n).trim()).filter(Boolean).slice(0, 3);
+  return examCardLinkedColleges(exam).map((c) => c.name);
 }
 
 /** College-style card overview paragraph. */

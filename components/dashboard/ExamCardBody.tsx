@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Exam } from "@/api/exams";
+import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import { ExamCardAttemptNegativeRow } from "@/components/dashboard/ExamCardAttemptNegativeRow";
 import { ExamCardLinkedColleges } from "@/components/dashboard/ExamCardLinkedColleges";
@@ -10,6 +11,7 @@ import {
   examCardConductingAuthority,
   examCardDescription,
   examCardDuration,
+  examCardLinkedCollegeNames,
   examCardMode,
   examCardNegativeMarking,
   examCardTypeLabel,
@@ -36,6 +38,7 @@ export function ExamCardBody({
   const duration = examCardDuration(exam);
   const attemptLimit = examCardAttemptLimit(exam);
   const negativeMarking = examCardNegativeMarking(exam);
+  const linkedCollegeNames = examCardLinkedCollegeNames(exam);
 
   const moreControl = embedInLink ? (
     <span className="ml-0.5 font-semibold text-slate-900 dark:text-slate-100">...</span>
@@ -68,7 +71,12 @@ export function ExamCardBody({
         </p>
       ) : null}
 
-      {conductingAuthority || mode || duration || attemptLimit || negativeMarking ? (
+      {conductingAuthority ||
+      mode ||
+      duration ||
+      attemptLimit ||
+      negativeMarking ||
+      linkedCollegeNames.length ? (
         <div className="m-0 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
           {conductingAuthority ? (
             <p className="m-0">
@@ -76,22 +84,22 @@ export function ExamCardBody({
             </p>
           ) : null}
           {mode ? (
-            <p className="m-0">
+            <p className="m-0 flex flex-wrap items-center gap-1">
               <span className="font-medium text-slate-800 dark:text-slate-200">Mode: </span>
-              {mode}
+              <span className={EXAM_CARD_CHIP_CLASS}>{mode}</span>
             </p>
           ) : null}
           {duration ? (
-            <p>
+            <p className="m-0 flex flex-wrap items-center gap-1">
               <span className="font-medium text-slate-800 dark:text-slate-200">Duration: </span>
-              {duration}
+              <span className={EXAM_CARD_CHIP_CLASS}>{duration}</span>
             </p>
           ) : null}
           <ExamCardAttemptNegativeRow
             attemptLimit={attemptLimit}
             negativeMarking={negativeMarking}
           />
-          <ExamCardLinkedColleges exam={exam} />
+          <ExamCardLinkedColleges exam={exam} embedInLink={embedInLink} />
         </div>
       ) : null}
     </div>

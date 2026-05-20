@@ -95,7 +95,9 @@ export interface Exam {
   examCutoff?: ExamCutoffPublic | null;
   linkedCareerGoals?: ExamCareerGoalLink[];
   linkedPrograms?: ExamProgramLink[];
-  /** Up to 3 college names for dashboard exam cards. */
+  /** Up to 3 linked colleges for dashboard exam cards. */
+  linkedColleges?: { id: number; name: string }[];
+  /** @deprecated Prefer linkedColleges — names only. */
   linkedCollegeNames?: string[];
 }
 

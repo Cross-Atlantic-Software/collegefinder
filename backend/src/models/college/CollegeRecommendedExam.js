@@ -81,10 +81,10 @@ class CollegeRecommendedExam {
   }
 
   /**
-   * Up to `limitPerExam` college names per exam (college + program level links).
-   * @returns {Map<number, string[]>}
+   * Up to `limitPerExam` linked colleges per exam (college + program level links).
+   * @returns {Map<number, { id: number, name: string }[]>}
    */
-  static async getCollegeNamePreviewsByExamIds(examIds, limitPerExam = 3) {
+  static async getCollegePreviewsByExamIds(examIds, limitPerExam = 3) {
     if (!examIds || !Array.isArray(examIds) || examIds.length === 0) {
       return new Map();
     }
@@ -107,13 +107,13 @@ class CollegeRecommendedExam {
            AND btrim(tok.raw)::int = ANY($1::int[])
        ),
        ranked AS (
-         SELECT m.exam_id, c.college_name,
+         SELECT m.exam_id, m.college_id, c.college_name,
            ROW_NUMBER() OVER (PARTITION BY m.exam_id ORDER BY c.college_name ASC) AS rn
          FROM matched m
          INNER JOIN colleges c ON c.id = m.college_id
          WHERE c.college_name IS NOT NULL AND btrim(c.college_name) <> ''
        )
-       SELECT exam_id, college_name
+       SELECT exam_id, college_id, college_name
        FROM ranked
        WHERE rn <= $2
        ORDER BY exam_id, rn`,
@@ -123,11 +123,26 @@ class CollegeRecommendedExam {
     const map = new Map();
     for (const row of result.rows) {
       const k = Number(row.exam_id);
-      if (!Number.isInteger(k)) continue;
+      const collegeId = Number(row.college_id);
+      const name = String(row.college_name).trim();
+      if (!Number.isInteger(k) || !Number.isInteger(collegeId) || !name) continue;
       if (!map.has(k)) map.set(k, []);
-      map.get(k).push(String(row.college_name).trim());
+      map.get(k).push({ id: collegeId, name });
     }
     return map;
+  }
+
+  /** @deprecated Use getCollegePreviewsByExamIds — names only. */
+  static async getCollegeNamePreviewsByExamIds(examIds, limitPerExam = 3) {
+    const previews = await this.getCollegePreviewsByExamIds(examIds, limitPerExam);
+    const namesOnly = new Map();
+    for (const [examId, rows] of previews.entries()) {
+      namesOnly.set(
+        examId,
+        rows.map((r) => r.name)
+      );
+    }
+    return namesOnly;
   }
 
   static async setExamsForCollege(collegeId, examIds) {
