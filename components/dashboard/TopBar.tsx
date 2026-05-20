@@ -16,6 +16,11 @@ type TopBarProps = {
     searchValue: string;
     onSearchChange: (value: string) => void;
   };
+  /** When user is on College Shortlist */
+  collegeShortlistToolbar?: {
+    searchValue: string;
+    onSearchChange: (value: string) => void;
+  };
 };
 
 export default function TopBar({
@@ -23,7 +28,9 @@ export default function TopBar({
   onToggleCollapse,
   isSidebarCollapsed,
   examShortlistToolbar,
+  collegeShortlistToolbar,
 }: TopBarProps) {
+  const shortlistToolbar = examShortlistToolbar ?? collegeShortlistToolbar;
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -63,22 +70,22 @@ export default function TopBar({
         <div className="flex-1 flex items-center gap-3">
           <div
             className={`flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20 ${
-              examShortlistToolbar ? "flex" : "hidden md:flex"
+              shortlistToolbar ? "flex" : "hidden md:flex"
             }`}
           >
             <BiSearch className="h-4 w-4 flex-shrink-0" />
-            {/* Single controlled input: switching branch left the disabled input uncontrolled
-                and the active one controlled, which triggered React's warning on section change. */}
             <input
               placeholder={
                 examShortlistToolbar
                   ? "Search by name, mode, duration, attempts, type, authority…"
-                  : "Search opens on Exam Shortlist (sidebar)"
+                  : collegeShortlistToolbar
+                    ? "Search by college name, city, state, type, exams…"
+                    : "Search on Exam or College Shortlist (sidebar)"
               }
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
-              value={examShortlistToolbar?.searchValue ?? ""}
-              onChange={(e) => examShortlistToolbar?.onSearchChange(e.target.value)}
-              disabled={!examShortlistToolbar}
+              value={shortlistToolbar?.searchValue ?? ""}
+              onChange={(e) => shortlistToolbar?.onSearchChange(e.target.value)}
+              disabled={!shortlistToolbar}
             />
           </div>
         </div>

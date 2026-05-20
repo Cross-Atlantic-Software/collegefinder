@@ -87,6 +87,7 @@ export interface Exam {
   website?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
+  total_mocks_generated?: number | null;
   created_at: string;
   updated_at: string;
   examDates?: ExamDatesPublic | null;

@@ -1,6 +1,17 @@
 const db = require('../../config/database');
 
 class CollegeSeatMatrix {
+  static async findByCollegeProgramIds(collegeProgramIds) {
+    if (!collegeProgramIds?.length) return [];
+    const result = await db.query(
+      `SELECT * FROM college_seat_matrix
+       WHERE college_program_id = ANY($1::int[])
+       ORDER BY college_program_id, year DESC NULLS LAST, id`,
+      [collegeProgramIds]
+    );
+    return result.rows;
+  }
+
   static async findByCollegeProgramId(collegeProgramId) {
     const result = await db.query(
       'SELECT * FROM college_seat_matrix WHERE college_program_id = $1 ORDER BY year DESC, id',

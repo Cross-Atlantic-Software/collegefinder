@@ -157,7 +157,8 @@ const runMigrations = async () => {
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',
     'add_exam_adapters_and_fill_reports.sql',
-    'add_exam_adapter_drafts.sql'
+    'add_exam_adapter_drafts.sql',
+    'add_colleges_linked_exam_count.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

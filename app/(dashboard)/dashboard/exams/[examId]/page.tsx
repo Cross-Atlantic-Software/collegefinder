@@ -100,6 +100,7 @@ function ExamDetailShell({
         onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
         activeSection="exam-shortlist"
         onSectionChange={onSectionChange}
+        loadShortlistCounts={false}
       />
       <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
         <TopBar

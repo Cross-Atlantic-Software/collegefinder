@@ -363,6 +363,28 @@ export async function getRecommendedColleges(): Promise<ApiResponse<{
   });
 }
 
+export interface DashboardCollegeCutoffRow {
+  id?: number;
+  college_program_id?: number;
+  exam_id?: number;
+  exam_name?: string | null;
+  exam_code?: string | null;
+  branch?: string | null;
+  category?: string | null;
+  cutoff_rank?: number | null;
+  expected_rank?: number | null;
+  year?: number | null;
+}
+
+export interface DashboardCollegeSeatRow {
+  id?: number;
+  college_program_id?: number;
+  branch?: string | null;
+  category?: string | null;
+  seat_count?: number | null;
+  year?: number | null;
+}
+
 /** Admin-linked college payload for dashboard shortlist tabs */
 export interface DashboardCollegeProgram {
   id: number;
@@ -371,7 +393,24 @@ export interface DashboardCollegeProgram {
   program_name?: string | null;
   intake_capacity?: number | null;
   duration_years?: number | null;
+  duration_unit?: string | null;
   branch_course?: string | null;
+  program_description?: string | null;
+  key_dates_summary?: string | null;
+  fee_per_semester?: number | string | null;
+  total_fee?: number | string | null;
+  placement?: string | null;
+  scholarship?: string | null;
+  counselling_process?: string | null;
+  documents_required?: string | null;
+  contact_email?: string | null;
+  contact_number?: string | null;
+  brochure_url?: string | null;
+  previousCutoffs?: DashboardCollegeCutoffRow[];
+  expectedCutoffs?: DashboardCollegeCutoffRow[];
+  seatMatrix?: DashboardCollegeSeatRow[];
+  /** Resolved from recommended_exam_ids — display names only. */
+  recommendedExamNames?: string[];
   [key: string]: unknown;
 }
 
@@ -387,6 +426,7 @@ export interface DashboardCollege {
   state?: string | null;
   city?: string | null;
   parent_university?: string | null;
+  linked_exam_count?: number;
   created_at?: string;
   updated_at?: string;
   collegeDetails?: { college_description?: string | null; major_program_ids?: unknown } | null;
@@ -395,6 +435,7 @@ export interface DashboardCollege {
   counsellingSteps?: Array<{ step_number?: number | null; description?: string | null }>;
   programs?: DashboardCollegeProgram[];
   linkedExams?: Array<{ id: number; name: string; code: string | null }>;
+  majorProgramNames?: string[];
 }
 
 /**
@@ -413,12 +454,75 @@ export async function getCollegesForExam(
   });
 }
 
+export type DashboardCollegeTabId = 'recommended' | 'shortlisted' | 'all';
+
+export interface DashboardCollegesPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface DashboardCollegesTabTotals {
+  all: number;
+  recommended: number;
+  shortlisted: number;
+}
+
+/** Lightweight meta for sidebar + React Query (no enriched rows). */
+export async function getDashboardCollegesMeta(): Promise<ApiResponse<{
+  streamId: number | null;
+  shortlistedCollegeIds: number[];
+  tabTotals: DashboardCollegesTabTotals;
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_COLLEGES_META, {
+    method: 'GET',
+  });
+}
+
+/** Single tab page; server sorts then enriches only this page. */
+export async function getDashboardCollegesTab(
+  tab: DashboardCollegeTabId,
+  params: { page?: number; limit?: number; search?: string } = {}
+): Promise<ApiResponse<{
+  streamId: number | null;
+  tab: DashboardCollegeTabId;
+  colleges: DashboardCollege[];
+  shortlistedCollegeIds: number[];
+  pagination: DashboardCollegesPagination;
+  message?: string;
+}>> {
+  const sp = new URLSearchParams();
+  sp.set('tab', tab);
+  if (params.page != null) sp.set('page', String(params.page));
+  if (params.limit != null) sp.set('limit', String(params.limit));
+  if (params.search?.trim()) sp.set('search', params.search.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_COLLEGES_TAB}?${sp.toString()}`,
+    { method: 'GET' }
+  );
+}
+
+/** College detail by numeric id or URL slug. */
+export async function getDashboardCollegeByRef(
+  collegeRef: string
+): Promise<ApiResponse<{
+  college: DashboardCollege;
+  shortlistedCollegeIds: number[];
+}>> {
+  const ref = encodeURIComponent(collegeRef.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_COLLEGE_DETAIL}/${ref}`,
+    { method: 'GET' }
+  );
+}
+
+/** @deprecated Use getDashboardCollegesMeta — legacy alias. */
 export async function getDashboardColleges(): Promise<ApiResponse<{
   streamId: number | null;
-  allColleges: DashboardCollege[];
-  recommendedColleges: DashboardCollege[];
-  shortlistedColleges: DashboardCollege[];
   shortlistedCollegeIds: number[];
+  tabTotals?: DashboardCollegesTabTotals;
   message?: string;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_COLLEGES, {

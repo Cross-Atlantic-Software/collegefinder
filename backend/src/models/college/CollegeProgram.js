@@ -1,4 +1,5 @@
 const db = require('../../config/database');
+const { refreshLinkedExamCountForCollege } = require('../../services/collegeExamLinkCount');
 
 class CollegeProgram {
   static async findByCollegeId(collegeId) {
@@ -55,11 +56,13 @@ class CollegeProgram {
         recommended_exam_ids || null, contact_email || null, contact_number || null, brochure_url || null
       ]
     );
+    await refreshLinkedExamCountForCollege(college_id);
     return result.rows[0];
   }
 
   static async deleteByCollegeId(collegeId) {
     await db.query('DELETE FROM college_programs WHERE college_id = $1', [collegeId]);
+    await refreshLinkedExamCountForCollege(collegeId);
   }
 }
 

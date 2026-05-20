@@ -6,7 +6,7 @@ const { computeRecommendedExamIdsTop20 } = require('../../services/examDashboard
 
 /**
  * Stream + exam ID sets used by dashboard college / institute / scholarship shortlist tabs.
- * Mirrors logic in collegesController.getDashboardColleges.
+ * Legacy stream exam IDs only. Dashboard colleges use loadDashboardExamShortlistContext via collegesController.
  */
 async function getDashboardStreamExamContext(userId) {
   const [academics, careerGoalsRow] = await Promise.all([

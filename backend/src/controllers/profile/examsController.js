@@ -2387,4 +2387,5 @@ class ExamsTaxonomyController {
 }
 
 module.exports = ExamsTaxonomyController;
+module.exports.loadDashboardExamShortlistContext = loadDashboardExamShortlistContext;
 

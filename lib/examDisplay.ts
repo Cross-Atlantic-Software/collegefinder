@@ -208,6 +208,7 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     if (f) arr.push(f);
   };
 
+  push(overview, field("Exam name", exam.name));
   push(overview, field("Exam code", exam.code));
   push(overview, field("Exam type", exam.exam_type));
   push(overview, field("Conducting authority", exam.conducting_authority));
@@ -223,12 +224,28 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   push(overview, field("Website", exam.website));
   push(overview, field("Counselling", exam.counselling));
   push(overview, field("Documents required", exam.documents_required));
+  const logo = examLogoUrl(exam);
+  if (logo) push(overview, field("Logo", logo));
+  if (exam.exam_popularity_rank != null && Number.isFinite(Number(exam.exam_popularity_rank))) {
+    push(overview, field("Popularity rank", exam.exam_popularity_rank));
+  }
+  if (
+    exam.total_mocks_generated != null &&
+    Number.isFinite(Number(exam.total_mocks_generated))
+  ) {
+    push(overview, field("Mock tests generated", exam.total_mocks_generated));
+  }
+  const linkedCollegeCount =
+    exam.linkedColleges?.length ?? exam.linkedCollegeNames?.length ?? 0;
+  if (linkedCollegeCount > 0) {
+    push(overview, field("Colleges listing this exam", linkedCollegeCount));
+  }
   if (hasDisplayValue(exam.description)) {
     push(overview, field("Description", exam.description));
   }
-  if (overview.length) {
-    sections.push({ id: "overview", title: "Overview", fields: overview });
-  }
+  push(overview, field("Last updated", formatExamDate(exam.updated_at)));
+  push(overview, field("Created", formatExamDate(exam.created_at)));
+  sections.push({ id: "overview", title: "Exam information", fields: overview });
 
   const dates: ExamField[] = [];
   const ed = exam.examDates;
@@ -300,25 +317,27 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     sections.push({ id: "cutoff", title: "Cutoff & benchmarks", fields: cutoff });
   }
 
-  const programs = (exam.linkedPrograms ?? [])
-    .map((p) => p.name?.trim())
-    .filter(Boolean);
+  const programs = (exam.linkedPrograms ?? []).filter((p) => p.name?.trim());
   if (programs.length) {
     sections.push({
       id: "programs",
       title: "Linked programs",
-      fields: [{ label: "Programs", value: programs.join(", ") }],
+      fields: programs.map((p, i) => ({
+        label: programs.length > 1 ? `Program ${i + 1}` : "Program",
+        value: p.name!.trim(),
+      })),
     });
   }
 
-  const interests = (exam.linkedCareerGoals ?? [])
-    .map((g) => g.label?.trim())
-    .filter(Boolean);
+  const interests = (exam.linkedCareerGoals ?? []).filter((g) => g.label?.trim());
   if (interests.length) {
     sections.push({
       id: "interests",
-      title: "Linked interests",
-      fields: [{ label: "Career goals", value: interests.join(", ") }],
+      title: "Linked career interests",
+      fields: interests.map((g, i) => ({
+        label: interests.length > 1 ? `Interest ${i + 1}` : "Interest",
+        value: g.label!.trim(),
+      })),
     });
   }
 

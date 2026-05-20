@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { DashboardCollege } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
+import { collegeCardSubtitle, collegeLocationLine, collegeOverviewText } from "@/lib/collegeDisplay";
+import { slugifyCollegeName } from "@/lib/collegeSlug";
 
 const LOCAL_COLLEGE_IMAGES = [
   "/college/image.png",
@@ -13,27 +15,10 @@ const LOCAL_COLLEGE_IMAGES = [
 
 const PREVIEW_COUNT = 3;
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
 function collegeLogo(c: DashboardCollege): string {
   return (
     resolveCollegeLogoSrc(c) ??
     LOCAL_COLLEGE_IMAGES[Math.abs(c.id) % LOCAL_COLLEGE_IMAGES.length]
-  );
-}
-
-function locationLine(c: DashboardCollege): string {
-  return (
-    c.college_location?.trim() ||
-    [c.city, c.state].filter(Boolean).join(", ") ||
-    "Location not listed"
   );
 }
 
@@ -86,7 +71,7 @@ export function ExamDetailLinkedColleges({
           {preview.map((college) => (
             <Link
               key={college.id}
-              href={`/dashboard/colleges/${slugify(college.college_name)}?from=exam-detail`}
+              href={`/dashboard/colleges/${slugifyCollegeName(college.college_name)}?from=exam-detail`}
               className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-[#F6F8FA] transition hover:border-[#FAD53C] hover:shadow-sm dark:border-slate-800 dark:bg-slate-950"
             >
               <div className="relative aspect-[23/9] overflow-hidden bg-slate-200 dark:bg-slate-800">
@@ -103,11 +88,16 @@ export function ExamDetailLinkedColleges({
                   {college.college_name}
                 </h3>
                 <p className="line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-                  {college.college_type || "College"}
+                  {collegeCardSubtitle(college) || college.college_type || "College"}
                 </p>
                 <p className="line-clamp-1 text-[11px] text-slate-600 dark:text-slate-400">
-                  {locationLine(college)}
+                  {collegeLocationLine(college) || "Location not listed"}
                 </p>
+                {collegeOverviewText(college) ? (
+                  <p className="line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    {collegeOverviewText(college)}
+                  </p>
+                ) : null}
               </div>
             </Link>
           ))}

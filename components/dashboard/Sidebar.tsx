@@ -67,6 +67,8 @@ type SidebarProps = {
   onSectionChange: (id: SectionId) => void;
   activeSubSection?: string;
   onSubSectionChange?: (id: string) => void;
+  /** When false, skips college/institute/scholarship meta APIs (detail routes). */
+  loadShortlistCounts?: boolean;
 };
 
 const baseNavItems: {
@@ -185,6 +187,7 @@ export default function Sidebar({
   onSectionChange,
   activeSubSection,
   onSubSectionChange,
+  loadShortlistCounts = true,
 }: SidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -194,9 +197,13 @@ export default function Sidebar({
   const { data: completionData } = useProfileCompletionQuery();
   const completionPercentage = completionData?.percentage ?? 0;
   const { data: examsCount = 0 } = useExamsCountQuery();
-  const { data: collegesData, refetch: refetchColleges } = useDashboardCollegesQuery();
-  const { data: institutesData, refetch: refetchInstitutes } = useDashboardInstitutesQuery();
-  const { data: scholarshipsData, refetch: refetchScholarships } = useDashboardScholarshipsQuery();
+  const { data: collegesData } = useDashboardCollegesQuery(loadShortlistCounts);
+  const { data: institutesData } = useDashboardInstitutesQuery(
+    loadShortlistCounts && activeSection === "coaching-institutes"
+  );
+  const { data: scholarshipsData } = useDashboardScholarshipsQuery(
+    loadShortlistCounts && activeSection === "scholarships"
+  );
   const shortlistedCollegesCount = collegesData?.shortlistedCollegeIds?.length ?? 0;
   const shortlistedInstitutesCount = institutesData?.shortlistedInstituteIds?.length ?? 0;
   const shortlistedScholarshipsCount = scholarshipsData?.shortlistedScholarshipIds?.length ?? 0;
@@ -207,19 +214,6 @@ export default function Sidebar({
       setExamPrepExpanded(true);
     }
   }, [activeSection]);
-
-  useEffect(() => {
-    if (activeSection === "college-shortlist") {
-      void refetchColleges();
-    }
-  }, [activeSection, refetchColleges]);
-
-  useEffect(() => {
-    if (activeSection === "coaching-institutes" || activeSection === "scholarships") {
-      void refetchInstitutes();
-      void refetchScholarships();
-    }
-  }, [activeSection, refetchInstitutes, refetchScholarships]);
 
   // Create navItems with dynamic values (Mock Test: exam count; shortlists: shortlisted counts)
   const navItems = baseNavItems.map(item => ({
