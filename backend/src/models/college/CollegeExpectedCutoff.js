@@ -1,6 +1,19 @@
 const db = require('../../config/database');
 
 class CollegeExpectedCutoff {
+  static async findByCollegeProgramIds(collegeProgramIds) {
+    if (!collegeProgramIds?.length) return [];
+    const result = await db.query(
+      `SELECT cec.*, e.name AS exam_name, e.code AS exam_code
+       FROM college_expected_cutoff cec
+       LEFT JOIN exams_taxonomies e ON e.id = cec.exam_id
+       WHERE cec.college_program_id = ANY($1::int[])
+       ORDER BY cec.college_program_id, cec.year DESC NULLS LAST, cec.id`,
+      [collegeProgramIds]
+    );
+    return result.rows;
+  }
+
   static async findByCollegeProgramId(collegeProgramId) {
     const result = await db.query(
       'SELECT * FROM college_expected_cutoff WHERE college_program_id = $1 ORDER BY year DESC, id',

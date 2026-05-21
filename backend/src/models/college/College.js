@@ -73,10 +73,41 @@ class College {
     return result.rows;
   }
 
+  /** Preserve caller sort order (dashboard tab pagination). */
+  static async findByIdsPreservingOrder(ids) {
+    if (!ids?.length) return [];
+    const validIds = ids.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!validIds.length) return [];
+    const result = await db.query(
+      `SELECT c.*
+       FROM colleges c
+       INNER JOIN unnest($1::int[]) WITH ORDINALITY AS t(id, ord) ON c.id = t.id
+       ORDER BY t.ord`,
+      [validIds]
+    );
+    return result.rows;
+  }
+
   static async findByName(name) {
     const result = await db.query(
       'SELECT * FROM colleges WHERE LOWER(college_name) = LOWER($1)',
       [name]
+    );
+    return result.rows[0] || null;
+  }
+
+  /** Match dashboard route slug (`slugifyCollegeName`). */
+  static async findBySlug(slug) {
+    const s = slug != null ? String(slug).trim().toLowerCase() : '';
+    if (!s) return null;
+    const result = await db.query(
+      `SELECT * FROM colleges
+       WHERE regexp_replace(
+         regexp_replace(lower(trim(college_name)), '[^a-z0-9]+', '-', 'g'),
+         '(^-+|-+$)', '', 'g'
+       ) = $1
+       LIMIT 1`,
+      [s]
     );
     return result.rows[0] || null;
   }

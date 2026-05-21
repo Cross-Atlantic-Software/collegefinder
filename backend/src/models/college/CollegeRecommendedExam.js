@@ -1,4 +1,8 @@
 const db = require('../../config/database');
+const {
+  refreshLinkedExamCountForCollege,
+  refreshLinkedExamCountForColleges,
+} = require('../../services/collegeExamLinkCount');
 
 class CollegeRecommendedExam {
   static async getExamIdsByCollegeId(collegeId) {
@@ -80,9 +84,151 @@ class CollegeRecommendedExam {
     return result.rows;
   }
 
+  /**
+   * Up to `limitPerExam` linked colleges per exam (college + program level links).
+   * @returns {Map<number, { id: number, name: string }[]>}
+   */
+  static async getCollegePreviewsByExamIds(examIds, limitPerExam = 3) {
+    if (!examIds || !Array.isArray(examIds) || examIds.length === 0) {
+      return new Map();
+    }
+    const ids = examIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return new Map();
+
+    const limit = Math.max(1, Math.min(parseInt(limitPerExam, 10) || 3, 10));
+    const result = await db.query(
+      `WITH matched AS (
+         SELECT cre.exam_id, cre.college_id
+         FROM college_recommended_exams cre
+         WHERE cre.exam_id = ANY($1::int[])
+         UNION
+         SELECT btrim(tok.raw)::int AS exam_id, cp.college_id
+         FROM college_programs cp
+         CROSS JOIN LATERAL unnest(string_to_array(cp.recommended_exam_ids, ',')) AS tok(raw)
+         WHERE cp.recommended_exam_ids IS NOT NULL
+           AND btrim(cp.recommended_exam_ids) <> ''
+           AND btrim(tok.raw) ~ '^[0-9]+$'
+           AND btrim(tok.raw)::int = ANY($1::int[])
+       ),
+       ranked AS (
+         SELECT m.exam_id, m.college_id, c.college_name,
+           ROW_NUMBER() OVER (PARTITION BY m.exam_id ORDER BY c.college_name ASC) AS rn
+         FROM matched m
+         INNER JOIN colleges c ON c.id = m.college_id
+         WHERE c.college_name IS NOT NULL AND btrim(c.college_name) <> ''
+       )
+       SELECT exam_id, college_id, college_name
+       FROM ranked
+       WHERE rn <= $2
+       ORDER BY exam_id, rn`,
+      [ids, limit]
+    );
+
+    const map = new Map();
+    for (const row of result.rows) {
+      const k = Number(row.exam_id);
+      const collegeId = Number(row.college_id);
+      const name = String(row.college_name).trim();
+      if (!Number.isInteger(k) || !Number.isInteger(collegeId) || !name) continue;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push({ id: collegeId, name });
+    }
+    return map;
+  }
+
+  /**
+   * Distinct exam link count per college (college + program level, all exams in DB).
+   * @returns {Map<number, number>}
+   */
+  static async getDistinctExamCountsByCollegeIds(collegeIds) {
+    if (!collegeIds?.length) return new Map();
+    const ids = collegeIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return new Map();
+
+    const result = await db.query(
+      `SELECT college_id, COUNT(DISTINCT exam_id)::int AS exam_count
+       FROM (
+         SELECT college_id, exam_id
+         FROM college_recommended_exams
+         WHERE college_id = ANY($1::int[])
+         UNION
+         SELECT cp.college_id, btrim(tok.raw)::int AS exam_id
+         FROM college_programs cp
+         CROSS JOIN LATERAL unnest(string_to_array(cp.recommended_exam_ids, ',')) AS tok(raw)
+         WHERE cp.college_id = ANY($1::int[])
+           AND cp.recommended_exam_ids IS NOT NULL
+           AND btrim(cp.recommended_exam_ids) <> ''
+           AND btrim(tok.raw) ~ '^[0-9]+$'
+       ) AS links
+       GROUP BY college_id`,
+      [ids]
+    );
+
+    const map = new Map();
+    for (const row of result.rows) {
+      map.set(Number(row.college_id), Number(row.exam_count) || 0);
+    }
+    return map;
+  }
+
+  /**
+   * Distinct exam IDs linked to each college (for tier sorting).
+   * @returns {Map<number, number[]>}
+   */
+  static async getExamIdsMapByCollegeIds(collegeIds) {
+    if (!collegeIds?.length) return new Map();
+    const ids = collegeIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return new Map();
+
+    const result = await db.query(
+      `SELECT college_id, exam_id
+       FROM (
+         SELECT college_id, exam_id
+         FROM college_recommended_exams
+         WHERE college_id = ANY($1::int[])
+         UNION
+         SELECT cp.college_id, btrim(tok.raw)::int AS exam_id
+         FROM college_programs cp
+         CROSS JOIN LATERAL unnest(string_to_array(cp.recommended_exam_ids, ',')) AS tok(raw)
+         WHERE cp.college_id = ANY($1::int[])
+           AND cp.recommended_exam_ids IS NOT NULL
+           AND btrim(cp.recommended_exam_ids) <> ''
+           AND btrim(tok.raw) ~ '^[0-9]+$'
+       ) AS links`,
+      [ids]
+    );
+
+    const map = new Map();
+    for (const row of result.rows) {
+      const cid = Number(row.college_id);
+      const eid = Number(row.exam_id);
+      if (!Number.isInteger(cid) || !Number.isInteger(eid)) continue;
+      if (!map.has(cid)) map.set(cid, []);
+      const arr = map.get(cid);
+      if (!arr.includes(eid)) arr.push(eid);
+    }
+    return map;
+  }
+
+  /** @deprecated Use getCollegePreviewsByExamIds — names only. */
+  static async getCollegeNamePreviewsByExamIds(examIds, limitPerExam = 3) {
+    const previews = await this.getCollegePreviewsByExamIds(examIds, limitPerExam);
+    const namesOnly = new Map();
+    for (const [examId, rows] of previews.entries()) {
+      namesOnly.set(
+        examId,
+        rows.map((r) => r.name)
+      );
+    }
+    return namesOnly;
+  }
+
   static async setExamsForCollege(collegeId, examIds) {
     await db.query('DELETE FROM college_recommended_exams WHERE college_id = $1', [collegeId]);
-    if (!examIds || !Array.isArray(examIds) || examIds.length === 0) return [];
+    if (!examIds || !Array.isArray(examIds) || examIds.length === 0) {
+      await refreshLinkedExamCountForCollege(collegeId);
+      return [];
+    }
     const created = [];
     for (const examId of examIds) {
       const row = await db.query(
@@ -91,11 +237,13 @@ class CollegeRecommendedExam {
       );
       if (row.rows[0]) created.push(row.rows[0]);
     }
+    await refreshLinkedExamCountForCollege(collegeId);
     return created;
   }
 
   static async deleteByCollegeId(collegeId) {
     await db.query('DELETE FROM college_recommended_exams WHERE college_id = $1', [collegeId]);
+    await refreshLinkedExamCountForCollege(collegeId);
   }
 
   /**
@@ -111,6 +259,7 @@ class CollegeRecommendedExam {
       );
       if (row.rows[0]) created.push(row.rows[0]);
     }
+    await refreshLinkedExamCountForColleges([...new Set(collegeIds)]);
     return created;
   }
 }

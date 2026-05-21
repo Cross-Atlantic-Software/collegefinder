@@ -160,7 +160,7 @@ export default function ExamDirectoryPage() {
                       </div>
                       <ExamLogo exam={exam} className="h-14 w-14 p-1" />
                     </div>
-                    <div className="mt-3">
+                    <div className="mt-1.5">
                       <ExamCardBody
                         exam={exam}
                         detailHref={`/dashboard/exams/${exam.id}?from=exam-directory`}

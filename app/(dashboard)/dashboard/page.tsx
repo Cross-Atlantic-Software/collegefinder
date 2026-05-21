@@ -68,10 +68,14 @@ function DashboardPageContent() {
   );
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
   const [examSearchQuery, setExamSearchQuery] = useState("");
+  const [collegeSearchQuery, setCollegeSearchQuery] = useState("");
 
   useEffect(() => {
     if (activeSection !== "exam-shortlist") {
       setExamSearchQuery("");
+    }
+    if (activeSection !== "college-shortlist") {
+      setCollegeSearchQuery("");
     }
   }, [activeSection]);
 
@@ -146,6 +150,11 @@ function DashboardPageContent() {
               ? { searchValue: examSearchQuery, onSearchChange: setExamSearchQuery }
               : undefined
           }
+          collegeShortlistToolbar={
+            activeSection === "college-shortlist"
+              ? { searchValue: collegeSearchQuery, onSearchChange: setCollegeSearchQuery }
+              : undefined
+          }
         />
 
         <div className="flex flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
@@ -179,7 +188,9 @@ function DashboardPageContent() {
                   <ShortlistExams searchQuery={examSearchQuery} />
                 )}
 
-                {activeSection === "college-shortlist" && <ShortlistColleges />}
+                {activeSection === "college-shortlist" && (
+                  <ShortlistColleges searchQuery={collegeSearchQuery} />
+                )}
 
                 {activeSection === "coaching-institutes" && <ShortlistInstitutes />}
 

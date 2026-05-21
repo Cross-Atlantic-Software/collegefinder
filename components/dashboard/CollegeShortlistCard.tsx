@@ -1,94 +1,86 @@
 "use client";
 
 import { FaHeart, FaRegHeart } from "react-icons/fa";
-import type { Exam } from "@/api/exams";
+import type { DashboardCollege } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
-import { ExamCardAttemptNegativeRow } from "@/components/dashboard/ExamCardAttemptNegativeRow";
-import { ExamCardLinkedColleges } from "@/components/dashboard/ExamCardLinkedColleges";
-import { ExamLogo } from "@/components/dashboard/ExamLogo";
-import {
-  examCardAttemptLimit,
-  examCardConductingAuthority,
-  examCardNegativeMarking,
-  examCardOverview,
-  examCardTagChips,
-  examCardTypeLabel,
-} from "@/lib/examDisplay";
+import { CollegeLogo } from "@/components/dashboard/CollegeLogo";
+import { collegeLocationLine } from "@/lib/collegeDisplay";
 
-export type ExamShortlistCardProps = {
-  exam: Exam;
-  name: string;
+export type CollegeShortlistCardProps = {
+  college: DashboardCollege;
   detailHref: string;
-  tabSource: string;
+  displayOverview: string;
   isShortlisted: boolean;
   shortlistSaving: boolean;
   onShortlist: () => void;
-  onApply: () => void;
-  onPrefetchDetail?: () => void;
 };
 
-export function ExamShortlistCard({
-  exam,
-  name,
+export function CollegeShortlistCard({
+  college,
   detailHref,
-  tabSource: _tabSource,
+  displayOverview,
   isShortlisted,
   shortlistSaving,
   onShortlist,
-  onApply,
-  onPrefetchDetail,
-}: ExamShortlistCardProps) {
-  const examType = examCardTypeLabel(exam);
-  const conductingAuthority = examCardConductingAuthority(exam);
-  const overview = examCardOverview(exam);
-  const chips = examCardTagChips(exam);
-  const attemptLimit = examCardAttemptLimit(exam);
-  const negativeMarking = examCardNegativeMarking(exam);
+}: CollegeShortlistCardProps) {
+  const location = collegeLocationLine(college);
+  const collegeType = college.college_type?.trim();
+
+  const examChips = (college.linkedExams ?? []).slice(0, 4).map((ex) => ({
+    key: ex.id,
+    label: ex.code?.trim() || ex.name,
+    title: ex.name,
+  }));
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
       <div className="flex gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
         <div className="min-w-0 flex-1 space-y-1">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
-            {name}
+            {college.college_name}
           </h3>
-          {conductingAuthority ? (
+          {collegeType ? (
             <p>
-              <ExamCardHoverField label="Conducting authority" value={conductingAuthority} />
-            </p>
-          ) : null}
-          {examType ? (
-            <p>
-              <ExamCardHoverField label="Exam type" value={examType} />
+              <ExamCardHoverField label="College type" value={collegeType} />
             </p>
           ) : null}
         </div>
-        <ExamLogo exam={exam} className="h-16 w-16 shrink-0 p-1.5" />
+        <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
         <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-          {overview}
+          {displayOverview}
         </p>
 
-        {chips.length > 0 ? (
+        {location ? (
+          <p className="m-0">
+            <ExamCardHoverField label="Location" value={location} />
+          </p>
+        ) : null}
+
+        {examChips.length > 0 ? (
           <div className="flex flex-wrap gap-1">
-            {chips.map((chip) => (
-              <span key={chip} className={EXAM_CARD_CHIP_CLASS} title={chip}>
-                {chip}
+            {examChips.map((chip) => (
+              <span key={chip.key} className={EXAM_CARD_CHIP_CLASS} title={chip.title}>
+                {chip.label}
               </span>
             ))}
+            {(college.linkedExams?.length ?? 0) > 4 ? (
+              <span className={EXAM_CARD_CHIP_CLASS}>
+                +{(college.linkedExams?.length ?? 0) - 4}
+              </span>
+            ) : null}
           </div>
         ) : null}
 
-        <ExamCardAttemptNegativeRow
-          attemptLimit={attemptLimit}
-          negativeMarking={negativeMarking}
-        />
-
-        <ExamCardLinkedColleges exam={exam} variant="chips" linkFrom="exam-shortlist" />
+        {college.parent_university?.trim() ? (
+          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400" title={college.parent_university}>
+            {college.parent_university}
+          </p>
+        ) : null}
 
         <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-2">
@@ -96,8 +88,6 @@ export function ExamShortlistCard({
               variant="themeButtonOutline"
               size="sm"
               href={detailHref}
-              onMouseEnter={onPrefetchDetail}
-              onFocus={onPrefetchDetail}
               className="w-full justify-center !rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
             >
               View
@@ -105,8 +95,7 @@ export function ExamShortlistCard({
             <Button
               variant="themeButton"
               size="sm"
-              type="button"
-              onClick={onApply}
+              href="/dashboard?section=applications"
               className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
             >
               Apply
@@ -127,13 +116,16 @@ export function ExamShortlistCard({
               "Saving..."
             ) : isShortlisted ? (
               <>
-                <FaHeart className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                <FaHeart
+                  className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />
                 Shortlisted
               </>
             ) : (
               <>
                 <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Shortlist exam
+                Shortlist college
               </>
             )}
           </button>

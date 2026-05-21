@@ -358,8 +358,29 @@ router.put('/profile/shortlisted-exams', authenticate, ExamsController.updateSho
 router.get('/profile/recommended-colleges', authenticate, ProfileCollegesController.getRecommendedColleges);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-colleges/meta
+ * @desc    College shortlist meta (counts, shortlisted IDs)
+ * @access  Private
+ */
+router.get('/profile/dashboard-colleges/meta', authenticate, ProfileCollegesController.getDashboardCollegesMeta);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-colleges/tab
+ * @desc    Paginated colleges for one dashboard tab (server-sorted)
+ * @access  Private
+ */
+router.get('/profile/dashboard-colleges/tab', authenticate, ProfileCollegesController.getDashboardCollegesTab);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-colleges/:collegeRef
+ * @desc    Single college with full admin-linked data (id or slug)
+ * @access  Private
+ */
+router.get('/profile/dashboard-colleges/:collegeRef', authenticate, ProfileCollegesController.getDashboardCollegeByRef);
+
+/**
  * @route   GET /api/auth/profile/dashboard-colleges
- * @desc    Colleges for dashboard tabs (all / recommended by exam overlap / shortlisted)
+ * @desc    Legacy alias for dashboard-colleges/meta
  * @access  Private
  */
 router.get('/profile/dashboard-colleges', authenticate, ProfileCollegesController.getDashboardColleges);

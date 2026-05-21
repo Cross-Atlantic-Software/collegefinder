@@ -101,6 +101,50 @@ export function examCardMode(exam: Exam): string | null {
   return mode || null;
 }
 
+/** DB/API scalar (string, number, etc.) for card labels — not always a string. */
+function displayScalar(value: unknown): string | null {
+  if (!hasDisplayValue(value)) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t || null;
+  }
+  const t = String(value).trim();
+  return t || null;
+}
+
+export function examCardAttemptLimit(exam: Exam): string | null {
+  return displayScalar(exam.eligibilityCriteria?.attempt_limit);
+}
+
+export function examCardNegativeMarking(exam: Exam): string | null {
+  return displayScalar(exam.examPattern?.negative_marking);
+}
+
+export type ExamLinkedCollegePreview = { id: number; name: string };
+
+/** Up to 3 linked colleges for exam cards. */
+export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
+  const fromRows = (exam.linkedColleges ?? [])
+    .map((c) => ({
+      id: Number(c.id),
+      name: String(c.name ?? "").trim(),
+    }))
+    .filter((c) => Number.isInteger(c.id) && c.id > 0 && c.name);
+  if (fromRows.length) return fromRows.slice(0, 3);
+
+  return (exam.linkedCollegeNames ?? [])
+    .map((n) => String(n).trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((name, index) => ({ id: -(index + 1), name }));
+}
+
+/** Up to 3 linked college names for exam cards. */
+export function examCardLinkedCollegeNames(exam: Exam): string[] {
+  return examCardLinkedColleges(exam).map((c) => c.name);
+}
+
 /** College-style card overview paragraph. */
 export function examCardOverview(exam: Exam): string {
   const d = exam.description?.trim();
@@ -128,8 +172,6 @@ export function examCardTagChips(exam: Exam): string[] {
   if (duration) chips.push(duration);
   const programs = programLine(exam);
   if (programs) chips.push(programs);
-  const fee = formatInrFee(exam.examDates?.application_fees ?? null);
-  if (fee) chips.push(fee);
   return chips.slice(0, 4);
 }
 
@@ -166,6 +208,7 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     if (f) arr.push(f);
   };
 
+  push(overview, field("Exam name", exam.name));
   push(overview, field("Exam code", exam.code));
   push(overview, field("Exam type", exam.exam_type));
   push(overview, field("Conducting authority", exam.conducting_authority));
@@ -181,12 +224,28 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   push(overview, field("Website", exam.website));
   push(overview, field("Counselling", exam.counselling));
   push(overview, field("Documents required", exam.documents_required));
+  const logo = examLogoUrl(exam);
+  if (logo) push(overview, field("Logo", logo));
+  if (exam.exam_popularity_rank != null && Number.isFinite(Number(exam.exam_popularity_rank))) {
+    push(overview, field("Popularity rank", exam.exam_popularity_rank));
+  }
+  if (
+    exam.total_mocks_generated != null &&
+    Number.isFinite(Number(exam.total_mocks_generated))
+  ) {
+    push(overview, field("Mock tests generated", exam.total_mocks_generated));
+  }
+  const linkedCollegeCount =
+    exam.linkedColleges?.length ?? exam.linkedCollegeNames?.length ?? 0;
+  if (linkedCollegeCount > 0) {
+    push(overview, field("Colleges listing this exam", linkedCollegeCount));
+  }
   if (hasDisplayValue(exam.description)) {
     push(overview, field("Description", exam.description));
   }
-  if (overview.length) {
-    sections.push({ id: "overview", title: "Overview", fields: overview });
-  }
+  push(overview, field("Last updated", formatExamDate(exam.updated_at)));
+  push(overview, field("Created", formatExamDate(exam.created_at)));
+  sections.push({ id: "overview", title: "Exam information", fields: overview });
 
   const dates: ExamField[] = [];
   const ed = exam.examDates;
@@ -258,25 +317,27 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     sections.push({ id: "cutoff", title: "Cutoff & benchmarks", fields: cutoff });
   }
 
-  const programs = (exam.linkedPrograms ?? [])
-    .map((p) => p.name?.trim())
-    .filter(Boolean);
+  const programs = (exam.linkedPrograms ?? []).filter((p) => p.name?.trim());
   if (programs.length) {
     sections.push({
       id: "programs",
       title: "Linked programs",
-      fields: [{ label: "Programs", value: programs.join(", ") }],
+      fields: programs.map((p, i) => ({
+        label: programs.length > 1 ? `Program ${i + 1}` : "Program",
+        value: p.name!.trim(),
+      })),
     });
   }
 
-  const interests = (exam.linkedCareerGoals ?? [])
-    .map((g) => g.label?.trim())
-    .filter(Boolean);
+  const interests = (exam.linkedCareerGoals ?? []).filter((g) => g.label?.trim());
   if (interests.length) {
     sections.push({
       id: "interests",
-      title: "Linked interests",
-      fields: [{ label: "Career goals", value: interests.join(", ") }],
+      title: "Linked career interests",
+      fields: interests.map((g, i) => ({
+        label: interests.length > 1 ? `Interest ${i + 1}` : "Interest",
+        value: g.label!.trim(),
+      })),
     });
   }
 

@@ -1,5 +1,25 @@
 const UserAcademics = require('../../models/user/UserAcademics');
+const UserAddress = require('../../models/user/UserAddress');
 const UserCareerGoals = require('../../models/user/UserCareerGoals');
+/** Lazy require avoids circular dependency with examsController (enrichCollegeRows). */
+function loadDashboardExamShortlistContext(userId) {
+  const { loadDashboardExamShortlistContext: loadCtx } = require('./examsController');
+  if (typeof loadCtx !== 'function') {
+    throw new Error('loadDashboardExamShortlistContext is not available');
+  }
+  return loadCtx(userId);
+}
+const {
+  sortAllColleges,
+  sortRecommendedColleges,
+  sortShortlistedColleges,
+} = require('../../services/collegeDashboardSort');
+const {
+  getCachedSortedCollegeIds,
+  setCachedSortedCollegeIds,
+  invalidateDashboardCollegeSortCacheForUser,
+} = require('../../services/dashboardCollegeSortCache');
+const { filterCollegesBySearch } = require('../../utils/collegeSearchFilter');
 const ExamCareerGoal = require('../../models/exam/ExamCareerGoal');
 const ExamEligibilityCriteria = require('../../models/exam/ExamEligibilityCriteria');
 const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedExam');
@@ -12,6 +32,9 @@ const CollegeKeyDates = require('../../models/college/CollegeKeyDates');
 const CollegeDocumentsRequired = require('../../models/college/CollegeDocumentsRequired');
 const CollegeCounsellingProcess = require('../../models/college/CollegeCounsellingProcess');
 const CollegeProgram = require('../../models/college/CollegeProgram');
+const CollegePreviousCutoff = require('../../models/college/CollegePreviousCutoff');
+const CollegeExpectedCutoff = require('../../models/college/CollegeExpectedCutoff');
+const CollegeSeatMatrix = require('../../models/college/CollegeSeatMatrix');
 const db = require('../../config/database');
 
 function groupByCollegeId(rows, key = 'college_id') {
@@ -72,6 +95,108 @@ async function enrichCollegeRows(colleges) {
       linkedExams,
     };
   });
+}
+
+function parseMajorProgramIds(raw) {
+  if (raw == null || raw === '') return [];
+  return [...new Set(
+    String(raw)
+      .split(/[,;]/)
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  )];
+}
+
+async function resolveMajorProgramNames(majorProgramIdsRaw) {
+  const ids = parseMajorProgramIds(majorProgramIdsRaw);
+  if (!ids.length) return [];
+  const result = await db.query(
+    'SELECT id, name FROM programs WHERE id = ANY($1::int[]) ORDER BY name ASC',
+    [ids]
+  );
+  return result.rows.map((r) => r.name).filter(Boolean);
+}
+
+function parseExamIdsFromField(raw) {
+  if (raw == null || raw === '') return [];
+  return [...new Set(
+    String(raw)
+      .split(/[,;]/)
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  )];
+}
+
+async function resolveExamNameMap(examIds) {
+  if (!examIds?.length) return new Map();
+  const result = await db.query(
+    'SELECT id, name, code FROM exams_taxonomies WHERE id = ANY($1::int[])',
+    [examIds]
+  );
+  const map = new Map();
+  for (const r of result.rows) {
+    const label = r.name?.trim() || r.code?.trim() || `Exam ${r.id}`;
+    map.set(Number(r.id), label);
+  }
+  return map;
+}
+
+/** Full college payload for detail page (programs + cutoffs + seat matrix). */
+async function enrichCollegeDetail(college) {
+  const [base] = await enrichCollegeRows([college]);
+  if (!base) return null;
+
+  const programs = base.programs || [];
+  const programIds = programs.map((p) => p.id).filter((id) => id != null);
+
+  const [previousCutoffRows, expectedCutoffRows, seatMatrixRows, majorProgramNames] =
+    await Promise.all([
+      programIds.length
+        ? CollegePreviousCutoff.findByCollegeProgramIds(programIds)
+        : [],
+      programIds.length
+        ? CollegeExpectedCutoff.findByCollegeProgramIds(programIds)
+        : [],
+      programIds.length ? CollegeSeatMatrix.findByCollegeProgramIds(programIds) : [],
+      resolveMajorProgramNames(base.collegeDetails?.major_program_ids),
+    ]);
+
+  const prevByProgram = groupByCollegeId(previousCutoffRows, 'college_program_id');
+  const expByProgram = groupByCollegeId(expectedCutoffRows, 'college_program_id');
+  const seatByProgram = groupByCollegeId(seatMatrixRows, 'college_program_id');
+
+  const allProgramExamIds = [
+    ...new Set(programs.flatMap((p) => parseExamIdsFromField(p.recommended_exam_ids))),
+  ];
+  const examNameById = await resolveExamNameMap(allProgramExamIds);
+
+  return {
+    ...base,
+    majorProgramNames,
+    programs: programs.map((p) => {
+      const recIds = parseExamIdsFromField(p.recommended_exam_ids);
+      const recommendedExamNames = recIds
+        .map((id) => examNameById.get(id))
+        .filter(Boolean);
+      return {
+        ...p,
+        recommendedExamNames,
+        previousCutoffs: prevByProgram.get(p.id) || [],
+        expectedCutoffs: expByProgram.get(p.id) || [],
+        seatMatrix: seatByProgram.get(p.id) || [],
+      };
+    }),
+  };
+}
+
+async function resolveCollegeRef(ref) {
+  const raw = String(ref || '').trim();
+  if (!raw) return null;
+  const asId = parseInt(raw, 10);
+  if (String(asId) === raw && asId > 0) {
+    return College.findById(asId);
+  }
+  return College.findBySlug(raw);
 }
 
 /**
@@ -150,98 +275,258 @@ async function getRecommendedColleges(req, res) {
   }
 }
 
+async function loadDashboardCollegeShortlistContext(userId) {
+  const examCtx = await loadDashboardExamShortlistContext(userId);
+  const [academics, address] = await Promise.all([
+    UserAcademics.findByUserId(userId),
+    UserAddress.findByUserId(userId),
+  ]);
+
+  const shortlistedRaw = Array.isArray(academics?.user_shortlisted_colleges)
+    ? academics.user_shortlisted_colleges
+    : [];
+  const shortlistedCollegeIds = [
+    ...new Set(
+      shortlistedRaw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+    ),
+  ];
+
+  const userCity = address?.city_town_village?.trim() || null;
+  const allExamIds = (examCtx.streamExams || [])
+    .map((e) => Number(e.id))
+    .filter((id) => Number.isInteger(id));
+
+  return {
+    streamId: examCtx.streamId,
+    message: examCtx.message,
+    allExamIds,
+    recommendedExamIds: examCtx.recommendedExamIds || [],
+    shortlistedExamIds: examCtx.shortlistedExamIds || [],
+    shortlistedCollegeIds,
+    userCity,
+  };
+}
+
+async function resolveCollegeIdsForTab(tab, ctx) {
+  if (tab === 'all') {
+    return ctx.allExamIds.length > 0
+      ? CollegeRecommendedExam.getCollegeIdsByExamIds(ctx.allExamIds)
+      : [];
+  }
+  if (tab === 'recommended') {
+    const examUnion = [
+      ...new Set([...ctx.shortlistedExamIds, ...ctx.recommendedExamIds].map(Number)),
+    ].filter((id) => Number.isInteger(id) && id > 0);
+    return examUnion.length > 0
+      ? CollegeRecommendedExam.getCollegeIdsByExamIds(examUnion)
+      : [];
+  }
+  if (tab === 'shortlisted') {
+    return ctx.shortlistedCollegeIds;
+  }
+  return [];
+}
+
+async function buildOrderedCollegeIdsForTab(tab, ctx) {
+  const collegeIds = await resolveCollegeIdsForTab(tab, ctx);
+  if (!collegeIds.length) return [];
+
+  const colleges = await College.findByIds(collegeIds);
+  if (!colleges.length) return [];
+
+  const ids = colleges.map((c) => c.id);
+  const needsExamTiers =
+    tab === 'recommended' || (tab === 'shortlisted' && ctx.shortlistedExamIds.length > 0);
+  const examIdsMap = needsExamTiers
+    ? await CollegeRecommendedExam.getExamIdsMapByCollegeIds(ids)
+    : new Map();
+
+  let sorted;
+  if (tab === 'all') {
+    sorted = sortAllColleges(colleges, ctx.userCity);
+  } else if (tab === 'recommended') {
+    sorted = sortRecommendedColleges(
+      colleges,
+      ctx.userCity,
+      ctx.shortlistedExamIds,
+      ctx.recommendedExamIds,
+      examIdsMap
+    );
+  } else {
+    sorted = sortShortlistedColleges(
+      colleges,
+      ctx.userCity,
+      ctx.shortlistedExamIds,
+      ctx.recommendedExamIds,
+      examIdsMap
+    );
+  }
+  return sorted.map((c) => c.id);
+}
+
+async function getOrderedCollegeIdsForTab(userId, tab, ctx) {
+  const cached = await getCachedSortedCollegeIds(userId, tab, ctx);
+  if (cached) return cached;
+
+  const ids = await buildOrderedCollegeIdsForTab(tab, ctx);
+  await setCachedSortedCollegeIds(userId, tab, ctx, ids);
+  return ids;
+}
+
+async function applyCollegeSearchFilter(orderedIds, searchRaw) {
+  const q = String(searchRaw || '').trim();
+  if (!q || !orderedIds.length) return { ids: orderedIds, examLabelsByCollegeId: null };
+
+  const colleges = await College.findByIdsPreservingOrder(orderedIds);
+  const examLinkRows = await CollegeRecommendedExam.getExamLinksForCollegeIds(orderedIds);
+  const examLabelsByCollegeId = new Map();
+  for (const row of examLinkRows) {
+    const cid = row.college_id;
+    if (!examLabelsByCollegeId.has(cid)) examLabelsByCollegeId.set(cid, []);
+    const labels = examLabelsByCollegeId.get(cid);
+    if (row.exam_name) labels.push(row.exam_name);
+    if (row.exam_code) labels.push(row.exam_code);
+  }
+
+  const filtered = filterCollegesBySearch(colleges, q, examLabelsByCollegeId);
+  return { ids: filtered.map((c) => c.id), examLabelsByCollegeId };
+}
+
+async function getTabTotals(userId, ctx) {
+  const [allIds, recIds] = await Promise.all([
+    getOrderedCollegeIdsForTab(userId, 'all', ctx),
+    getOrderedCollegeIdsForTab(userId, 'recommended', ctx),
+  ]);
+  return {
+    all: allIds.length,
+    recommended: recIds.length,
+    shortlisted: ctx.shortlistedCollegeIds.length,
+  };
+}
+
 /**
- * Dashboard college shortlist — aligned with exam shortlist tabs:
- * - allColleges: colleges tagged with any exam from stream "all exams"
- * - recommendedColleges: colleges tagged with any exam from "recommended exams"
- * - shortlistedCollegeIds / shortlistedColleges: user_shortlisted_colleges
- * GET /api/auth/profile/dashboard-colleges
+ * Lightweight meta for sidebar badge + React Query (no enriched college rows).
+ * GET /api/auth/profile/dashboard-colleges/meta
  */
-async function getDashboardColleges(req, res) {
+async function getDashboardCollegesMeta(req, res) {
   try {
-    const userId = req.user.id;
-
-    const [academics, careerGoalsRow] = await Promise.all([
-      UserAcademics.findByUserId(userId),
-      UserCareerGoals.findByUserId(userId),
-    ]);
-
-    const streamId = academics?.stream_id ?? null;
-    if (streamId == null || streamId === '') {
+    const ctx = await loadDashboardCollegeShortlistContext(req.user.id);
+    if (ctx.streamId == null) {
       return res.json({
         success: true,
         data: {
           streamId: null,
-          allColleges: [],
-          recommendedColleges: [],
-          shortlistedColleges: [],
           shortlistedCollegeIds: [],
-          message: 'Select your stream in profile to view colleges.',
+          tabTotals: { all: 0, recommended: 0, shortlisted: 0 },
+          message: ctx.message,
         },
       });
     }
 
-    const streamExams = await Exam.findAllByStreamId(streamId);
-    const allExamIds = streamExams.map((e) => Number(e.id));
-
-    const careerGoalIds = careerGoalsRow?.interests ?? [];
-    const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
-      ? careerGoalIds
-          .map((id) => (typeof id === 'string' ? parseInt(id, 10) : id))
-          .filter((id) => Number.isInteger(id))
-      : [];
-
-    const streamMappings = await StreamInterestRecommendation.findByStream(Number(streamId));
-    const recommendedExamIds = computeRecommendedExamIdsTop20(
-      streamExams,
-      normalizedCareerGoalIds,
-      streamMappings
-    );
-
-    const allCollegeIds =
-      allExamIds.length > 0 ? await CollegeRecommendedExam.getCollegeIdsByExamIds(allExamIds) : [];
-    const recCollegeIds =
-      recommendedExamIds.length > 0
-        ? await CollegeRecommendedExam.getCollegeIdsByExamIds(recommendedExamIds)
-        : [];
-
-    const shortlistedRaw = Array.isArray(academics?.user_shortlisted_colleges)
-      ? academics.user_shortlisted_colleges
-      : [];
-    const shortlistedCollegeIds = shortlistedRaw
-      .map((id) => Number(id))
-      .filter((id) => Number.isInteger(id) && id > 0);
-
-    const allColleges = await enrichCollegeRows(await College.findByIds(allCollegeIds));
-    const recommendedColleges = await enrichCollegeRows(await College.findByIds(recCollegeIds));
-
-    const shortlistedUnique = [...new Set(shortlistedCollegeIds)];
-    const shortlistedColleges =
-      shortlistedUnique.length > 0
-        ? await enrichCollegeRows(await College.findByIds(shortlistedUnique))
-        : [];
-
+    const tabTotals = await getTabTotals(req.user.id, ctx);
     return res.json({
       success: true,
       data: {
-        streamId: Number(streamId),
-        allColleges,
-        recommendedColleges,
-        shortlistedColleges,
-        shortlistedCollegeIds,
+        streamId: ctx.streamId,
+        shortlistedCollegeIds: ctx.shortlistedCollegeIds,
+        tabTotals,
         message:
-          allColleges.length === 0 && recommendedColleges.length === 0
+          tabTotals.all === 0 && tabTotals.recommended === 0
             ? 'No colleges match your exam filters yet. Tag exams on colleges in admin or widen mappings.'
             : undefined,
       },
     });
   } catch (error) {
-    console.error('Error fetching dashboard colleges:', error);
-    res.status(500).json({
+    console.error('Error fetching dashboard colleges meta:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch dashboard colleges meta',
+    });
+  }
+}
+
+/**
+ * Paginated colleges for one tab; enrich only current page.
+ * GET /api/auth/profile/dashboard-colleges/tab?tab=all|recommended|shortlisted&page=&limit=&search=
+ */
+async function getDashboardCollegesTab(req, res) {
+  try {
+    const tab = String(req.query.tab || '').toLowerCase();
+    if (!['recommended', 'shortlisted', 'all'].includes(tab)) {
+      return res.status(400).json({
+        success: false,
+        message: 'tab must be recommended, shortlisted, or all',
+      });
+    }
+
+    const pageRaw = parseInt(req.query.page, 10);
+    const limitRaw = parseInt(req.query.limit, 10);
+    const page = Math.max(1, Number.isInteger(pageRaw) ? pageRaw : 1);
+    const limit = Math.min(50, Math.max(1, Number.isInteger(limitRaw) ? limitRaw : 10));
+    const search = String(req.query.search || '').trim();
+
+    const ctx = await loadDashboardCollegeShortlistContext(req.user.id);
+    if (ctx.streamId == null) {
+      return res.json({
+        success: true,
+        data: {
+          streamId: null,
+          tab,
+          colleges: [],
+          shortlistedCollegeIds: [],
+          pagination: { page: 1, limit, total: 0, totalPages: 1 },
+          message: ctx.message,
+        },
+      });
+    }
+
+    const orderedIds = await getOrderedCollegeIdsForTab(req.user.id, tab, ctx);
+    const { ids: filteredIds } = await applyCollegeSearchFilter(orderedIds, search);
+    const total = filteredIds.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const pageIds = filteredIds.slice(start, start + limit);
+    const pageRows = await College.findByIdsPreservingOrder(pageIds);
+    const colleges = await enrichCollegeRows(pageRows);
+
+    const listMessage =
+      total === 0
+        ? search
+          ? 'No colleges match your search.'
+          : tab === 'shortlisted'
+            ? 'Shortlist colleges from Recommended or All Colleges to see them here.'
+            : 'No colleges available in this section.'
+        : undefined;
+
+    return res.json({
+      success: true,
+      data: {
+        streamId: ctx.streamId,
+        tab,
+        colleges,
+        shortlistedCollegeIds: ctx.shortlistedCollegeIds,
+        pagination: {
+          page: safePage,
+          limit,
+          total,
+          totalPages,
+        },
+        message: listMessage,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard colleges tab:', error);
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch dashboard colleges',
     });
   }
+}
+
+/** @deprecated Use dashboard-colleges/meta — kept for older clients. */
+async function getDashboardColleges(req, res) {
+  return getDashboardCollegesMeta(req, res);
 }
 
 /**
@@ -292,6 +577,8 @@ async function updateShortlistedColleges(req, res) {
       );
     }
 
+    await invalidateDashboardCollegeSortCacheForUser(userId);
+
     return res.json({
       success: true,
       data: { shortlistedCollegeIds: next },
@@ -310,6 +597,49 @@ async function updateShortlistedColleges(req, res) {
  * Colleges whose recommended exam id matches this exam (college + program level).
  * GET /api/auth/profile/exams/:examId/colleges
  */
+/**
+ * Single college for dashboard detail (id or slug).
+ * GET /api/auth/profile/dashboard-colleges/:collegeRef
+ */
+async function getDashboardCollegeByRef(req, res) {
+  try {
+    const userId = req.user.id;
+    const college = await resolveCollegeRef(req.params.collegeRef);
+    if (!college) {
+      return res.status(404).json({
+        success: false,
+        message: 'College not found',
+      });
+    }
+
+    const [enriched, academics] = await Promise.all([
+      enrichCollegeDetail(college),
+      UserAcademics.findByUserId(userId),
+    ]);
+
+    const shortlistedRaw = Array.isArray(academics?.user_shortlisted_colleges)
+      ? academics.user_shortlisted_colleges
+      : [];
+    const shortlistedCollegeIds = shortlistedRaw
+      .map((n) => Number(n))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    return res.json({
+      success: true,
+      data: {
+        college: enriched,
+        shortlistedCollegeIds,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard college detail:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch college details',
+    });
+  }
+}
+
 async function getCollegesForExam(req, res) {
   try {
     const examId = parseInt(req.params.examId, 10);
@@ -351,7 +681,11 @@ async function getCollegesForExam(req, res) {
 module.exports = {
   getRecommendedColleges,
   getDashboardColleges,
+  getDashboardCollegesMeta,
+  getDashboardCollegesTab,
+  getDashboardCollegeByRef,
   getCollegesForExam,
   updateShortlistedColleges,
   enrichCollegeRows,
+  enrichCollegeDetail,
 };

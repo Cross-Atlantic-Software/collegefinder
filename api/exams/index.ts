@@ -22,7 +22,8 @@ export interface ExamEligibilityPublic {
   stream_ids: number[];
   subject_ids: number[];
   age_limit: string | null;
-  attempt_limit: string | null;
+  /** Free text in admin; legacy rows may still be numeric from DB. */
+  attempt_limit: string | number | null;
   domicile?: string | null;
   stream_labels?: string[];
   subject_labels?: string[];
@@ -86,6 +87,7 @@ export interface Exam {
   website?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
+  total_mocks_generated?: number | null;
   created_at: string;
   updated_at: string;
   examDates?: ExamDatesPublic | null;
@@ -94,6 +96,10 @@ export interface Exam {
   examCutoff?: ExamCutoffPublic | null;
   linkedCareerGoals?: ExamCareerGoalLink[];
   linkedPrograms?: ExamProgramLink[];
+  /** Up to 3 linked colleges for dashboard exam cards. */
+  linkedColleges?: { id: number; name: string }[];
+  /** @deprecated Prefer linkedColleges — names only. */
+  linkedCollegeNames?: string[];
 }
 
 export interface PreviousExamAttempt {

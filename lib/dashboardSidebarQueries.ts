@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getAcademics, getProfileCompletion, getDashboardColleges } from "@/api";
+import { getAcademics, getProfileCompletion } from "@/api";
+import { getDashboardCollegesMeta } from "@/api/auth/profile";
 import { getDashboardInstitutes, getDashboardScholarships } from "@/api/auth/profile";
 
 export const PROFILE_COMPLETION_KEY = ["profile-completion"] as const;
 export const DASHBOARD_ACADEMICS_KEY = ["dashboard-academics"] as const;
-export const DASHBOARD_COLLEGES_KEY = ["dashboard-colleges"] as const;
+export const DASHBOARD_COLLEGES_KEY = ["dashboard-colleges-meta"] as const;
 export const DASHBOARD_INSTITUTES_KEY = ["dashboard-institutes"] as const;
 export const DASHBOARD_SCHOLARSHIPS_KEY = ["dashboard-scholarships"] as const;
 
@@ -45,21 +46,22 @@ export function useDashboardAcademicsQuery() {
   });
 }
 
-export function useDashboardCollegesQuery() {
+export function useDashboardCollegesQuery(enabled = true) {
   return useQuery({
     queryKey: DASHBOARD_COLLEGES_KEY,
     queryFn: async () => {
-      const res = await getDashboardColleges();
+      const res = await getDashboardCollegesMeta();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load colleges");
       }
       return res.data;
     },
     ...sidebarQueryDefaults,
+    enabled,
   });
 }
 
-export function useDashboardInstitutesQuery() {
+export function useDashboardInstitutesQuery(enabled = true) {
   return useQuery({
     queryKey: DASHBOARD_INSTITUTES_KEY,
     queryFn: async () => {
@@ -70,10 +72,11 @@ export function useDashboardInstitutesQuery() {
       return res.data;
     },
     ...sidebarQueryDefaults,
+    enabled,
   });
 }
 
-export function useDashboardScholarshipsQuery() {
+export function useDashboardScholarshipsQuery(enabled = true) {
   return useQuery({
     queryKey: DASHBOARD_SCHOLARSHIPS_KEY,
     queryFn: async () => {
@@ -84,5 +87,6 @@ export function useDashboardScholarshipsQuery() {
       return res.data;
     },
     ...sidebarQueryDefaults,
+    enabled,
   });
 }
