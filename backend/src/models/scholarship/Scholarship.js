@@ -24,6 +24,36 @@ class Scholarship {
     return result.rows[0] || null;
   }
 
+  /** Match dashboard route slug (`slugifyScholarshipName`). */
+  static async findBySlug(slug) {
+    const s = slug != null ? String(slug).trim().toLowerCase() : '';
+    if (!s) return null;
+    const result = await db.query(
+      `SELECT * FROM scholarships
+       WHERE regexp_replace(
+         regexp_replace(lower(trim(scholarship_name)), '[^a-z0-9]+', '-', 'g'),
+         '(^-+|-+$)', '', 'g'
+       ) = $1
+       LIMIT 1`,
+      [s]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async findByIds(ids) {
+    if (!ids?.length) return [];
+    const validIds = ids.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!validIds.length) return [];
+    const result = await db.query(
+      `SELECT s.*
+       FROM scholarships s
+       INNER JOIN unnest($1::int[]) WITH ORDINALITY AS t(id, ord) ON s.id = t.id
+       ORDER BY t.ord`,
+      [validIds]
+    );
+    return result.rows;
+  }
+
   static async create(data) {
     const {
       scholarship_name,

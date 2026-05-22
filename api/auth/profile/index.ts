@@ -556,15 +556,65 @@ export interface DashboardInstitute {
   type?: string | null;
   logo?: string | null;
   website?: string | null;
+  contact_number?: string | null;
+  google_maps_link?: string | null;
+  institute_description?: string | null;
   linkedExams?: DashboardLinkedExam[];
+  branches_number?: string | null;
+  student_strength?: string | null;
 }
 
+export type DashboardInstituteDelivery = 'online' | 'offline' | 'shortlisted';
+
+export interface DashboardInstitutesPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface DashboardInstitutesTabTotals {
+  online: number;
+  offline: number;
+  shortlisted: number;
+}
+
+export async function getDashboardInstitutesMeta(): Promise<ApiResponse<{
+  streamId: number | null;
+  shortlistedInstituteIds: number[];
+  tabTotals: DashboardInstitutesTabTotals;
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_INSTITUTES_META, { method: 'GET' });
+}
+
+export async function getDashboardInstitutesTab(
+  delivery: DashboardInstituteDelivery,
+  params: { page?: number; limit?: number; search?: string } = {}
+): Promise<ApiResponse<{
+  streamId: number | null;
+  delivery: DashboardInstituteDelivery;
+  institutes: DashboardInstitute[];
+  shortlistedInstituteIds: number[];
+  pagination: DashboardInstitutesPagination;
+  message?: string;
+}>> {
+  const sp = new URLSearchParams();
+  sp.set('delivery', delivery);
+  if (params.page != null) sp.set('page', String(params.page));
+  if (params.limit != null) sp.set('limit', String(params.limit));
+  if (params.search?.trim()) sp.set('search', params.search.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_INSTITUTES_TAB}?${sp.toString()}`,
+    { method: 'GET' }
+  );
+}
+
+/** @deprecated Use getDashboardInstitutesMeta */
 export async function getDashboardInstitutes(): Promise<ApiResponse<{
   streamId: number | null;
-  allInstitutes: DashboardInstitute[];
-  recommendedInstitutes: DashboardInstitute[];
-  shortlistedInstitutes: DashboardInstitute[];
   shortlistedInstituteIds: number[];
+  tabTotals?: DashboardInstitutesTabTotals;
   message?: string;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_INSTITUTES, { method: 'GET' });
@@ -580,6 +630,47 @@ export async function updateShortlistedInstitute(
   });
 }
 
+export interface DashboardInstituteDetails {
+  institute_description?: string | null;
+  demo_available?: boolean | null;
+  scholarship_available?: boolean | null;
+}
+
+export interface DashboardInstituteStatistics {
+  ranking_score?: string | number | null;
+  success_rate?: string | number | null;
+  student_rating?: string | number | null;
+}
+
+export interface DashboardInstituteCourse {
+  id?: number;
+  course_name?: string | null;
+  target_class?: string | null;
+  duration_months?: string | null;
+  fees?: string | null;
+  batch_size?: string | null;
+  start_date?: string | null;
+}
+
+export interface DashboardInstituteDetail extends DashboardInstitute {
+  instituteDetails?: DashboardInstituteDetails | null;
+  statistics?: DashboardInstituteStatistics | null;
+  courses?: DashboardInstituteCourse[];
+}
+
+export async function getDashboardInstituteByRef(
+  instituteRef: string
+): Promise<ApiResponse<{
+  institute: DashboardInstituteDetail;
+  shortlistedInstituteIds: number[];
+}>> {
+  const ref = encodeURIComponent(instituteRef.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_INSTITUTE_DETAIL}/${ref}`,
+    { method: 'GET' }
+  );
+}
+
 export interface DashboardScholarship {
   id: number;
   scholarship_name: string;
@@ -589,15 +680,101 @@ export interface DashboardScholarship {
   scholarship_amount: string | null;
   official_website: string | null;
   application_link?: string | null;
+  mode?: string | null;
+  stream_name?: string | null;
   linkedExams?: DashboardLinkedExam[];
+  linkedColleges?: { id: number; name: string; city?: string | null; state?: string | null }[];
+  linkedExamCount?: number;
+  linkedCollegeCount?: number;
 }
 
+export interface DashboardScholarshipEligibleCategory {
+  category?: string | null;
+}
+
+export interface DashboardScholarshipApplicableState {
+  state_name?: string | null;
+}
+
+export interface DashboardScholarshipDocument {
+  document_name?: string | null;
+}
+
+export interface DashboardScholarshipDetail extends DashboardScholarship {
+  stream_id?: number | null;
+  stream_name?: string | null;
+  income_limit?: string | null;
+  minimum_marks_required?: string | null;
+  selection_process?: string | null;
+  application_start_date?: string | null;
+  application_end_date?: string | null;
+  mode?: string | null;
+  official_notification_link?: string | null;
+  active_status?: string | null;
+  academic_year?: string | null;
+  eligible_degree?: string | null;
+  number_of_awards?: string | null;
+  renewal_available?: boolean | null;
+  renewal_conditions?: string | null;
+  scope?: string | null;
+  value_category?: string | null;
+  education_level?: string | null;
+  eligibleCategories?: DashboardScholarshipEligibleCategory[];
+  applicableStates?: DashboardScholarshipApplicableState[];
+  documentsRequired?: DashboardScholarshipDocument[];
+}
+
+export type DashboardScholarshipTabId = 'recommended' | 'shortlisted' | 'all';
+
+export interface DashboardScholarshipsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface DashboardScholarshipsTabTotals {
+  all: number;
+  recommended: number;
+  shortlisted: number;
+}
+
+export async function getDashboardScholarshipsMeta(): Promise<ApiResponse<{
+  streamId: number | null;
+  shortlistedScholarshipIds: number[];
+  tabTotals: DashboardScholarshipsTabTotals;
+  message?: string;
+}>> {
+  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_SCHOLARSHIPS_META, { method: 'GET' });
+}
+
+export async function getDashboardScholarshipsTab(
+  tab: DashboardScholarshipTabId,
+  params: { page?: number; limit?: number; search?: string } = {}
+): Promise<ApiResponse<{
+  streamId: number | null;
+  tab: DashboardScholarshipTabId;
+  scholarships: DashboardScholarship[];
+  shortlistedScholarshipIds: number[];
+  pagination: DashboardScholarshipsPagination;
+  message?: string;
+}>> {
+  const sp = new URLSearchParams();
+  sp.set('tab', tab);
+  if (params.page != null) sp.set('page', String(params.page));
+  if (params.limit != null) sp.set('limit', String(params.limit));
+  if (params.search?.trim()) sp.set('search', params.search.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_SCHOLARSHIPS_TAB}?${sp.toString()}`,
+    { method: 'GET' }
+  );
+}
+
+/** @deprecated Use getDashboardScholarshipsMeta */
 export async function getDashboardScholarships(): Promise<ApiResponse<{
   streamId: number | null;
-  allScholarships: DashboardScholarship[];
-  recommendedScholarships: DashboardScholarship[];
-  shortlistedScholarships: DashboardScholarship[];
   shortlistedScholarshipIds: number[];
+  tabTotals?: DashboardScholarshipsTabTotals;
   message?: string;
 }>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_SCHOLARSHIPS, { method: 'GET' });
@@ -611,6 +788,19 @@ export async function updateShortlistedScholarship(
     method: 'PUT',
     body: JSON.stringify({ scholarship_id, shortlisted }),
   });
+}
+
+export async function getDashboardScholarshipByRef(
+  scholarshipRef: string
+): Promise<ApiResponse<{
+  scholarship: DashboardScholarshipDetail;
+  shortlistedScholarshipIds: number[];
+}>> {
+  const ref = encodeURIComponent(scholarshipRef.trim());
+  return apiRequest(
+    `${API_ENDPOINTS.AUTH.PROFILE_DASHBOARD_SCHOLARSHIP_DETAIL}/${ref}`,
+    { method: 'GET' }
+  );
 }
 
 /**

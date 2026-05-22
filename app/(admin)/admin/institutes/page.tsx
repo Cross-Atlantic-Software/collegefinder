@@ -123,6 +123,8 @@ export default function InstitutesPage() {
     website: '',
     contact_number: '',
     referral_contact_email: '',
+    branches_number: '',
+    student_strength: '',
     institute_description: '',
     demo_available: false,
     scholarship_available: false,
@@ -294,6 +296,8 @@ export default function InstitutesPage() {
         website: formData.website.trim() || null,
         contact_number: formData.contact_number.trim() || null,
         referral_contact_email: formData.referral_contact_email.trim() || null,
+        branches_number: formData.branches_number.trim() || null,
+        student_strength: formData.student_strength.trim() || null,
         institute_description: formData.institute_description.trim() || null,
         demo_available: formData.demo_available,
         scholarship_available: formData.scholarship_available,
@@ -393,6 +397,8 @@ export default function InstitutesPage() {
           website: d.institute.website ?? '',
           contact_number: d.institute.contact_number ?? '',
           referral_contact_email: d.institute.referral_contact_email ?? '',
+          branches_number: d.institute.branches_number ?? '',
+          student_strength: d.institute.student_strength ?? '',
           institute_description: d.instituteDetails?.institute_description ?? '',
           demo_available: d.instituteDetails?.demo_available ?? false,
           scholarship_available: d.instituteDetails?.scholarship_available ?? false,
@@ -456,6 +462,8 @@ export default function InstitutesPage() {
       website: '',
       contact_number: '',
       referral_contact_email: '',
+      branches_number: '',
+      student_strength: '',
       institute_description: '',
       demo_available: false,
       scholarship_available: false,
@@ -972,6 +980,30 @@ export default function InstitutesPage() {
                       Used to pre-fill recipients when sending referral invites from the institute view.
                     </p>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Branches number</label>
+                    <input
+                      type="text"
+                      value={formData.branches_number}
+                      onChange={(e) =>
+                        setFormData({ ...formData, branches_number: e.target.value })
+                      }
+                      placeholder='e.g. 12 or "10+"'
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Student strength</label>
+                    <input
+                      type="text"
+                      value={formData.student_strength}
+                      onChange={(e) =>
+                        setFormData({ ...formData, student_strength: e.target.value })
+                      }
+                      placeholder='e.g. 5000+ or "2 lakh"'
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
                 </>
               )}
 
@@ -1251,6 +1283,8 @@ export default function InstitutesPage() {
               </p>
               <p><strong>Type:</strong> {viewingData.institute?.type ?? '-'}</p>
               <p><strong>Contact:</strong> {viewingData.institute?.contact_number ?? '-'}</p>
+              <p><strong>Branches number:</strong> {viewingData.institute?.branches_number?.trim() || '-'}</p>
+              <p><strong>Student strength:</strong> {viewingData.institute?.student_strength?.trim() || '-'}</p>
               <p><strong>Website:</strong>{' '}
                 {viewingData.institute?.website ? (
                   <a href={viewingData.institute.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.institute.website}</a>

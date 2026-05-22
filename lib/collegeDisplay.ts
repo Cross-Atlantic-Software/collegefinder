@@ -187,21 +187,6 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
     });
   }
 
-  if (c.linkedExams?.length) {
-    sections.push({
-      id: "linked-exams",
-      title: "Recommended exams",
-      items: c.linkedExams.map((e, i) => {
-        const name = e.name?.trim() || "Exam";
-        const code = e.code?.trim();
-        return {
-          label: c.linkedExams!.length > 1 ? `Exam ${i + 1}` : "Exam",
-          value: code ? `${name} (${code})` : name,
-        };
-      }),
-    });
-  }
-
   if (c.programs?.length) {
     for (const p of c.programs) {
       const items = buildProgramItems(p);

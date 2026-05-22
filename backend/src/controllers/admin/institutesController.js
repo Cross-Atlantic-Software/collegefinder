@@ -319,6 +319,8 @@ class InstitutesController {
         instituteCourses,
         state,
         city,
+        branches_number,
+        student_strength,
       } = req.body;
 
       if (!institute_name || !institute_name.trim()) {
@@ -352,6 +354,8 @@ class InstitutesController {
         website: website ? website.trim() : null,
         contact_number: contact_number ? contact_number.trim() : null,
         referral_contact_email: referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
+        branches_number: toInstituteMetricText(branches_number),
+        student_strength: toInstituteMetricText(student_strength),
         state: stateTrim,
         city: cityTrim,
       });
@@ -434,6 +438,8 @@ class InstitutesController {
         instituteCourses,
         state,
         city,
+        branches_number,
+        student_strength,
       } = req.body;
 
       if (institute_name && institute_name.trim() !== existing.institute_name) {
@@ -463,6 +469,10 @@ class InstitutesController {
               ? String(referral_contact_email).trim() || null
               : null
             : undefined,
+        branches_number:
+          branches_number !== undefined ? toInstituteMetricText(branches_number) : undefined,
+        student_strength:
+          student_strength !== undefined ? toInstituteMetricText(student_strength) : undefined,
       };
 
       if (hasStateKey || hasCityKey) {
@@ -584,6 +594,8 @@ class InstitutesController {
         'logo_file_link',
         'website',
         'contact_number',
+        'branches_number',
+        'student_strength',
         'institute_description',
         'demo_available',
         'scholarship_available',
@@ -610,6 +622,8 @@ class InstitutesController {
           '',
           'https://allen.ac.in',
           '9876543210',
+          '25',
+          '5000+',
           'Premier coaching for JEE and NEET.',
           'TRUE',
           'TRUE',
@@ -638,6 +652,8 @@ class InstitutesController {
           '',
           '',
           '',
+          '',
+          '',
           'NEET Foundation',
           'Class 11-12',
           '12',
@@ -654,6 +670,8 @@ class InstitutesController {
           '',
           'https://example.com/unacademy-logo.png',
           'https://unacademy.com',
+          '',
+          '',
           '',
           'Online learning platform.',
           'TRUE',
@@ -749,7 +767,7 @@ class InstitutesController {
     try {
       const institutes = await Institute.findAll();
       const headers = [
-        'institute_name', 'state', 'city', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number',
+        'institute_name', 'state', 'city', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number', 'branches_number', 'student_strength',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
         'course_names'
       ];
@@ -792,6 +810,8 @@ class InstitutesController {
           logoFilename,
           inst.website || '',
           inst.contact_number || '',
+          metricTextForExport(inst.branches_number),
+          metricTextForExport(inst.student_strength),
           (detail.institute_description != null ? detail.institute_description : '') || '',
           (detail.demo_available === true || detail.demo_available === 't') ? 'TRUE' : 'FALSE',
           (detail.scholarship_available === true || detail.scholarship_available === 't') ? 'TRUE' : 'FALSE',
@@ -976,6 +996,8 @@ class InstitutesController {
         const logoFileLink = getCell(row, 'logo_file_link', 'logo_File_Link');
         const website = getCell(row, 'website', 'Website') || null;
         const contactNumber = getCell(row, 'contact_number', 'contact_Number') || null;
+        const branchesNumberRaw = getCell(row, 'branches_number', 'branches_Number', 'branches number');
+        const studentStrengthRaw = getCell(row, 'student_strength', 'student_Strength', 'student strength');
         const description = getCell(row, 'institute_description', 'institute_Description') || null;
         const demoAvailable = parseBool(row.demo_available, true);
         const scholarshipAvailable = parseBool(row.scholarship_available, false);
@@ -1008,6 +1030,8 @@ class InstitutesController {
             logo_filename: logoFilename || null,
             website,
             contact_number: contactNumber,
+            branches_number: toInstituteMetricText(branchesNumberRaw),
+            student_strength: toInstituteMetricText(studentStrengthRaw),
             state: stateTrim || null,
             city: cityTrim || null,
           });

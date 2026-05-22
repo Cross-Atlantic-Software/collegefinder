@@ -1,15 +1,34 @@
 const UserAcademics = require('../../models/user/UserAcademics');
 const Institute = require('../../models/institute/Institute');
 const InstituteExam = require('../../models/institute/InstituteExam');
+const InstituteDetails = require('../../models/institute/InstituteDetails');
+const InstituteStatistics = require('../../models/institute/InstituteStatistics');
+const InstituteCourse = require('../../models/institute/InstituteCourse');
 const db = require('../../config/database');
-const { getDashboardStreamExamContext } = require('./dashboardShortlistContext');
+const {
+  sortDeliveryInstitutes,
+  sortShortlistedInstitutes,
+} = require('../../services/instituteDashboardSort');
+const {
+  getCachedSortedInstituteIds,
+  setCachedSortedInstituteIds,
+} = require('../../services/dashboardInstituteSortCache');
+const {
+  loadDashboardInstituteContext,
+  getInstituteIdsForPool,
+  getInstituteDeliveryTabTotals,
+} = require('../../services/dashboardInstituteScholarshipContext');
+const { filterInstitutesBySearch } = require('../../utils/instituteSearchFilter');
 
 async function enrichInstituteRows(institutes) {
   if (!institutes || institutes.length === 0) return [];
   const ids = institutes.map((i) => i.id).filter((id) => id != null);
   if (ids.length === 0) return [];
 
-  const examLinkRows = await InstituteExam.getExamLinksForInstituteIds(ids);
+  const [examLinkRows, descriptionMap] = await Promise.all([
+    InstituteExam.getExamLinksForInstituteIds(ids),
+    InstituteDetails.findDescriptionsByInstituteIds(ids),
+  ]);
   const examMap = new Map();
   for (const row of examLinkRows) {
     const iid = row.institute_id;
@@ -23,81 +42,261 @@ async function enrichInstituteRows(institutes) {
   return institutes.map((inst) => ({
     ...inst,
     linkedExams: examMap.get(inst.id) || [],
+    institute_description: descriptionMap.get(inst.id) ?? null,
   }));
 }
 
-/**
- * GET /api/auth/profile/dashboard-institutes
- */
-async function getDashboardInstitutes(req, res) {
-  try {
-    const userId = req.user.id;
-    const ctx = await getDashboardStreamExamContext(userId);
+async function buildOrderedInstituteIdsForDelivery(userId, delivery, ctx) {
+  const cached = await getCachedSortedInstituteIds(userId, delivery, ctx);
+  if (cached) return cached;
 
+  let orderedIds = [];
+
+  if (delivery === 'shortlisted') {
+    const instituteIds = ctx.shortlistedInstituteIds || [];
+    if (instituteIds.length) {
+      const institutes = await Institute.findByIds(instituteIds);
+      const examIdsMap =
+        (ctx.shortlistedExamIds || []).length > 0
+          ? await InstituteExam.getExamIdsMapByInstituteIds(institutes.map((i) => i.id))
+          : new Map();
+      const sorted = sortShortlistedInstitutes(institutes, ctx, examIdsMap);
+      orderedIds = sorted.map((i) => i.id);
+    }
+  } else {
+    const instituteIds = await getInstituteIdsForPool(ctx);
+    if (instituteIds.length) {
+      const institutes = await Institute.findByIds(instituteIds);
+      const examIdsMap = await InstituteExam.getExamIdsMapByInstituteIds(
+        institutes.map((i) => i.id)
+      );
+      const sorted = sortDeliveryInstitutes(institutes, delivery, ctx, examIdsMap);
+      orderedIds = sorted.map((i) => i.id);
+    }
+  }
+
+  await setCachedSortedInstituteIds(userId, delivery, ctx, orderedIds);
+  return orderedIds;
+}
+
+/**
+ * GET /api/auth/profile/dashboard-institutes/meta
+ */
+async function getDashboardInstitutesMeta(req, res) {
+  try {
+    const ctx = await loadDashboardInstituteContext(req.user.id);
     if (ctx.streamId == null) {
       return res.json({
         success: true,
         data: {
           streamId: null,
-          allInstitutes: [],
-          recommendedInstitutes: [],
-          shortlistedInstitutes: [],
-          shortlistedInstituteIds: [],
+          shortlistedInstituteIds: ctx.shortlistedInstituteIds,
+          tabTotals: {
+            online: 0,
+            offline: 0,
+            shortlisted: ctx.shortlistedInstituteIds.length,
+          },
           message: ctx.message,
         },
       });
     }
 
-    const { allExamIds, recommendedExamIds } = ctx;
-    const academics = await UserAcademics.findByUserId(userId);
-
-    // All coachings: institutes mapped (institute_exams + institute_exam_specialization) to at least
-    // one exam in the user's stream "all exams" set (same IDs as dashboard Exam Shortlist → All).
-    const allInstituteIds =
-      allExamIds.length > 0 ? await InstituteExam.getInstituteIdsByExamIds(allExamIds) : [];
-    // Recommended coachings: same mapping tables, but only exams in the scored top-20 recommended set.
-    const recInstituteIds =
-      recommendedExamIds.length > 0
-        ? await InstituteExam.getInstituteIdsByExamIds(recommendedExamIds)
-        : [];
-
-    const shortlistedRaw = Array.isArray(academics?.user_shortlisted_institutes)
-      ? academics.user_shortlisted_institutes
-      : [];
-    const shortlistedInstituteIds = shortlistedRaw
-      .map((id) => Number(id))
-      .filter((id) => Number.isInteger(id) && id > 0);
-
-    const allInstitutes = await enrichInstituteRows(await Institute.findByIds(allInstituteIds));
-    const recommendedInstitutes = await enrichInstituteRows(await Institute.findByIds(recInstituteIds));
-
-    const shortlistedUnique = [...new Set(shortlistedInstituteIds)];
-    const shortlistedInstitutes =
-      shortlistedUnique.length > 0
-        ? await enrichInstituteRows(await Institute.findByIds(shortlistedUnique))
-        : [];
-
+    const tabTotals = await getInstituteDeliveryTabTotals(ctx);
     return res.json({
       success: true,
       data: {
         streamId: ctx.streamId,
-        allInstitutes,
-        recommendedInstitutes,
-        shortlistedInstitutes,
-        shortlistedInstituteIds,
+        shortlistedInstituteIds: ctx.shortlistedInstituteIds,
+        tabTotals,
         message:
-          allInstitutes.length === 0 && recommendedInstitutes.length === 0
+          tabTotals.online === 0 && tabTotals.offline === 0
             ? 'No coaching institutes match your exam filters yet.'
             : undefined,
       },
     });
   } catch (error) {
-    console.error('Error fetching dashboard institutes:', error);
+    console.error('Error fetching dashboard institutes meta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch coaching institutes meta',
+    });
+  }
+}
+
+async function applyInstituteSearchFilter(orderedIds, searchRaw) {
+  const q = String(searchRaw || '').trim();
+  if (!q || !orderedIds.length) return orderedIds;
+
+  const institutes = await Institute.findByIds(orderedIds);
+  const examLinkRows = await InstituteExam.getExamLinksForInstituteIds(orderedIds);
+  const examLabelsByInstituteId = new Map();
+  for (const row of examLinkRows) {
+    const iid = row.institute_id;
+    if (!examLabelsByInstituteId.has(iid)) examLabelsByInstituteId.set(iid, []);
+    const labels = examLabelsByInstituteId.get(iid);
+    if (row.exam_name) labels.push(row.exam_name);
+    if (row.exam_code) labels.push(row.exam_code);
+  }
+
+  const filtered = filterInstitutesBySearch(institutes, q, examLabelsByInstituteId);
+  return filtered.map((i) => i.id);
+}
+
+/**
+ * GET /api/auth/profile/dashboard-institutes/tab?delivery=online|offline|shortlisted&page=&limit=&search=
+ */
+async function getDashboardInstitutesTab(req, res) {
+  try {
+    const delivery = String(req.query.delivery || '').toLowerCase();
+    if (!['online', 'offline', 'shortlisted'].includes(delivery)) {
+      return res.status(400).json({
+        success: false,
+        message: 'delivery must be online, offline, or shortlisted',
+      });
+    }
+
+    const pageRaw = parseInt(req.query.page, 10);
+    const limitRaw = parseInt(req.query.limit, 10);
+    const page = Math.max(1, Number.isInteger(pageRaw) ? pageRaw : 1);
+    const limit = Math.min(50, Math.max(1, Number.isInteger(limitRaw) ? limitRaw : 10));
+    const search = String(req.query.search || '').trim();
+
+    const userId = req.user.id;
+    const ctx = await loadDashboardInstituteContext(userId);
+
+    if (ctx.streamId == null && delivery !== 'shortlisted') {
+      return res.json({
+        success: true,
+        data: {
+          streamId: null,
+          delivery,
+          institutes: [],
+          shortlistedInstituteIds: ctx.shortlistedInstituteIds,
+          pagination: { page: 1, limit, total: 0, totalPages: 1 },
+          message: ctx.message,
+        },
+      });
+    }
+
+    const orderedIds = await buildOrderedInstituteIdsForDelivery(userId, delivery, ctx);
+    const filteredIds = await applyInstituteSearchFilter(orderedIds, search);
+    const total = filteredIds.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const pageIds = filteredIds.slice(start, start + limit);
+    const pageRows = await Institute.findByIds(pageIds);
+    const institutes = await enrichInstituteRows(pageRows);
+
+    return res.json({
+      success: true,
+      data: {
+        streamId: ctx.streamId,
+        delivery,
+        institutes,
+        shortlistedInstituteIds: ctx.shortlistedInstituteIds,
+        pagination: {
+          page: safePage,
+          limit,
+          total,
+          totalPages,
+        },
+        message:
+          total === 0
+            ? search
+              ? 'No coaching institutes match your search.'
+              : delivery === 'shortlisted'
+                ? 'No shortlisted coaching institutes yet. Shortlist institutes from the Online or Offline tabs.'
+                : `No ${delivery} coaching institutes match your exam filters yet.`
+            : undefined,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard institutes tab:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch coaching institutes',
     });
   }
+}
+
+async function resolveInstituteRef(ref) {
+  const raw = String(ref || '').trim();
+  if (!raw) return null;
+  const asId = parseInt(raw, 10);
+  if (String(asId) === raw && asId > 0) {
+    return Institute.findById(asId);
+  }
+  return Institute.findBySlug(raw);
+}
+
+async function enrichInstituteDetail(institute) {
+  const [base] = await enrichInstituteRows([institute]);
+  if (!base) return null;
+
+  const [instituteDetails, statistics, courses] = await Promise.all([
+    InstituteDetails.findByInstituteId(institute.id),
+    InstituteStatistics.findByInstituteId(institute.id),
+    InstituteCourse.findByInstituteId(institute.id),
+  ]);
+
+  return {
+    ...base,
+    instituteDetails,
+    statistics,
+    courses,
+  };
+}
+
+/**
+ * GET /api/auth/profile/dashboard-institutes/:instituteRef
+ */
+async function getDashboardInstituteByRef(req, res) {
+  try {
+    const userId = req.user.id;
+    const institute = await resolveInstituteRef(req.params.instituteRef);
+    if (!institute) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coaching institute not found',
+      });
+    }
+
+    const [enriched, academics] = await Promise.all([
+      enrichInstituteDetail(institute),
+      UserAcademics.findByUserId(userId),
+    ]);
+
+    const shortlistedInstituteIds = [
+      ...new Set(
+        (Array.isArray(academics?.user_shortlisted_institutes)
+          ? academics.user_shortlisted_institutes
+          : []
+        )
+          .map((n) => Number(n))
+          .filter((n) => Number.isInteger(n) && n > 0)
+      ),
+    ];
+
+    return res.json({
+      success: true,
+      data: {
+        institute: enriched,
+        shortlistedInstituteIds,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard institute detail:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch coaching institute details',
+    });
+  }
+}
+
+/** @deprecated Use dashboard-institutes/meta */
+async function getDashboardInstitutes(req, res) {
+  return getDashboardInstitutesMeta(req, res);
 }
 
 /**
@@ -163,5 +362,8 @@ async function updateShortlistedInstitutes(req, res) {
 
 module.exports = {
   getDashboardInstitutes,
+  getDashboardInstitutesMeta,
+  getDashboardInstitutesTab,
+  getDashboardInstituteByRef,
   updateShortlistedInstitutes,
 };

@@ -374,3 +374,18 @@ export function examCardSubtitle(exam: Exam): string | null {
   if (auth) return auth;
   return null;
 }
+
+/** Dashboard exam detail route (`/dashboard/exams/[examId]`). */
+export function examDetailHref(
+  examId: number,
+  from:
+    | "dashboard-college-shortlist"
+    | "dashboard-coaching-shortlist"
+    | "dashboard-scholarship-shortlist"
+    | "exam-card"
+    | "exam-shortlist"
+    | "exam-directory"
+    | string = "exam-card"
+): string {
+  return `/dashboard/exams/${examId}?from=${encodeURIComponent(from)}`;
+}

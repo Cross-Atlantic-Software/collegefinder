@@ -3,13 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { getAcademics, getProfileCompletion } from "@/api";
 import { getDashboardCollegesMeta } from "@/api/auth/profile";
-import { getDashboardInstitutes, getDashboardScholarships } from "@/api/auth/profile";
+import { getDashboardInstitutesMeta, getDashboardScholarshipsMeta } from "@/api/auth/profile";
 
 export const PROFILE_COMPLETION_KEY = ["profile-completion"] as const;
 export const DASHBOARD_ACADEMICS_KEY = ["dashboard-academics"] as const;
 export const DASHBOARD_COLLEGES_KEY = ["dashboard-colleges-meta"] as const;
-export const DASHBOARD_INSTITUTES_KEY = ["dashboard-institutes"] as const;
-export const DASHBOARD_SCHOLARSHIPS_KEY = ["dashboard-scholarships"] as const;
+export const DASHBOARD_INSTITUTES_KEY = ["dashboard-institutes-meta"] as const;
+export const DASHBOARD_SCHOLARSHIPS_KEY = ["dashboard-scholarships-meta"] as const;
 
 const sidebarQueryDefaults = {
   staleTime: 120_000,
@@ -65,7 +65,7 @@ export function useDashboardInstitutesQuery(enabled = true) {
   return useQuery({
     queryKey: DASHBOARD_INSTITUTES_KEY,
     queryFn: async () => {
-      const res = await getDashboardInstitutes();
+      const res = await getDashboardInstitutesMeta();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load institutes");
       }
@@ -80,7 +80,7 @@ export function useDashboardScholarshipsQuery(enabled = true) {
   return useQuery({
     queryKey: DASHBOARD_SCHOLARSHIPS_KEY,
     queryFn: async () => {
-      const res = await getDashboardScholarships();
+      const res = await getDashboardScholarshipsMeta();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load scholarships");
       }

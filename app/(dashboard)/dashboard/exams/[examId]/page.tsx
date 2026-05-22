@@ -74,6 +74,18 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
     { label: "Dashboard", href: "/dashboard" },
     { label: "Exam Directory", href: "/dashboard/exams" },
   ],
+  "dashboard-college-shortlist": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
+  ],
+  "dashboard-coaching-shortlist": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
+  ],
+  "dashboard-scholarship-shortlist": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+  ],
 };
 
 function ExamDetailShell({

@@ -1,18 +1,18 @@
 "use client";
 
 import { FaHeart, FaRegHeart } from "react-icons/fa";
-import type { DashboardCollege } from "@/api/auth/profile";
+import type { DashboardInstitute } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import {
   LinkedExamChips,
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
-import { CollegeLogo } from "@/components/dashboard/CollegeLogo";
-import { collegeLocationLine } from "@/lib/collegeDisplay";
+import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
+import { instituteLocationLine } from "@/lib/instituteDisplay";
 
-export type CollegeShortlistCardProps = {
-  college: DashboardCollege;
+export type CoachingShortlistCardProps = {
+  institute: DashboardInstitute;
   detailHref: string;
   displayOverview: string;
   isShortlisted: boolean;
@@ -20,31 +20,39 @@ export type CollegeShortlistCardProps = {
   onShortlist: () => void;
 };
 
-export function CollegeShortlistCard({
-  college,
+function formatDeliveryType(type: string | null | undefined): string {
+  const t = type?.trim().toLowerCase();
+  if (t === "online") return "Online";
+  if (t === "offline") return "Offline";
+  if (t === "hybrid") return "Hybrid";
+  return type?.trim() || "";
+}
+
+export function CoachingShortlistCard({
+  institute,
   detailHref,
   displayOverview,
   isShortlisted,
   shortlistSaving,
   onShortlist,
-}: CollegeShortlistCardProps) {
-  const location = collegeLocationLine(college);
-  const collegeType = college.college_type?.trim();
+}: CoachingShortlistCardProps) {
+  const location = instituteLocationLine(institute) ?? "";
+  const deliveryType = formatDeliveryType(institute.type);
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
       <div className="flex gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
         <div className="min-w-0 flex-1 space-y-1">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
-            {college.college_name}
+            {institute.institute_name}
           </h3>
-          {collegeType ? (
+          {deliveryType ? (
             <p>
-              <ExamCardHoverField label="College type" value={collegeType} />
+              <ExamCardHoverField label="Delivery type" value={deliveryType} />
             </p>
           ) : null}
         </div>
-        <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
+        <InstituteLogo institute={institute} className="h-16 w-16 shrink-0 p-1.5" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
@@ -58,17 +66,23 @@ export function CollegeShortlistCard({
           </p>
         ) : null}
 
-        <LinkedExamChips
-          linkedExams={college.linkedExams}
-          linkFrom="dashboard-college-shortlist"
-          maxVisible={LINKED_EXAM_CHIPS_CARD_MAX}
-        />
-
-        {college.parent_university?.trim() ? (
-          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400" title={college.parent_university}>
-            {college.parent_university}
+        {institute.branches_number?.trim() ? (
+          <p className="m-0">
+            <ExamCardHoverField label="Branches" value={institute.branches_number.trim()} />
           </p>
         ) : null}
+
+        {institute.student_strength?.trim() ? (
+          <p className="m-0">
+            <ExamCardHoverField label="Student strength" value={institute.student_strength.trim()} />
+          </p>
+        ) : null}
+
+        <LinkedExamChips
+          linkedExams={institute.linkedExams}
+          linkFrom="dashboard-coaching-shortlist"
+          maxVisible={LINKED_EXAM_CHIPS_CARD_MAX}
+        />
 
         <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-2">
@@ -113,7 +127,7 @@ export function CollegeShortlistCard({
             ) : (
               <>
                 <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Shortlist college
+                Shortlist coaching
               </>
             )}
           </button>

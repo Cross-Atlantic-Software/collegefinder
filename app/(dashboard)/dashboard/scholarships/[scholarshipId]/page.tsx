@@ -1,19 +1,19 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark, FiTrendingUp } from "react-icons/fi";
+import { FiBookmark } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
+import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
 import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
-import { buildCollegeDetailSections, collegeLocationLine } from "@/lib/collegeDisplay";
-import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
-import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
-import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
+import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
+import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
+import { useUpdateShortlistedScholarshipMutation } from "@/lib/dashboardScholarshipQueries";
+import { collegeDetailHref } from "@/lib/collegeSlug";
 
 type SectionId =
   | "dashboard"
@@ -30,42 +30,24 @@ type SectionId =
   | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
-  "dashboard-college-shortlist-recommended": [
+  "dashboard-scholarship-recommended": [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
     { label: "Recommended" },
   ],
-  "dashboard-college-shortlist-shortlisted": [
+  "dashboard-scholarship-shortlisted": [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
-    { label: "Shortlisted" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "Shortlist" },
   ],
-  "dashboard-college-shortlist-all": [
+  "dashboard-scholarship-all": [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
-    { label: "All Colleges" },
-  ],
-  "exam-detail": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-  ],
-  "exam-card": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-  ],
-  "exam-shortlist": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "All" },
   ],
 };
 
-const LOCAL_COLLEGE_IMAGES = [
-  "/college/image.png",
-  "/college/image copy.png",
-  "/college/image copy 2.png",
-];
-
-function CollegeDetailShell({
+function DetailShell({
   children,
   onSectionChange,
 }: {
@@ -82,7 +64,7 @@ function CollegeDetailShell({
         onToggle={() => setSidebarOpen((v) => !v)}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-        activeSection="college-shortlist"
+        activeSection="scholarships"
         onSectionChange={onSectionChange}
         loadShortlistCounts={false}
       />
@@ -98,94 +80,89 @@ function CollegeDetailShell({
   );
 }
 
-export default function CollegeDetailPage() {
+export default function ScholarshipDetailPage() {
   const router = useRouter();
-  const params = useParams<{ collegeId: string }>();
+  const params = useParams<{ scholarshipId: string }>();
   const searchParams = useSearchParams();
-  const collegeRef = decodeURIComponent(params.collegeId || "");
+  const scholarshipRef = decodeURIComponent(params.scholarshipId || "");
   const from = searchParams.get("from") || "";
 
-  const { data, isLoading, isError, error } = useCollegeDetailQuery(collegeRef);
-  const updateShortlist = useUpdateShortlistedCollegeMutation();
+  const { data, isLoading, isError, error } = useScholarshipDetailQuery(scholarshipRef);
+  const updateShortlist = useUpdateShortlistedScholarshipMutation();
 
-  const college = data?.college;
-  const shortlistedIds = (data?.shortlistedCollegeIds ?? []).map(Number);
-  const isShortlisted = college ? shortlistedIds.includes(college.id) : false;
+  const scholarship = data?.scholarship;
+  const shortlistedIds = (data?.shortlistedScholarshipIds ?? []).map(Number);
+  const isShortlisted = scholarship ? shortlistedIds.includes(scholarship.id) : false;
 
   const sections = useMemo(
-    () => (college ? buildCollegeDetailSections(college) : []),
-    [college]
+    () => (scholarship ? buildScholarshipDetailSections(scholarship) : []),
+    [scholarship]
   );
 
-  const logoSrc =
-    (college && resolveCollegeLogoSrc(college)) ||
-    LOCAL_COLLEGE_IMAGES[Math.abs(college?.id ?? 0) % LOCAL_COLLEGE_IMAGES.length];
-
-  const location = college ? collegeLocationLine(college) : null;
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
   ];
 
   const handleSectionChange = (section: SectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
+  const applicationUrl = scholarship?.application_link?.trim() || null;
+  const websiteUrl = scholarship?.official_website?.trim() || null;
+
   if (isLoading) {
     return (
-      <CollegeDetailShell onSectionChange={handleSectionChange}>
+      <DetailShell onSectionChange={handleSectionChange}>
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            Loading college details...
+            Loading scholarship details...
           </div>
         </div>
-      </CollegeDetailShell>
+      </DetailShell>
     );
   }
 
-  if (isError || !college) {
+  if (isError || !scholarship) {
     return (
-      <CollegeDetailShell onSectionChange={handleSectionChange}>
+      <DetailShell onSectionChange={handleSectionChange}>
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-center dark:bg-slate-900">
             <p className="text-sm text-red-600 dark:text-red-400">
-              {error instanceof Error ? error.message : "College not found."}
+              {error instanceof Error ? error.message : "Scholarship not found."}
             </p>
             <Button
               variant="themeButtonOutline"
               size="sm"
-              href="/dashboard?section=college-shortlist"
+              href="/dashboard?section=scholarships"
               className="mt-4 !rounded-full"
             >
-              Back to College Shortlist
+              Back to Scholarships
             </Button>
           </div>
         </div>
-      </CollegeDetailShell>
+      </DetailShell>
     );
   }
 
   return (
-    <CollegeDetailShell onSectionChange={handleSectionChange}>
+    <DetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
         <div className="px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
-              <Image
-                src={logoSrc}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="44px"
-                priority
-              />
-            </div>
+            <ScholarshipLogo scholarship={scholarship} className="h-14 w-14 shrink-0 p-1.5" />
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
-                {college.college_name}
+                {scholarship.scholarship_name}
               </h1>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {[college.college_type, location].filter(Boolean).join(" · ") || "College"}
+                {[
+                  scholarship.scholarship_type,
+                  scholarship.conducting_authority,
+                  scholarship.scholarship_amount,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Scholarship"}
               </p>
             </div>
           </div>
@@ -212,7 +189,7 @@ export default function CollegeDetailPage() {
             ))}
             <ChevronRight className="h-3 w-3" />
             <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {college.college_name}
+              {scholarship.scholarship_name}
             </span>
           </div>
         </div>
@@ -221,16 +198,34 @@ export default function CollegeDetailPage() {
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {college.linkedExams && college.linkedExams.length > 0 ? (
+            {scholarship.linkedExams && scholarship.linkedExams.length > 0 ? (
               <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Linked exams
                 </p>
                 <div className="mt-2">
                   <LinkedExamChips
-                    linkedExams={college.linkedExams}
-                    linkFrom="dashboard-college-shortlist"
+                    linkedExams={scholarship.linkedExams}
+                    linkFrom="dashboard-scholarship-shortlist"
                   />
+                </div>
+              </div>
+            ) : null}
+            {scholarship.linkedColleges && scholarship.linkedColleges.length > 0 ? (
+              <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Linked colleges
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {scholarship.linkedColleges.map((college) => (
+                    <Link
+                      key={college.id}
+                      href={collegeDetailHref(college.name, "dashboard-scholarship-shortlist")}
+                      className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      {college.name}
+                    </Link>
+                  ))}
                 </div>
               </div>
             ) : null}
@@ -239,9 +234,7 @@ export default function CollegeDetailPage() {
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
             <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Actions
-              </p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</p>
               <div className="mt-3 space-y-2">
                 <Button
                   variant={isShortlisted ? "secondary" : "themeButton"}
@@ -250,7 +243,7 @@ export default function CollegeDetailPage() {
                   disabled={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
-                      collegeId: college.id,
+                      scholarshipId: scholarship.id,
                       shortlisted: !isShortlisted,
                     })
                   }
@@ -260,35 +253,47 @@ export default function CollegeDetailPage() {
                     ? "Saving..."
                     : isShortlisted
                       ? "Shortlisted"
-                      : "Shortlist college"}
+                      : "Shortlist scholarship"}
                 </Button>
-                {college.website?.trim() ? (
+                {applicationUrl ? (
+                  <Button
+                    variant="themeButton"
+                    size="sm"
+                    className="w-full justify-center rounded-full"
+                    href={
+                      applicationUrl.startsWith("http")
+                        ? applicationUrl
+                        : `https://${applicationUrl}`
+                    }
+                  >
+                    Apply online
+                  </Button>
+                ) : null}
+                {websiteUrl ? (
                   <Button
                     variant="themeButtonOutline"
                     size="sm"
                     className="w-full justify-center rounded-full"
                     href={
-                      college.website.startsWith("http")
-                        ? college.website
-                        : `https://${college.website}`
+                      websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`
                     }
                   >
-                    Visit website
+                    Official website
                   </Button>
                 ) : null}
                 <Button
                   variant="themeButtonOutline"
                   size="sm"
                   className="w-full justify-center rounded-full"
-                  href="/dashboard?section=college-shortlist"
+                  href="/dashboard?section=scholarships"
                 >
-                  <FiTrendingUp className="h-4 w-4" /> Back to shortlist
+                  Back to scholarships
                 </Button>
               </div>
             </div>
           </aside>
         </div>
       </div>
-    </CollegeDetailShell>
+    </DetailShell>
   );
 }

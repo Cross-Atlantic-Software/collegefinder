@@ -1,15 +1,38 @@
 const UserAcademics = require('../../models/user/UserAcademics');
 const Scholarship = require('../../models/scholarship/Scholarship');
 const ScholarshipExam = require('../../models/scholarship/ScholarshipExam');
+const ScholarshipCollege = require('../../models/scholarship/ScholarshipCollege');
+const ScholarshipEligibleCategory = require('../../models/scholarship/ScholarshipEligibleCategory');
+const ScholarshipApplicableState = require('../../models/scholarship/ScholarshipApplicableState');
+const ScholarshipDocumentsRequired = require('../../models/scholarship/ScholarshipDocumentsRequired');
+const Stream = require('../../models/taxonomy/Stream');
 const db = require('../../config/database');
-const { getDashboardStreamExamContext } = require('./dashboardShortlistContext');
+const {
+  sortAllScholarships,
+  sortRecommendedScholarships,
+  sortShortlistedScholarships,
+} = require('../../services/scholarshipDashboardSort');
+const {
+  loadDashboardScholarshipContext,
+  resolveScholarshipIdsForTab,
+} = require('../../services/dashboardInstituteScholarshipContext');
+const {
+  getCachedSortedScholarshipIds,
+  setCachedSortedScholarshipIds,
+  invalidateDashboardScholarshipSortCacheForUser,
+} = require('../../services/dashboardScholarshipSortCache');
+const { filterScholarshipsBySearch } = require('../../utils/scholarshipSearchFilter');
 
 async function enrichScholarshipRows(scholarships) {
   if (!scholarships || scholarships.length === 0) return [];
   const ids = scholarships.map((s) => s.id).filter((id) => id != null);
   if (ids.length === 0) return [];
 
-  const examLinkRows = await ScholarshipExam.getExamLinksForScholarshipIds(ids);
+  const [examLinkRows, collegeLinkRows] = await Promise.all([
+    ScholarshipExam.getExamLinksForScholarshipIds(ids),
+    ScholarshipCollege.getCollegeLinksForScholarshipIds(ids),
+  ]);
+
   const examMap = new Map();
   for (const row of examLinkRows) {
     const sid = row.scholarship_id;
@@ -20,84 +43,288 @@ async function enrichScholarshipRows(scholarships) {
       code: row.exam_code,
     });
   }
-  return scholarships.map((sch) => ({
-    ...sch,
-    linkedExams: examMap.get(sch.id) || [],
-  }));
+
+  const collegeMap = new Map();
+  for (const row of collegeLinkRows) {
+    const sid = row.scholarship_id;
+    if (!collegeMap.has(sid)) collegeMap.set(sid, []);
+    collegeMap.get(sid).push({
+      id: row.college_id,
+      name: row.college_name,
+      city: row.city,
+      state: row.state,
+    });
+  }
+
+  const streamIds = [
+    ...new Set(
+      scholarships.map((s) => s.stream_id).filter((id) => id != null && Number(id) > 0)
+    ),
+  ];
+  const streamRows = streamIds.length ? await Stream.findByIds(streamIds) : [];
+  const streamNameById = new Map(streamRows.map((s) => [s.id, s.name]));
+
+  return scholarships.map((sch) => {
+    const linkedExams = examMap.get(sch.id) || [];
+    const linkedColleges = collegeMap.get(sch.id) || [];
+    const streamId = sch.stream_id != null ? Number(sch.stream_id) : null;
+    return {
+      ...sch,
+      linkedExams,
+      linkedColleges,
+      linkedExamCount: linkedExams.length,
+      linkedCollegeCount: linkedColleges.length,
+      stream_name:
+        streamId && streamNameById.has(streamId) ? streamNameById.get(streamId) : null,
+    };
+  });
+}
+
+async function buildOrderedScholarshipIdsForTab(tab, ctx) {
+  const scholarshipIds = await resolveScholarshipIdsForTab(tab, ctx);
+  if (!scholarshipIds.length) return [];
+
+  const rows = await enrichScholarshipRows(await Scholarship.findByIds(scholarshipIds));
+  if (!rows.length) return [];
+
+  let sorted;
+  if (tab === 'all') {
+    sorted = sortAllScholarships(rows, ctx.userCity);
+  } else if (tab === 'recommended') {
+    sorted = sortRecommendedScholarships(rows, ctx);
+  } else {
+    sorted = sortShortlistedScholarships(rows, ctx);
+  }
+  return sorted.map((s) => s.id);
+}
+
+async function getOrderedScholarshipIdsForTab(userId, tab, ctx) {
+  const cached = await getCachedSortedScholarshipIds(userId, tab, ctx);
+  if (cached) return cached;
+
+  const ids = await buildOrderedScholarshipIdsForTab(tab, ctx);
+  await setCachedSortedScholarshipIds(userId, tab, ctx, ids);
+  return ids;
+}
+
+async function getScholarshipTabTotals(userId, ctx) {
+  const [allIds, recIds] = await Promise.all([
+    getOrderedScholarshipIdsForTab(userId, 'all', ctx),
+    getOrderedScholarshipIdsForTab(userId, 'recommended', ctx),
+  ]);
+  return {
+    all: allIds.length,
+    recommended: recIds.length,
+    shortlisted: ctx.shortlistedScholarshipIds.length,
+  };
 }
 
 /**
- * GET /api/auth/profile/dashboard-scholarships
+ * GET /api/auth/profile/dashboard-scholarships/meta
  */
-async function getDashboardScholarships(req, res) {
+async function getDashboardScholarshipsMeta(req, res) {
   try {
+    const ctx = await loadDashboardScholarshipContext(req.user.id);
+    if (ctx.streamId == null) {
+      return res.json({
+        success: true,
+        data: {
+          streamId: null,
+          shortlistedScholarshipIds: [],
+          tabTotals: { all: 0, recommended: 0, shortlisted: 0 },
+          message: ctx.message,
+        },
+      });
+    }
+
+    const tabTotals = await getScholarshipTabTotals(req.user.id, ctx);
+    return res.json({
+      success: true,
+      data: {
+        streamId: ctx.streamId,
+        shortlistedScholarshipIds: ctx.shortlistedScholarshipIds,
+        tabTotals,
+        message:
+          tabTotals.all === 0 && tabTotals.recommended === 0
+            ? 'No scholarships match your exam filters yet.'
+            : undefined,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard scholarships meta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch scholarships meta',
+    });
+  }
+}
+
+async function applyScholarshipSearchFilter(orderedIds, searchRaw) {
+  const q = String(searchRaw || '').trim();
+  if (!q || !orderedIds.length) return orderedIds;
+
+  const rows = await enrichScholarshipRows(await Scholarship.findByIds(orderedIds));
+  const filtered = filterScholarshipsBySearch(rows, q);
+  return filtered.map((s) => s.id);
+}
+
+/**
+ * GET /api/auth/profile/dashboard-scholarships/tab?tab=all|recommended|shortlisted&page=&limit=&search=
+ */
+async function getDashboardScholarshipsTab(req, res) {
+  try {
+    const tab = String(req.query.tab || '').toLowerCase();
+    if (!['recommended', 'shortlisted', 'all'].includes(tab)) {
+      return res.status(400).json({
+        success: false,
+        message: 'tab must be recommended, shortlisted, or all',
+      });
+    }
+
+    const pageRaw = parseInt(req.query.page, 10);
+    const limitRaw = parseInt(req.query.limit, 10);
+    const page = Math.max(1, Number.isInteger(pageRaw) ? pageRaw : 1);
+    const limit = Math.min(50, Math.max(1, Number.isInteger(limitRaw) ? limitRaw : 10));
+    const search = String(req.query.search || '').trim();
+
     const userId = req.user.id;
-    const ctx = await getDashboardStreamExamContext(userId);
+    const ctx = await loadDashboardScholarshipContext(userId);
 
     if (ctx.streamId == null) {
       return res.json({
         success: true,
         data: {
           streamId: null,
-          allScholarships: [],
-          recommendedScholarships: [],
-          shortlistedScholarships: [],
+          tab,
+          scholarships: [],
           shortlistedScholarshipIds: [],
+          pagination: { page: 1, limit, total: 0, totalPages: 1 },
           message: ctx.message,
         },
       });
     }
 
-    const { allExamIds, recommendedExamIds } = ctx;
-    const academics = await UserAcademics.findByUserId(userId);
+    const orderedIds = await getOrderedScholarshipIdsForTab(userId, tab, ctx);
+    const filteredIds = await applyScholarshipSearchFilter(orderedIds, search);
+    const total = filteredIds.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const pageIds = filteredIds.slice(start, start + limit);
+    const pageRows = await Scholarship.findByIds(pageIds);
+    const scholarships = await enrichScholarshipRows(pageRows);
 
-    // All scholarships: rows in scholarship_exams whose exam_id is in the stream "all exams" set
-    // (same IDs as dashboard Exam Shortlist → All).
-    const allScholarshipIds =
-      allExamIds.length > 0 ? await ScholarshipExam.getScholarshipIdsByExamIds(allExamIds) : [];
-    // Recommended scholarships: same mapping table, exam_id in the scored top-20 recommended set.
-    const recScholarshipIds =
-      recommendedExamIds.length > 0
-        ? await ScholarshipExam.getScholarshipIdsByExamIds(recommendedExamIds)
-        : [];
-
-    const shortlistedRaw = Array.isArray(academics?.user_shortlisted_scholarships)
-      ? academics.user_shortlisted_scholarships
-      : [];
-    const shortlistedScholarshipIds = shortlistedRaw
-      .map((id) => Number(id))
-      .filter((id) => Number.isInteger(id) && id > 0);
-
-    const allScholarships = await enrichScholarshipRows(await Scholarship.findByIds(allScholarshipIds));
-    const recommendedScholarships = await enrichScholarshipRows(await Scholarship.findByIds(recScholarshipIds));
-
-    const shortlistedUnique = [...new Set(shortlistedScholarshipIds)];
-    const shortlistedScholarships =
-      shortlistedUnique.length > 0
-        ? await enrichScholarshipRows(await Scholarship.findByIds(shortlistedUnique))
-        : [];
+    const listMessage =
+      total === 0
+        ? search
+          ? 'No scholarships match your search.'
+          : tab === 'shortlisted'
+            ? 'Shortlist scholarships from Recommended or All to see them here.'
+            : 'No scholarships available in this section.'
+        : undefined;
 
     return res.json({
       success: true,
       data: {
         streamId: ctx.streamId,
-        allScholarships,
-        recommendedScholarships,
-        shortlistedScholarships,
-        shortlistedScholarshipIds,
-        message:
-          allScholarships.length === 0 && recommendedScholarships.length === 0
-            ? 'No scholarships match your exam filters yet.'
-            : undefined,
+        tab,
+        scholarships,
+        shortlistedScholarshipIds: ctx.shortlistedScholarshipIds,
+        pagination: {
+          page: safePage,
+          limit,
+          total,
+          totalPages,
+        },
+        message: listMessage,
       },
     });
   } catch (error) {
-    console.error('Error fetching dashboard scholarships:', error);
+    console.error('Error fetching dashboard scholarships tab:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch scholarships',
     });
   }
+}
+
+async function resolveScholarshipRef(ref) {
+  const raw = String(ref || '').trim();
+  if (!raw) return null;
+  const asId = parseInt(raw, 10);
+  if (String(asId) === raw && asId > 0) {
+    return Scholarship.findById(asId);
+  }
+  return Scholarship.findBySlug(raw);
+}
+
+async function enrichScholarshipDetail(scholarship) {
+  const [base] = await enrichScholarshipRows([scholarship]);
+  if (!base) return null;
+
+  const [eligibleCategories, applicableStates, documentsRequired] = await Promise.all([
+    ScholarshipEligibleCategory.findByScholarshipId(scholarship.id),
+    ScholarshipApplicableState.findByScholarshipId(scholarship.id),
+    ScholarshipDocumentsRequired.findByScholarshipId(scholarship.id),
+  ]);
+
+  return {
+    ...base,
+    eligibleCategories,
+    applicableStates,
+    documentsRequired,
+  };
+}
+
+/**
+ * GET /api/auth/profile/dashboard-scholarships/:scholarshipRef
+ */
+async function getDashboardScholarshipByRef(req, res) {
+  try {
+    const userId = req.user.id;
+    const scholarship = await resolveScholarshipRef(req.params.scholarshipRef);
+    if (!scholarship) {
+      return res.status(404).json({
+        success: false,
+        message: 'Scholarship not found',
+      });
+    }
+
+    const [enriched, academics] = await Promise.all([
+      enrichScholarshipDetail(scholarship),
+      UserAcademics.findByUserId(userId),
+    ]);
+
+    const shortlistedScholarshipIds = [
+      ...new Set(
+        (Array.isArray(academics?.user_shortlisted_scholarships)
+          ? academics.user_shortlisted_scholarships
+          : []
+        )
+          .map((n) => Number(n))
+          .filter((n) => Number.isInteger(n) && n > 0)
+      ),
+    ];
+
+    return res.json({
+      success: true,
+      data: {
+        scholarship: enriched,
+        shortlistedScholarshipIds,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard scholarship detail:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch scholarship details',
+    });
+  }
+}
+
+/** @deprecated Use dashboard-scholarships/meta */
+async function getDashboardScholarships(req, res) {
+  return getDashboardScholarshipsMeta(req, res);
 }
 
 /**
@@ -147,6 +374,8 @@ async function updateShortlistedScholarships(req, res) {
       );
     }
 
+    await invalidateDashboardScholarshipSortCacheForUser(userId);
+
     return res.json({
       success: true,
       data: { shortlistedScholarshipIds: next },
@@ -163,5 +392,8 @@ async function updateShortlistedScholarships(req, res) {
 
 module.exports = {
   getDashboardScholarships,
+  getDashboardScholarshipsMeta,
+  getDashboardScholarshipsTab,
+  getDashboardScholarshipByRef,
   updateShortlistedScholarships,
 };

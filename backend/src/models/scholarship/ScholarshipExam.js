@@ -26,6 +26,52 @@ class ScholarshipExam {
   static async deleteByScholarshipId(scholarshipId) {
     await db.query('DELETE FROM scholarship_exams WHERE scholarship_id = $1', [scholarshipId]);
   }
+
+  static async getScholarshipIdsByExamIds(examIds) {
+    if (!examIds?.length) return [];
+    const ids = examIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!ids.length) return [];
+    const result = await db.query(
+      'SELECT DISTINCT scholarship_id FROM scholarship_exams WHERE exam_id = ANY($1::int[]) ORDER BY scholarship_id',
+      [ids]
+    );
+    return result.rows.map((r) => r.scholarship_id);
+  }
+
+  static async getExamLinksForScholarshipIds(scholarshipIds) {
+    if (!scholarshipIds?.length) return [];
+    const ids = scholarshipIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!ids.length) return [];
+    const result = await db.query(
+      `SELECT se.scholarship_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+       FROM scholarship_exams se
+       INNER JOIN exams_taxonomies e ON e.id = se.exam_id
+       WHERE se.scholarship_id = ANY($1::int[])
+       ORDER BY se.scholarship_id, e.name`,
+      [ids]
+    );
+    return result.rows;
+  }
+
+  static async getExamIdsMapByScholarshipIds(scholarshipIds) {
+    if (!scholarshipIds?.length) return new Map();
+    const ids = scholarshipIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!ids.length) return new Map();
+    const result = await db.query(
+      'SELECT scholarship_id, exam_id FROM scholarship_exams WHERE scholarship_id = ANY($1::int[])',
+      [ids]
+    );
+    const map = new Map();
+    for (const row of result.rows) {
+      const sid = Number(row.scholarship_id);
+      const eid = Number(row.exam_id);
+      if (!Number.isInteger(sid) || !Number.isInteger(eid)) continue;
+      if (!map.has(sid)) map.set(sid, []);
+      const arr = map.get(sid);
+      if (!arr.includes(eid)) arr.push(eid);
+    }
+    return map;
+  }
 }
 
 module.exports = ScholarshipExam;
