@@ -8,9 +8,21 @@ export function slugifyCollegeName(value: string): string {
     .replace(/-+/g, "-");
 }
 
+export type CollegeDetailFrom =
+  | "exam-card"
+  | "exam-detail"
+  | "exam-shortlist"
+  | "dashboard-college-shortlist-recommended"
+  | "dashboard-college-shortlist-shortlisted"
+  | "dashboard-college-shortlist-all"
+  | "dashboard-scholarship-shortlist"
+  | "dashboard-scholarship-recommended"
+  | "dashboard-scholarship-shortlisted"
+  | "dashboard-scholarship-all";
+
 export function collegeDetailHref(
   collegeName: string,
-  from: "exam-card" | "exam-detail" | "exam-shortlist" = "exam-card"
+  from: CollegeDetailFrom = "exam-card"
 ): string {
-  return `/dashboard/colleges/${slugifyCollegeName(collegeName)}?from=${from}`;
+  return `/dashboard/colleges/${slugifyCollegeName(collegeName)}?from=${encodeURIComponent(from)}`;
 }

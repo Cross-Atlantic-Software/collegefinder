@@ -57,6 +57,26 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
     { label: "Dashboard", href: "/dashboard" },
     { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
   ],
+  "dashboard-scholarship-shortlist": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "Shortlist" },
+  ],
+  "dashboard-scholarship-recommended": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "Recommended" },
+  ],
+  "dashboard-scholarship-shortlisted": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "Shortlisted" },
+  ],
+  "dashboard-scholarship-all": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Scholarships", href: "/dashboard?section=scholarships" },
+    { label: "All" },
+  ],
 };
 
 const LOCAL_COLLEGE_IMAGES = [
