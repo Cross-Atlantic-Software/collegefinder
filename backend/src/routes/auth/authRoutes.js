@@ -393,8 +393,30 @@ router.get('/profile/dashboard-colleges', authenticate, ProfileCollegesControlle
 router.put('/profile/shortlisted-colleges', authenticate, ProfileCollegesController.updateShortlistedColleges);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-institutes/meta
+ * @desc    Lightweight coaching institutes meta (tab totals + shortlist IDs)
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-institutes/meta',
+  authenticate,
+  DashboardInstitutesController.getDashboardInstitutesMeta
+);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-institutes/tab
+ * @desc    Paginated online or offline coaching institutes for dashboard
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-institutes/tab',
+  authenticate,
+  DashboardInstitutesController.getDashboardInstitutesTab
+);
+
+/**
  * @route   GET /api/auth/profile/dashboard-institutes
- * @desc    Coaching institutes for dashboard (all / recommended by exam overlap / shortlisted)
+ * @desc    Legacy alias for dashboard-institutes/meta
  * @access  Private
  */
 router.get('/profile/dashboard-institutes', authenticate, DashboardInstitutesController.getDashboardInstitutes);
@@ -407,8 +429,41 @@ router.get('/profile/dashboard-institutes', authenticate, DashboardInstitutesCon
 router.put('/profile/shortlisted-institutes', authenticate, DashboardInstitutesController.updateShortlistedInstitutes);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-institutes/:instituteRef
+ * @desc    Single coaching institute for dashboard detail (id or slug)
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-institutes/:instituteRef',
+  authenticate,
+  DashboardInstitutesController.getDashboardInstituteByRef
+);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-scholarships/meta
+ * @desc    Lightweight scholarship shortlist meta (tab totals, shortlisted IDs)
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-scholarships/meta',
+  authenticate,
+  DashboardScholarshipsController.getDashboardScholarshipsMeta
+);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-scholarships/tab
+ * @desc    Paginated scholarships for one dashboard tab
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-scholarships/tab',
+  authenticate,
+  DashboardScholarshipsController.getDashboardScholarshipsTab
+);
+
+/**
  * @route   GET /api/auth/profile/dashboard-scholarships
- * @desc    Scholarships for dashboard (all / recommended by exam overlap / shortlisted)
+ * @desc    Legacy alias for dashboard-scholarships/meta
  * @access  Private
  */
 router.get('/profile/dashboard-scholarships', authenticate, DashboardScholarshipsController.getDashboardScholarships);
@@ -419,6 +474,17 @@ router.get('/profile/dashboard-scholarships', authenticate, DashboardScholarship
  * @access  Private
  */
 router.put('/profile/shortlisted-scholarships', authenticate, DashboardScholarshipsController.updateShortlistedScholarships);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-scholarships/:scholarshipRef
+ * @desc    Single scholarship for dashboard detail (id or slug)
+ * @access  Private
+ */
+router.get(
+  '/profile/dashboard-scholarships/:scholarshipRef',
+  authenticate,
+  DashboardScholarshipsController.getDashboardScholarshipByRef
+);
 
 /**
  * @route   GET /api/auth/profile/completion

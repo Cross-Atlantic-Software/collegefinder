@@ -1,18 +1,18 @@
 "use client";
 
 import { FaHeart, FaRegHeart } from "react-icons/fa";
-import type { DashboardCollege } from "@/api/auth/profile";
+import type { DashboardScholarship } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import {
   LinkedExamChips,
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
-import { CollegeLogo } from "@/components/dashboard/CollegeLogo";
-import { collegeLocationLine } from "@/lib/collegeDisplay";
+import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
+import { scholarshipLinkedCollegeLocation } from "@/lib/scholarshipDisplay";
 
-export type CollegeShortlistCardProps = {
-  college: DashboardCollege;
+export type ScholarshipShortlistCardProps = {
+  scholarship: DashboardScholarship;
   detailHref: string;
   displayOverview: string;
   isShortlisted: boolean;
@@ -20,31 +20,52 @@ export type CollegeShortlistCardProps = {
   onShortlist: () => void;
 };
 
-export function CollegeShortlistCard({
-  college,
+type MetaField = { label: string; value: string };
+
+export function ScholarshipShortlistCard({
+  scholarship,
   detailHref,
   displayOverview,
   isShortlisted,
   shortlistSaving,
   onShortlist,
-}: CollegeShortlistCardProps) {
-  const location = collegeLocationLine(college);
-  const collegeType = college.college_type?.trim();
+}: ScholarshipShortlistCardProps) {
+  const collegeLocation = scholarshipLinkedCollegeLocation(scholarship);
+  const scholarshipType = scholarship.scholarship_type?.trim();
+  const authority = scholarship.conducting_authority?.trim();
+  const amount = scholarship.scholarship_amount?.trim();
+  const mode = scholarship.mode?.trim();
+  const streamName = scholarship.stream_name?.trim();
+
+  const metaFields: MetaField[] = [];
+  if (authority && scholarshipType) {
+    metaFields.push({ label: "Conducting authority", value: authority });
+  }
+  if (amount) metaFields.push({ label: "Amount", value: amount });
+  if (mode) metaFields.push({ label: "Mode", value: mode });
+  if (streamName) metaFields.push({ label: "Stream", value: streamName });
+  if (collegeLocation) {
+    metaFields.push({ label: "Linked college location", value: collegeLocation });
+  }
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
       <div className="flex gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
         <div className="min-w-0 flex-1 space-y-1">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
-            {college.college_name}
+            {scholarship.scholarship_name}
           </h3>
-          {collegeType ? (
+          {scholarshipType ? (
             <p>
-              <ExamCardHoverField label="College type" value={collegeType} />
+              <ExamCardHoverField label="Scholarship type" value={scholarshipType} />
+            </p>
+          ) : !scholarshipType && authority ? (
+            <p>
+              <ExamCardHoverField label="Conducting authority" value={authority} />
             </p>
           ) : null}
         </div>
-        <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
+        <ScholarshipLogo scholarship={scholarship} className="h-16 w-16 shrink-0 p-1.5" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
@@ -52,23 +73,29 @@ export function CollegeShortlistCard({
           {displayOverview}
         </p>
 
-        {location ? (
-          <p className="m-0">
-            <ExamCardHoverField label="Location" value={location} />
-          </p>
+        {metaFields.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {metaFields.map((field, index) => (
+              <span key={field.label} className="inline-flex max-w-full items-center gap-2">
+                {index > 0 ? (
+                  <span
+                    className="hidden text-slate-300 sm:inline dark:text-slate-600"
+                    aria-hidden
+                  >
+                    ·
+                  </span>
+                ) : null}
+                <ExamCardHoverField label={field.label} value={field.value} />
+              </span>
+            ))}
+          </div>
         ) : null}
 
         <LinkedExamChips
-          linkedExams={college.linkedExams}
-          linkFrom="dashboard-college-shortlist"
+          linkedExams={scholarship.linkedExams}
+          linkFrom="dashboard-scholarship-shortlist"
           maxVisible={LINKED_EXAM_CHIPS_CARD_MAX}
         />
-
-        {college.parent_university?.trim() ? (
-          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400" title={college.parent_university}>
-            {college.parent_university}
-          </p>
-        ) : null}
 
         <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-2">
@@ -113,7 +140,7 @@ export function CollegeShortlistCard({
             ) : (
               <>
                 <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Shortlist college
+                Shortlist scholarship
               </>
             )}
           </button>

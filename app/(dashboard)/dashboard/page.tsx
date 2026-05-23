@@ -69,6 +69,8 @@ function DashboardPageContent() {
   const [examPrepMode, setExamPrepMode] = useState<"self" | "coaching">("self");
   const [examSearchQuery, setExamSearchQuery] = useState("");
   const [collegeSearchQuery, setCollegeSearchQuery] = useState("");
+  const [instituteSearchQuery, setInstituteSearchQuery] = useState("");
+  const [scholarshipSearchQuery, setScholarshipSearchQuery] = useState("");
 
   useEffect(() => {
     if (activeSection !== "exam-shortlist") {
@@ -76,6 +78,12 @@ function DashboardPageContent() {
     }
     if (activeSection !== "college-shortlist") {
       setCollegeSearchQuery("");
+    }
+    if (activeSection !== "coaching-institutes") {
+      setInstituteSearchQuery("");
+    }
+    if (activeSection !== "scholarships") {
+      setScholarshipSearchQuery("");
     }
   }, [activeSection]);
 
@@ -155,6 +163,16 @@ function DashboardPageContent() {
               ? { searchValue: collegeSearchQuery, onSearchChange: setCollegeSearchQuery }
               : undefined
           }
+          instituteShortlistToolbar={
+            activeSection === "coaching-institutes"
+              ? { searchValue: instituteSearchQuery, onSearchChange: setInstituteSearchQuery }
+              : undefined
+          }
+          scholarshipShortlistToolbar={
+            activeSection === "scholarships"
+              ? { searchValue: scholarshipSearchQuery, onSearchChange: setScholarshipSearchQuery }
+              : undefined
+          }
         />
 
         <div className="flex flex-1 overflow-hidden bg-[#F6F8FA] dark:bg-slate-950">
@@ -192,9 +210,13 @@ function DashboardPageContent() {
                   <ShortlistColleges searchQuery={collegeSearchQuery} />
                 )}
 
-                {activeSection === "coaching-institutes" && <ShortlistInstitutes />}
+                {activeSection === "coaching-institutes" && (
+                  <ShortlistInstitutes searchQuery={instituteSearchQuery} />
+                )}
 
-                {activeSection === "scholarships" && <ShortlistScholarships />}
+                {activeSection === "scholarships" && (
+                  <ShortlistScholarships searchQuery={scholarshipSearchQuery} />
+                )}
 
                 {activeSection === "applications" && <ApplicationsPage />}
 

@@ -7,21 +7,45 @@ import { FaUserCircle } from "react-icons/fa";
 import { FiLogOut, FiSettings, FiUser } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 
+type SearchToolbarProps = {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+};
+
 type TopBarProps = {
   onToggleSidebar: () => void;
   onToggleCollapse: () => void;
   isSidebarCollapsed: boolean;
   /** When user is on Exam Shortlist, sync search with that section */
-  examShortlistToolbar?: {
-    searchValue: string;
-    onSearchChange: (value: string) => void;
-  };
+  examShortlistToolbar?: SearchToolbarProps;
   /** When user is on College Shortlist */
-  collegeShortlistToolbar?: {
-    searchValue: string;
-    onSearchChange: (value: string) => void;
-  };
+  collegeShortlistToolbar?: SearchToolbarProps;
+  /** When user is on Coaching Institutes */
+  instituteShortlistToolbar?: SearchToolbarProps;
+  /** When user is on Scholarships */
+  scholarshipShortlistToolbar?: SearchToolbarProps;
 };
+
+function searchPlaceholder(
+  examShortlistToolbar?: SearchToolbarProps,
+  collegeShortlistToolbar?: SearchToolbarProps,
+  instituteShortlistToolbar?: SearchToolbarProps,
+  scholarshipShortlistToolbar?: SearchToolbarProps
+): string {
+  if (examShortlistToolbar) {
+    return "Search by name, mode, duration, attempts, type, authority…";
+  }
+  if (collegeShortlistToolbar) {
+    return "Search by college name, city, state, type, exams…";
+  }
+  if (instituteShortlistToolbar) {
+    return "Search by institute name, city, state, type, location, exams…";
+  }
+  if (scholarshipShortlistToolbar) {
+    return "Search by scholarship name, authority, type, amount, exams, colleges…";
+  }
+  return "Search on Exam, College, Coaching, or Scholarship sections (sidebar)";
+}
 
 export default function TopBar({
   onToggleSidebar,
@@ -29,8 +53,20 @@ export default function TopBar({
   isSidebarCollapsed,
   examShortlistToolbar,
   collegeShortlistToolbar,
+  instituteShortlistToolbar,
+  scholarshipShortlistToolbar,
 }: TopBarProps) {
-  const shortlistToolbar = examShortlistToolbar ?? collegeShortlistToolbar;
+  const shortlistToolbar =
+    examShortlistToolbar ??
+    collegeShortlistToolbar ??
+    instituteShortlistToolbar ??
+    scholarshipShortlistToolbar;
+  const placeholder = searchPlaceholder(
+    examShortlistToolbar,
+    collegeShortlistToolbar,
+    instituteShortlistToolbar,
+    scholarshipShortlistToolbar
+  );
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -49,23 +85,6 @@ export default function TopBar({
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm">
       <div className="flex items-center gap-4 px-4 py-3 md:px-6">
-        {/* Sidebar toggles */}
-        {/* <button
-          onClick={onToggleSidebar}
-          aria-label="Open sidebar"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200 md:hidden"
-        >
-          <BiMenu className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-        </button>
-
-        <button
-          onClick={onToggleCollapse}
-          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
-        >
-          <BiMenu className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-        </button> */}
-
         {/* Search */}
         <div className="flex-1 flex items-center gap-3">
           <div
@@ -75,13 +94,7 @@ export default function TopBar({
           >
             <BiSearch className="h-4 w-4 flex-shrink-0" />
             <input
-              placeholder={
-                examShortlistToolbar
-                  ? "Search by name, mode, duration, attempts, type, authority…"
-                  : collegeShortlistToolbar
-                    ? "Search by college name, city, state, type, exams…"
-                    : "Search on Exam or College Shortlist (sidebar)"
-              }
+              placeholder={placeholder}
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
               value={shortlistToolbar?.searchValue ?? ""}
               onChange={(e) => shortlistToolbar?.onSearchChange(e.target.value)}

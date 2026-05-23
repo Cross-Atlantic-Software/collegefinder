@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS institutes (
   logo VARCHAR(500),
   website VARCHAR(500),
   contact_number VARCHAR(50),
+  branches_number TEXT,
+  student_strength TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

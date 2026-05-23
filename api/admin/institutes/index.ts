@@ -17,6 +17,10 @@ export interface Institute {
   /** Comma/semicolon/space-separated emails for referral sends (admin). */
   referral_contact_email: string | null;
   referral_code: string | null;
+  /** Free-text number of branches (e.g. "12" or "10+"). */
+  branches_number?: string | null;
+  /** Free-text student strength (e.g. "5000+" or "2 lakh"). */
+  student_strength?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +122,8 @@ export async function createInstitute(data: {
   website?: string | null;
   contact_number?: string | null;
   referral_contact_email?: string | null;
+  branches_number?: string | null;
+  student_strength?: string | null;
   institute_description?: string | null;
   demo_available?: boolean;
   scholarship_available?: boolean;
@@ -145,6 +151,8 @@ export async function updateInstitute(
     website?: string | null;
     contact_number?: string | null;
     referral_contact_email?: string | null;
+    branches_number?: string | null;
+    student_strength?: string | null;
     institute_description?: string | null;
     demo_available?: boolean;
     scholarship_available?: boolean;

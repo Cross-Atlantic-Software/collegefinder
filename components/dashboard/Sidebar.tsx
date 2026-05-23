@@ -198,9 +198,7 @@ export default function Sidebar({
   const completionPercentage = completionData?.percentage ?? 0;
   const { data: examsCount = 0 } = useExamsCountQuery();
   const { data: collegesData } = useDashboardCollegesQuery(loadShortlistCounts);
-  const { data: institutesData } = useDashboardInstitutesQuery(
-    loadShortlistCounts && activeSection === "coaching-institutes"
-  );
+  const { data: institutesData } = useDashboardInstitutesQuery(loadShortlistCounts);
   const { data: scholarshipsData } = useDashboardScholarshipsQuery(
     loadShortlistCounts && activeSection === "scholarships"
   );

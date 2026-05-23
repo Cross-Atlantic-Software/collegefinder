@@ -1,59 +1,49 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { FaCheckCircle } from 'react-icons/fa';
 import { MdSchool } from 'react-icons/md';
+import type { DashboardScholarship, DashboardScholarshipTabId } from '@/api/auth/profile';
+import { ScholarshipShortlistCard } from '@/components/dashboard/ScholarshipShortlistCard';
+import { scholarshipCardOverviewText } from '@/lib/scholarshipDisplay';
+import { scholarshipDetailHref } from '@/lib/scholarshipSlug';
 import {
-  getDashboardScholarships,
-  updateShortlistedScholarship,
-  type DashboardScholarship,
-} from '@/api/auth/profile';
+  dashboardScholarshipTabKey,
+  fetchDashboardScholarshipsTabData,
+  useDashboardScholarshipsTabQuery,
+  useUpdateShortlistedScholarshipMutation,
+} from '@/lib/dashboardScholarshipQueries';
+import { useQueryClient } from '@tanstack/react-query';
 
-type TabId = 'all' | 'shortlisted' | 'recommended';
+const PER_PAGE = 10;
 
-/** All, Shortlist, and Recommended tabs each paginate at this size. */
-const SCHOLARSHIPS_PER_PAGE = 10;
-
-type Row = DashboardScholarship & {
-  displayOverview: string;
-  tabSource: string;
-};
+type TabId = DashboardScholarshipTabId;
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
-  { id: 'all', label: 'All', icon: <MdSchool /> },
-  { id: 'shortlisted', label: 'Shortlist', icon: <FaCheckCircle /> },
   { id: 'recommended', label: 'Recommended', icon: <FiSearch /> },
+  { id: 'shortlisted', label: 'Shortlist', icon: <FaCheckCircle /> },
+  { id: 'all', label: 'All', icon: <MdSchool /> },
 ];
 
-function toRow(s: DashboardScholarship, tabSource: string): Row {
-  const desc = s.description?.trim();
-  return {
-    ...s,
-    displayOverview: desc
-      ? desc.length > 220
-        ? `${desc.slice(0, 217)}…`
-        : desc
-      : s.scholarship_type?.trim() || 'Scholarship opportunity.',
-    tabSource,
-  };
+function scholarshipViewFrom(tab: TabId): string {
+  if (tab === 'recommended') return 'dashboard-scholarship-recommended';
+  if (tab === 'shortlisted') return 'dashboard-scholarship-shortlisted';
+  return 'dashboard-scholarship-all';
 }
 
-function externalUrl(s: DashboardScholarship): string | null {
-  const app = s.application_link?.trim();
-  const web = s.official_website?.trim();
-  return app || web || null;
-}
+type ShortlistScholarshipsProps = {
+  /** Controlled from dashboard TopBar search (server-side filter on tab API). */
+  searchQuery?: string;
+};
 
-export default function ShortlistScholarships() {
+export default function ShortlistScholarships({
+  searchQuery: controlledSearch = '',
+}: ShortlistScholarshipsProps) {
+  const queryClient = useQueryClient();
+  const rawQuery = controlledSearch ?? '';
+  const [debouncedSearch, setDebouncedSearch] = useState(rawQuery);
   const [activeTab, setActiveTab] = useState<TabId>('recommended');
-  const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [emptyHint, setEmptyHint] = useState<string | null>(null);
-  const [recommended, setRecommended] = useState<DashboardScholarship[]>([]);
-  const [all, setAll] = useState<DashboardScholarship[]>([]);
-  const [shortlistedRows, setShortlistedRows] = useState<DashboardScholarship[]>([]);
-  const [shortlistedIds, setShortlistedIds] = useState<number[]>([]);
   const [pageByTab, setPageByTab] = useState<Record<TabId, number>>({
     recommended: 1,
     shortlisted: 1,
@@ -68,31 +58,43 @@ export default function ShortlistScholarships() {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      const res = await getDashboardScholarships();
-      if (cancelled) return;
-      if (res.success && res.data) {
-        setRecommended(res.data.recommendedScholarships || []);
-        setAll(res.data.allScholarships || []);
-        setShortlistedRows(res.data.shortlistedScholarships || []);
-        setShortlistedIds((res.data.shortlistedScholarshipIds || []).map(Number));
-        setEmptyHint(res.data.message || null);
-      } else {
-        setRecommended([]);
-        setAll([]);
-        setShortlistedRows([]);
-        setShortlistedIds([]);
-        setEmptyHint(res.message || 'Could not load scholarships.');
-      }
-      setLoading(false);
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const t = window.setTimeout(() => setDebouncedSearch(rawQuery), 350);
+    return () => window.clearTimeout(t);
+  }, [rawQuery]);
+
+  useEffect(() => {
+    setPageByTab({ recommended: 1, shortlisted: 1, all: 1 });
+  }, [debouncedSearch]);
+
+  const currentPage = pageByTab[activeTab];
+
+  const tabQuery = useDashboardScholarshipsTabQuery({
+    tab: activeTab,
+    page: currentPage,
+    limit: PER_PAGE,
+    search: debouncedSearch,
+  });
+
+  const { data: tabData, isLoading, isFetching, isError, error, refetch } = tabQuery;
+  const updateShortlist = useUpdateShortlistedScholarshipMutation();
+
+  const shortlistedIds = (tabData?.shortlistedScholarshipIds ?? []).map(Number);
+  const total = tabData?.pagination?.total ?? 0;
+  const totalPages = tabData?.pagination?.totalPages ?? 1;
+  const effectivePage = tabData?.pagination?.page ?? currentPage;
+  const scholarships = tabData?.scholarships ?? [];
+
+  const showLoadingShell = isLoading && !tabData;
+
+  useEffect(() => {
+    if (tabData?.pagination == null) return;
+    const sp = tabData.pagination.page;
+    setPageByTab((prev) => {
+      if (prev[activeTab] === sp) return prev;
+      return { ...prev, [activeTab]: sp };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- server-clamped page only
+  }, [tabData?.pagination?.page, activeTab]);
 
   useEffect(() => {
     const updateIndicator = () => {
@@ -105,27 +107,12 @@ export default function ShortlistScholarships() {
     return () => window.removeEventListener('resize', updateIndicator);
   }, [activeTab]);
 
-  const tabSourceLabel =
-    activeTab === 'recommended' ? 'Recommended' : activeTab === 'shortlisted' ? 'Shortlisted' : 'All';
-
-  const visibleRows = useMemo((): Row[] => {
-    const base =
-      activeTab === 'recommended' ? recommended : activeTab === 'shortlisted' ? shortlistedRows : all;
-    return base.map((s) => toRow(s, tabSourceLabel));
-  }, [activeTab, recommended, shortlistedRows, all, tabSourceLabel]);
-
-  const totalPages = Math.max(1, Math.ceil(visibleRows.length / SCHOLARSHIPS_PER_PAGE));
-  const currentPage = Math.min(pageByTab[activeTab], totalPages);
-  const pagedRows = visibleRows.slice(
-    (currentPage - 1) * SCHOLARSHIPS_PER_PAGE,
-    currentPage * SCHOLARSHIPS_PER_PAGE
-  );
-
-  const setPage = (next: number) => {
-    setPageByTab((prev) => ({
-      ...prev,
-      [activeTab]: Math.max(1, Math.min(totalPages, next)),
-    }));
+  const prefetchTabFirstPage = (tab: TabId) => {
+    void queryClient.prefetchQuery({
+      queryKey: dashboardScholarshipTabKey(tab, 1, PER_PAGE, debouncedSearch),
+      queryFn: () => fetchDashboardScholarshipsTabData(tab, 1, PER_PAGE, debouncedSearch),
+      staleTime: 60_000,
+    });
   };
 
   useEffect(() => {
@@ -134,19 +121,30 @@ export default function ShortlistScholarships() {
 
   const isShortlisted = (id: number) => shortlistedIds.includes(id);
 
-  const toggleShortlist = async (scholarshipId: number) => {
-    if (savingId != null) return;
-    const nextShortlisted = !isShortlisted(scholarshipId);
-    setSavingId(scholarshipId);
-    const res = await updateShortlistedScholarship(scholarshipId, nextShortlisted);
-    if (res.success && res.data) {
-      setShortlistedIds((res.data.shortlistedScholarshipIds || []).map(Number));
-      const res2 = await getDashboardScholarships();
-      if (res2.success && res2.data) {
-        setShortlistedRows(res2.data.shortlistedScholarships || []);
-      }
-    }
-    setSavingId(null);
+  const setPage = (next: number) => {
+    setPageByTab((prev) => ({
+      ...prev,
+      [activeTab]: Math.max(1, Math.min(totalPages, next)),
+    }));
+  };
+
+  const streamEmpty = tabData?.streamId == null;
+  const emptyHint =
+    tabData?.message ||
+    (isError && error instanceof Error ? error.message : null) ||
+    (streamEmpty ? 'Select your stream in profile to view scholarships.' : null) ||
+    'No scholarships in this section.';
+
+  const savingId = updateShortlist.isPending
+    ? (updateShortlist.variables?.scholarshipId ?? null)
+    : null;
+
+  const toggleShortlist = (scholarshipId: number) => {
+    if (updateShortlist.isPending) return;
+    updateShortlist.mutate({
+      scholarshipId,
+      shortlisted: !isShortlisted(scholarshipId),
+    });
   };
 
   return (
@@ -180,6 +178,8 @@ export default function ShortlistScholarships() {
                       }}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
+                      onMouseEnter={() => prefetchTabFirstPage(tab.id)}
+                      onFocus={() => prefetchTabFirstPage(tab.id)}
                       className={[
                         'flex min-w-max items-center gap-2 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium transition-colors duration-300 ease-in-out',
                         isActive
@@ -203,13 +203,26 @@ export default function ShortlistScholarships() {
         </header>
 
         <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6">
-          <div key={activeTab} style={{ animation: 'fade-in 220ms ease-out' }}>
-            {loading ? (
+          <div key={`${activeTab}-${debouncedSearch}`} style={{ animation: 'fade-in 220ms ease-out' }}>
+            {isError ? (
+              <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center shadow-sm dark:bg-slate-900">
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                  {error instanceof Error ? error.message : 'Could not load scholarships.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="mt-3 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-300"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : showLoadingShell ? (
               <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center text-sm font-medium text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                 <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
                 Loading scholarships...
               </div>
-            ) : visibleRows.length === 0 ? (
+            ) : total === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl bg-white px-4 py-16 text-center shadow-sm dark:bg-slate-900">
                 <MdSchool className="mb-3 h-10 w-10 text-slate-200 dark:text-slate-700" />
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-300">
@@ -221,105 +234,48 @@ export default function ShortlistScholarships() {
               </div>
             ) : (
               <>
+                {isFetching && tabData ? (
+                  <div className="mb-2 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Updating…
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-                  {pagedRows.map((sch) => {
-                    const href = externalUrl(sch);
-                    return (
-                      <article
-                        key={`${activeTab}-${sch.id}`}
-                        className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900"
-                      >
-                        <div className="relative aspect-[5/2] overflow-hidden bg-gradient-to-br from-[#341050] to-action-700 px-4 py-5 text-white">
-                          <p className="line-clamp-2 text-sm font-semibold leading-snug">{sch.scholarship_name}</p>
-                          {sch.conducting_authority?.trim() ? (
-                            <p className="mt-1 line-clamp-1 text-[11px] text-white/80">{sch.conducting_authority}</p>
-                          ) : null}
-                          <div className="absolute right-3 top-3 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm">
-                            {sch.tabSource}
-                          </div>
-                        </div>
-                        <div className="flex flex-1 flex-col gap-2 p-3">
-                          {sch.scholarship_amount?.trim() ? (
-                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                              {sch.scholarship_amount}
-                            </p>
-                          ) : null}
-                          <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-                            {sch.displayOverview}
-                          </p>
-                          {sch.linkedExams && sch.linkedExams.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {sch.linkedExams.slice(0, 4).map((ex) => (
-                                <span
-                                  key={ex.id}
-                                  className="max-w-full truncate rounded-full bg-[#f0f4fa] px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                  title={ex.name}
-                                >
-                                  {ex.code || ex.name}
-                                </span>
-                              ))}
-                              {sch.linkedExams.length > 4 ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800">
-                                  +{sch.linkedExams.length - 4}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : null}
-                          <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-                            {href ? (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="min-w-[72px] flex-1 justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-center text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                              >
-                                Apply / info
-                              </a>
-                            ) : (
-                              <span className="min-w-[72px] flex-1 rounded-full border border-dashed border-slate-200 px-3 py-1.5 text-center text-[11px] text-slate-400 dark:border-slate-700">
-                                No link
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => toggleShortlist(sch.id)}
-                              disabled={savingId === sch.id}
-                              className={`min-w-[88px] flex-1 justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                                isShortlisted(sch.id)
-                                  ? 'border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                  : 'border border-black bg-black text-[#FAD53C] hover:bg-black/90'
-                              }`}
-                            >
-                              {savingId === sch.id ? 'Saving...' : isShortlisted(sch.id) ? 'Shortlisted' : 'Shortlist'}
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {scholarships.map((sch) => (
+                    <ScholarshipShortlistCard
+                      key={`${activeTab}-${sch.id}`}
+                      scholarship={sch}
+                      detailHref={scholarshipDetailHref(
+                        sch.scholarship_name,
+                        scholarshipViewFrom(activeTab)
+                      )}
+                      displayOverview={scholarshipCardOverviewText(sch)}
+                      isShortlisted={isShortlisted(sch.id)}
+                      shortlistSaving={savingId === sch.id}
+                      onShortlist={() => toggleShortlist(sch.id)}
+                    />
+                  ))}
                 </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900">
                   <p className="text-slate-600 dark:text-slate-400">
-                    Showing {(currentPage - 1) * SCHOLARSHIPS_PER_PAGE + 1}-
-                    {Math.min(currentPage * SCHOLARSHIPS_PER_PAGE, visibleRows.length)} of {visibleRows.length}
-                    <span className="text-slate-400 dark:text-slate-500"> · {SCHOLARSHIPS_PER_PAGE} per page</span>
+                    Showing {total === 0 ? 0 : (effectivePage - 1) * PER_PAGE + 1}-
+                    {Math.min(effectivePage * PER_PAGE, total)} of {total}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setPage(currentPage - 1)}
-                      disabled={currentPage <= 1}
+                      onClick={() => setPage(effectivePage - 1)}
+                      disabled={effectivePage <= 1}
                       className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
                     >
                       Prev
                     </button>
                     <span className="text-slate-700 dark:text-slate-300">
-                      Page {currentPage} / {totalPages}
+                      Page {effectivePage} / {totalPages}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPage(currentPage + 1)}
-                      disabled={currentPage >= totalPages}
+                      onClick={() => setPage(effectivePage + 1)}
+                      disabled={effectivePage >= totalPages}
                       className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
                     >
                       Next

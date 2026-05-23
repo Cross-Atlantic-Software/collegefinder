@@ -1,19 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark, FiTrendingUp } from "react-icons/fi";
+import { FiBookmark } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
+import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
 import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
-import { buildCollegeDetailSections, collegeLocationLine } from "@/lib/collegeDisplay";
-import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
-import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
-import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
+import {
+  buildInstituteDetailSections,
+  instituteLocationLine,
+} from "@/lib/instituteDisplay";
+import { useInstituteDetailQuery } from "@/lib/instituteDetailQueries";
+import { useUpdateShortlistedInstituteMutation } from "@/lib/dashboardInstituteQueries";
 
 type SectionId =
   | "dashboard"
@@ -30,62 +32,32 @@ type SectionId =
   | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
-  "dashboard-college-shortlist-recommended": [
+  "dashboard-coaching-online": [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
-    { label: "Recommended" },
+    { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
+    { label: "Online" },
   ],
-  "dashboard-college-shortlist-shortlisted": [
+  "dashboard-coaching-offline": [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
+    { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
+    { label: "Offline" },
+  ],
+  "dashboard-coaching-shortlist": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
     { label: "Shortlisted" },
-  ],
-  "dashboard-college-shortlist-all": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
-    { label: "All Colleges" },
-  ],
-  "exam-detail": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-  ],
-  "exam-card": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-  ],
-  "exam-shortlist": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Exam Shortlist", href: "/dashboard?section=exam-shortlist" },
-  ],
-  "dashboard-scholarship-shortlist": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Scholarships", href: "/dashboard?section=scholarships" },
-    { label: "Shortlist" },
-  ],
-  "dashboard-scholarship-recommended": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Scholarships", href: "/dashboard?section=scholarships" },
-    { label: "Recommended" },
-  ],
-  "dashboard-scholarship-shortlisted": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Scholarships", href: "/dashboard?section=scholarships" },
-    { label: "Shortlisted" },
-  ],
-  "dashboard-scholarship-all": [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Scholarships", href: "/dashboard?section=scholarships" },
-    { label: "All" },
   ],
 };
 
-const LOCAL_COLLEGE_IMAGES = [
-  "/college/image.png",
-  "/college/image copy.png",
-  "/college/image copy 2.png",
-];
+function formatDeliveryType(type: string | null | undefined): string | null {
+  const t = type?.trim().toLowerCase();
+  if (t === "online") return "Online";
+  if (t === "offline") return "Offline";
+  if (t === "hybrid") return "Hybrid";
+  return type?.trim() || null;
+}
 
-function CollegeDetailShell({
+function DetailShell({
   children,
   onSectionChange,
 }: {
@@ -102,7 +74,7 @@ function CollegeDetailShell({
         onToggle={() => setSidebarOpen((v) => !v)}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-        activeSection="college-shortlist"
+        activeSection="coaching-institutes"
         onSectionChange={onSectionChange}
         loadShortlistCounts={false}
       />
@@ -118,33 +90,30 @@ function CollegeDetailShell({
   );
 }
 
-export default function CollegeDetailPage() {
+export default function InstituteDetailPage() {
   const router = useRouter();
-  const params = useParams<{ collegeId: string }>();
+  const params = useParams<{ instituteId: string }>();
   const searchParams = useSearchParams();
-  const collegeRef = decodeURIComponent(params.collegeId || "");
+  const instituteRef = decodeURIComponent(params.instituteId || "");
   const from = searchParams.get("from") || "";
 
-  const { data, isLoading, isError, error } = useCollegeDetailQuery(collegeRef);
-  const updateShortlist = useUpdateShortlistedCollegeMutation();
+  const { data, isLoading, isError, error } = useInstituteDetailQuery(instituteRef);
+  const updateShortlist = useUpdateShortlistedInstituteMutation();
 
-  const college = data?.college;
-  const shortlistedIds = (data?.shortlistedCollegeIds ?? []).map(Number);
-  const isShortlisted = college ? shortlistedIds.includes(college.id) : false;
+  const institute = data?.institute;
+  const shortlistedIds = (data?.shortlistedInstituteIds ?? []).map(Number);
+  const isShortlisted = institute ? shortlistedIds.includes(institute.id) : false;
 
   const sections = useMemo(
-    () => (college ? buildCollegeDetailSections(college) : []),
-    [college]
+    () => (institute ? buildInstituteDetailSections(institute) : []),
+    [institute]
   );
 
-  const logoSrc =
-    (college && resolveCollegeLogoSrc(college)) ||
-    LOCAL_COLLEGE_IMAGES[Math.abs(college?.id ?? 0) % LOCAL_COLLEGE_IMAGES.length];
-
-  const location = college ? collegeLocationLine(college) : null;
+  const location = institute ? instituteLocationLine(institute) : null;
+  const deliveryType = institute ? formatDeliveryType(institute.type) : null;
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
+    { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
   ];
 
   const handleSectionChange = (section: SectionId) => {
@@ -153,59 +122,50 @@ export default function CollegeDetailPage() {
 
   if (isLoading) {
     return (
-      <CollegeDetailShell onSectionChange={handleSectionChange}>
+      <DetailShell onSectionChange={handleSectionChange}>
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            Loading college details...
+            Loading coaching institute details...
           </div>
         </div>
-      </CollegeDetailShell>
+      </DetailShell>
     );
   }
 
-  if (isError || !college) {
+  if (isError || !institute) {
     return (
-      <CollegeDetailShell onSectionChange={handleSectionChange}>
+      <DetailShell onSectionChange={handleSectionChange}>
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-center dark:bg-slate-900">
             <p className="text-sm text-red-600 dark:text-red-400">
-              {error instanceof Error ? error.message : "College not found."}
+              {error instanceof Error ? error.message : "Coaching institute not found."}
             </p>
             <Button
               variant="themeButtonOutline"
               size="sm"
-              href="/dashboard?section=college-shortlist"
+              href="/dashboard?section=coaching-institutes"
               className="mt-4 !rounded-full"
             >
-              Back to College Shortlist
+              Back to Coaching Institutes
             </Button>
           </div>
         </div>
-      </CollegeDetailShell>
+      </DetailShell>
     );
   }
 
   return (
-    <CollegeDetailShell onSectionChange={handleSectionChange}>
+    <DetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
         <div className="px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
-              <Image
-                src={logoSrc}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="44px"
-                priority
-              />
-            </div>
+            <InstituteLogo institute={institute} className="h-14 w-14 shrink-0 p-1.5" />
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
-                {college.college_name}
+                {institute.institute_name}
               </h1>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {[college.college_type, location].filter(Boolean).join(" · ") || "College"}
+                {[deliveryType, location].filter(Boolean).join(" · ") || "Coaching institute"}
               </p>
             </div>
           </div>
@@ -232,7 +192,7 @@ export default function CollegeDetailPage() {
             ))}
             <ChevronRight className="h-3 w-3" />
             <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {college.college_name}
+              {institute.institute_name}
             </span>
           </div>
         </div>
@@ -241,15 +201,15 @@ export default function CollegeDetailPage() {
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {college.linkedExams && college.linkedExams.length > 0 ? (
+            {institute.linkedExams && institute.linkedExams.length > 0 ? (
               <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Linked exams
                 </p>
                 <div className="mt-2">
                   <LinkedExamChips
-                    linkedExams={college.linkedExams}
-                    linkFrom="dashboard-college-shortlist"
+                    linkedExams={institute.linkedExams}
+                    linkFrom="dashboard-coaching-shortlist"
                   />
                 </div>
               </div>
@@ -259,9 +219,7 @@ export default function CollegeDetailPage() {
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
             <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Actions
-              </p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</p>
               <div className="mt-3 space-y-2">
                 <Button
                   variant={isShortlisted ? "secondary" : "themeButton"}
@@ -270,7 +228,7 @@ export default function CollegeDetailPage() {
                   disabled={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
-                      collegeId: college.id,
+                      instituteId: institute.id,
                       shortlisted: !isShortlisted,
                     })
                   }
@@ -280,35 +238,55 @@ export default function CollegeDetailPage() {
                     ? "Saving..."
                     : isShortlisted
                       ? "Shortlisted"
-                      : "Shortlist college"}
+                      : "Shortlist coaching"}
                 </Button>
-                {college.website?.trim() ? (
+                {institute.website?.trim() ? (
                   <Button
                     variant="themeButtonOutline"
                     size="sm"
                     className="w-full justify-center rounded-full"
                     href={
-                      college.website.startsWith("http")
-                        ? college.website
-                        : `https://${college.website}`
+                      institute.website.startsWith("http")
+                        ? institute.website
+                        : `https://${institute.website}`
                     }
                   >
                     Visit website
+                  </Button>
+                ) : null}
+                {institute.google_maps_link?.trim() ? (
+                  <Button
+                    variant="themeButtonOutline"
+                    size="sm"
+                    className="w-full justify-center rounded-full"
+                    href={institute.google_maps_link}
+                  >
+                    Open in Google Maps
+                  </Button>
+                ) : null}
+                {institute.contact_number?.trim() ? (
+                  <Button
+                    variant="themeButtonOutline"
+                    size="sm"
+                    className="w-full justify-center rounded-full"
+                    href={`tel:${institute.contact_number.replace(/\s/g, "")}`}
+                  >
+                    Call institute
                   </Button>
                 ) : null}
                 <Button
                   variant="themeButtonOutline"
                   size="sm"
                   className="w-full justify-center rounded-full"
-                  href="/dashboard?section=college-shortlist"
+                  href="/dashboard?section=coaching-institutes"
                 >
-                  <FiTrendingUp className="h-4 w-4" /> Back to shortlist
+                  Back to coaching list
                 </Button>
               </div>
             </div>
           </aside>
         </div>
       </div>
-    </CollegeDetailShell>
+    </DetailShell>
   );
 }
