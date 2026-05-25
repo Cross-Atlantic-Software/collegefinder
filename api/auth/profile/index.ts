@@ -208,6 +208,9 @@ export type ExamPrepLectureDto = {
   likes: number;
   subscribers: number;
   rankScore: number;
+  /** 0 = shortlisted exam match, 1 = recommended exam match, 2 = other */
+  examTier?: number;
+  examIds?: number[];
   updatedAt: string;
   subjectId: string;
   subjectName: string;
@@ -218,17 +221,44 @@ export type ExamPrepLectureDto = {
 };
 
 /**
- * Video lectures for Exam Prep (user's stream, admin-managed content).
+ * Top recommended exam prep video (shortlisted + recommended exams, sorted).
  */
-export async function getExamPrepLectures(): Promise<ApiResponse<{
-  lectures: ExamPrepLectureDto[];
-  requiresStreamSelection: boolean;
-  message?: string;
-  stream_id?: number;
-}>> {
-  return apiRequest(API_ENDPOINTS.AUTH.PROFILE_EXAM_PREP_LECTURES, {
+export async function getExamPrepRecommendedLecture(
+  sort: 'latest' | 'popular' = 'latest'
+): Promise<
+  ApiResponse<{
+    lecture: ExamPrepLectureDto | null;
+    requiresStreamSelection: boolean;
+    message?: string;
+    stream_id?: number;
+  }>
+> {
+  const qs = sort === 'popular' ? '?sort=popular' : '';
+  return apiRequest(`${API_ENDPOINTS.AUTH.PROFILE_EXAM_PREP_LECTURES_RECOMMENDED}${qs}`, {
     method: 'GET',
   });
+}
+
+/**
+ * Exam prep videos for one subject (loaded when user selects a subject tab).
+ */
+export async function getExamPrepLecturesBySubject(
+  subjectId: string,
+  search?: string
+): Promise<
+  ApiResponse<{
+    lectures: ExamPrepLectureDto[];
+    subjectId: number;
+    requiresStreamSelection: boolean;
+    message?: string;
+    stream_id?: number;
+  }>
+> {
+  const params = new URLSearchParams();
+  if (search?.trim()) params.set('search', search.trim());
+  const qs = params.toString();
+  const path = `${API_ENDPOINTS.AUTH.PROFILE_EXAM_PREP_LECTURES_SUBJECT}/${encodeURIComponent(subjectId)}${qs ? `?${qs}` : ''}`;
+  return apiRequest(path, { method: 'GET' });
 }
 
 /**

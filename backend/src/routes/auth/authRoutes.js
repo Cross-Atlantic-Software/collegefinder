@@ -246,11 +246,26 @@ router.put('/profile/academics', authenticate, validateUpdateAcademics, Academic
 router.get('/profile/subjects', authenticate, SubjectsController.getByUserStream);
 
 /**
- * @route   GET /api/auth/profile/exam-prep-lectures
- * @desc    Video lectures for user's stream (exam prep self-study)
+ * @route   GET /api/auth/profile/exam-prep-lectures/recommended
+ * @desc    Top recommended exam prep video for user's stream
  * @access  Private
  */
-router.get('/profile/exam-prep-lectures', authenticate, ExamPrepLecturesController.getLecturesByUserStream);
+router.get(
+  '/profile/exam-prep-lectures/recommended',
+  authenticate,
+  ExamPrepLecturesController.getRecommendedLecture
+);
+
+/**
+ * @route   GET /api/auth/profile/exam-prep-lectures/subject/:subjectId
+ * @desc    Exam prep videos for one subject (lazy-loaded per subject tab)
+ * @access  Private
+ */
+router.get(
+  '/profile/exam-prep-lectures/subject/:subjectId',
+  authenticate,
+  ExamPrepLecturesController.getLecturesBySubject
+);
 
 /**
  * @route   GET /api/auth/profile/topics/:topicName
