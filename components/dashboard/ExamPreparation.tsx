@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/shared";
-import { getSubjectsByStream, getExamPrepLectures, type ExamPrepLectureDto } from "@/api/auth/profile";
-import { getStrengthResults } from "@/api/strength";
 import { FiAlertCircle } from "react-icons/fi";
+import { useExamPrepSubjectsQuery } from "@/lib/examPrepSubjectQueries";
 
 import SelfStudyTab from "./SelfStudyTab";
 import CoachingCentersTab from "./CoachingCentersTab";
@@ -40,13 +39,26 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
   const [mode, setMode] = useState<PrepMode>(initialMode);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
-  const [subjects, setSubjects] = useState<SubjectSection[]>([]);
-  const [prepLectures, setPrepLectures] = useState<ExamPrepLectureDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [requiresStreamSelection, setRequiresStreamSelection] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [userStrengths, setUserStrengths] = useState<string[] | null>(null);
-  const [strengthsLoading, setStrengthsLoading] = useState(true);
+  const subjectsQuery = useExamPrepSubjectsQuery();
+
+  const subjects = useMemo<SubjectSection[]>(() => {
+    const raw = subjectsQuery.data?.subjects;
+    if (!raw) return [];
+    return raw.map((subj) => ({
+      id: String(subj.id),
+      name: subj.name,
+      topics: subj.topics || [],
+      allTopics: subj.allTopics || [],
+    }));
+  }, [subjectsQuery.data?.subjects]);
+
+  const loading = subjectsQuery.isLoading;
+  const requiresStreamSelection = subjectsQuery.data?.requiresStreamSelection ?? false;
+  const error = subjectsQuery.isError
+    ? subjectsQuery.error instanceof Error
+      ? subjectsQuery.error.message
+      : "Failed to load subjects"
+    : null;
 
   useEffect(() => {
     const requestedMode = searchParams.get("mode");
@@ -56,71 +68,6 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
     }
     setMode(initialMode);
   }, [searchParams, initialMode]);
-
-  useEffect(() => {
-    const fetchSubjectsAndLectures = async () => {
-      try {
-        setLoading(true);
-        const [subResponse, lecResponse] = await Promise.all([getSubjectsByStream(), getExamPrepLectures()]);
-
-        if (!subResponse.success || !subResponse.data) {
-          setError(subResponse.message || "Failed to load subjects");
-          setSubjects([]);
-          setPrepLectures([]);
-        } else if (subResponse.data.requiresStreamSelection) {
-          setRequiresStreamSelection(true);
-          setSubjects([]);
-          setPrepLectures([]);
-        } else {
-          setRequiresStreamSelection(false);
-          const mappedSubjects: SubjectSection[] = (subResponse.data.subjects || []).map(
-            (subj: { id: string; name: string; topics: Topic[]; allTopics: Topic[] }) => ({
-              id: String(subj.id),
-              name: subj.name,
-              topics: subj.topics || [],
-              allTopics: subj.allTopics || [],
-            })
-          );
-          setSubjects(mappedSubjects);
-
-          const streamLocked = lecResponse.success && lecResponse.data?.requiresStreamSelection;
-          if (lecResponse.success && lecResponse.data && !streamLocked) {
-            setPrepLectures(lecResponse.data.lectures || []);
-          } else {
-            setPrepLectures([]);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching exam prep data:", err);
-        setError("Failed to load subjects");
-        setPrepLectures([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSubjectsAndLectures();
-  }, []);
-
-  useEffect(() => {
-    const fetchStrengths = async () => {
-      try {
-        const response = await getStrengthResults();
-        if (response.success && response.data?.has_results && response.data.results?.strengths) {
-          setUserStrengths(response.data.results.strengths);
-        } else {
-          setUserStrengths(null);
-        }
-      } catch (err) {
-        console.error("Error fetching strength results:", err);
-        setUserStrengths(null);
-      } finally {
-        setStrengthsLoading(false);
-      }
-    };
-
-    fetchStrengths();
-  }, []);
 
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
@@ -197,13 +144,10 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
         mode === "self" ? (
           <SelfStudyTab
             subjects={subjects}
-            prepLectures={prepLectures}
             query={query}
             onQueryChange={setQuery}
             sortBy={sortBy}
             onToggleSort={() => setSortBy((prev) => (prev === "latest" ? "popular" : "latest"))}
-            userStrengths={userStrengths}
-            strengthsLoading={strengthsLoading}
           />
         ) : (
           <CoachingCentersTab />

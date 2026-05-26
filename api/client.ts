@@ -21,6 +21,16 @@ export function getApiBaseUrl(): string {
   return typeof window !== 'undefined' ? '/api' : serverSideApiBaseUrl();
 }
 
+/** Absolute URL for browser navigation (OAuth redirects). Relative /api base is invalid for `new URL()`. */
+export function buildBrowserApiUrl(endpoint: string): URL {
+  if (typeof window === 'undefined') {
+    throw new Error('buildBrowserApiUrl is only available in the browser');
+  }
+  const basePath = getApiBaseUrl().replace(/\/$/, '');
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return new URL(`${basePath}${path}`, window.location.origin);
+}
+
 /**
  * Admin JWT for browser requests: prefer localStorage (set at login), then HttpOnly-less cookie fallback.
  * Avoid treating the literal strings "null" / "undefined" as tokens.

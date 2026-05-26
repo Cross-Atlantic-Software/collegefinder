@@ -352,9 +352,14 @@ class Lecture {
    * Video lectures tagged with a stream (lecture_streams), grouped by taxonomy subject (topic.sub_id).
    * Used for dashboard Exam Prep self-study feed.
    */
-  static async findVideoLecturesForExamPrepByStream(streamId) {
+  static async findVideoLecturesForExamPrepByStream(streamId, { subjectId = null } = {}) {
     const sid = parseInt(streamId, 10);
     if (Number.isNaN(sid) || sid <= 0) return [];
+
+    const subjFilter =
+      subjectId != null && Number.isInteger(Number(subjectId)) && Number(subjectId) > 0
+        ? Number(subjectId)
+        : null;
 
     const result = await db.query(
       `SELECT
@@ -371,6 +376,10 @@ class Lecture {
          t.name AS topic_name,
          subj.id AS subject_id,
          subj.name AS subject_name,
+         COALESCE(
+           array_agg(DISTINCT leex.exam_id) FILTER (WHERE leex.exam_id IS NOT NULL),
+           ARRAY[]::int[]
+         ) AS exam_ids,
          (
            COALESCE(l.youtube_like_count, 0)::numeric
            + COALESCE(l.youtube_subscriber_count, 0)::numeric / 1000.0
@@ -379,14 +388,30 @@ class Lecture {
        INNER JOIN lecture_streams ls ON ls.lecture_id = l.id AND ls.stream_id = $1
        INNER JOIN topics t ON l.topic_id = t.id
        INNER JOIN subjects subj ON t.sub_id = subj.id
+       LEFT JOIN lecture_exams leex ON leex.lecture_id = l.id
        WHERE l.status = TRUE
          AND l.content_type = 'VIDEO'
          AND (
            (l.iframe_code IS NOT NULL AND TRIM(l.iframe_code) <> '')
            OR (l.video_file IS NOT NULL AND TRIM(l.video_file) <> '')
          )
+         AND ($2::int IS NULL OR subj.id = $2)
+       GROUP BY
+         l.id,
+         l.iframe_code,
+         l.video_file,
+         l.youtube_title,
+         l.youtube_channel_name,
+         l.youtube_like_count,
+         l.youtube_subscriber_count,
+         l.hook_summary,
+         l.updated_at,
+         t.id,
+         t.name,
+         subj.id,
+         subj.name
        ORDER BY subj.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,
-      [sid]
+      [sid, subjFilter]
     );
     return result.rows;
   }
