@@ -47,6 +47,8 @@ app.use('/api/streams', require('./src/routes/public/streamsRoutes'));
 app.use('/api/careers', require('./src/routes/public/careersRoutes'));
 app.use('/api/categories', require('./src/routes/public/categoriesRoutes'));
 app.use('/api/programs', require('./src/routes/public/programsRoutes'));
+app.use('/api/colleges', require('./src/routes/public/collegesRoutes'));
+app.use('/api/applications', require('./src/routes/public/applicationsRoutes'));
 app.use('/api/exam-cities', require('./src/routes/public/examCitiesRoutes'));
 app.use('/api/user', require('./src/routes/user/userAutomationRoutes'));
 app.use('/api/strength', require('./src/routes/user/strengthRoutes'));

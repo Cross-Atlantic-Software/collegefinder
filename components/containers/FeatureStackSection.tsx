@@ -5,7 +5,21 @@ import Image from "next/image";
 import Link from "next/link";
 import { FiArrowRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import { useAuth } from "@/contexts/AuthContext";
 import type { LandingPageContent } from "@/types/landingPage";
+
+const EXAM_DISCOVERY_LEARN_MORE_HREF = "/exam-directory";
+const COLLEGE_DIRECTORY_LEARN_MORE_HREF = "/college-directory";
+const COMMAND_CENTER_OVERVIEW_DIRECTORY_HREF = "/command-center-overview";
+const DASHBOARD_EXAMS_SECTION_HREF = "/dashboard?section=exam-shortlist";
+const DASHBOARD_COLLEGES_SECTION_HREF = "/dashboard?section=college-shortlist";
+const DASHBOARD_OVERVIEW_HREF = "/dashboard";
+const APPLICATIONS_DIRECTORY_HREF = "/applications-directory";
+const DASHBOARD_APPLICATIONS_SECTION_HREF = "/dashboard?section=applications";
+const STRENGTHS_DIRECTORY_HREF = "/strengths-directory";
+const DASHBOARD_STRENGTHS_SECTION_HREF = "/dashboard?section=know-your-strengths";
+const ADMISSION_HELP_DIRECTORY_HREF = "/admission-help-directory";
+const DASHBOARD_ADMISSION_HELP_SECTION_HREF = "/dashboard?section=admission-help";
 
 type FeatureCard = {
     title: string;
@@ -51,6 +65,7 @@ const FEATURE_CARD_MEDIA: Pick<FeatureCard, "image" | "imageAlt" | "bgClass">[] 
 ];
 
 export default function FeatureStackSection({ features }: { features: LandingPageContent["features"] }) {
+    const { isAuthenticated } = useAuth();
     const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
     const stackSceneRef = useRef<HTMLDivElement | null>(null);
     const cardsStackRef = useRef<HTMLDivElement | null>(null);
@@ -199,6 +214,36 @@ export default function FeatureStackSection({ features }: { features: LandingPag
         stickyCardTopRef.current = stickyCardTop;
     }, [stickyCardTop]);
 
+    const learnMoreHrefForCard = (index: number) => {
+        if (index === 0) {
+            return isAuthenticated ? DASHBOARD_EXAMS_SECTION_HREF : EXAM_DISCOVERY_LEARN_MORE_HREF;
+        }
+        if (index === 1) {
+            return isAuthenticated
+                ? DASHBOARD_OVERVIEW_HREF
+                : COMMAND_CENTER_OVERVIEW_DIRECTORY_HREF;
+        }
+        if (index === 2) {
+            return isAuthenticated ? DASHBOARD_COLLEGES_SECTION_HREF : COLLEGE_DIRECTORY_LEARN_MORE_HREF;
+        }
+        if (index === 3) {
+            return isAuthenticated
+                ? DASHBOARD_APPLICATIONS_SECTION_HREF
+                : APPLICATIONS_DIRECTORY_HREF;
+        }
+        if (index === 4) {
+            return isAuthenticated
+                ? DASHBOARD_STRENGTHS_SECTION_HREF
+                : STRENGTHS_DIRECTORY_HREF;
+        }
+        if (index === 5) {
+            return isAuthenticated
+                ? DASHBOARD_ADMISSION_HELP_SECTION_HREF
+                : ADMISSION_HELP_DIRECTORY_HREF;
+        }
+        return "/signup";
+    };
+
     const renderFeatureCard = (card: FeatureCard, index: number) => (
         <div
             key={`feature-card-${index}`}
@@ -246,7 +291,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                     </p>
 
                     <Link
-                        href="/signup"
+                        href={learnMoreHrefForCard(index)}
                         className="landing-cta group mt-7 inline-flex w-fit items-center gap-2 rounded-full border border-black/30 px-4 py-2.5 text-sm font-semibold text-black hover:bg-black hover:text-white"
                     >
                         {features.learnMoreLabel}
