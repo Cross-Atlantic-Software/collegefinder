@@ -101,9 +101,11 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
             <div className="appContainer space-y-16 md:space-y-20">
                 <div>
                     <div className="text-center">
-                        <h3 className="text-2xl font-extrabold leading-tight text-black sm:text-4xl md:text-5xl">
-                            <span className="mx-auto inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
-                                <span>{audience.headingBuiltFor}</span>
+                        <h3 className="overflow-visible text-2xl font-extrabold leading-tight text-black sm:text-4xl md:text-5xl">
+                            <span className="mx-auto inline-flex max-w-full flex-wrap items-baseline justify-center gap-x-3 gap-y-2 sm:gap-x-4">
+                                <span className="relative z-10 inline-block shrink-0">
+                                    {audience.headingBuiltFor}
+                                </span>
                                 <RoughNotation
                                     type="underline"
                                     show={headingVisible}
@@ -113,30 +115,32 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                                     animationDelay={500}
                                     animationDuration={1200}
                                 >
-                                    <span>{audience.headingBoth}</span>
+                                    <span className="inline-block px-0.5">{audience.headingBoth}</span>
                                 </RoughNotation>
                                 <RoughNotation
                                     type="circle"
                                     show={headingVisible && activeAudience === "students"}
                                     color="#f59e0b"
                                     strokeWidth={3}
-                                    padding={8}
+                                    padding={[4, 6, 4, 2]}
                                     animationDelay={activeAudience === "students" ? 250 : 0}
                                     animationDuration={1100}
                                 >
-                                    <span>{audience.headingStudents}</span>
+                                    <span className="inline-block px-1">{audience.headingStudents}</span>
                                 </RoughNotation>
-                                <span>{audience.headingAnd}</span>
+                                <span className="relative z-10 inline-block shrink-0">
+                                    {audience.headingAnd}
+                                </span>
                                 <RoughNotation
                                     type="circle"
                                     show={headingVisible && activeAudience === "parents"}
                                     color="#f59e0b"
                                     strokeWidth={3}
-                                    padding={8}
+                                    padding={[4, 6, 4, 2]}
                                     animationDelay={activeAudience === "parents" ? 250 : 0}
                                     animationDuration={1100}
                                 >
-                                    <span>{audience.headingParents}</span>
+                                    <span className="inline-block px-1">{audience.headingParents}</span>
                                 </RoughNotation>
                             </span>
                         </h3>

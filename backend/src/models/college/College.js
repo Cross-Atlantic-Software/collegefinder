@@ -16,6 +16,38 @@ class College {
   }
 
   /**
+   * Colleges that offer the given program (via college_programs).
+   * Ordered by linked exam count, then name.
+   */
+  static async findAllByProgramId(programId) {
+    const id = parseInt(programId, 10);
+    if (!Number.isInteger(id) || id <= 0) return [];
+    const result = await db.query(
+      `SELECT c.*
+       FROM colleges c
+       WHERE c.id IN (
+         SELECT DISTINCT cp.college_id
+         FROM college_programs cp
+         WHERE cp.program_id = $1
+         UNION
+         SELECT DISTINCT cd.college_id
+         FROM college_details cd
+         WHERE cd.major_program_ids IS NOT NULL
+           AND btrim(cd.major_program_ids) <> ''
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(regexp_split_to_array(cd.major_program_ids, '[,;]+')) AS tok(raw)
+             WHERE btrim(tok.raw) ~ '^[0-9]+$'
+               AND btrim(tok.raw)::int = $1
+           )
+       )
+       ORDER BY COALESCE(c.linked_exam_count, 0) DESC, c.college_name ASC`,
+      [id]
+    );
+    return result.rows;
+  }
+
+  /**
    * Paginated admin list with optional search across the same fields as the admin UI filter.
    */
   static async findPaginatedAdmin({ page = 1, perPage = 10, q = '' } = {}) {
