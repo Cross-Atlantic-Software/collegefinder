@@ -49,11 +49,11 @@ export type CollegeDirectoryProgram = Program & { displayName: string };
  * Matches DB names like "Ba" to tab label "B.A" and prefers the canonical dotted form.
  */
 export function resolveCollegeDirectoryPrograms(programs: Program[]): CollegeDirectoryProgram[] {
-  return COLLEGE_DIRECTORY_PROGRAM_ORDER.map((label) => {
+  return COLLEGE_DIRECTORY_PROGRAM_ORDER.flatMap((label) => {
     const program = pickProgramForDirectoryTab(programs, label);
-    if (!program) return null;
-    return { ...program, displayName: label };
-  }).filter((p): p is CollegeDirectoryProgram => p != null);
+    if (!program) return [];
+    return [{ ...program, displayName: label }];
+  });
 }
 
 export function splitCollegesForPublicDirectory<T>(colleges: T[]): {
