@@ -260,6 +260,7 @@ type ConfidenceDonutProps = {
   totalLabel: string;
   totalValue: string;
   segments: DonutSegment[];
+  tooltipAlign?: "start" | "end" | "center";
 };
 
 const topicConfidenceSegments: DonutSegment[] = [
@@ -332,7 +333,7 @@ const examConfidenceSegments: DonutSegment[] = [
   },
 ];
 
-const ConfidenceDonut = ({ totalLabel, totalValue, segments }: ConfidenceDonutProps) => {
+const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "center" }: ConfidenceDonutProps) => {
   const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
   const size = 220;
   const center = size / 2;
@@ -357,12 +358,15 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments }: ConfidenceDonutPr
 
   const hoveredSegment = segmentDefs.find((seg) => seg.id === hoveredSegmentId) ?? null;
   const tooltipTheta = hoveredSegment ? ((hoveredSegment.midAngle - 90) * Math.PI) / 180 : 0;
-  const tooltipX = hoveredSegment ? Math.cos(tooltipTheta) : 0;
   const tooltipY = hoveredSegment ? Math.sin(tooltipTheta) : 0;
-  const isTooltipRight = tooltipX >= 0;
+  const tooltipYOffset = Math.max(-34, Math.min(34, tooltipY * 30));
 
   return (
-    <div className="relative h-full overflow-visible rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/45">
+    <div
+      className={`relative h-full overflow-visible rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/45 ${
+        hoveredSegment ? "z-[70]" : "z-10"
+      }`}
+    >
       <div className="relative mx-auto mt-1 h-52 w-52 overflow-visible" onMouseLeave={() => setHoveredSegmentId(null)}>
         <svg
           viewBox={`0 0 ${size} ${size}`}
@@ -417,14 +421,18 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments }: ConfidenceDonutPr
         </div>
 
         <div
-          className={`absolute top-1/2 z-20 w-[240px] rounded-lg border border-slate-200 bg-white/95 p-3 text-left shadow-lg transition-all duration-300 ease-out dark:border-slate-700 dark:bg-slate-900/95 ${
+          className={`absolute top-1/2 z-[80] rounded-lg border border-slate-200 bg-white/95 p-3 text-left shadow-lg transition-all duration-300 ease-out dark:border-slate-700 dark:bg-slate-900/95 ${
             hoveredSegment
               ? "pointer-events-auto opacity-100"
               : "pointer-events-none opacity-0"
           }`}
           style={{
-            [isTooltipRight ? "left" : "right"]: "calc(100% + 4px)",
-            transform: `translateY(calc(-50% + ${(tooltipY * 58).toFixed(1)}px))`,
+            width: "min(220px, calc(100% - 8px))",
+            ...(tooltipAlign === "start"
+              ? { left: "4px", transform: `translateY(calc(-50% + ${tooltipYOffset.toFixed(1)}px))` }
+              : tooltipAlign === "end"
+                ? { right: "4px", transform: `translateY(calc(-50% + ${tooltipYOffset.toFixed(1)}px))` }
+                : { left: "50%", transform: `translate(-50%, calc(-50% + ${tooltipYOffset.toFixed(1)}px))` }),
           }}
         >
           {hoveredSegment && (
@@ -546,8 +554,8 @@ export default function MiddleContent() {
           animation: progressPulseScale 1.8s ease-in-out infinite;
         }
       `}} />
-      <section className="grid gap-3 xl:grid-cols-[2.15fr,1fr]">
-        <div className="flex max-h-[calc(100vh-180px)] min-h-0 flex-col gap-3 overflow-hidden">
+      <section className="relative grid gap-3 xl:grid-cols-[2.15fr,1fr]">
+        <div className="relative z-30 flex max-h-[calc(100vh-180px)] min-h-0 flex-col gap-3 overflow-visible">
           <article>
             <UpcomingDeadlinesCard
               phases={upcomingDeadlinePhases}
@@ -556,7 +564,7 @@ export default function MiddleContent() {
           </article>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
-            <article className="relative flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
+            <article className="relative z-20 flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 Track how consistently you are finishing planned tasks this week.
@@ -622,21 +630,23 @@ export default function MiddleContent() {
               </div>
             </article>
 
-            <article className="flex h-full flex-col rounded-2xl bg-white p-3 dark:bg-slate-900">
+            <article className="relative flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Confidence Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 See how your topic confidence is improving based on mock and revision performance.
               </p>
-              <div className="mt-2.5 grid flex-1 auto-rows-fr gap-2.5 overflow-visible sm:grid-cols-2">
+              <div className="relative mt-2.5 grid flex-1 auto-rows-fr gap-2.5 overflow-visible sm:grid-cols-2">
                 <ConfidenceDonut
                   totalLabel="Total Topics"
                   totalValue="30"
                   segments={topicConfidenceSegments}
+                  tooltipAlign="start"
                 />
                 <ConfidenceDonut
                   totalLabel="Recent Attempts"
                   totalValue="29"
                   segments={examConfidenceSegments}
+                  tooltipAlign="end"
                 />
               </div>
             </article>
@@ -803,8 +813,6 @@ export default function MiddleContent() {
             </article>
 
             <div className="relative mt-3 min-h-[250px] flex-1 overflow-hidden shrink-0">
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-8 bg-gradient-to-b from-white via-white/75 to-transparent dark:from-slate-900 dark:via-slate-900/70" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-10 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/70" />
               <div className="min-h-0 h-full overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
               {quickStudyPicks.map((item, idx) => {
                 if (idx === activeVideoIndex) return null;
