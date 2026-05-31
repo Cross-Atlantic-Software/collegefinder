@@ -61,20 +61,25 @@ export default function ExamDirectoryDiscovery() {
   }, []);
 
   useEffect(() => {
+    if (loading || error) return;
+
     const el = headerRef.current;
     if (!el) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          observer.disconnect();
-          queueMicrotask(() => setHeadingVisible(true));
+          queueMicrotask(() => {
+            setHeadingVisible(true);
+            observer.disconnect();
+          });
         }
       },
       { threshold: 0.3 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [loading, error]);
 
   const streamExams = useMemo(() => {
     if (selectedStreamId == null) return [];
@@ -127,19 +132,21 @@ export default function ExamDirectoryDiscovery() {
           </Link>
 
           <div ref={headerRef} className="mx-auto mt-3 text-center md:mt-4">
-            <h2 className="text-2xl font-extrabold leading-snug text-black sm:text-3xl">
-              <RoughNotation
-                type="underline"
-                show={headingVisible}
-                color="#f0c544"
-                strokeWidth={3}
-                padding={3}
-                animationDelay={500}
-                animationDuration={1500}
-                multiline
-              >
-                Your Stream. Your Exams. Your Call.
-              </RoughNotation>
+            <h2 className="overflow-visible text-2xl font-extrabold leading-snug text-black sm:text-3xl">
+              <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5">
+                Your Stream.{" "}
+                <RoughNotation
+                  type="underline"
+                  show={headingVisible}
+                  color="#f0c544"
+                  strokeWidth={3}
+                  padding={3}
+                  animationDelay={500}
+                  animationDuration={1500}
+                >
+                  <span className="inline-block">Your Exams. Your Call.</span>
+                </RoughNotation>
+              </span>
             </h2>
             <p className="mt-1.5 text-xs text-black/50 sm:text-sm">
               From engineering to medical — verified details, zero guesswork.

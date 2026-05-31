@@ -88,20 +88,25 @@ export default function CollegeDirectoryDiscovery() {
   }, [selectedProgramId, loadCollegesForProgram]);
 
   useEffect(() => {
+    if (loadingPrograms || (error != null && programs.length === 0)) return;
+
     const el = headerRef.current;
     if (!el) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          observer.disconnect();
-          queueMicrotask(() => setHeadingVisible(true));
+          queueMicrotask(() => {
+            setHeadingVisible(true);
+            observer.disconnect();
+          });
         }
       },
       { threshold: 0.3 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [loadingPrograms, error, programs.length]);
 
   const { visible, lockedPreview, hasMoreLocked } = useMemo(
     () => splitCollegesForPublicDirectory(colleges),
@@ -149,19 +154,21 @@ export default function CollegeDirectoryDiscovery() {
           </Link>
 
           <div ref={headerRef} className="mx-auto mt-3 text-center md:mt-4">
-            <h2 className="text-2xl font-extrabold leading-snug text-black sm:text-3xl">
-              <RoughNotation
-                type="underline"
-                show={headingVisible}
-                color="#f0c544"
-                strokeWidth={3}
-                padding={3}
-                animationDelay={500}
-                animationDuration={1500}
-                multiline
-              >
-                Find the Right College with Confidence
-              </RoughNotation>
+            <h2 className="overflow-visible text-2xl font-extrabold leading-snug text-black sm:text-3xl">
+              <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5">
+                Find the Right{" "}
+                <RoughNotation
+                  type="underline"
+                  show={headingVisible}
+                  color="#f0c544"
+                  strokeWidth={3}
+                  padding={3}
+                  animationDelay={500}
+                  animationDuration={1500}
+                >
+                  <span className="inline-block">College with Confidence</span>
+                </RoughNotation>
+              </span>
             </h2>
             <p className="mt-1.5 text-xs text-black/50 sm:text-sm">
               Key details like fees, cutoffs, placements, and college fit in one place.
