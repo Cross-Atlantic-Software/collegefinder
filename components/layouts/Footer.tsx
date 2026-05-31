@@ -96,7 +96,7 @@ export default function Footer() {
                         ))}
                     </nav>
 
-                    <div>
+                    <div className="max-w-sm -ml-1 sm:-ml-2 lg:-ml-6 lg:max-w-md">
                         <p className="text-sm font-semibold tracking-wide text-black/70">
                             {isLoggedIn ? "Need help or have query ?" : "Join UniTracko"}
                         </p>

@@ -74,6 +74,8 @@ export const API_ENDPOINTS = {
     CAREERS: '/careers',
     CATEGORIES: '/categories',
     PROGRAMS: '/programs',
+    COLLEGES: '/colleges',
+    APPLICATIONS_DIRECTORY: '/applications/directory',
     EXAM_CITIES: '/exam-cities',
   },
 
