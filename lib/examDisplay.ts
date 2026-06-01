@@ -164,6 +164,19 @@ export function examCardLinkedCollegeNames(exam: Exam): string[] {
   return examCardLinkedColleges(exam).map((c) => c.name);
 }
 
+/** Total linked colleges (preview list may show fewer). */
+export function examCardLinkedCollegeTotalCount(exam: Exam): number {
+  const total = exam.linkedCollegeCount;
+  if (total != null && total > 0) return total;
+  return exam.linkedColleges?.length ?? exam.linkedCollegeNames?.length ?? 0;
+}
+
+/** Remaining linked colleges after the 3-name preview (+N on cards). */
+export function examCardLinkedCollegeOverflowCount(exam: Exam): number {
+  const shown = examCardLinkedColleges(exam).length;
+  return Math.max(0, examCardLinkedCollegeTotalCount(exam) - shown);
+}
+
 /** College-style card overview paragraph. */
 export function examCardOverview(exam: Exam): string {
   const d = exam.description?.trim();
@@ -230,6 +243,9 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   push(overview, field("Exam name", exam.name));
   push(overview, field("Exam code", exam.code));
   push(overview, field("Exam type", exam.exam_type));
+  if (hasDisplayValue(exam.description)) {
+    push(overview, field("Description", exam.description));
+  }
   push(overview, field("Difficulty level", examCardDifficultyLevel(exam)));
   push(overview, field("Conducting authority", exam.conducting_authority));
   push(
@@ -241,7 +257,6 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
         : null
     )
   );
-  push(overview, field("Website", exam.website));
   push(overview, field("Counselling", exam.counselling));
   push(overview, field("Documents required", exam.documents_required));
   const logo = examLogoUrl(exam);
@@ -259,9 +274,6 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     exam.linkedColleges?.length ?? exam.linkedCollegeNames?.length ?? 0;
   if (linkedCollegeCount > 0) {
     push(overview, field("Colleges listing this exam", linkedCollegeCount));
-  }
-  if (hasDisplayValue(exam.description)) {
-    push(overview, field("Description", exam.description));
   }
   push(overview, field("Last updated", formatExamDate(exam.updated_at)));
   push(overview, field("Created", formatExamDate(exam.created_at)));

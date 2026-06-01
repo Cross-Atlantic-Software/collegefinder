@@ -210,6 +210,42 @@ class CollegeRecommendedExam {
     return map;
   }
 
+  /**
+   * Distinct linked college count per exam (college + program level links).
+   * @returns {Map<number, number>}
+   */
+  static async getCollegeCountsByExamIds(examIds) {
+    if (!examIds?.length) return new Map();
+    const ids = examIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return new Map();
+
+    const result = await db.query(
+      `WITH matched AS (
+         SELECT cre.exam_id, cre.college_id
+         FROM college_recommended_exams cre
+         WHERE cre.exam_id = ANY($1::int[])
+         UNION
+         SELECT btrim(tok.raw)::int AS exam_id, cp.college_id
+         FROM college_programs cp
+         CROSS JOIN LATERAL unnest(string_to_array(cp.recommended_exam_ids, ',')) AS tok(raw)
+         WHERE cp.recommended_exam_ids IS NOT NULL
+           AND btrim(cp.recommended_exam_ids) <> ''
+           AND btrim(tok.raw) ~ '^[0-9]+$'
+           AND btrim(tok.raw)::int = ANY($1::int[])
+       )
+       SELECT exam_id, COUNT(DISTINCT college_id)::int AS college_count
+       FROM matched
+       GROUP BY exam_id`,
+      [ids]
+    );
+
+    const map = new Map();
+    for (const row of result.rows) {
+      map.set(Number(row.exam_id), Number(row.college_count) || 0);
+    }
+    return map;
+  }
+
   /** @deprecated Use getCollegePreviewsByExamIds — names only. */
   static async getCollegeNamePreviewsByExamIds(examIds, limitPerExam = 3) {
     const previews = await this.getCollegePreviewsByExamIds(examIds, limitPerExam);

@@ -26,6 +26,9 @@ const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
+const Lecture = require('../../models/taxonomy/Lecture');
+const Scholarship = require('../../models/scholarship/Scholarship');
+const ScholarshipExam = require('../../models/scholarship/ScholarshipExam');
 const { enrichCollegeRows } = require('./collegesController');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const {
@@ -344,6 +347,7 @@ class ExamsTaxonomyController {
       careerRows,
       programRows,
       collegePreviewsByExam,
+      collegeCountsByExam,
     ] = await Promise.all([
       ExamDates.findByExamIds(ids),
       ExamPattern.findByExamIds(ids),
@@ -352,6 +356,7 @@ class ExamsTaxonomyController {
       ExamCareerGoal.findCareerGoalsForExamIds(ids),
       ExamProgram.findProgramsForExamIds(ids),
       CollegeRecommendedExam.getCollegePreviewsByExamIds(ids, 3),
+      CollegeRecommendedExam.getCollegeCountsByExamIds(ids),
     ]);
 
     const dateMap = new Map();
@@ -439,6 +444,11 @@ class ExamsTaxonomyController {
         linkedCareerGoals: eid != null ? careersByExam.get(eid) || [] : [],
         linkedPrograms: eid != null ? programsByExam.get(eid) || [] : [],
         linkedColleges: eid != null ? collegePreviewsByExam.get(eid) || [] : [],
+        linkedCollegeCount:
+          eid != null
+            ? collegeCountsByExam.get(eid) ??
+              (collegePreviewsByExam.get(eid) || []).length
+            : 0,
         linkedCollegeNames:
           eid != null
             ? (collegePreviewsByExam.get(eid) || []).map((c) => c.name)
@@ -1485,7 +1495,41 @@ class ExamsTaxonomyController {
         Number.isInteger(examIdNum) && examIdNum > 0
           ? await CollegeRecommendedExam.getCollegeIdsByRecommendedExamId(examIdNum)
           : [];
-      const linkedColleges = await enrichCollegeRows(await College.findByIds(collegeIds));
+
+      const [linkedColleges, scholarshipIds, taggedLectureCount, taggedLectureRows] =
+        await Promise.all([
+        enrichCollegeRows(await College.findByIds(collegeIds)),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? ScholarshipExam.getScholarshipIdsByExamId(examIdNum)
+          : Promise.resolve([]),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? Lecture.countVideoLecturesByExamId(examIdNum)
+          : Promise.resolve(0),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? Lecture.findVideoPreviewsByExamId(examIdNum, 5)
+          : Promise.resolve([]),
+      ]);
+
+      const scholarshipRows =
+        scholarshipIds.length > 0 ? await Scholarship.findByIds(scholarshipIds) : [];
+      const linkedScholarships = scholarshipRows.map((s) => ({
+        id: s.id,
+        scholarship_name: s.scholarship_name,
+        scholarship_type: s.scholarship_type,
+        conducting_authority: s.conducting_authority,
+        scholarship_amount: s.scholarship_amount,
+      }));
+      const taggedLecturePreviews = taggedLectureRows.map((row) => ({
+        id: row.id,
+        title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled video',
+        channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || null,
+        subjectName: row.subject_name || null,
+        topicName: row.topic_name || null,
+        hookSummary:
+          row.hook_summary != null && String(row.hook_summary).trim() !== ''
+            ? String(row.hook_summary).trim()
+            : null,
+      }));
 
       return res.json({
         success: true,
@@ -1494,6 +1538,10 @@ class ExamsTaxonomyController {
           shortlistedExamIds: ctx.shortlistedExamIds ?? [],
           linkedColleges,
           linkedCollegesTotal: linkedColleges.length,
+          linkedScholarships,
+          linkedScholarshipTotal: scholarshipRows.length,
+          taggedLectureCount,
+          taggedLecturePreviews,
         },
       });
     } catch (error) {

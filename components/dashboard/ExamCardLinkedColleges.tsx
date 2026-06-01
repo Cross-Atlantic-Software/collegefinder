@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Exam } from "@/api/exams";
 import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { collegeDetailHref } from "@/lib/collegeSlug";
-import { examCardLinkedColleges } from "@/lib/examDisplay";
+import { examCardLinkedColleges, examCardLinkedCollegeOverflowCount } from "@/lib/examDisplay";
 
 type ExamCardLinkedCollegesProps = {
   exam: Exam;
@@ -82,6 +82,7 @@ export function ExamCardLinkedColleges({
 }: ExamCardLinkedCollegesProps) {
   const colleges = examCardLinkedColleges(exam);
   if (!colleges.length) return null;
+  const overflowCount = examCardLinkedCollegeOverflowCount(exam);
 
   const pills = colleges.map((college) => (
     <CollegeNameChip
@@ -93,13 +94,33 @@ export function ExamCardLinkedColleges({
   ));
 
   if (variant === "chips") {
-    return <div className="flex flex-wrap gap-1">{pills}</div>;
+    return (
+      <div className="flex flex-wrap gap-1">
+        {pills}
+        {overflowCount > 0 ? (
+          <span
+            className={`${EXAM_CARD_CHIP_CLASS} cursor-default`}
+            title={`${overflowCount} more colleges`}
+          >
+            +{overflowCount}
+          </span>
+        ) : null}
+      </div>
+    );
   }
 
   return (
     <p className="m-0 flex flex-wrap items-center gap-1">
       <span className="font-medium text-slate-800 dark:text-slate-200">Colleges: </span>
       {pills}
+      {overflowCount > 0 ? (
+        <span
+          className={`${EXAM_CARD_CHIP_CLASS} cursor-default`}
+          title={`${overflowCount} more colleges`}
+        >
+          +{overflowCount}
+        </span>
+      ) : null}
     </p>
   );
 }

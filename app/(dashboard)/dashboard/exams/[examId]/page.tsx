@@ -10,6 +10,8 @@ import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
+import { ExamDetailLinkedScholarships } from "@/components/dashboard/ExamDetailLinkedScholarships";
+import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ExamDetailSections } from "@/components/dashboard/ExamDetailSections";
 import {
   buildExamDetailSections,
@@ -145,12 +147,17 @@ export default function ExamDetailPage() {
     linkedCollegesData?.colleges ?? pageData?.linkedColleges ?? [];
   const linkedCollegesTotal =
     linkedCollegesData?.totalCount ?? pageData?.linkedCollegesTotal ?? 0;
+  const linkedScholarships = pageData?.linkedScholarships ?? [];
+  const linkedScholarshipTotal = pageData?.linkedScholarshipTotal ?? 0;
+  const taggedLectureCount = pageData?.taggedLectureCount ?? 0;
+  const taggedLecturePreviews = pageData?.taggedLecturePreviews ?? [];
   const { data: examMeta } = useDashboardExamsMetaQuery();
   const updateShortlist = useUpdateShortlistedExamMutation();
 
   const sections = useMemo(() => (exam ? buildExamDetailSections(exam) : []), [exam]);
   const levelBadge = exam ? examLevelBadge(exam.exam_type) : null;
   const subtitle = exam ? examCardSubtitle(exam) : null;
+  const websiteUrl = exam?.website?.trim() || null;
 
   const shortlistedIds = examMeta?.shortlistedExamIds ?? [];
   const isShortlisted =
@@ -284,6 +291,10 @@ export default function ExamDetailPage() {
               totalCount={linkedCollegesTotal}
               isLoading={collegesLoading && !!exam}
             />
+            <ExamDetailLinkedScholarships
+              scholarships={linkedScholarships}
+              totalCount={linkedScholarshipTotal}
+            />
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
@@ -315,6 +326,18 @@ export default function ExamDetailPage() {
                     </>
                   )}
                 </Button>
+                {websiteUrl ? (
+                  <Button
+                    variant="themeButtonOutline"
+                    size="sm"
+                    className="w-full justify-center !rounded-full"
+                    href={
+                      websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`
+                    }
+                  >
+                    Visit website
+                  </Button>
+                ) : null}
                 <Button
                   variant="themeButton"
                   size="sm"
@@ -333,6 +356,10 @@ export default function ExamDetailPage() {
                 </Button>
               </div>
             </div>
+            <ExamDetailRecommendedVideos
+              count={taggedLectureCount}
+              lectures={taggedLecturePreviews}
+            />
           </aside>
         </div>
       </div>

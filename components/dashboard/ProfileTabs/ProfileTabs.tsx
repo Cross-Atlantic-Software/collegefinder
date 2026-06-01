@@ -4,7 +4,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, FileText, KeyRound } from "lucide-react";
+import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, KeyRound } from "lucide-react";
 import { uploadProfilePhoto, deleteProfilePhoto } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "../../shared";
@@ -302,12 +302,12 @@ export default function ProfileTabs() {
           style={{ animation: "fade-in 220ms ease-out" }}
           className="space-y-4"
         >
-          <div className="grid gap-4 xl:h-[calc(100vh-220px)] xl:grid-cols-5">
-            <div className="min-w-0 overflow-y-auto rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5 xl:col-span-3">
+          <div className="mx-auto grid w-full max-w-6xl gap-5 xl:h-[calc(100vh-220px)] xl:grid-cols-[1fr_280px]">
+            <div className="min-w-0 overflow-y-auto rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               {renderTabContent(activeTab)}
             </div>
 
-            <div className="min-w-0 overflow-hidden xl:col-span-2">
+            <aside className="min-w-0 overflow-hidden xl:sticky xl:top-6 xl:self-start">
               <div className="grid h-full min-h-0 gap-3" style={{ gridTemplateRows: "auto 1fr" }}>
 
                 {/* ── Recommended Exams ── sliding carousel */}
@@ -461,22 +461,12 @@ export default function ProfileTabs() {
                         </div>
                       ))}
 
-                      {/* Add new document card */}
-                      <div
-                        className="shrink-0 w-[140px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-transparent transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/5 cursor-pointer dark:border-slate-700"
-                        style={{ scrollSnapAlign: "start" }}
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                          <FileText className="h-5 w-5 text-slate-400" />
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-400 text-center px-2">Add Document</p>
-                      </div>
                     </div>
                   </div>
                 </article>
 
               </div>
-            </div>
+            </aside>
 
           </div>
         </div>

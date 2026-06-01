@@ -155,7 +155,6 @@ export function buildCollegeOverviewItems(c: DashboardCollege): Array<{ label: s
   pushItem(items, "City", c.city);
   pushItem(items, "State", c.state);
   pushItem(items, "Parent university", c.parent_university);
-  pushItem(items, "Website", c.website);
   const logo = resolveCollegeLogoSrc(c);
   if (logo) pushItem(items, "Logo", logo);
   if (c.linked_exam_count != null) {

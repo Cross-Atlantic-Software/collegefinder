@@ -489,6 +489,59 @@ class Lecture {
       name: (row.youtube_title || '').trim() || 'Untitled lecture',
     }));
   }
+
+  /** Active video lectures tagged with this exam (for exam detail CTA). */
+  static async countVideoLecturesByExamId(examId) {
+    const id = parseInt(examId, 10);
+    if (!Number.isInteger(id) || id < 1) return 0;
+    const result = await db.query(
+      `SELECT COUNT(DISTINCT l.id)::int AS n
+       FROM lectures l
+       INNER JOIN lecture_exams le ON le.lecture_id = l.id AND le.exam_id = $1
+       WHERE l.status = TRUE
+         AND l.content_type = 'VIDEO'
+         AND (
+           (l.iframe_code IS NOT NULL AND TRIM(l.iframe_code) <> '')
+           OR (l.video_file IS NOT NULL AND TRIM(l.video_file) <> '')
+         )`,
+      [id]
+    );
+    return result.rows[0]?.n ?? 0;
+  }
+
+  /** Top ranked video lectures tagged with this exam (exam detail sidebar carousel). */
+  static async findVideoPreviewsByExamId(examId, limit = 5) {
+    const id = parseInt(examId, 10);
+    if (!Number.isInteger(id) || id < 1) return [];
+    const lim = Math.max(1, Math.min(parseInt(limit, 10) || 5, 10));
+    const result = await db.query(
+      `SELECT
+         l.id,
+         l.youtube_title,
+         l.youtube_channel_name,
+         l.hook_summary,
+         subj.name AS subject_name,
+         t.name AS topic_name,
+         (
+           COALESCE(l.youtube_like_count, 0)::numeric
+           + COALESCE(l.youtube_subscriber_count, 0)::numeric / 1000.0
+         ) AS rank_score
+       FROM lectures l
+       INNER JOIN lecture_exams le ON le.lecture_id = l.id AND le.exam_id = $1
+       INNER JOIN topics t ON l.topic_id = t.id
+       INNER JOIN subjects subj ON t.sub_id = subj.id
+       WHERE l.status = TRUE
+         AND l.content_type = 'VIDEO'
+         AND (
+           (l.iframe_code IS NOT NULL AND TRIM(l.iframe_code) <> '')
+           OR (l.video_file IS NOT NULL AND TRIM(l.video_file) <> '')
+         )
+       ORDER BY rank_score DESC NULLS LAST, l.updated_at DESC
+       LIMIT $2`,
+      [id, lim]
+    );
+    return result.rows;
+  }
 }
 
 module.exports = Lecture;

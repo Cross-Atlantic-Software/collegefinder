@@ -65,7 +65,6 @@ export function buildInstituteDetailSections(
   pushItem(overview, "Contact", institute.contact_number);
   pushItem(overview, "Branches", institute.branches_number);
   pushItem(overview, "Student strength", institute.student_strength);
-  pushItem(overview, "Website", institute.website);
   pushItem(overview, "Google Maps", institute.google_maps_link);
 
   const details: Array<{ label: string; value: string }> = [];

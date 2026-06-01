@@ -38,6 +38,12 @@ class ScholarshipExam {
     return result.rows.map((r) => r.scholarship_id);
   }
 
+  static async getScholarshipIdsByExamId(examId) {
+    const id = parseInt(examId, 10);
+    if (!Number.isInteger(id) || id < 1) return [];
+    return ScholarshipExam.getScholarshipIdsByExamIds([id]);
+  }
+
   static async getExamLinksForScholarshipIds(scholarshipIds) {
     if (!scholarshipIds?.length) return [];
     const ids = scholarshipIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
