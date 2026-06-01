@@ -28,6 +28,11 @@ const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
 const { enrichCollegeRows } = require('./collegesController');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const {
+  normalizeExamDifficultyLevel,
+  isValidExamDifficultyLevel,
+  EXAM_DIFFICULTY_LEVELS,
+} = require('../../constants/examDifficultyLevel');
 const { matchesExamSearchTokens } = require('../../utils/examSearchTokens');
 
 /**
@@ -796,6 +801,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -833,6 +839,13 @@ class ExamsTaxonomyController {
         }
       }
 
+      if (difficulty_level !== undefined && !isValidExamDifficultyLevel(difficulty_level)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid difficulty_level. Allowed values: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+        });
+      }
+
       const exam = await Exam.create({
         name,
         code: codeNorm,
@@ -845,6 +858,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level: normalizeExamDifficultyLevel(difficulty_level),
       });
 
       // Create related data if provided
@@ -918,6 +932,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -963,6 +978,13 @@ class ExamsTaxonomyController {
         await deleteFromS3(existing.exam_logo);
       }
 
+      if (difficulty_level !== undefined && !isValidExamDifficultyLevel(difficulty_level)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid difficulty_level. Allowed values: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+        });
+      }
+
       const exam = await Exam.update(parseInt(id), {
         name,
         code: code !== undefined
@@ -977,6 +999,10 @@ class ExamsTaxonomyController {
         documents_required: documents_required !== undefined ? documents_required : undefined,
         counselling: counselling !== undefined ? counselling : undefined,
         exam_popularity_rank: exam_popularity_rank !== undefined ? exam_popularity_rank : undefined,
+        difficulty_level:
+          difficulty_level !== undefined
+            ? normalizeExamDifficultyLevel(difficulty_level)
+            : undefined,
       });
 
       // Update related data if provided
@@ -1541,6 +1567,7 @@ class ExamsTaxonomyController {
         'code',
         'description',
         'exam_type',
+        'difficulty_level',
         'conducting_authority',
         'documents_required',
         'counselling',
@@ -1578,6 +1605,7 @@ class ExamsTaxonomyController {
         'JEE_MAIN',
         'Engineering entrance exam for B.Tech admissions',
         'National',
+        'Advanced',
         'NTA',
         'ID proof, class 12 mark sheet',
         'JoSAA / CSAB counselling',
@@ -1615,6 +1643,7 @@ class ExamsTaxonomyController {
         'NEET',
         'Medical entrance for MBBS/BDS',
         'National',
+        'Intermediate',
         'NTA',
         'Photo, class 10 & 12 certificates',
         'MCC / state counselling',
@@ -1682,7 +1711,7 @@ class ExamsTaxonomyController {
       const programMap = new Map(allPrograms.map((p) => [p.id, p.name]));
 
       const headers = [
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
+        'name', 'code', 'description', 'exam_type', 'difficulty_level', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date', 'result_date', 'application_fees', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
@@ -1716,6 +1745,7 @@ class ExamsTaxonomyController {
           exam.code || '',
           exam.description || '',
           exam.exam_type || '',
+          exam.difficulty_level || '',
           exam.conducting_authority || '',
           exam.documents_required || '',
           exam.counselling || '',
@@ -2020,6 +2050,15 @@ class ExamsTaxonomyController {
 
         const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
         const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
+        const difficultyRaw = getCell(row, 'difficulty_level', 'Difficulty_Level', 'Difficulty Level');
+        const difficultyLevel = difficultyRaw ? normalizeExamDifficultyLevel(difficultyRaw) : null;
+        if (difficultyRaw && !difficultyLevel) {
+          allErrors.push({
+            row: rowNum,
+            message: `Invalid difficulty_level "${difficultyRaw}". Allowed: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+          });
+          continue;
+        }
         const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
         const documentsRequired = (getCell(row, 'documents_required', 'Documents_Required') || '').toString().trim() || null;
@@ -2068,6 +2107,7 @@ class ExamsTaxonomyController {
             documents_required: documentsRequired,
             counselling: counsellingText,
             exam_popularity_rank: examPopularityRank,
+            difficulty_level: difficultyLevel,
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code || '' });
           if (codeNorm) codesInFile.add(codeNorm);

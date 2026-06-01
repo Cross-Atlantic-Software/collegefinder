@@ -1035,7 +1035,7 @@ export default function ScholarshipsPage() {
               </button>
             </div>
             <div className="space-y-2 text-sm text-slate-700">
-              <p><strong>Conducting authority:</strong> {viewingData.scholarship?.conducting_authority ?? '-'}</p>
+              <p><strong>Conducting Authority:</strong> {viewingData.scholarship?.conducting_authority ?? '-'}</p>
               <p><strong>Type:</strong> {viewingData.scholarship?.scholarship_type ?? '-'}</p>
               <p><strong>Stream:</strong> {viewingData.streamName ?? '-'}</p>
               <p><strong>Income limit:</strong> {viewingData.scholarship?.income_limit ?? '-'}</p>

@@ -1,6 +1,12 @@
 import type { Exam } from "@/api/exams";
 import { formatExamPatternDurationHours } from "@/lib/formatDuration";
 
+/** Difficulty level shown on cards and detail pages. */
+export function examCardDifficultyLevel(exam: Exam): string | null {
+  const level = exam.difficulty_level?.trim();
+  return level || null;
+}
+
 /** True when a scalar DB value should be shown in the UI. */
 export function hasDisplayValue(value: unknown): boolean {
   if (value == null) return false;
@@ -39,6 +45,19 @@ export function formatApplicationDateRange(exam: Exam): string | null {
   const b = formatExamDate(d.application_close_date);
   if (a && b) return `${a} – ${b}`;
   return a || b;
+}
+
+/** Exam card: application start month only (e.g. "Jan"). */
+export function examCardApplicationStartMonth(exam: Exam): string | null {
+  const iso = exam.examDates?.application_start_date;
+  if (!hasDisplayValue(iso)) return null;
+  try {
+    const d = new Date(String(iso));
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("en-IN", { month: "short" });
+  } catch {
+    return null;
+  }
 }
 
 export function formatInrFee(raw: number | null | undefined): string | null {
@@ -163,15 +182,15 @@ export function examCardSubtitleLine(exam: Exam): string {
   return "Exam";
 }
 
-/** Small chips (mode, duration, programs) — mirrors college linked-exam chips. */
+/** Small chips (mode, duration) — programs excluded from cards; use examCardMetaChips row instead. */
 export function examCardTagChips(exam: Exam): string[] {
   const chips: string[] = [];
   const mode = examCardMode(exam);
   if (mode) chips.push(mode);
   const duration = examCardDuration(exam);
   if (duration) chips.push(duration);
-  const programs = programLine(exam);
-  if (programs) chips.push(programs);
+  const appStart = examCardApplicationStartMonth(exam);
+  if (appStart) chips.push(appStart);
   return chips.slice(0, 4);
 }
 
@@ -211,6 +230,7 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   push(overview, field("Exam name", exam.name));
   push(overview, field("Exam code", exam.code));
   push(overview, field("Exam type", exam.exam_type));
+  push(overview, field("Difficulty level", examCardDifficultyLevel(exam)));
   push(overview, field("Conducting authority", exam.conducting_authority));
   push(
     overview,

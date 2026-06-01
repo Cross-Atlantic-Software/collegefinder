@@ -10,6 +10,7 @@ export interface Exam {
   generation_prompt?: string | null;
   exam_logo?: string | null;
   exam_type?: string | null;
+  difficulty_level?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
@@ -17,6 +18,7 @@ export interface Exam {
   website?: string | null;
   /** Lower = more popular when sorting; null if unset */
   exam_popularity_rank?: number | null;
+  difficulty_level?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -167,6 +169,7 @@ export async function createExam(data: {
   description?: string;
   exam_logo?: string | null;
   exam_type?: string | null;
+  difficulty_level?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
