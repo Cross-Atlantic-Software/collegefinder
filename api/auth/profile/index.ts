@@ -456,6 +456,8 @@ export interface DashboardCollege {
   state?: string | null;
   city?: string | null;
   parent_university?: string | null;
+  nirf_ranking?: number | null;
+  admission_timeline?: string | null;
   linked_exam_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -540,6 +542,8 @@ export async function getDashboardCollegeByRef(
 ): Promise<ApiResponse<{
   college: DashboardCollege;
   shortlistedCollegeIds: number[];
+  taggedLectureCount?: number;
+  taggedLecturePreviews?: import("@/api/exams").ExamTaggedLecturePreview[];
 }>> {
   const ref = encodeURIComponent(collegeRef.trim());
   return apiRequest(

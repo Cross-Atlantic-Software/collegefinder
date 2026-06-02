@@ -178,10 +178,12 @@ class College {
       state,
       city,
       parent_university,
+      nirf_ranking,
+      admission_timeline,
     } = data;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, logo_filename, website, state, city, parent_university)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, logo_filename, website, state, city, parent_university, nirf_ranking, admission_timeline)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
       [
         college_name,
         college_location || null,
@@ -193,6 +195,8 @@ class College {
         state != null ? String(state).trim() || null : null,
         city != null ? String(city).trim() || null : null,
         parent_university != null ? String(parent_university).trim() || null : null,
+        nirf_ranking != null && nirf_ranking !== '' ? parseInt(nirf_ranking, 10) : null,
+        admission_timeline != null ? String(admission_timeline).trim() || null : null,
       ]
     );
     return result.rows[0];
@@ -210,6 +214,8 @@ class College {
       state,
       city,
       parent_university,
+      nirf_ranking,
+      admission_timeline,
     } = data;
     const updates = [];
     const values = [];
@@ -253,6 +259,20 @@ class College {
     if (parent_university !== undefined) {
       updates.push(`parent_university = $${paramCount++}`);
       values.push(parent_university != null ? String(parent_university).trim() || null : null);
+    }
+    if (nirf_ranking !== undefined) {
+      updates.push(`nirf_ranking = $${paramCount++}`);
+      values.push(
+        nirf_ranking != null && nirf_ranking !== ''
+          ? parseInt(nirf_ranking, 10)
+          : null
+      );
+    }
+    if (admission_timeline !== undefined) {
+      updates.push(`admission_timeline = $${paramCount++}`);
+      values.push(
+        admission_timeline != null ? String(admission_timeline).trim() || null : null
+      );
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

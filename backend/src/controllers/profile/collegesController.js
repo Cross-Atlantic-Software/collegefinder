@@ -35,6 +35,7 @@ const CollegeProgram = require('../../models/college/CollegeProgram');
 const CollegePreviousCutoff = require('../../models/college/CollegePreviousCutoff');
 const CollegeExpectedCutoff = require('../../models/college/CollegeExpectedCutoff');
 const CollegeSeatMatrix = require('../../models/college/CollegeSeatMatrix');
+const Lecture = require('../../models/taxonomy/Lecture');
 const db = require('../../config/database');
 
 function groupByCollegeId(rows, key = 'college_id') {
@@ -617,6 +618,31 @@ async function getDashboardCollegeByRef(req, res) {
       UserAcademics.findByUserId(userId),
     ]);
 
+    const linkedExamIds = (enriched.linkedExams || [])
+      .map((e) => Number(e.id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    const [taggedLectureCount, taggedLectureRows] = await Promise.all([
+      linkedExamIds.length
+        ? Lecture.countVideoLecturesByExamIds(linkedExamIds)
+        : Promise.resolve(0),
+      linkedExamIds.length
+        ? Lecture.findVideoPreviewsByExamIds(linkedExamIds, 5)
+        : Promise.resolve([]),
+    ]);
+
+    const taggedLecturePreviews = taggedLectureRows.map((row) => ({
+      id: row.id,
+      title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled video',
+      channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || null,
+      subjectName: row.subject_name || null,
+      topicName: row.topic_name || null,
+      hookSummary:
+        row.hook_summary != null && String(row.hook_summary).trim() !== ''
+          ? String(row.hook_summary).trim()
+          : null,
+    }));
+
     const shortlistedRaw = Array.isArray(academics?.user_shortlisted_colleges)
       ? academics.user_shortlisted_colleges
       : [];
@@ -629,6 +655,8 @@ async function getDashboardCollegeByRef(req, res) {
       data: {
         college: enriched,
         shortlistedCollegeIds,
+        taggedLectureCount,
+        taggedLecturePreviews,
       },
     });
   } catch (error) {

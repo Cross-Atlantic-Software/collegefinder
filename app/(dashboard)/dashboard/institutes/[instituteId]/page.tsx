@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
 import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
@@ -221,25 +221,17 @@ export default function InstituteDetailPage() {
             <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</p>
               <div className="mt-3 space-y-2">
-                <Button
-                  variant={isShortlisted ? "secondary" : "themeButton"}
-                  size="sm"
-                  className="w-full justify-center rounded-full"
-                  disabled={updateShortlist.isPending}
+                <DetailShortlistButton
+                  isShortlisted={isShortlisted}
+                  isSaving={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
                       instituteId: institute.id,
                       shortlisted: !isShortlisted,
                     })
                   }
-                >
-                  <FiBookmark className="h-4 w-4" />{" "}
-                  {updateShortlist.isPending
-                    ? "Saving..."
-                    : isShortlisted
-                      ? "Shortlisted"
-                      : "Shortlist coaching"}
-                </Button>
+                  shortlistLabel="Shortlist coaching"
+                />
                 {institute.website?.trim() ? (
                   <Button
                     variant="themeButtonOutline"

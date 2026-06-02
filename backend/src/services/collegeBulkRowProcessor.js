@@ -210,6 +210,12 @@ async function processCollegeBulkRow({ row, rowNum }) {
   const description = (row.college_description ?? row.college_Description ?? '').toString().trim() || null;
   const websiteVal = (row.website ?? '').toString().trim() || null;
   const parentUniversityVal = getCell(row, 'parent_university', 'Parent university');
+  const nirfRankingRaw = getCell(row, 'nirf_ranking', 'NIRF ranking');
+  const admissionTimelineVal = getCell(row, 'admission_timeline', 'Admission timeline');
+  const nirfRankingVal =
+    nirfRankingRaw && /^\d+$/.test(String(nirfRankingRaw).trim())
+      ? parseInt(String(nirfRankingRaw).trim(), 10)
+      : null;
   const majorProgramNamesRaw = (row.major_program_names ?? '').toString().trim();
 
   const keyDatesRaw = (row.key_dates ?? row.key_Dates ?? '').toString().trim();
@@ -292,6 +298,8 @@ async function processCollegeBulkRow({ row, rowNum }) {
       logo_filename: logoFields.logo_filename,
       website: websiteVal,
       parent_university: parentUniversityVal || null,
+      nirf_ranking: nirfRankingVal,
+      admission_timeline: admissionTimelineVal || null,
       state: stateTrim || null,
       city: cityTrim || null,
     });

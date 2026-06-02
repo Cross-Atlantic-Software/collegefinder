@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark, FiTrendingUp } from "react-icons/fi";
+import { FiTrendingUp } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
-import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
+import { CollegeDetailRecommendedExams } from "@/components/dashboard/CollegeDetailRecommendedExams";
+import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { buildCollegeDetailSections, collegeLocationLine } from "@/lib/collegeDisplay";
 import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
 import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
@@ -131,6 +133,8 @@ export default function CollegeDetailPage() {
   const college = data?.college;
   const shortlistedIds = (data?.shortlistedCollegeIds ?? []).map(Number);
   const isShortlisted = college ? shortlistedIds.includes(college.id) : false;
+  const taggedLectureCount = data?.taggedLectureCount ?? 0;
+  const taggedLecturePreviews = data?.taggedLecturePreviews ?? [];
 
   const sections = useMemo(
     () => (college ? buildCollegeDetailSections(college) : []),
@@ -142,6 +146,15 @@ export default function CollegeDetailPage() {
     LOCAL_COLLEGE_IMAGES[Math.abs(college?.id ?? 0) % LOCAL_COLLEGE_IMAGES.length];
 
   const location = college ? collegeLocationLine(college) : null;
+  const headerSubtitle = college
+    ? [
+        college.nirf_ranking != null ? `NIRF #${college.nirf_ranking}` : null,
+        college.college_type,
+        location,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "College"
+    : "College";
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
     { label: "Dashboard", href: "/dashboard" },
     { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
@@ -205,8 +218,13 @@ export default function CollegeDetailPage() {
                 {college.college_name}
               </h1>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {[college.college_type, location].filter(Boolean).join(" · ") || "College"}
+                {headerSubtitle}
               </p>
+              {college.admission_timeline?.trim() ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {college.admission_timeline}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -241,47 +259,26 @@ export default function CollegeDetailPage() {
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {college.linkedExams && college.linkedExams.length > 0 ? (
-              <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Linked exams
-                </p>
-                <div className="mt-2">
-                  <LinkedExamChips
-                    linkedExams={college.linkedExams}
-                    linkFrom="dashboard-college-shortlist"
-                  />
-                </div>
-              </div>
-            ) : null}
             <CollegeDetailSections sections={sections} />
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Actions
               </p>
               <div className="mt-3 space-y-2">
-                <Button
-                  variant={isShortlisted ? "secondary" : "themeButton"}
-                  size="sm"
-                  className="w-full justify-center rounded-full"
-                  disabled={updateShortlist.isPending}
+                <DetailShortlistButton
+                  isShortlisted={isShortlisted}
+                  isSaving={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
                       collegeId: college.id,
                       shortlisted: !isShortlisted,
                     })
                   }
-                >
-                  <FiBookmark className="h-4 w-4" />{" "}
-                  {updateShortlist.isPending
-                    ? "Saving..."
-                    : isShortlisted
-                      ? "Shortlisted"
-                      : "Shortlist college"}
-                </Button>
+                  shortlistLabel="Shortlist college"
+                />
                 {college.website?.trim() ? (
                   <Button
                     variant="themeButtonOutline"
@@ -306,6 +303,12 @@ export default function CollegeDetailPage() {
                 </Button>
               </div>
             </div>
+            <CollegeDetailRecommendedExams college={college} />
+            <ExamDetailRecommendedVideos
+              count={taggedLectureCount}
+              lectures={taggedLecturePreviews}
+              subtitle="Tagged for linked exams in Exam Prep."
+            />
           </aside>
         </div>
       </div>
