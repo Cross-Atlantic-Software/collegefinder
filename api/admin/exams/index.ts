@@ -18,7 +18,6 @@ export interface Exam {
   website?: string | null;
   /** Lower = more popular when sorting; null if unset */
   exam_popularity_rank?: number | null;
-  difficulty_level?: string | null;
   created_at: string;
   updated_at: string;
 }
