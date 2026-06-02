@@ -1,4 +1,4 @@
-import type { DashboardInstituteDetail } from "@/api/auth/profile";
+import type { DashboardInstituteDetail, DashboardInstituteStatistics } from "@/api/auth/profile";
 import type { CollegeDetailSection } from "@/lib/collegeDisplay";
 import { hasDisplayValue, formatExamDate } from "@/lib/examDisplay";
 
@@ -11,6 +11,24 @@ export function instituteLocationLine(
   const cityState = [inst.city, inst.state].filter(Boolean).join(", ");
   if (cityState) return cityState;
   return inst.institute_location?.trim() || inst.institute_cityname?.trim() || null;
+}
+
+export function isInstituteOnlineMode(type: string | null | undefined): boolean {
+  return type?.trim().toLowerCase() === "online";
+}
+
+export function instituteModeLabel(type: string | null | undefined): string | null {
+  const t = type?.trim().toLowerCase();
+  if (t === "online") return "Online";
+  if (t === "offline") return "Offline";
+  if (t === "hybrid") return "Hybrid";
+  return type?.trim() || null;
+}
+
+function instituteDescriptionText(institute: DashboardInstituteDetail): string | null {
+  const fromDetails = institute.instituteDetails?.institute_description?.trim();
+  if (fromDetails) return fromDetails;
+  return institute.institute_description?.trim() || null;
 }
 
 /** Card/list blurb from DB description or location fields only. */
@@ -43,11 +61,51 @@ function pushItem(
 }
 
 function formatDeliveryType(type: string | null | undefined): string | null {
-  const t = type?.trim().toLowerCase();
-  if (t === "online") return "Online";
-  if (t === "offline") return "Offline";
-  if (t === "hybrid") return "Hybrid";
-  return type?.trim() || null;
+  return instituteModeLabel(type);
+}
+
+function formatInstituteMetric(value: string | number | null | undefined): string | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+export function instituteCardRankingDisplay(
+  value: string | number | null | undefined
+): string | null {
+  return formatInstituteMetric(value);
+}
+
+export function instituteCardSuccessRateDisplay(
+  value: string | number | null | undefined
+): string | null {
+  const text = formatInstituteMetric(value);
+  if (!text) return null;
+  return text.endsWith("%") ? text : `${text}%`;
+}
+
+export function instituteCardStudentRatingDisplay(
+  value: string | number | null | undefined
+): string | null {
+  return formatInstituteMetric(value);
+}
+
+export function instituteCardStatisticsFields(
+  statistics: Pick<
+    DashboardInstituteStatistics,
+    "ranking_score" | "success_rate" | "student_rating"
+  > | null | undefined
+): Array<{ label: string; value: string }> {
+  const fields: Array<{ label: string; value: string }> = [];
+  const ranking = instituteCardRankingDisplay(statistics?.ranking_score);
+  const successRate = instituteCardSuccessRateDisplay(statistics?.success_rate);
+  const studentRating = instituteCardStudentRatingDisplay(statistics?.student_rating);
+
+  if (ranking) fields.push({ label: "Ranking", value: ranking });
+  if (successRate) fields.push({ label: "Success Rate", value: successRate });
+  if (studentRating) fields.push({ label: "Student Rating", value: studentRating });
+
+  return fields;
 }
 
 function formatYesNo(value: boolean | null | undefined): string | null {
@@ -58,35 +116,33 @@ function formatYesNo(value: boolean | null | undefined): string | null {
 export function buildInstituteDetailSections(
   institute: DashboardInstituteDetail
 ): CollegeDetailSection[] {
+  const isOnline = isInstituteOnlineMode(institute.type);
   const overview: Array<{ label: string; value: string }> = [];
-  pushItem(overview, "Institute key", institute.institute_cityname);
-  pushItem(overview, "Location", instituteLocationLine(institute));
-  pushItem(overview, "Delivery type", formatDeliveryType(institute.type));
+
+  const description = instituteDescriptionText(institute);
+  if (description) pushItem(overview, "Description", description);
+
+  pushItem(overview, "Institute Name", institute.institute_name);
+  if (!isOnline) pushItem(overview, "Location", instituteLocationLine(institute));
+  pushItem(overview, "Mode", formatDeliveryType(institute.type));
   pushItem(overview, "Contact", institute.contact_number);
   pushItem(overview, "Branches", institute.branches_number);
-  pushItem(overview, "Student strength", institute.student_strength);
-  pushItem(overview, "Google Maps", institute.google_maps_link);
-
-  const details: Array<{ label: string; value: string }> = [];
-  pushItem(details, "Description", institute.instituteDetails?.institute_description);
-  pushItem(details, "Demo available", formatYesNo(institute.instituteDetails?.demo_available));
+  pushItem(overview, "Student Strength", institute.student_strength);
+  pushItem(overview, "Demo Available", formatYesNo(institute.instituteDetails?.demo_available));
   pushItem(
-    details,
-    "Scholarship available",
+    overview,
+    "Scholarship Available",
     formatYesNo(institute.instituteDetails?.scholarship_available)
   );
 
   const stats: Array<{ label: string; value: string }> = [];
-  pushItem(stats, "Ranking score", institute.statistics?.ranking_score);
-  pushItem(stats, "Success rate", institute.statistics?.success_rate);
-  pushItem(stats, "Student rating", institute.statistics?.student_rating);
+  pushItem(stats, "Ranking", institute.statistics?.ranking_score);
+  pushItem(stats, "Success Rate", institute.statistics?.success_rate);
+  pushItem(stats, "Student Rating", institute.statistics?.student_rating);
 
   const sections: CollegeDetailSection[] = [];
   if (overview.some((i) => i.value)) {
     sections.push({ id: "overview", title: "Overview", items: overview });
-  }
-  if (details.some((i) => i.value)) {
-    sections.push({ id: "details", title: "About", items: details });
   }
   if (stats.some((i) => i.value)) {
     sections.push({ id: "statistics", title: "Statistics", items: stats });
@@ -96,11 +152,11 @@ export function buildInstituteDetailSections(
     institute.courses.forEach((course, index) => {
       const items: Array<{ label: string; value: string }> = [];
       pushItem(items, "Course", course.course_name);
-      pushItem(items, "Target class", course.target_class);
-      pushItem(items, "Duration (months)", course.duration_months);
+      pushItem(items, "Target Class", course.target_class);
+      pushItem(items, "Duration (Months)", course.duration_months);
       pushItem(items, "Fees", course.fees);
-      pushItem(items, "Batch size", course.batch_size);
-      pushItem(items, "Start date", formatExamDate(course.start_date));
+      pushItem(items, "Batch Size", course.batch_size);
+      pushItem(items, "Start Date", formatExamDate(course.start_date));
       if (items.length) {
         sections.push({
           id: `course-${course.id ?? index}`,

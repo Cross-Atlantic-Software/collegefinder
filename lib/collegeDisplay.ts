@@ -1,6 +1,5 @@
 import type { DashboardCollege, DashboardCollegeProgram } from "@/api/auth/profile";
 import { hasDisplayValue } from "@/lib/examDisplay";
-import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
 
 export function collegeLocationLine(c: DashboardCollege): string | null {
   const loc = c.college_location?.trim();
@@ -68,7 +67,11 @@ export function programDisplayName(p: DashboardCollegeProgram): string {
 export type CollegeDetailSection = {
   id: string;
   title: string;
+  kind?: "default" | "programs-table" | "documents-list" | "counselling-timeline";
   items: Array<{ label: string; value: string }>;
+  programs?: DashboardCollegeProgram[];
+  documents?: Array<{ document_name?: string | null }>;
+  counsellingSteps?: Array<{ step_number?: number | null; description?: string | null }>;
 };
 
 function pushItem(
@@ -89,7 +92,7 @@ function pushNumber(
   items.push({ label, value: String(value) });
 }
 
-function buildProgramItems(p: DashboardCollegeProgram): Array<{ label: string; value: string }> {
+export function buildProgramItems(p: DashboardCollegeProgram): Array<{ label: string; value: string }> {
   const items: Array<{ label: string; value: string }> = [];
   pushItem(items, "Program", p.program_name);
   pushItem(items, "Branch / course", p.branch_course);
@@ -150,22 +153,16 @@ function buildProgramItems(p: DashboardCollegeProgram): Array<{ label: string; v
 export function buildCollegeOverviewItems(c: DashboardCollege): Array<{ label: string; value: string }> {
   const items: Array<{ label: string; value: string }> = [];
   pushItem(items, "College name", c.college_name);
-  pushItem(items, "Type", c.college_type);
   pushItem(items, "Location", c.college_location);
   pushItem(items, "City", c.city);
   pushItem(items, "State", c.state);
   pushItem(items, "Parent university", c.parent_university);
-  const logo = resolveCollegeLogoSrc(c);
-  if (logo) pushItem(items, "Logo", logo);
-  if (c.linked_exam_count != null) {
-    pushNumber(items, "Linked exams (count)", c.linked_exam_count);
-  }
+  pushNumber(items, "NIRF ranking", c.nirf_ranking != null ? Number(c.nirf_ranking) : null);
+  pushItem(items, "Admission timeline", c.admission_timeline);
   const desc = c.collegeDetails?.college_description?.trim();
   if (desc) pushItem(items, "Description", desc);
   const updated = formatCollegeDate(c.updated_at);
-  const created = formatCollegeDate(c.created_at);
   if (updated) pushItem(items, "Last updated", updated);
-  if (created) pushItem(items, "Created", created);
   return items;
 }
 
@@ -187,14 +184,13 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
   }
 
   if (c.programs?.length) {
-    for (const p of c.programs) {
-      const items = buildProgramItems(p);
-      sections.push({
-        id: `program-${p.id}`,
-        title: `Program · ${programDisplayName(p)}`,
-        items: items.length ? items : [{ label: "Program", value: programDisplayName(p) }],
-      });
-    }
+    sections.push({
+      id: "programs",
+      title: "Programs",
+      kind: "programs-table",
+      items: [],
+      programs: c.programs,
+    });
   }
 
   if (c.keyDates?.length) {
@@ -210,11 +206,10 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
   if (c.documentsRequired?.length) {
     sections.push({
       id: "documents",
-      title: "Documents required (college level)",
-      items: c.documentsRequired.map((d, i) => ({
-        label: d.document_name?.trim() || `Document ${i + 1}`,
-        value: "Required",
-      })),
+      title: "Documents required",
+      kind: "documents-list",
+      items: [],
+      documents: c.documentsRequired,
     });
   }
 
@@ -224,11 +219,10 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
     );
     sections.push({
       id: "counselling",
-      title: "Counselling process (college level)",
-      items: sorted.map((s) => ({
-        label: s.step_number != null ? `Step ${s.step_number}` : "Step",
-        value: s.description?.trim() || "—",
-      })),
+      title: "Counselling process",
+      kind: "counselling-timeline",
+      items: [],
+      counsellingSteps: sorted,
     });
   }
 

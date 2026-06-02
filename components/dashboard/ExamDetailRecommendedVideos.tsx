@@ -8,6 +8,8 @@ import type { ExamTaggedLecturePreview } from "@/api/exams";
 type ExamDetailRecommendedVideosProps = {
   count: number;
   lectures: ExamTaggedLecturePreview[];
+  title?: string;
+  subtitle?: string;
 };
 
 const EXAM_PREP_HREF = "/dashboard?section=exam-prep&mode=self";
@@ -15,6 +17,8 @@ const EXAM_PREP_HREF = "/dashboard?section=exam-prep&mode=self";
 export function ExamDetailRecommendedVideos({
   count,
   lectures,
+  title = "Recommended Videos",
+  subtitle = "Tagged for this exam in Exam Prep.",
 }: ExamDetailRecommendedVideosProps) {
   const slides =
     lectures.length > 0
@@ -41,10 +45,10 @@ export function ExamDetailRecommendedVideos({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Recommended Videos
+            {title}
           </h3>
           <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            Tagged for this exam in Exam Prep.
+            {subtitle}
           </p>
         </div>
         {slides.length > 1 ? (

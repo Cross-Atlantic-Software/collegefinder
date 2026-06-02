@@ -3,13 +3,13 @@
 import type { DashboardInstitute } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { CardShortlistHeart } from "@/components/dashboard/CardShortlistHeart";
+import { CoachingCardMetaFields } from "@/components/dashboard/CoachingCardMetaFields";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import {
   LinkedExamChips,
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
 import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
-import { instituteLocationLine } from "@/lib/instituteDisplay";
 
 export type CoachingShortlistCardProps = {
   institute: DashboardInstitute;
@@ -18,6 +18,8 @@ export type CoachingShortlistCardProps = {
   isShortlisted: boolean;
   shortlistSaving: boolean;
   onShortlist: () => void;
+  /** Hide location on online institutes tab cards. */
+  hideLocation?: boolean;
 };
 
 function formatDeliveryType(type: string | null | undefined): string {
@@ -35,8 +37,8 @@ export function CoachingShortlistCard({
   isShortlisted,
   shortlistSaving,
   onShortlist,
+  hideLocation = false,
 }: CoachingShortlistCardProps) {
-  const location = instituteLocationLine(institute) ?? "";
   const deliveryType = formatDeliveryType(institute.type);
 
   return (
@@ -48,7 +50,7 @@ export function CoachingShortlistCard({
           </h3>
           {deliveryType ? (
             <p>
-              <ExamCardHoverField label="Delivery type" value={deliveryType} />
+              <ExamCardHoverField label="Mode" value={deliveryType} />
             </p>
           ) : null}
         </div>
@@ -69,23 +71,7 @@ export function CoachingShortlistCard({
           {displayOverview}
         </p>
 
-        {location ? (
-          <p className="m-0">
-            <ExamCardHoverField label="Location" value={location} />
-          </p>
-        ) : null}
-
-        {institute.branches_number?.trim() ? (
-          <p className="m-0">
-            <ExamCardHoverField label="Branches" value={institute.branches_number.trim()} />
-          </p>
-        ) : null}
-
-        {institute.student_strength?.trim() ? (
-          <p className="m-0">
-            <ExamCardHoverField label="Student strength" value={institute.student_strength.trim()} />
-          </p>
-        ) : null}
+        <CoachingCardMetaFields institute={institute} hideLocation={hideLocation} />
 
         <LinkedExamChips
           linkedExams={institute.linkedExams}

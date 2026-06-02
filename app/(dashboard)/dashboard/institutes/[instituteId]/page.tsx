@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
+import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
+import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
-import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
 import {
   buildInstituteDetailSections,
   instituteLocationLine,
+  instituteModeLabel,
+  isInstituteOnlineMode,
 } from "@/lib/instituteDisplay";
 import { useInstituteDetailQuery } from "@/lib/instituteDetailQueries";
 import { useUpdateShortlistedInstituteMutation } from "@/lib/dashboardInstituteQueries";
@@ -49,12 +52,10 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
   ],
 };
 
-function formatDeliveryType(type: string | null | undefined): string | null {
-  const t = type?.trim().toLowerCase();
-  if (t === "online") return "Online";
-  if (t === "offline") return "Offline";
-  if (t === "hybrid") return "Hybrid";
-  return type?.trim() || null;
+function instituteViewFrom(from: string): string {
+  if (from === "dashboard-coaching-online") return "dashboard-coaching-online";
+  if (from === "dashboard-coaching-offline") return "dashboard-coaching-offline";
+  return "dashboard-coaching-shortlist";
 }
 
 function DetailShell({
@@ -103,18 +104,22 @@ export default function InstituteDetailPage() {
   const institute = data?.institute;
   const shortlistedIds = (data?.shortlistedInstituteIds ?? []).map(Number);
   const isShortlisted = institute ? shortlistedIds.includes(institute.id) : false;
+  const taggedLectureCount = data?.taggedLectureCount ?? 0;
+  const taggedLecturePreviews = data?.taggedLecturePreviews ?? [];
 
   const sections = useMemo(
     () => (institute ? buildInstituteDetailSections(institute) : []),
     [institute]
   );
 
-  const location = institute ? instituteLocationLine(institute) : null;
-  const deliveryType = institute ? formatDeliveryType(institute.type) : null;
+  const isOnline = institute ? isInstituteOnlineMode(institute.type) : false;
+  const mode = institute ? instituteModeLabel(institute.type) : null;
+  const location = institute && !isOnline ? instituteLocationLine(institute) : null;
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Coaching Institutes", href: "/dashboard?section=coaching-institutes" },
   ];
+  const examLinkFrom = instituteViewFrom(from);
 
   const handleSectionChange = (section: SectionId) => {
     router.push(`/dashboard?section=${section}`);
@@ -165,7 +170,7 @@ export default function InstituteDetailPage() {
                 {institute.institute_name}
               </h1>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {[deliveryType, location].filter(Boolean).join(" · ") || "Coaching institute"}
+                {[mode, location].filter(Boolean).join(" · ") || "Coaching institute"}
               </p>
             </div>
           </div>
@@ -201,45 +206,24 @@ export default function InstituteDetailPage() {
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {institute.linkedExams && institute.linkedExams.length > 0 ? (
-              <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Linked exams
-                </p>
-                <div className="mt-2">
-                  <LinkedExamChips
-                    linkedExams={institute.linkedExams}
-                    linkFrom="dashboard-coaching-shortlist"
-                  />
-                </div>
-              </div>
-            ) : null}
             <CollegeDetailSections sections={sections} />
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</p>
               <div className="mt-3 space-y-2">
-                <Button
-                  variant={isShortlisted ? "secondary" : "themeButton"}
-                  size="sm"
-                  className="w-full justify-center rounded-full"
-                  disabled={updateShortlist.isPending}
+                <DetailShortlistButton
+                  isShortlisted={isShortlisted}
+                  isSaving={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
                       instituteId: institute.id,
                       shortlisted: !isShortlisted,
                     })
                   }
-                >
-                  <FiBookmark className="h-4 w-4" />{" "}
-                  {updateShortlist.isPending
-                    ? "Saving..."
-                    : isShortlisted
-                      ? "Shortlisted"
-                      : "Shortlist coaching"}
-                </Button>
+                  shortlistLabel="Shortlist coaching"
+                />
                 {institute.website?.trim() ? (
                   <Button
                     variant="themeButtonOutline"
@@ -284,6 +268,16 @@ export default function InstituteDetailPage() {
                 </Button>
               </div>
             </div>
+            <DetailRecommendedExamsCTA
+              linkedExams={institute.linkedExams}
+              linkFrom={examLinkFrom}
+              subtitle="Mapped via coaching exams."
+            />
+            <ExamDetailRecommendedVideos
+              count={taggedLectureCount}
+              lectures={taggedLecturePreviews}
+              subtitle="Tagged for linked exams in Exam Prep."
+            />
           </aside>
         </div>
       </div>

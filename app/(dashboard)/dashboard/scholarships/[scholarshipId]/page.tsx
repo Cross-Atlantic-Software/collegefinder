@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FiBookmark } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
+import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
+import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
-import { LinkedExamChips } from "@/components/dashboard/LinkedExamChips";
 import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
 import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
 import { useUpdateShortlistedScholarshipMutation } from "@/lib/dashboardScholarshipQueries";
@@ -97,6 +98,8 @@ export default function ScholarshipDetailPage() {
   const scholarship = data?.scholarship;
   const shortlistedIds = (data?.shortlistedScholarshipIds ?? []).map(Number);
   const isShortlisted = scholarship ? shortlistedIds.includes(scholarship.id) : false;
+  const taggedLectureCount = data?.taggedLectureCount ?? 0;
+  const taggedLecturePreviews = data?.taggedLecturePreviews ?? [];
 
   const sections = useMemo(
     () => (scholarship ? buildScholarshipDetailSections(scholarship) : []),
@@ -202,23 +205,10 @@ export default function ScholarshipDetailPage() {
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {scholarship.linkedExams && scholarship.linkedExams.length > 0 ? (
-              <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Linked exams
-                </p>
-                <div className="mt-2">
-                  <LinkedExamChips
-                    linkedExams={scholarship.linkedExams}
-                    linkFrom="dashboard-scholarship-shortlist"
-                  />
-                </div>
-              </div>
-            ) : null}
             {scholarship.linkedColleges && scholarship.linkedColleges.length > 0 ? (
-              <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+              <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Linked colleges
+                  Linked Colleges
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {scholarship.linkedColleges.map((college) => (
@@ -237,28 +227,20 @@ export default function ScholarshipDetailPage() {
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</p>
               <div className="mt-3 space-y-2">
-                <Button
-                  variant={isShortlisted ? "secondary" : "themeButton"}
-                  size="sm"
-                  className="w-full justify-center rounded-full"
-                  disabled={updateShortlist.isPending}
+                <DetailShortlistButton
+                  isShortlisted={isShortlisted}
+                  isSaving={updateShortlist.isPending}
                   onClick={() =>
                     updateShortlist.mutate({
                       scholarshipId: scholarship.id,
                       shortlisted: !isShortlisted,
                     })
                   }
-                >
-                  <FiBookmark className="h-4 w-4" />{" "}
-                  {updateShortlist.isPending
-                    ? "Saving..."
-                    : isShortlisted
-                      ? "Shortlisted"
-                      : "Shortlist scholarship"}
-                </Button>
+                  shortlistLabel="Shortlist scholarship"
+                />
                 {applicationUrl ? (
                   <Button
                     variant="themeButton"
@@ -295,6 +277,16 @@ export default function ScholarshipDetailPage() {
                 </Button>
               </div>
             </div>
+            <DetailRecommendedExamsCTA
+              linkedExams={scholarship.linkedExams}
+              linkFrom="dashboard-scholarship-shortlist"
+              subtitle="Mapped via scholarship exams and colleges."
+            />
+            <ExamDetailRecommendedVideos
+              count={taggedLectureCount}
+              lectures={taggedLecturePreviews}
+              subtitle="Tagged for linked exams in Exam Prep."
+            />
           </aside>
         </div>
       </div>

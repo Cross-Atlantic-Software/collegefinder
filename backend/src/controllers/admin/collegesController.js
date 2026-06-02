@@ -56,6 +56,8 @@ async function buildCollegesBulkTemplateBuffer() {
     'state',
     'city',
     'college_type',
+    'nirf_ranking',
+    'admission_timeline',
     'website',
     'logo_url',
     'logo_filename',
@@ -80,6 +82,8 @@ async function buildCollegesBulkTemplateBuffer() {
       'Delhi',
       'New Delhi',
       'Central,State',
+      '12',
+      'Applications open Jan–Mar; counselling Apr–Jul',
       'https://www.iitd.ac.in',
       'https://example.com/logos/iit-delhi.png',
       'iit-delhi.png',
@@ -101,6 +105,8 @@ async function buildCollegesBulkTemplateBuffer() {
       'Maharashtra',
       'Mumbai City',
       'State',
+      '85',
+      'State counselling May–Aug',
       'https://www.sce.ac.in',
       'https://example.com/logos/state-college.png',
       'state-college.png',
@@ -404,6 +410,8 @@ class CollegesController {
         college_description,
         website,
         parent_university,
+        nirf_ranking,
+        admission_timeline,
         state,
         city,
         major_program_ids,
@@ -443,6 +451,12 @@ class CollegesController {
         logo_filename: logoFields.logo_filename,
         website: website ? website.trim() : null,
         parent_university: parent_university != null ? String(parent_university).trim() || null : null,
+        nirf_ranking:
+          nirf_ranking != null && nirf_ranking !== ''
+            ? parseInt(nirf_ranking, 10)
+            : null,
+        admission_timeline:
+          admission_timeline != null ? String(admission_timeline).trim() || null : null,
         state: stateTrim || null,
         city: cityTrim || null
       });
@@ -523,6 +537,8 @@ class CollegesController {
         college_description,
         website,
         parent_university,
+        nirf_ranking,
+        admission_timeline,
         state,
         city,
         major_program_ids,
@@ -573,7 +589,17 @@ class CollegesController {
         website: website !== undefined ? (website ? website.trim() : null) : undefined,
         parent_university: parent_university !== undefined
           ? (parent_university != null ? String(parent_university).trim() || null : null)
-          : undefined
+          : undefined,
+        nirf_ranking:
+          nirf_ranking !== undefined
+            ? (nirf_ranking != null && nirf_ranking !== ''
+              ? parseInt(nirf_ranking, 10)
+              : null)
+            : undefined,
+        admission_timeline:
+          admission_timeline !== undefined
+            ? (admission_timeline != null ? String(admission_timeline).trim() || null : null)
+            : undefined,
       };
 
       if (hasStateKey || hasCityKey) {
@@ -711,7 +737,7 @@ class CollegesController {
     try {
       const colleges = await College.findAll();
       const headers = [
-        'college_name', 'parent_university', 'state', 'city', 'college_location', 'college_type', 'major_program_names', 'website',
+        'college_name', 'parent_university', 'state', 'city', 'college_location', 'college_type', 'nirf_ranking', 'admission_timeline', 'major_program_names', 'website',
         'college_logo', 'logo_url', 'logo_filename', 'college_description',
         'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
         'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
@@ -856,6 +882,8 @@ class CollegesController {
           c.city || '',
           c.college_location || '',
           c.college_type || '',
+          c.nirf_ranking != null ? String(c.nirf_ranking) : '',
+          c.admission_timeline || '',
           majorProgramNamesStr,
           c.website || '',
           c.college_logo || '',

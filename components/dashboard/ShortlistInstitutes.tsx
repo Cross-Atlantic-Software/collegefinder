@@ -236,6 +236,7 @@ export default function ShortlistInstitutes({
                     <CoachingShortlistCard
                       key={`${activeTab}-${inst.id}`}
                       institute={inst}
+                      hideLocation={activeTab === "online"}
                       detailHref={instituteDetailHref(
                         inst.institute_name,
                         instituteViewFrom(activeTab)

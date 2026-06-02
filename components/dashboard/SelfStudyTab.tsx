@@ -204,6 +204,88 @@ function LectureGridSkeleton() {
   );
 }
 
+function RecommendedSubjectVideoCard({
+  lecture,
+  cardIndex,
+}: {
+  lecture: ExamPrepLectureDto;
+  cardIndex: number;
+}) {
+  const video = prepLectureToVideoItem(lecture);
+
+  return (
+    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white dark:border-slate-700 dark:from-slate-800/80 dark:to-slate-900">
+      <div className="border-b border-slate-200/80 px-3 py-2 dark:border-slate-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+          {lecture.subjectName}
+        </p>
+      </div>
+      <a
+        href={video.youtubeUrl}
+        target="_blank"
+        rel="noreferrer"
+        title={video.hookSummary || undefined}
+        className="group flex min-h-0 flex-1 flex-col"
+      >
+        <div className="relative aspect-video overflow-hidden bg-black">
+          <iframe
+            src={toEmbedUrl(video.youtubeId, 8 + (cardIndex % 6), 16 + (cardIndex % 6))}
+            title={video.title}
+            loading="lazy"
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+          <span className="absolute right-2 top-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            {video.duration}
+          </span>
+        </div>
+        <div className="relative flex flex-1 flex-col p-3">
+          {video.hookSummary ? (
+            <div className="pointer-events-none absolute bottom-full left-3 right-3 z-20 mb-2 hidden max-h-32 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-700 shadow-lg group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+              {video.hookSummary}
+            </div>
+          ) : null}
+          <p className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-black px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FAD53C]">
+            <FiPlayCircle className="text-[11px]" /> Recommended
+          </p>
+          <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+            {video.title}
+          </h4>
+          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            {video.channel} • {video.views}
+          </p>
+          <span className="mt-auto inline-flex w-fit items-center gap-1 rounded-full bg-black px-3 py-1.5 text-[11px] font-semibold text-[#FAD53C]">
+            View <FiExternalLink className="text-[10px]" />
+          </span>
+        </div>
+      </a>
+    </article>
+  );
+}
+
+function RecommendedVideosSkeleton({ count }: { count: number }) {
+  const slots = Math.max(count, 1);
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: slots }).map((_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40"
+        >
+          <div className="h-9 animate-pulse border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" />
+          <div className="aspect-video animate-pulse bg-slate-200 dark:bg-slate-700" />
+          <div className="space-y-2 p-3">
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-4 w-5/6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function SelfStudyTab({
   subjects,
   query,
@@ -244,11 +326,16 @@ export default function SelfStudyTab({
     search: query,
   });
 
-  const recommendedLecture = recommendedQuery.data?.lecture ?? null;
-  const recommendedVideo = useMemo(
-    () => (recommendedLecture ? prepLectureToVideoItem(recommendedLecture) : null),
-    [recommendedLecture]
-  );
+  const recommendedLectures = useMemo(() => {
+    const lectures = recommendedQuery.data?.lectures ?? [];
+    if (!lectures.length && recommendedQuery.data?.lecture) {
+      return [recommendedQuery.data.lecture];
+    }
+    const bySubjectId = new Map(lectures.map((lecture) => [lecture.subjectId, lecture]));
+    return filteredSubjects
+      .map((subject) => bySubjectId.get(subject.id))
+      .filter((lecture): lecture is ExamPrepLectureDto => lecture != null);
+  }, [recommendedQuery.data?.lectures, recommendedQuery.data?.lecture, filteredSubjects]);
 
   const activeSubject = useMemo(
     () => filteredSubjects.find((subject) => subject.id === activeSubjectId) ?? null,
@@ -321,7 +408,7 @@ export default function SelfStudyTab({
     return sortVideos(activeTopic.lectures.map(prepLectureToVideoItem), sortBy);
   }, [activeTopic, sortBy]);
 
-  const recommendedLoading = recommendedQuery.isLoading && !recommendedVideo;
+  const recommendedLoading = recommendedQuery.isLoading && recommendedLectures.length === 0;
   const subjectLoading = subjectQuery.isLoading && !!activeSubjectId;
   const hasSubjects = filteredSubjects.length > 0;
   const activeLimit = activeTopic ? Math.min(activeTopicVideos.length, visibleByTopicId[activeTopic.id] ?? LECTURES_PER_TOPIC_PAGE) : 0;
@@ -336,7 +423,9 @@ export default function SelfStudyTab({
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recommended Videos</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">From your stream - sorted by engagement</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                One top pick per subject from your stream
+              </p>
             </div>
 
             <div className="flex w-full items-center gap-2 md:w-auto">
@@ -370,57 +459,13 @@ export default function SelfStudyTab({
               </div>
             </div>
           ) : recommendedLoading ? (
-            <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-slate-100 to-slate-50 p-2 md:grid md:grid-cols-[300px,1fr] md:items-center md:gap-4 dark:from-slate-800/80 dark:to-slate-900/80">
-              <div className="relative aspect-video overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-700" />
-              <div className="space-y-3 p-2 md:p-0">
-                <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-6 w-5/6 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-9 w-28 rounded-full bg-slate-200 dark:bg-slate-700" />
-              </div>
+            <RecommendedVideosSkeleton count={filteredSubjects.length || 3} />
+          ) : recommendedLectures.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {recommendedLectures.map((lecture, index) => (
+                <RecommendedSubjectVideoCard key={lecture.subjectId} lecture={lecture} cardIndex={index} />
+              ))}
             </div>
-          ) : recommendedVideo ? (
-            <a
-              href={recommendedVideo.youtubeUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={recommendedVideo.hookSummary || undefined}
-              className="group overflow-hidden rounded-2xl bg-gradient-to-r from-slate-100 to-slate-50 p-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:from-slate-800/80 dark:to-slate-900/80 md:grid md:grid-cols-[300px,1fr] md:items-center md:gap-4"
-            >
-              <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-                <iframe
-                  src={toEmbedUrl(recommendedVideo.youtubeId, 10, 22)}
-                  title={recommendedVideo.title}
-                  loading="lazy"
-                  className="h-full w-full"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-                <span className="absolute right-2 top-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                  {recommendedVideo.duration}
-                </span>
-              </div>
-
-              <div className="relative flex flex-col justify-center p-2 md:p-0">
-                {recommendedVideo.hookSummary ? (
-                  <div className="pointer-events-none absolute bottom-full left-0 right-0 z-20 mb-2 hidden max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-lg group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 md:max-w-xl">
-                    {recommendedVideo.hookSummary}
-                  </div>
-                ) : null}
-                <p className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-black px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FAD53C]">
-                  <FiPlayCircle className="text-[11px]" /> Recommended
-                </p>
-                <h4 className="line-clamp-2 text-base font-semibold text-slate-900 dark:text-slate-100 md:text-lg">
-                  {recommendedVideo.title}
-                </h4>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  {recommendedVideo.channel} • {recommendedVideo.views} • {recommendedVideo.published}
-                </p>
-                <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-[#FAD53C]">
-                  View <FiExternalLink className="text-xs" />
-                </span>
-              </div>
-            </a>
           ) : (
             <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-500 dark:bg-slate-800/40 dark:text-slate-300">
               <div>

@@ -9,6 +9,25 @@ class InstituteStatistics {
     return result.rows[0] || null;
   }
 
+  static async findByInstituteIds(instituteIds) {
+    if (!instituteIds?.length) return new Map();
+    const ids = instituteIds
+      .map((id) => parseInt(id, 10))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (!ids.length) return new Map();
+    const result = await db.query(
+      `SELECT institute_id, ranking_score, success_rate, student_rating
+       FROM institute_statistics
+       WHERE institute_id = ANY($1::int[])`,
+      [ids]
+    );
+    const map = new Map();
+    for (const row of result.rows) {
+      map.set(row.institute_id, row);
+    }
+    return map;
+  }
+
   static async create(data) {
     const { institute_id, ranking_score, success_rate, student_rating } = data;
     const result = await db.query(

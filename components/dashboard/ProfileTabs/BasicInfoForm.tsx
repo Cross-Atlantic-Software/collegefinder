@@ -228,34 +228,6 @@ export default function BasicInfoForm() {
     fetchData();
   }, []);
 
-  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        console.warn("Geolocation is not supported by this browser");
-        resolve(null);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.warn("Error getting location:", error.message);
-          resolve(null);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
-    });
-  };
-
   const handleEmailVerified = async () => {
     try {
       const response = await getBasicInfo();
@@ -294,7 +266,6 @@ export default function BasicInfoForm() {
         email={email}
         emailVerified={emailVerified}
         userCode={userCode}
-        getCurrentLocation={getCurrentLocation}
         onShowEmailModal={() => setShowEmailModal(true)}
         govIdData={govIdData}
         setGovIdData={setGovIdData}

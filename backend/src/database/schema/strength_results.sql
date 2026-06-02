@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS strength_results (
   strengths JSONB NOT NULL DEFAULT '[]',
   career_recommendations JSONB NOT NULL DEFAULT '[]',
   report_url TEXT,
+  assigned_expert_ids INTEGER[] DEFAULT '{}',
+  report_file_name VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id)

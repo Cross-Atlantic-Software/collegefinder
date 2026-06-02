@@ -146,6 +146,8 @@ const runMigrations = async () => {
     'add_multi_paper_support.sql',
     'add_strengths_and_experts.sql',
     'widen_expert_photo_and_strength_report.sql',
+    'add_strength_results_report_file_name.sql',
+    'add_strength_results_assigned_expert_ids.sql',
     'add_expert_phone_email_description.sql',
     'add_website_to_exams.sql',
     'restructure_colleges_programs.sql',
@@ -160,7 +162,8 @@ const runMigrations = async () => {
     'add_exam_adapter_drafts.sql',
     'add_colleges_linked_exam_count.sql',
     'add_institute_branches_number_student_strength.sql',
-    'add_exam_difficulty_level.sql'
+    'add_exam_difficulty_level.sql',
+    'add_colleges_nirf_ranking_admission_timeline.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

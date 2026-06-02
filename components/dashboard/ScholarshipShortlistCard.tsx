@@ -8,8 +8,8 @@ import {
   LinkedExamChips,
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
+import { ScholarshipCardMetaFields } from "@/components/dashboard/ScholarshipCardMetaFields";
 import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
-import { scholarshipLinkedCollegeLocation } from "@/lib/scholarshipDisplay";
 
 export type ScholarshipShortlistCardProps = {
   scholarship: DashboardScholarship;
@@ -20,8 +20,6 @@ export type ScholarshipShortlistCardProps = {
   onShortlist: () => void;
 };
 
-type MetaField = { label: string; value: string };
-
 export function ScholarshipShortlistCard({
   scholarship,
   detailHref,
@@ -30,23 +28,9 @@ export function ScholarshipShortlistCard({
   shortlistSaving,
   onShortlist,
 }: ScholarshipShortlistCardProps) {
-  const collegeLocation = scholarshipLinkedCollegeLocation(scholarship);
-  const scholarshipType = scholarship.scholarship_type?.trim();
-  const authority = scholarship.conducting_authority?.trim();
-  const amount = scholarship.scholarship_amount?.trim();
   const mode = scholarship.mode?.trim();
-  const streamName = scholarship.stream_name?.trim();
-
-  const metaFields: MetaField[] = [];
-  if (authority && scholarshipType) {
-    metaFields.push({ label: "Conducting authority", value: authority });
-  }
-  if (amount) metaFields.push({ label: "Amount", value: amount });
-  if (mode) metaFields.push({ label: "Mode", value: mode });
-  if (streamName) metaFields.push({ label: "Stream", value: streamName });
-  if (collegeLocation) {
-    metaFields.push({ label: "Linked college location", value: collegeLocation });
-  }
+  const scholarshipType = scholarship.scholarship_type?.trim();
+  const modeInHeader = Boolean(mode);
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
@@ -55,13 +39,13 @@ export function ScholarshipShortlistCard({
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
             {scholarship.scholarship_name}
           </h3>
-          {scholarshipType ? (
+          {modeInHeader ? (
             <p>
-              <ExamCardHoverField label="Scholarship type" value={scholarshipType} />
+              <ExamCardHoverField label="Mode" value={mode!} />
             </p>
-          ) : !scholarshipType && authority ? (
+          ) : scholarshipType ? (
             <p>
-              <ExamCardHoverField label="Conducting authority" value={authority} />
+              <ExamCardHoverField label="Scholarship Type" value={scholarshipType} />
             </p>
           ) : null}
         </div>
@@ -82,23 +66,10 @@ export function ScholarshipShortlistCard({
           {displayOverview}
         </p>
 
-        {metaFields.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {metaFields.map((field, index) => (
-              <span key={field.label} className="inline-flex max-w-full items-center gap-2">
-                {index > 0 ? (
-                  <span
-                    className="hidden text-slate-300 sm:inline dark:text-slate-600"
-                    aria-hidden
-                  >
-                    ·
-                  </span>
-                ) : null}
-                <ExamCardHoverField label={field.label} value={field.value} />
-              </span>
-            ))}
-          </div>
-        ) : null}
+        <ScholarshipCardMetaFields
+          scholarship={scholarship}
+          showScholarshipType={modeInHeader}
+        />
 
         <LinkedExamChips
           linkedExams={scholarship.linkedExams}

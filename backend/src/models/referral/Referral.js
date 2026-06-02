@@ -86,6 +86,56 @@ class Referral {
     return this.saveInstituteCode(instituteId, code);
   }
 
+  /**
+   * Set or clear the referral code this user used (who referred them).
+   * @returns {{ ok: true } | { ok: false, message: string }}
+   */
+  static async updateReferredByCode(userId, email, code, options = {}) {
+    const { silent: _silent = false } = options;
+    void _silent;
+
+    if (!userId) {
+      return { ok: false, message: 'Invalid user' };
+    }
+
+    const normalized =
+      code === null || code === undefined
+        ? ''
+        : String(code).trim().toUpperCase();
+
+    if (!normalized) {
+      await db.query('UPDATE users SET referred_by_code = NULL WHERE id = $1', [userId]);
+      return { ok: true };
+    }
+
+    const codeExists = await db.query(
+      `SELECT 1 FROM (
+         SELECT referral_code FROM users WHERE referral_code = $1
+         UNION ALL
+         SELECT referral_code FROM institutes WHERE referral_code = $1
+       ) t LIMIT 1`,
+      [normalized]
+    );
+    if (codeExists.rows.length === 0) {
+      return { ok: false, message: 'Referral code not found' };
+    }
+
+    const selfCheck = await db.query(
+      'SELECT referral_code FROM users WHERE id = $1',
+      [userId]
+    );
+    if (selfCheck.rows[0]?.referral_code === normalized) {
+      return { ok: false, message: 'You cannot use your own referral code' };
+    }
+
+    await db.query(
+      'UPDATE users SET referred_by_code = $1 WHERE id = $2',
+      [normalized, userId]
+    );
+    await this.recordUse(normalized, userId, email || null);
+    return { ok: true };
+  }
+
   // ── Referral attribution ─────────────────────────────────────────────
 
   /**

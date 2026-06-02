@@ -16,6 +16,8 @@ export interface College {
   logo_filename: string | null;
   website: string | null;
   parent_university?: string | null;
+  nirf_ranking?: number | null;
+  admission_timeline?: string | null;
   created_at: string;
   updated_at: string;
 }

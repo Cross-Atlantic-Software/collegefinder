@@ -84,6 +84,8 @@ export default function CollegesPage() {
     major_program_ids: [] as number[],
     website: '',
     parent_university: '',
+    nirf_ranking: '' as number | '',
+    admission_timeline: '',
     college_logo: '',
     logo_url: '',
     logo_filename: '',
@@ -260,6 +262,11 @@ export default function CollegesPage() {
         major_program_ids: formData.major_program_ids,
         website: formData.website.trim() || null,
         parent_university: formData.parent_university.trim() || null,
+        nirf_ranking:
+          formData.nirf_ranking !== '' && formData.nirf_ranking != null
+            ? Number(formData.nirf_ranking)
+            : null,
+        admission_timeline: formData.admission_timeline.trim() || null,
         college_logo: formData.college_logo.trim() || null,
         logo_url: formData.logo_url.trim() || null,
         logo_filename: formData.logo_filename.trim() || null,
@@ -360,6 +367,8 @@ export default function CollegesPage() {
           major_program_ids: majorIds,
           website: d.college.website ?? '',
           parent_university: d.college.parent_university ?? '',
+          nirf_ranking: d.college.nirf_ranking ?? '',
+          admission_timeline: d.college.admission_timeline ?? '',
           college_logo: d.college.college_logo ?? '',
           logo_url: d.college.logo_url ?? '',
           logo_filename: d.college.logo_filename ?? '',
@@ -436,6 +445,8 @@ export default function CollegesPage() {
       major_program_ids: [],
       website: '',
       parent_university: '',
+      nirf_ranking: '' as number | '',
+      admission_timeline: '',
       college_logo: '',
       logo_url: '',
       logo_filename: '',
@@ -720,6 +731,7 @@ export default function CollegesPage() {
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PARENT UNIVERSITY</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOCATION</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NIRF</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
@@ -727,7 +739,7 @@ export default function CollegesPage() {
                   <tbody className="divide-y divide-slate-200">
                     {colleges.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
                           {debouncedSearch.trim()
                             ? 'No colleges match your search'
                             : totalDbCount === 0
@@ -755,6 +767,11 @@ export default function CollegesPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm text-slate-600">{college.college_location || '-'}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="text-sm text-slate-600">
+                              {college.nirf_ranking != null ? `#${college.nirf_ranking}` : '-'}
+                            </span>
                           </td>
                           <td className="px-4 py-2">
                             {college.college_type && (
@@ -830,6 +847,10 @@ export default function CollegesPage() {
                 <input type="text" value={formData.college_name} onChange={(e) => setFormData({ ...formData, college_name: e.target.value })} required placeholder="e.g. IIT Delhi" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
                 <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Parent university</label>
                 <input type="text" value={formData.parent_university} onChange={(e) => setFormData({ ...formData, parent_university: e.target.value })} placeholder="e.g. Mumbai University (affiliating university)" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1">NIRF ranking</label>
+                <input type="number" min={1} value={formData.nirf_ranking} onChange={(e) => setFormData({ ...formData, nirf_ranking: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} placeholder="e.g. 12" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1">Admission timeline</label>
+                <textarea value={formData.admission_timeline} onChange={(e) => setFormData({ ...formData, admission_timeline: e.target.value })} placeholder="e.g. Applications open Jan–Mar; counselling Apr–Jul" rows={2} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
@@ -1147,6 +1168,12 @@ export default function CollegesPage() {
                   <p className="text-sm text-slate-600"><strong>Type:</strong> {viewingData.college_type || '-'}</p>
                   {viewingData.parent_university && (
                     <p className="text-sm text-slate-600"><strong>Parent university:</strong> {viewingData.parent_university}</p>
+                  )}
+                  {viewingData.nirf_ranking != null && (
+                    <p className="text-sm text-slate-600"><strong>NIRF ranking:</strong> #{viewingData.nirf_ranking}</p>
+                  )}
+                  {viewingData.admission_timeline && (
+                    <p className="text-sm text-slate-600 whitespace-pre-wrap"><strong>Admission timeline:</strong> {viewingData.admission_timeline}</p>
                   )}
                   {viewingData.website && <p className="text-sm text-slate-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.website}</a></p>}
                   {viewingData.college_logo && (

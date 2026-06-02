@@ -6,6 +6,8 @@ import { ExamCardFieldTooltip } from "@/components/dashboard/examCardFieldToolti
 type ExamCardHoverFieldProps = {
   label: string;
   value: string;
+  /** Full tooltip text when display value is truncated. Defaults to value. */
+  tooltipValue?: string;
   className?: string;
   variant?: "inline" | "chip";
   /** Tighter single-line stack for card headers. */
@@ -16,11 +18,12 @@ type ExamCardHoverFieldProps = {
 export function ExamCardHoverField({
   label,
   value,
+  tooltipValue,
   className = "",
   variant = "inline",
   compact = false,
 }: ExamCardHoverFieldProps) {
-  const tooltip = `${label}: ${value}`;
+  const tooltip = `${label}: ${tooltipValue ?? value}`;
   const valueClass =
     variant === "chip"
       ? `${EXAM_CARD_CHIP_CLASS} inline-block max-w-full cursor-default truncate`
@@ -30,7 +33,7 @@ export function ExamCardHoverField({
 
   return (
     <span
-      className={`group/field relative max-w-full ${
+      className={`group/field relative max-w-full overflow-visible ${
         variant === "chip" || !compact ? "inline-block" : "block"
       } ${className}`}
     >

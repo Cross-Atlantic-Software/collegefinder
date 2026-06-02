@@ -136,7 +136,10 @@ class CounsellorController {
       });
     } catch (error) {
       console.error('Error submitting results:', error);
-      res.status(500).json({ success: false, message: 'Failed to save results' });
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to save results',
+      });
     }
   }
 
@@ -220,7 +223,10 @@ class CounsellorController {
       });
     } catch (error) {
       console.error('Error updating results:', error);
-      res.status(500).json({ success: false, message: 'Failed to update results' });
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to update results',
+      });
     }
   }
 

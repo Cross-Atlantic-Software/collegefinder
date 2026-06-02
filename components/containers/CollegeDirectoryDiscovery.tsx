@@ -177,7 +177,7 @@ export default function CollegeDirectoryDiscovery() {
             <div
               className="mx-auto mt-3 flex w-full max-w-full overflow-x-auto rounded-xl bg-sky-100 p-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:inline-flex sm:w-auto sm:max-w-none sm:rounded-full [&::-webkit-scrollbar]:hidden"
               role="tablist"
-              aria-label="Degree programs"
+              aria-label="Programs"
             >
               {programs.map((program) => {
                 const isActive = program.id === selectedProgramId;
@@ -227,16 +227,10 @@ export default function CollegeDirectoryDiscovery() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((college, index) => (
-                  <PublicCollegeCard
-                    key={college.id}
-                    college={college}
-                    toneIndex={index}
-                  />
+                {visible.map((college) => (
+                  <PublicCollegeCard key={college.id} college={college} />
                 ))}
-                {hasMoreLocked ? (
-                  <LockedCollegePreviewCard college={lockedPreview} toneIndex={visible.length} />
-                ) : null}
+                {hasMoreLocked ? <LockedCollegePreviewCard college={lockedPreview} /> : null}
               </div>
             )}
           </div>

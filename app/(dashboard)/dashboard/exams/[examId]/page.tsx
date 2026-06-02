@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FaHeart, FaRegHeart } from "react-icons/fa";
 import { MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
 import { Sidebar, TopBar } from "@/components/dashboard";
+import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
 import { ExamDetailLinkedScholarships } from "@/components/dashboard/ExamDetailLinkedScholarships";
@@ -304,28 +304,13 @@ export default function ExamDetailPage() {
                 Shortlist this exam or continue your application journey.
               </p>
               <div className="mt-3 space-y-2">
-                <Button
-                  type="button"
-                  variant={isShortlisted ? "themeButtonOutline" : "themeButton"}
-                  size="sm"
-                  className="w-full justify-center !rounded-full"
+                <DetailShortlistButton
+                  isShortlisted={isShortlisted}
+                  isSaving={shortlistSaving}
                   onClick={toggleShortlist}
-                  disabled={shortlistSaving}
-                >
-                  {shortlistSaving ? (
-                    "Saving..."
-                  ) : isShortlisted ? (
-                    <>
-                      <FaHeart className="h-4 w-4 shrink-0" aria-hidden />
-                      Shortlisted
-                    </>
-                  ) : (
-                    <>
-                      <FaRegHeart className="h-4 w-4 shrink-0" aria-hidden />
-                      Shortlist exam
-                    </>
-                  )}
-                </Button>
+                  shortlistLabel="Shortlist exam"
+                  disabled={examNumericId == null}
+                />
                 {websiteUrl ? (
                   <Button
                     variant="themeButtonOutline"
