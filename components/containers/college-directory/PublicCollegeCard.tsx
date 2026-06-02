@@ -8,25 +8,23 @@ import {
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
 import { collegeCardOverviewText } from "@/lib/collegeDisplay";
-import { directoryCardBgClass } from "@/components/containers/exam-directory/directoryCardTones";
 
 export type PublicCollegeCardProps = {
   college: DashboardCollege;
-  toneIndex?: number;
 };
 
-export function PublicCollegeCard({ college, toneIndex = 0 }: PublicCollegeCardProps) {
-  const overview = collegeCardOverviewText(college);
-  const bgClass = directoryCardBgClass(toneIndex);
+/** Public directory card — same layout as dashboard college cards, without shortlist or CTAs. */
+export function PublicCollegeCard({ college }: PublicCollegeCardProps) {
+  const displayOverview = collegeCardOverviewText(college);
 
   return (
-    <article
-      className={`flex h-full flex-col overflow-visible rounded-2xl shadow-sm ring-1 ring-black/[0.07] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${bgClass}`}
-    >
-      <CollegeCardHeader college={college} borderClassName="border-black/10" />
+    <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
+      <CollegeCardHeader college={college} />
 
-      <div className="flex flex-1 flex-col gap-2 p-3 pt-2">
-        <p className="line-clamp-3 text-[11px] leading-snug text-slate-600">{overview}</p>
+      <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
+        <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+          {displayOverview}
+        </p>
 
         <CollegeCardMetaFields college={college} />
 

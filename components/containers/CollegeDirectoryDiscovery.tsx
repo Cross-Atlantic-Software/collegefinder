@@ -227,16 +227,10 @@ export default function CollegeDirectoryDiscovery() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((college, index) => (
-                  <PublicCollegeCard
-                    key={college.id}
-                    college={college}
-                    toneIndex={index}
-                  />
+                {visible.map((college) => (
+                  <PublicCollegeCard key={college.id} college={college} />
                 ))}
-                {hasMoreLocked ? (
-                  <LockedCollegePreviewCard college={lockedPreview} toneIndex={visible.length} />
-                ) : null}
+                {hasMoreLocked ? <LockedCollegePreviewCard college={lockedPreview} /> : null}
               </div>
             )}
           </div>

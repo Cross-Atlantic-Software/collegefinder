@@ -171,13 +171,32 @@ async function getExamPrepRecommendedLecture(userId, { sort = 'latest' } = {}) {
     return {
       requiresStreamSelection: true,
       lecture: null,
+      lectures: [],
       message: ctx.message,
     };
   }
 
   const sortMode = String(sort).toLowerCase() === 'popular' ? 'popular' : 'latest';
-  const sorted = [...rows].sort((a, b) => compareExamPrepForSortMode(a, b, sortMode));
-  const lectures = await rowsToLectureDtos(sorted, { limit: 1 });
+  const bySubject = new Map();
+  for (const row of rows) {
+    const sid = String(row.subject_id);
+    if (!bySubject.has(sid)) bySubject.set(sid, []);
+    bySubject.get(sid).push(row);
+  }
+
+  const topRowsPerSubject = [];
+  for (const subjectRows of bySubject.values()) {
+    const sorted = [...subjectRows].sort((a, b) => compareExamPrepForSortMode(a, b, sortMode));
+    if (sorted[0]) topRowsPerSubject.push(sorted[0]);
+  }
+
+  topRowsPerSubject.sort((a, b) =>
+    String(a.subject_name || '').localeCompare(String(b.subject_name || ''), undefined, {
+      sensitivity: 'base',
+    })
+  );
+
+  const lectures = await rowsToLectureDtos(topRowsPerSubject);
 
   const hasExamPool =
     (ctx.examCtx.shortlistedExamIds || []).length > 0 ||
@@ -187,6 +206,7 @@ async function getExamPrepRecommendedLecture(userId, { sort = 'latest' } = {}) {
     requiresStreamSelection: false,
     stream_id: ctx.streamId,
     lecture: lectures[0] ?? null,
+    lectures,
     message:
       !lectures.length && hasExamPool
         ? 'No videos match your shortlisted or recommended exams yet. Admins can tag lectures with exams in Lecture Manager.'

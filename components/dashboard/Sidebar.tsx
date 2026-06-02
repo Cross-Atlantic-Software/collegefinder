@@ -12,7 +12,6 @@ import {
   FiClipboard,
   FiFileText,
   FiHome,
-  FiInfo,
   FiLogOut,
   FiSettings,
   FiShare2,
@@ -479,20 +478,6 @@ export default function Sidebar({
           {isCollapsed && (
             <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-40 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
               Settings
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          title="Info"
-          className={`group relative flex w-full items-center rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
-        >
-          <FiInfo className="h-[18px] w-[18px]" />
-          {!isCollapsed && <span className="text-sm font-medium">Info</span>}
-          {isCollapsed && (
-            <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-40 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-              Info
             </span>
           )}
         </button>

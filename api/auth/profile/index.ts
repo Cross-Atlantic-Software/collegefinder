@@ -221,13 +221,14 @@ export type ExamPrepLectureDto = {
 };
 
 /**
- * Top recommended exam prep video (shortlisted + recommended exams, sorted).
+ * Top recommended exam prep videos — one per subject (shortlisted + recommended exams, sorted).
  */
 export async function getExamPrepRecommendedLecture(
   sort: 'latest' | 'popular' = 'latest'
 ): Promise<
   ApiResponse<{
     lecture: ExamPrepLectureDto | null;
+    lectures: ExamPrepLectureDto[];
     requiresStreamSelection: boolean;
     message?: string;
     stream_id?: number;

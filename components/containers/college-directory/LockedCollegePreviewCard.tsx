@@ -3,29 +3,25 @@
 import Link from "next/link";
 import { FiLock } from "react-icons/fi";
 import type { DashboardCollege } from "@/api/auth/profile";
-import { directoryCardBgClass } from "@/components/containers/exam-directory/directoryCardTones";
 import { PublicCollegeCard } from "./PublicCollegeCard";
 
 export type LockedCollegePreviewCardProps = {
   college: DashboardCollege | null;
   loginHref?: string;
-  toneIndex?: number;
 };
 
 export function LockedCollegePreviewCard({
   college,
   loginHref = "/login?redirect=/college-directory",
-  toneIndex = 0,
 }: LockedCollegePreviewCardProps) {
-  const bgClass = directoryCardBgClass(toneIndex);
 
   return (
     <div className="relative h-full min-h-[280px] overflow-hidden rounded-2xl ring-1 ring-black/[0.07]">
       <div className="pointer-events-none h-full select-none blur-[3px]">
         {college ? (
-          <PublicCollegeCard college={college} toneIndex={toneIndex} />
+          <PublicCollegeCard college={college} />
         ) : (
-          <div className={`flex h-full min-h-[280px] flex-col rounded-2xl p-6 shadow-sm ${bgClass}`}>
+          <div className="flex h-full min-h-[280px] flex-col rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-900">
             <div className="h-4 w-3/4 rounded bg-slate-200" />
             <div className="mt-3 h-3 w-1/2 rounded bg-slate-100" />
             <div className="mt-6 flex-1 rounded-lg bg-slate-50" />
