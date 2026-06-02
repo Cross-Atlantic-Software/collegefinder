@@ -24,6 +24,8 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: false,
     // Lowers peak memory during `next build` on small VPS instances.
     serverMinification: false,
+    // Rewrites proxy /api/* to Express; default 10MB truncates counsellor PDF uploads.
+    middlewareClientMaxBodySize: '50mb',
   },
   // Proxy /api to backend so browser requests to same-origin /api/* reach the Express server
   async rewrites() {

@@ -22,7 +22,6 @@ interface BasicInfoTabsProps {
   email: string;
   emailVerified: boolean;
   userCode: string | null;
-  getCurrentLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   onShowEmailModal: () => void;
 
   // Government Identification
@@ -52,7 +51,6 @@ export default function BasicInfoTabs({
   email,
   emailVerified,
   userCode,
-  getCurrentLocation,
   onShowEmailModal,
   govIdData,
   setGovIdData,
@@ -151,7 +149,6 @@ export default function BasicInfoTabs({
             onError={(err) => handleError("core-identity", err)}
             onValidationErrors={setValidationErrors}
             onShowEmailModal={onShowEmailModal}
-            getCurrentLocation={getCurrentLocation}
             automationPassword={automationPassword}
           />
         )}

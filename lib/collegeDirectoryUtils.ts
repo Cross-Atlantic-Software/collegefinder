@@ -4,11 +4,17 @@ export const COLLEGE_DIRECTORY_PREVIEW_COUNT = 5;
 
 /** Tab order for the public college directory. */
 export const COLLEGE_DIRECTORY_PROGRAM_ORDER = [
-  'B.A',
-  'B.Com',
-  'B.Tech',
-  'B.Sc',
-  'B.Ed',
+  'Engineering',
+  'Medical',
+  'Commerce',
+  'Law',
+  'Design',
+  'Aviation',
+  'Agriculture',
+  'Science',
+  'Arts',
+  'Education',
+  'Diploma',
 ] as const;
 
 export function normalizeProgramLabel(name: string): string {
@@ -46,7 +52,7 @@ export type CollegeDirectoryProgram = Program & { displayName: string };
 
 /**
  * Resolve taxonomy programs for directory tabs (fixed order).
- * Matches DB names like "Ba" to tab label "B.A" and prefers the canonical dotted form.
+ * Matches DB program names to each tab label (case-insensitive).
  */
 export function resolveCollegeDirectoryPrograms(programs: Program[]): CollegeDirectoryProgram[] {
   return COLLEGE_DIRECTORY_PROGRAM_ORDER.flatMap((label) => {

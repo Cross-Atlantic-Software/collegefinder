@@ -146,6 +146,8 @@ const runMigrations = async () => {
     'add_multi_paper_support.sql',
     'add_strengths_and_experts.sql',
     'widen_expert_photo_and_strength_report.sql',
+    'add_strength_results_report_file_name.sql',
+    'add_strength_results_assigned_expert_ids.sql',
     'add_expert_phone_email_description.sql',
     'add_website_to_exams.sql',
     'restructure_colleges_programs.sql',

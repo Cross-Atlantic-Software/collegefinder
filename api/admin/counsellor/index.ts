@@ -24,10 +24,11 @@ export async function searchStudent(userId: number): Promise<ApiResponse<Student
 }
 
 export async function submitCounsellorResults(data: FormData): Promise<ApiResponse<{ result: StrengthResultData }>> {
-  return apiRequest(API_ENDPOINTS.ADMIN.COUNSELLOR_RESULTS, {
-    method: 'POST',
-    body: data,
-  });
+  return apiRequest(
+    API_ENDPOINTS.ADMIN.COUNSELLOR_RESULTS,
+    { method: 'POST', body: data },
+    { timeout: 120000 }
+  );
 }
 
 export async function getCounsellorResults(userId: number): Promise<ApiResponse<{ results: StrengthResultData | null }>> {
@@ -35,10 +36,11 @@ export async function getCounsellorResults(userId: number): Promise<ApiResponse<
 }
 
 export async function updateCounsellorResults(userId: number, data: FormData): Promise<ApiResponse<{ result: StrengthResultData }>> {
-  return apiRequest(`${API_ENDPOINTS.ADMIN.COUNSELLOR_RESULTS}/${userId}`, {
-    method: 'PUT',
-    body: data,
-  });
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.COUNSELLOR_RESULTS}/${userId}`,
+    { method: 'PUT', body: data },
+    { timeout: 120000 }
+  );
 }
 
 /** Download bulk upload template (Excel) */

@@ -26,7 +26,6 @@ interface CoreIdentityTabProps {
   onError: (error: string | null) => void;
   onValidationErrors: (errors: Record<string, string>) => void;
   onShowEmailModal: () => void;
-  getCurrentLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   automationPassword: string | null;
 }
 
@@ -45,7 +44,6 @@ export default function CoreIdentityTab({
   onError,
   onValidationErrors,
   onShowEmailModal,
-  getCurrentLocation,
   automationPassword,
 }: CoreIdentityTabProps) {
   const { showSuccess, showError } = useToast();
@@ -85,8 +83,6 @@ export default function CoreIdentityTab({
     onValidationErrors({});
 
     try {
-      const location = await getCurrentLocation();
-
       const updateData: {
         name?: string;
         first_name?: string;
@@ -94,8 +90,6 @@ export default function CoreIdentityTab({
         date_of_birth?: string;
         gender?: string;
         phone_number?: string;
-        latitude?: number;
-        longitude?: number;
         nationality?: string;
         marital_status?: string;
         father_full_name?: string;
@@ -122,11 +116,6 @@ export default function CoreIdentityTab({
       if (formData.referred_by_code !== undefined) {
         const t = formData.referred_by_code.trim();
         updateData.referred_by_code = t === "" ? null : t;
-      }
-
-      if (location) {
-        updateData.latitude = location.latitude;
-        updateData.longitude = location.longitude;
       }
 
       const response = await updateBasicInfo(updateData);
