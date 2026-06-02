@@ -35,6 +35,7 @@ import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import Image from 'next/image';
 import { formatExamPatternDurationHours } from '@/lib/formatDuration';
+import { EXAM_DIFFICULTY_LEVEL_OPTIONS } from '@/lib/examDifficultyLevel';
 
 const EXAMS_PAGE_SIZE = 10;
 
@@ -91,6 +92,7 @@ export default function ExamsPage() {
     description: '',
     exam_logo: '',
     exam_type: '',
+    difficulty_level: '',
     conducting_authority: '',
     documents_required: '',
     counselling: '',
@@ -323,6 +325,7 @@ export default function ExamsPage() {
         description: formData.description || undefined,
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
+        difficulty_level: formData.difficulty_level || null,
         conducting_authority: formData.conducting_authority || null,
         documents_required: formData.documents_required?.trim() || null,
         counselling: formData.counselling?.trim() || null,
@@ -442,6 +445,7 @@ export default function ExamsPage() {
           description: e?.description ?? '',
           exam_logo: e?.exam_logo ?? '',
           exam_type: e?.exam_type ?? '',
+          difficulty_level: e?.difficulty_level ?? '',
           conducting_authority: e?.conducting_authority ?? '',
           documents_required: e?.documents_required ?? '',
           counselling: e?.counselling ?? '',
@@ -543,6 +547,7 @@ export default function ExamsPage() {
       description: '',
       exam_logo: '',
       exam_type: '',
+      difficulty_level: '',
       conducting_authority: '',
       documents_required: '',
       counselling: '',
@@ -1091,6 +1096,19 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, exam_type: e.target.value })}
                         placeholder="e.g., National, State, University"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Difficulty level
+                      </label>
+                      <Dropdown
+                        value={formData.difficulty_level || null}
+                        onChange={(v) => setFormData({ ...formData, difficulty_level: v ?? '' })}
+                        options={EXAM_DIFFICULTY_LEVEL_OPTIONS}
+                        placeholder="Select difficulty level"
+                        className="w-full"
                       />
                     </div>
 
@@ -1658,6 +1676,12 @@ export default function ExamsPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Exam Type</label>
                   <p className="text-sm text-slate-900">{viewingExamData.exam.exam_type}</p>
+                </div>
+              )}
+              {viewingExamData.exam.difficulty_level && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Difficulty level</label>
+                  <p className="text-sm text-slate-900">{viewingExamData.exam.difficulty_level}</p>
                 </div>
               )}
               {viewingExamData.exam.conducting_authority && (

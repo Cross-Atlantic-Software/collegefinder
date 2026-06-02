@@ -6,6 +6,12 @@ type ExamDetailSectionsProps = {
   sections: ExamDetailSection[];
 };
 
+const FULL_WIDTH_EXAM_FIELDS = new Set([
+  "Description",
+  "Documents required",
+  "Counselling",
+]);
+
 export function ExamDetailSections({ sections }: ExamDetailSectionsProps) {
   const hasAnyValue = sections.some((s) =>
     s.fields.some((f) => f.value.trim() && f.value !== "—")
@@ -26,26 +32,17 @@ export function ExamDetailSections({ sections }: ExamDetailSectionsProps) {
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
             {section.title}
           </h2>
-          <dl className="mt-4 space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+          <dl className="mt-4 space-y-2 md:grid md:grid-cols-2 md:items-start md:gap-3 md:space-y-0">
             {section.fields.map((item) => (
               <div
                 key={`${section.id}-${item.label}`}
-                className="rounded-lg bg-[#F6F8FA] px-3 py-2 dark:bg-slate-950"
+                className={`rounded-lg bg-[#F6F8FA] px-3 py-2 dark:bg-slate-950 ${
+                  FULL_WIDTH_EXAM_FIELDS.has(item.label) ? "md:col-span-2" : ""
+                }`}
               >
                 <dt className="text-xs text-slate-500 dark:text-slate-400">{item.label}</dt>
                 <dd className="mt-0.5 text-sm text-slate-800 dark:text-slate-200">
-                  {item.label === "Website" ? (
-                    <a
-                      href={item.value.startsWith("http") ? item.value : `https://${item.value}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="break-all font-medium text-[#b88900] underline-offset-2 hover:underline"
-                    >
-                      {item.value}
-                    </a>
-                  ) : (
-                    <span className="whitespace-pre-wrap break-words">{item.value}</span>
-                  )}
+                  <span className="whitespace-pre-wrap break-words">{item.value}</span>
                 </dd>
               </div>
             ))}

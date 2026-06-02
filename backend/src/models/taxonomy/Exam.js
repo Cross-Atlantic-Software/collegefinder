@@ -197,6 +197,7 @@ class Exam {
       documents_required,
       counselling,
       exam_popularity_rank,
+      difficulty_level,
     } = data;
     const codeVal = code != null && String(code).trim() ? String(code).trim() : null;
     const papers = number_of_papers != null ? Math.max(1, Math.min(10, parseInt(number_of_papers, 10) || 1)) : 1;
@@ -205,8 +206,8 @@ class Exam {
         ? parseInt(exam_popularity_rank, 10)
         : null;
     const result = await db.query(
-      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling, exam_popularity_rank)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling, exam_popularity_rank, difficulty_level)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
         name,
         codeVal,
@@ -220,6 +221,7 @@ class Exam {
         documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null,
         counselling != null && String(counselling).trim() ? String(counselling).trim() : null,
         rankVal,
+        difficulty_level || null,
       ]
     );
     return result.rows[0];
@@ -242,6 +244,7 @@ class Exam {
       documents_required,
       counselling,
       exam_popularity_rank,
+      difficulty_level,
     } = data;
 
     const updates = [];
@@ -303,6 +306,10 @@ class Exam {
           : parseInt(exam_popularity_rank, 10);
       updates.push(`exam_popularity_rank = $${paramCount++}`);
       values.push(Number.isNaN(v) ? null : v);
+    }
+    if (difficulty_level !== undefined) {
+      updates.push(`difficulty_level = $${paramCount++}`);
+      values.push(difficulty_level || null);
     }
 
     if (updates.length === 0) {

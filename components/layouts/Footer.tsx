@@ -10,7 +10,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared";
 import {
@@ -36,9 +36,14 @@ export default function Footer() {
     const router = useRouter();
     const { user } = useAuth();
     const { showError } = useToast();
+    const [mounted, setMounted] = useState(false);
     const [leadEmail, setLeadEmail] = useState("");
     const isHomePage = pathname === "/";
-    const isLoggedIn = Boolean(user);
+    const isLoggedIn = mounted && Boolean(user);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     function handleLeadSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -51,7 +56,7 @@ export default function Footer() {
             showError("Please enter a valid email address.");
             return;
         }
-        if (isLoggedIn) {
+        if (Boolean(user)) {
             const queryTarget = landingPageSectionHref("get-in-touch");
             const [baseWithQuery, hashPart] = queryTarget.split("#");
             const joiner = baseWithQuery.includes("?") ? "&" : "?";
@@ -153,13 +158,7 @@ export default function Footer() {
                             </p>
                         )}
 
-                        <div
-                            className={
-                                !isLoggedIn
-                                    ? "mt-4 flex items-center gap-3 text-black/70"
-                                    : "mt-4 flex items-center gap-3 text-black/70"
-                            }
-                        >
+                        <div className="mt-4 flex items-center gap-3 text-black/70">
                             <Link href={siteSocialLinks.email} aria-label="Email" className="transition-colors hover:text-black">
                                 <FaEnvelope />
                             </Link>

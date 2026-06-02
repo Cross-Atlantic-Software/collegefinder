@@ -1,8 +1,8 @@
 "use client";
 
-import { FaHeart, FaRegHeart } from "react-icons/fa";
 import type { DashboardCollege } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
+import { CardShortlistHeart } from "@/components/dashboard/CardShortlistHeart";
 import { ExamCardHoverField } from "@/components/dashboard/ExamCardHoverField";
 import {
   LinkedExamChips,
@@ -48,7 +48,16 @@ export function CollegeShortlistCard({
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
-        <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+        <div className="absolute right-2 top-2 z-10">
+          <CardShortlistHeart
+            isShortlisted={isShortlisted}
+            shortlistSaving={shortlistSaving}
+            onShortlist={onShortlist}
+            itemLabel={college.college_name}
+          />
+        </div>
+
+        <p className="line-clamp-3 pr-8 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
           {displayOverview}
         </p>
 
@@ -89,34 +98,6 @@ export function CollegeShortlistCard({
               Apply
             </Button>
           </div>
-          <button
-            type="button"
-            onClick={onShortlist}
-            disabled={shortlistSaving}
-            aria-pressed={isShortlisted}
-            className={`mt-2 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              isShortlisted
-                ? "border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
-                : "border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            {shortlistSaving ? (
-              "Saving..."
-            ) : isShortlisted ? (
-              <>
-                <FaHeart
-                  className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden
-                />
-                Shortlisted
-              </>
-            ) : (
-              <>
-                <FaRegHeart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Shortlist college
-              </>
-            )}
-          </button>
         </div>
       </div>
     </article>

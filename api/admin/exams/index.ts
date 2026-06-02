@@ -10,6 +10,7 @@ export interface Exam {
   generation_prompt?: string | null;
   exam_logo?: string | null;
   exam_type?: string | null;
+  difficulty_level?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;
@@ -167,6 +168,7 @@ export async function createExam(data: {
   description?: string;
   exam_logo?: string | null;
   exam_type?: string | null;
+  difficulty_level?: string | null;
   conducting_authority?: string | null;
   documents_required?: string | null;
   counselling?: string | null;

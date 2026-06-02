@@ -7,6 +7,8 @@ import {
   getExamById,
   getExamsCount,
   type Exam,
+  type ExamLinkedScholarshipPreview,
+  type ExamTaggedLecturePreview,
 } from "@/api/exams";
 
 export const EXAMS_COUNT_KEY = ["exams-count"] as const;
@@ -15,6 +17,10 @@ export type ExamDetailPageData = {
   exam: Exam;
   linkedColleges: DashboardCollege[];
   linkedCollegesTotal: number;
+  linkedScholarships: ExamLinkedScholarshipPreview[];
+  linkedScholarshipTotal: number;
+  taggedLectureCount: number;
+  taggedLecturePreviews: ExamTaggedLecturePreview[];
 };
 
 export function examDetailKey(idOrSlug: string) {
@@ -91,6 +97,10 @@ export async function fetchExamDetailPage(idOrSlug: string): Promise<ExamDetailP
       exam: dashRes.data.exam,
       linkedColleges: dashRes.data.linkedColleges ?? [],
       linkedCollegesTotal: dashRes.data.linkedCollegesTotal ?? 0,
+      linkedScholarships: dashRes.data.linkedScholarships ?? [],
+      linkedScholarshipTotal: dashRes.data.linkedScholarshipTotal ?? 0,
+      taggedLectureCount: dashRes.data.taggedLectureCount ?? 0,
+      taggedLecturePreviews: dashRes.data.taggedLecturePreviews ?? [],
     };
   }
 
@@ -102,6 +112,10 @@ export async function fetchExamDetailPage(idOrSlug: string): Promise<ExamDetailP
     exam: pubRes.data.exam,
     linkedColleges: [],
     linkedCollegesTotal: 0,
+    linkedScholarships: [],
+    linkedScholarshipTotal: 0,
+    taggedLectureCount: 0,
+    taggedLecturePreviews: [],
   };
 }
 
@@ -124,6 +138,10 @@ export function useExamDetailQuery(idOrSlug: string, enabled = true) {
         exam: cachedExam,
         linkedColleges: [],
         linkedCollegesTotal: 0,
+        linkedScholarships: [],
+        linkedScholarshipTotal: 0,
+        taggedLectureCount: 0,
+        taggedLecturePreviews: [],
       };
     },
   });

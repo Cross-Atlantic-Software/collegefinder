@@ -56,7 +56,6 @@ export function buildScholarshipDetailSections(
   pushItem(overview, "Number of awards", scholarship.number_of_awards);
   pushItem(overview, "Application opens", formatExamDate(scholarship.application_start_date));
   pushItem(overview, "Application closes", formatExamDate(scholarship.application_end_date));
-  pushItem(overview, "Official website", scholarship.official_website);
   pushItem(overview, "Application link", scholarship.application_link);
   pushItem(overview, "Official notification", scholarship.official_notification_link);
 

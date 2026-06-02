@@ -159,7 +159,8 @@ const runMigrations = async () => {
     'add_exam_adapters_and_fill_reports.sql',
     'add_exam_adapter_drafts.sql',
     'add_colleges_linked_exam_count.sql',
-    'add_institute_branches_number_student_strength.sql'
+    'add_institute_branches_number_student_strength.sql',
+    'add_exam_difficulty_level.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

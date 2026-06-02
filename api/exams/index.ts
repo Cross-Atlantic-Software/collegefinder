@@ -87,6 +87,7 @@ export interface Exam {
   website?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
+  difficulty_level?: string | null;
   total_mocks_generated?: number | null;
   created_at: string;
   updated_at: string;
@@ -98,6 +99,8 @@ export interface Exam {
   linkedPrograms?: ExamProgramLink[];
   /** Up to 3 linked colleges for dashboard exam cards. */
   linkedColleges?: { id: number; name: string }[];
+  /** Total linked colleges (may exceed linkedColleges preview length). */
+  linkedCollegeCount?: number;
   /** @deprecated Prefer linkedColleges — names only. */
   linkedCollegeNames?: string[];
 }
@@ -135,11 +138,32 @@ export async function getExamById(
 }
 
 /** Dashboard detail: same enriched exam payload as shortlist tab cards (requires auth). */
+export type ExamLinkedScholarshipPreview = {
+  id: number;
+  scholarship_name: string;
+  scholarship_type?: string | null;
+  conducting_authority?: string | null;
+  scholarship_amount?: string | null;
+};
+
+export type ExamTaggedLecturePreview = {
+  id: number;
+  title: string;
+  channel?: string | null;
+  subjectName?: string | null;
+  topicName?: string | null;
+  hookSummary?: string | null;
+};
+
 export type DashboardExamByIdData = {
   exam: Exam;
   shortlistedExamIds: number[];
   linkedColleges: DashboardCollege[];
   linkedCollegesTotal: number;
+  linkedScholarships?: ExamLinkedScholarshipPreview[];
+  linkedScholarshipTotal?: number;
+  taggedLectureCount?: number;
+  taggedLecturePreviews?: ExamTaggedLecturePreview[];
 };
 
 export async function getDashboardExamById(

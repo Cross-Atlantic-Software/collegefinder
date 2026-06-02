@@ -45,6 +45,10 @@ const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>
     { label: "Scholarships", href: "/dashboard?section=scholarships" },
     { label: "All" },
   ],
+  "exam-detail": [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Exam detail" },
+  ],
 };
 
 function DetailShell({

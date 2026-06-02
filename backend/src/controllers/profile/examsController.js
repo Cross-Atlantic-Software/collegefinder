@@ -26,8 +26,16 @@ const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
 const Program = require('../../models/taxonomy/Program');
 const College = require('../../models/college/College');
+const Lecture = require('../../models/taxonomy/Lecture');
+const Scholarship = require('../../models/scholarship/Scholarship');
+const ScholarshipExam = require('../../models/scholarship/ScholarshipExam');
 const { enrichCollegeRows } = require('./collegesController');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
+const {
+  normalizeExamDifficultyLevel,
+  isValidExamDifficultyLevel,
+  EXAM_DIFFICULTY_LEVELS,
+} = require('../../constants/examDifficultyLevel');
 const { matchesExamSearchTokens } = require('../../utils/examSearchTokens');
 
 /**
@@ -339,6 +347,7 @@ class ExamsTaxonomyController {
       careerRows,
       programRows,
       collegePreviewsByExam,
+      collegeCountsByExam,
     ] = await Promise.all([
       ExamDates.findByExamIds(ids),
       ExamPattern.findByExamIds(ids),
@@ -347,6 +356,7 @@ class ExamsTaxonomyController {
       ExamCareerGoal.findCareerGoalsForExamIds(ids),
       ExamProgram.findProgramsForExamIds(ids),
       CollegeRecommendedExam.getCollegePreviewsByExamIds(ids, 3),
+      CollegeRecommendedExam.getCollegeCountsByExamIds(ids),
     ]);
 
     const dateMap = new Map();
@@ -434,6 +444,11 @@ class ExamsTaxonomyController {
         linkedCareerGoals: eid != null ? careersByExam.get(eid) || [] : [],
         linkedPrograms: eid != null ? programsByExam.get(eid) || [] : [],
         linkedColleges: eid != null ? collegePreviewsByExam.get(eid) || [] : [],
+        linkedCollegeCount:
+          eid != null
+            ? collegeCountsByExam.get(eid) ??
+              (collegePreviewsByExam.get(eid) || []).length
+            : 0,
         linkedCollegeNames:
           eid != null
             ? (collegePreviewsByExam.get(eid) || []).map((c) => c.name)
@@ -796,6 +811,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -833,6 +849,13 @@ class ExamsTaxonomyController {
         }
       }
 
+      if (difficulty_level !== undefined && !isValidExamDifficultyLevel(difficulty_level)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid difficulty_level. Allowed values: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+        });
+      }
+
       const exam = await Exam.create({
         name,
         code: codeNorm,
@@ -845,6 +868,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level: normalizeExamDifficultyLevel(difficulty_level),
       });
 
       // Create related data if provided
@@ -918,6 +942,7 @@ class ExamsTaxonomyController {
         documents_required,
         counselling,
         exam_popularity_rank,
+        difficulty_level,
         examDates,
         eligibilityCriteria,
         examPattern,
@@ -963,6 +988,13 @@ class ExamsTaxonomyController {
         await deleteFromS3(existing.exam_logo);
       }
 
+      if (difficulty_level !== undefined && !isValidExamDifficultyLevel(difficulty_level)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid difficulty_level. Allowed values: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+        });
+      }
+
       const exam = await Exam.update(parseInt(id), {
         name,
         code: code !== undefined
@@ -977,6 +1009,10 @@ class ExamsTaxonomyController {
         documents_required: documents_required !== undefined ? documents_required : undefined,
         counselling: counselling !== undefined ? counselling : undefined,
         exam_popularity_rank: exam_popularity_rank !== undefined ? exam_popularity_rank : undefined,
+        difficulty_level:
+          difficulty_level !== undefined
+            ? normalizeExamDifficultyLevel(difficulty_level)
+            : undefined,
       });
 
       // Update related data if provided
@@ -1459,7 +1495,41 @@ class ExamsTaxonomyController {
         Number.isInteger(examIdNum) && examIdNum > 0
           ? await CollegeRecommendedExam.getCollegeIdsByRecommendedExamId(examIdNum)
           : [];
-      const linkedColleges = await enrichCollegeRows(await College.findByIds(collegeIds));
+
+      const [linkedColleges, scholarshipIds, taggedLectureCount, taggedLectureRows] =
+        await Promise.all([
+        enrichCollegeRows(await College.findByIds(collegeIds)),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? ScholarshipExam.getScholarshipIdsByExamId(examIdNum)
+          : Promise.resolve([]),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? Lecture.countVideoLecturesByExamId(examIdNum)
+          : Promise.resolve(0),
+        Number.isInteger(examIdNum) && examIdNum > 0
+          ? Lecture.findVideoPreviewsByExamId(examIdNum, 5)
+          : Promise.resolve([]),
+      ]);
+
+      const scholarshipRows =
+        scholarshipIds.length > 0 ? await Scholarship.findByIds(scholarshipIds) : [];
+      const linkedScholarships = scholarshipRows.map((s) => ({
+        id: s.id,
+        scholarship_name: s.scholarship_name,
+        scholarship_type: s.scholarship_type,
+        conducting_authority: s.conducting_authority,
+        scholarship_amount: s.scholarship_amount,
+      }));
+      const taggedLecturePreviews = taggedLectureRows.map((row) => ({
+        id: row.id,
+        title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled video',
+        channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || null,
+        subjectName: row.subject_name || null,
+        topicName: row.topic_name || null,
+        hookSummary:
+          row.hook_summary != null && String(row.hook_summary).trim() !== ''
+            ? String(row.hook_summary).trim()
+            : null,
+      }));
 
       return res.json({
         success: true,
@@ -1468,6 +1538,10 @@ class ExamsTaxonomyController {
           shortlistedExamIds: ctx.shortlistedExamIds ?? [],
           linkedColleges,
           linkedCollegesTotal: linkedColleges.length,
+          linkedScholarships,
+          linkedScholarshipTotal: scholarshipRows.length,
+          taggedLectureCount,
+          taggedLecturePreviews,
         },
       });
     } catch (error) {
@@ -1541,6 +1615,7 @@ class ExamsTaxonomyController {
         'code',
         'description',
         'exam_type',
+        'difficulty_level',
         'conducting_authority',
         'documents_required',
         'counselling',
@@ -1578,6 +1653,7 @@ class ExamsTaxonomyController {
         'JEE_MAIN',
         'Engineering entrance exam for B.Tech admissions',
         'National',
+        'Advanced',
         'NTA',
         'ID proof, class 12 mark sheet',
         'JoSAA / CSAB counselling',
@@ -1615,6 +1691,7 @@ class ExamsTaxonomyController {
         'NEET',
         'Medical entrance for MBBS/BDS',
         'National',
+        'Intermediate',
         'NTA',
         'Photo, class 10 & 12 certificates',
         'MCC / state counselling',
@@ -1682,7 +1759,7 @@ class ExamsTaxonomyController {
       const programMap = new Map(allPrograms.map((p) => [p.id, p.name]));
 
       const headers = [
-        'name', 'code', 'description', 'exam_type', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
+        'name', 'code', 'description', 'exam_type', 'difficulty_level', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
         'application_start_date', 'application_close_date', 'exam_date', 'result_date', 'application_fees', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
@@ -1716,6 +1793,7 @@ class ExamsTaxonomyController {
           exam.code || '',
           exam.description || '',
           exam.exam_type || '',
+          exam.difficulty_level || '',
           exam.conducting_authority || '',
           exam.documents_required || '',
           exam.counselling || '',
@@ -2020,6 +2098,15 @@ class ExamsTaxonomyController {
 
         const description = (row.description ?? row.Description ?? '') ? (row.description ?? row.Description).toString().trim() : null;
         const examType = (row.exam_type ?? row.Exam_Type ?? '').toString().trim();
+        const difficultyRaw = getCell(row, 'difficulty_level', 'Difficulty_Level', 'Difficulty Level');
+        const difficultyLevel = difficultyRaw ? normalizeExamDifficultyLevel(difficultyRaw) : null;
+        if (difficultyRaw && !difficultyLevel) {
+          allErrors.push({
+            row: rowNum,
+            message: `Invalid difficulty_level "${difficultyRaw}". Allowed: ${EXAM_DIFFICULTY_LEVELS.join(', ')}`,
+          });
+          continue;
+        }
         const conductingAuthority = (row.conducting_authority ?? row.Conducting_Authority ?? '') ? (row.conducting_authority ?? row.Conducting_Authority).toString().trim() : null;
         const logoFilename = (row.logo_filename ?? row.Logo_Filename ?? '').toString().trim();
         const documentsRequired = (getCell(row, 'documents_required', 'Documents_Required') || '').toString().trim() || null;
@@ -2068,6 +2155,7 @@ class ExamsTaxonomyController {
             documents_required: documentsRequired,
             counselling: counsellingText,
             exam_popularity_rank: examPopularityRank,
+            difficulty_level: difficultyLevel,
           });
           created.push({ id: exam.id, name: exam.name, code: exam.code || '' });
           if (codeNorm) codesInFile.add(codeNorm);
