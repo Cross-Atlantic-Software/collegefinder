@@ -46,7 +46,7 @@ export function CollegeCardMetaFields({ college }: CollegeCardMetaFieldsProps) {
             label={field.label}
             value={field.value}
             tooltipValue={field.tooltipValue}
-            className={index > 0 ? "min-w-0 truncate" : "shrink-0"}
+            className={index > 0 ? "min-w-0 max-w-full" : "shrink-0"}
           />
         </span>
       ))}

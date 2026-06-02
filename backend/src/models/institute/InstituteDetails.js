@@ -10,20 +10,29 @@ class InstituteDetails {
   }
 
   static async findDescriptionsByInstituteIds(instituteIds) {
+    const map = await this.findByInstituteIds(instituteIds);
+    const descriptions = new Map();
+    for (const [instituteId, row] of map) {
+      descriptions.set(instituteId, row.institute_description);
+    }
+    return descriptions;
+  }
+
+  static async findByInstituteIds(instituteIds) {
     if (!instituteIds?.length) return new Map();
     const ids = instituteIds
       .map((id) => parseInt(id, 10))
       .filter((n) => Number.isInteger(n) && n > 0);
     if (!ids.length) return new Map();
     const result = await db.query(
-      `SELECT institute_id, institute_description
+      `SELECT institute_id, institute_description, demo_available, scholarship_available
        FROM institute_details
        WHERE institute_id = ANY($1::int[])`,
       [ids]
     );
     const map = new Map();
     for (const row of result.rows) {
-      map.set(row.institute_id, row.institute_description);
+      map.set(row.institute_id, row);
     }
     return map;
   }

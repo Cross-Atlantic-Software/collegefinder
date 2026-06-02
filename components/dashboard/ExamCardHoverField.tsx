@@ -33,7 +33,7 @@ export function ExamCardHoverField({
 
   return (
     <span
-      className={`group/field relative max-w-full ${
+      className={`group/field relative max-w-full overflow-visible ${
         variant === "chip" || !compact ? "inline-block" : "block"
       } ${className}`}
     >

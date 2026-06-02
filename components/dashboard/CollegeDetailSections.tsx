@@ -257,35 +257,57 @@ export function CollegeDetailSections({ sections }: CollegeDetailSectionsProps) 
         if (!visibleItems.length) return null;
 
         const isOverview = section.id === "overview";
+        const isCompactGrid =
+          isOverview ||
+          section.id === "statistics" ||
+          section.id === "about" ||
+          section.id === "eligibility";
         return (
           <article
             key={section.id}
-            className={`rounded-2xl bg-white dark:bg-slate-900 ${
-              isOverview ? "p-4 md:p-5" : "p-4 md:p-5"
-            }`}
+            className="rounded-2xl bg-white p-4 dark:bg-slate-900 md:p-5"
           >
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {section.title}
             </h2>
             <dl
               className={`mt-3 gap-2 ${
-                isOverview
-                  ? "space-y-2"
+                isCompactGrid
+                  ? "grid sm:grid-cols-2 lg:grid-cols-3"
                   : "space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0"
               }`}
             >
               {visibleItems.map((item) => {
                 const fullWidth =
-                  item.label === "Description" || item.label === "Admission timeline";
+                  item.label === "Description" ||
+                  item.label === "Admission timeline" ||
+                  item.label === "Admission Timeline" ||
+                  item.label === "Required Documents" ||
+                  item.label === "Selection Process" ||
+                  item.label === "Renewal Conditions" ||
+                  item.label === "Eligible Categories" ||
+                  item.label === "Applicable States";
                 return (
                   <div
                     key={`${section.id}-${item.label}-${item.value.slice(0, 24)}`}
-                    className={`rounded-lg bg-[#F6F8FA] px-3 py-2 dark:bg-slate-950 ${
-                      fullWidth && !isOverview ? "md:col-span-2" : ""
-                    } ${fullWidth && isOverview ? "w-full" : ""}`}
+                    className={`rounded-lg bg-[#F6F8FA] dark:bg-slate-950 ${
+                      isCompactGrid ? "px-2.5 py-1.5" : "px-3 py-2"
+                    } ${
+                      fullWidth && !isCompactGrid ? "md:col-span-2" : ""
+                    } ${fullWidth && isCompactGrid ? "sm:col-span-2 lg:col-span-3" : ""}`}
                   >
-                    <dt className="text-xs text-slate-500 dark:text-slate-400">{item.label}</dt>
-                    <dd className="mt-0.5 text-sm text-slate-800 dark:text-slate-200">
+                    <dt
+                      className={`text-slate-500 dark:text-slate-400 ${
+                        isCompactGrid ? "text-[10px] font-medium uppercase tracking-wide" : "text-xs"
+                      }`}
+                    >
+                      {item.label}
+                    </dt>
+                    <dd
+                      className={`text-slate-800 dark:text-slate-200 ${
+                        isCompactGrid ? "mt-0.5 text-[13px] leading-snug" : "mt-0.5 text-sm"
+                      }`}
+                    >
                       {item.label === "Website" || item.label === "Brochure" ? (
                         <a
                           href={

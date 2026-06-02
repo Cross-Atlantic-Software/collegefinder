@@ -4,6 +4,7 @@ const InstituteExam = require('../../models/institute/InstituteExam');
 const InstituteDetails = require('../../models/institute/InstituteDetails');
 const InstituteStatistics = require('../../models/institute/InstituteStatistics');
 const InstituteCourse = require('../../models/institute/InstituteCourse');
+const Lecture = require('../../models/taxonomy/Lecture');
 const db = require('../../config/database');
 const {
   sortDeliveryInstitutes,
@@ -25,9 +26,10 @@ async function enrichInstituteRows(institutes) {
   const ids = institutes.map((i) => i.id).filter((id) => id != null);
   if (ids.length === 0) return [];
 
-  const [examLinkRows, descriptionMap] = await Promise.all([
+  const [examLinkRows, detailsMap, statisticsMap] = await Promise.all([
     InstituteExam.getExamLinksForInstituteIds(ids),
-    InstituteDetails.findDescriptionsByInstituteIds(ids),
+    InstituteDetails.findByInstituteIds(ids),
+    InstituteStatistics.findByInstituteIds(ids),
   ]);
   const examMap = new Map();
   for (const row of examLinkRows) {
@@ -39,11 +41,28 @@ async function enrichInstituteRows(institutes) {
       code: row.exam_code,
     });
   }
-  return institutes.map((inst) => ({
-    ...inst,
-    linkedExams: examMap.get(inst.id) || [],
-    institute_description: descriptionMap.get(inst.id) ?? null,
-  }));
+  return institutes.map((inst) => {
+    const detailsRow = detailsMap.get(inst.id);
+    const statisticsRow = statisticsMap.get(inst.id);
+    return {
+      ...inst,
+      linkedExams: examMap.get(inst.id) || [],
+      institute_description: detailsRow?.institute_description ?? null,
+      instituteDetails: detailsRow
+        ? {
+            demo_available: detailsRow.demo_available,
+            scholarship_available: detailsRow.scholarship_available,
+          }
+        : null,
+      statistics: statisticsRow
+        ? {
+            ranking_score: statisticsRow.ranking_score,
+            success_rate: statisticsRow.success_rate,
+            student_rating: statisticsRow.student_rating,
+          }
+        : null,
+    };
+  });
 }
 
 async function buildOrderedInstituteIdsForDelivery(userId, delivery, ctx) {
@@ -267,6 +286,31 @@ async function getDashboardInstituteByRef(req, res) {
       UserAcademics.findByUserId(userId),
     ]);
 
+    const linkedExamIds = (enriched.linkedExams || [])
+      .map((e) => Number(e.id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    const [taggedLectureCount, taggedLectureRows] = await Promise.all([
+      linkedExamIds.length
+        ? Lecture.countVideoLecturesByExamIds(linkedExamIds)
+        : Promise.resolve(0),
+      linkedExamIds.length
+        ? Lecture.findVideoPreviewsByExamIds(linkedExamIds, 5)
+        : Promise.resolve([]),
+    ]);
+
+    const taggedLecturePreviews = taggedLectureRows.map((row) => ({
+      id: row.id,
+      title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled video',
+      channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || null,
+      subjectName: row.subject_name || null,
+      topicName: row.topic_name || null,
+      hookSummary:
+        row.hook_summary != null && String(row.hook_summary).trim() !== ''
+          ? String(row.hook_summary).trim()
+          : null,
+    }));
+
     const shortlistedInstituteIds = [
       ...new Set(
         (Array.isArray(academics?.user_shortlisted_institutes)
@@ -283,6 +327,8 @@ async function getDashboardInstituteByRef(req, res) {
       data: {
         institute: enriched,
         shortlistedInstituteIds,
+        taggedLectureCount,
+        taggedLecturePreviews,
       },
     });
   } catch (error) {

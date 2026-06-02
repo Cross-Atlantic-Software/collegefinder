@@ -6,6 +6,7 @@ const ScholarshipEligibleCategory = require('../../models/scholarship/Scholarshi
 const ScholarshipApplicableState = require('../../models/scholarship/ScholarshipApplicableState');
 const ScholarshipDocumentsRequired = require('../../models/scholarship/ScholarshipDocumentsRequired');
 const Stream = require('../../models/taxonomy/Stream');
+const Lecture = require('../../models/taxonomy/Lecture');
 const db = require('../../config/database');
 const {
   sortAllScholarships,
@@ -28,9 +29,10 @@ async function enrichScholarshipRows(scholarships) {
   const ids = scholarships.map((s) => s.id).filter((id) => id != null);
   if (ids.length === 0) return [];
 
-  const [examLinkRows, collegeLinkRows] = await Promise.all([
+  const [examLinkRows, collegeLinkRows, applicableStatesMap] = await Promise.all([
     ScholarshipExam.getExamLinksForScholarshipIds(ids),
     ScholarshipCollege.getCollegeLinksForScholarshipIds(ids),
+    ScholarshipApplicableState.findByScholarshipIds(ids),
   ]);
 
   const examMap = new Map();
@@ -68,6 +70,7 @@ async function enrichScholarshipRows(scholarships) {
     const linkedExams = examMap.get(sch.id) || [];
     const linkedColleges = collegeMap.get(sch.id) || [];
     const streamId = sch.stream_id != null ? Number(sch.stream_id) : null;
+    const stateNames = applicableStatesMap.get(sch.id) || [];
     return {
       ...sch,
       linkedExams,
@@ -76,6 +79,7 @@ async function enrichScholarshipRows(scholarships) {
       linkedCollegeCount: linkedColleges.length,
       stream_name:
         streamId && streamNameById.has(streamId) ? streamNameById.get(streamId) : null,
+      applicableStates: stateNames.map((state_name) => ({ state_name })),
     };
   });
 }
@@ -295,6 +299,31 @@ async function getDashboardScholarshipByRef(req, res) {
       UserAcademics.findByUserId(userId),
     ]);
 
+    const linkedExamIds = (enriched.linkedExams || [])
+      .map((e) => Number(e.id))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    const [taggedLectureCount, taggedLectureRows] = await Promise.all([
+      linkedExamIds.length
+        ? Lecture.countVideoLecturesByExamIds(linkedExamIds)
+        : Promise.resolve(0),
+      linkedExamIds.length
+        ? Lecture.findVideoPreviewsByExamIds(linkedExamIds, 5)
+        : Promise.resolve([]),
+    ]);
+
+    const taggedLecturePreviews = taggedLectureRows.map((row) => ({
+      id: row.id,
+      title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled video',
+      channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || null,
+      subjectName: row.subject_name || null,
+      topicName: row.topic_name || null,
+      hookSummary:
+        row.hook_summary != null && String(row.hook_summary).trim() !== ''
+          ? String(row.hook_summary).trim()
+          : null,
+    }));
+
     const shortlistedScholarshipIds = [
       ...new Set(
         (Array.isArray(academics?.user_shortlisted_scholarships)
@@ -311,6 +340,8 @@ async function getDashboardScholarshipByRef(req, res) {
       data: {
         scholarship: enriched,
         shortlistedScholarshipIds,
+        taggedLectureCount,
+        taggedLecturePreviews,
       },
     });
   } catch (error) {

@@ -596,6 +596,11 @@ export interface DashboardInstitute {
   linkedExams?: DashboardLinkedExam[];
   branches_number?: string | null;
   student_strength?: string | null;
+  instituteDetails?: Pick<
+    DashboardInstituteDetails,
+    'demo_available' | 'scholarship_available'
+  > | null;
+  statistics?: DashboardInstituteStatistics | null;
 }
 
 export type DashboardInstituteDelivery = 'online' | 'offline' | 'shortlisted';
@@ -697,6 +702,8 @@ export async function getDashboardInstituteByRef(
 ): Promise<ApiResponse<{
   institute: DashboardInstituteDetail;
   shortlistedInstituteIds: number[];
+  taggedLectureCount?: number;
+  taggedLecturePreviews?: import("@/api/exams").ExamTaggedLecturePreview[];
 }>> {
   const ref = encodeURIComponent(instituteRef.trim());
   return apiRequest(
@@ -716,8 +723,12 @@ export interface DashboardScholarship {
   application_link?: string | null;
   mode?: string | null;
   stream_name?: string | null;
+  income_limit?: string | null;
+  minimum_marks_required?: string | null;
+  renewal_available?: boolean | null;
   linkedExams?: DashboardLinkedExam[];
   linkedColleges?: { id: number; name: string; city?: string | null; state?: string | null }[];
+  applicableStates?: DashboardScholarshipApplicableState[];
   linkedExamCount?: number;
   linkedCollegeCount?: number;
 }
@@ -829,6 +840,8 @@ export async function getDashboardScholarshipByRef(
 ): Promise<ApiResponse<{
   scholarship: DashboardScholarshipDetail;
   shortlistedScholarshipIds: number[];
+  taggedLectureCount?: number;
+  taggedLecturePreviews?: import("@/api/exams").ExamTaggedLecturePreview[];
 }>> {
   const ref = encodeURIComponent(scholarshipRef.trim());
   return apiRequest(
