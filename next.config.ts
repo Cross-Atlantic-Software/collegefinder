@@ -19,6 +19,11 @@ function backendOriginForRewrites(): string {
 }
 
 const nextConfig: NextConfig = {
+  typescript: {
+    // Typecheck runs via `tsc --noEmit` in the build script. Next's forked TS worker
+    // OOMs on this machine after webpack when both passes run in one process tree.
+    ignoreBuildErrors: true,
+  },
   experimental: {
     // Avoid a separate webpack child process; on ~2GB RAM that pairing often gets OOM-killed (SIGKILL).
     webpackBuildWorker: false,

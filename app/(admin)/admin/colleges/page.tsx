@@ -980,15 +980,37 @@ export default function CollegesPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs text-slate-600 mb-0.5">Program Category *</label>
-                      <Dropdown<number> value={p.program_id} onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], program_id: v }; setFormData({ ...formData, collegePrograms: next }); }} options={[{ value: 0, label: 'Select program category' }, ...programs.map((prog) => ({ value: prog.id, label: prog.name }))]} placeholder="Select program category" className="w-full" />
+                      <Dropdown<number>
+                        value={p.program_id}
+                        onChange={(v) => {
+                          const next = [...formData.collegePrograms];
+                          next[i] = { ...next[i], program_id: v };
+                          setFormData({ ...formData, collegePrograms: next });
+                        }}
+                        options={[
+                          { value: 0, label: 'Select program category' },
+                          ...programs.map((prog) => ({ value: prog.id, label: prog.name })),
+                        ]}
+                        placeholder="Select program category"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-600 mb-0.5">Branch / Course</label>
                       <Dropdown<string>
                         value={p.branch_course || null}
-                        onChange={(v) => { const next = [...formData.collegePrograms]; next[i] = { ...next[i], branch_course: v ?? '' }; setFormData({ ...formData, collegePrograms: next }); }}
-                        options={[{ value: '', label: 'Select branch/course' }, ...branches.map((b) => ({ value: b.name, label: b.name }))]}
+                        onChange={(v) => {
+                          const next = [...formData.collegePrograms];
+                          next[i] = { ...next[i], branch_course: v ?? '' };
+                          setFormData({ ...formData, collegePrograms: next });
+                        }}
+                        options={[
+                          { value: '', label: 'Select branch/course' },
+                          ...branches.map((b) => ({ value: b.name, label: b.name })),
+                        ]}
                         placeholder="Select branch/course"
+                        searchable
                         className="w-full"
                       />
                     </div>

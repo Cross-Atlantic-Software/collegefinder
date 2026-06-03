@@ -9,6 +9,7 @@ import { getAllPrograms } from "@/api/public/programs";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { LockedCollegePreviewCard } from "@/components/containers/college-directory/LockedCollegePreviewCard";
 import { PublicCollegeCard } from "@/components/containers/college-directory/PublicCollegeCard";
+import { DIRECTORY_CARD_GRID_CLASS } from "@/components/containers/exam-directory/directoryCardTones";
 import {
   resolveCollegeDirectoryPrograms,
   splitCollegesForPublicDirectory,
@@ -226,11 +227,20 @@ export default function CollegeDirectoryDiscovery() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((college) => (
-                  <PublicCollegeCard key={college.id} college={college} />
+              <div className={DIRECTORY_CARD_GRID_CLASS}>
+                {visible.map((college, index) => (
+                  <PublicCollegeCard
+                    key={college.id}
+                    college={college}
+                    toneIndex={index}
+                  />
                 ))}
-                {hasMoreLocked ? <LockedCollegePreviewCard college={lockedPreview} /> : null}
+                {hasMoreLocked ? (
+                  <LockedCollegePreviewCard
+                    college={lockedPreview}
+                    toneIndex={visible.length}
+                  />
+                ) : null}
               </div>
             )}
           </div>

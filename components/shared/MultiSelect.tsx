@@ -74,6 +74,10 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       ...provided,
       zIndex: 99999, // Higher z-index to appear above modal footers
     }),
+    menuList: (provided) => ({
+      ...provided,
+      maxHeight: '180px',
+    }),
     menuPortal: (provided) => ({
       ...provided,
       zIndex: 99999,

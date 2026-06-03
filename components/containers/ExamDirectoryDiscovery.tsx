@@ -9,6 +9,7 @@ import { getAllStreams, type Stream } from "@/api/streams";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { LockedExamPreviewCard } from "@/components/containers/exam-directory/LockedExamPreviewCard";
 import { PublicExamCard } from "@/components/containers/exam-directory/PublicExamCard";
+import { DIRECTORY_CARD_GRID_CLASS } from "@/components/containers/exam-directory/directoryCardTones";
 import {
   examsForStream,
   splitExamsForPublicDirectory,
@@ -195,7 +196,7 @@ export default function ExamDirectoryDiscovery() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={DIRECTORY_CARD_GRID_CLASS}>
                 {visible.map((exam, index) => (
                   <PublicExamCard
                     key={exam.id}
