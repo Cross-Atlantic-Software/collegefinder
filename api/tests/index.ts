@@ -30,7 +30,7 @@ export interface ExamFormat {
       marks: number;
       subsections: {
         [key: string]: {
-          type: 'MCQ' | 'Numerical';
+          type: 'MCQ' | 'Numerical' | Question['question_type'];
           questions: number;
           marks_per_question: number;
           required?: number; // e.g. 5 for numerical "attempt any 5 of 10"

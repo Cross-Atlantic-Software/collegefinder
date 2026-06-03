@@ -478,7 +478,7 @@ export default function TestModule() {
                               className="rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
                               disabled={formatLoading && selectedExam?.id === exam.id}
                             >
-                              {selectedExam?.id === exam.id && viewState === 'mock-preparing'
+                              {selectedExam?.id === exam.id && formatLoading
                                 ? 'Preparing...'
                                 : `Start Mock ${nextMockNumber}`}
                             </Button>
