@@ -9,12 +9,15 @@ import { collegeLocationLine } from "@/lib/collegeDisplay";
 type CollegeCardHeaderProps = {
   college: DashboardCollege;
   borderClassName?: string;
+  /** Tighter header for public directory cards (matches exam directory sizing). */
+  compact?: boolean;
 };
 
 /** Shared college card top row: name, location · affiliation, type badge on logo. */
 export function CollegeCardHeader({
   college,
   borderClassName = "border-slate-100 dark:border-slate-800",
+  compact = false,
 }: CollegeCardHeaderProps) {
   const location = collegeLocationLine(college);
   const university = college.parent_university?.trim();
@@ -27,10 +30,48 @@ export function CollegeCardHeader({
       : collegeType
     : null;
 
+  const logoSide = compact ? (
+    <div className="flex shrink-0 flex-col items-center gap-0.5">
+      {typeBadgeLabel && collegeType ? (
+        <span className="group/field relative z-10 max-w-[4.75rem]">
+          <span
+            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
+            tabIndex={0}
+            aria-label={`College type: ${collegeType}`}
+          >
+            {typeBadgeLabel}
+          </span>
+          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
+        </span>
+      ) : null}
+      <CollegeLogo college={college} className="h-11 w-11 shrink-0 p-1" />
+    </div>
+  ) : (
+    <div className="relative shrink-0 overflow-visible pt-1.5">
+      {typeBadgeLabel && collegeType ? (
+        <span className="group/field absolute left-1/2 top-0 z-10 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 pb-2">
+          <span
+            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
+            tabIndex={0}
+            aria-label={`College type: ${collegeType}`}
+          >
+            {typeBadgeLabel}
+          </span>
+          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
+        </span>
+      ) : null}
+      <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
+    </div>
+  );
+
   return (
-    <div className={`flex gap-3 border-b px-3 pt-4 pb-1 ${borderClassName}`}>
+    <div
+      className={`flex items-start border-b px-3 ${compact ? "gap-2.5 pt-2 pb-1.5" : "gap-3 pt-4 pb-1"} ${borderClassName}`}
+    >
       <div className="min-w-0 flex-1 space-y-1">
-        <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
+        <h3
+          className={`line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100 ${compact ? "leading-tight" : "leading-snug"}`}
+        >
           {college.college_name}
         </h3>
         {subtitleParts.length > 0 ? (
@@ -42,21 +83,7 @@ export function CollegeCardHeader({
           </p>
         ) : null}
       </div>
-      <div className="relative shrink-0 overflow-visible pt-1.5">
-        {typeBadgeLabel && collegeType ? (
-          <span className="group/field absolute left-1/2 top-0 z-10 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 pb-2">
-            <span
-              className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
-              tabIndex={0}
-              aria-label={`College type: ${collegeType}`}
-            >
-              {typeBadgeLabel}
-            </span>
-            <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
-          </span>
-        ) : null}
-        <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
-      </div>
+      {logoSide}
     </div>
   );
 }
