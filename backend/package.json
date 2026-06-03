@@ -5,9 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "docker-compose up",
-    "dev:detached": "docker-compose up -d",
-    "stop": "docker-compose down",
+    "dev": "docker compose up --build",
+    "dev:detached": "docker compose up --build -d",
+    "stop": "docker compose down",
     "create-super-admin": "node scripts/createSuperAdmin.js",
     "clear-users": "node scripts/clearUsers.js",
     "clear-all-tables": "node scripts/clearAllTables.js",
@@ -16,6 +16,7 @@
     "seed:institutes": "node scripts/seedInstitutes.js",
     "seed:referral-templates": "node scripts/seedReferralEmailTemplates.js",
     "seed:institute-emails": "node scripts/seedInstituteReferralEmails.js",
+    "reset:mock-jobs": "node scripts/resetStuckMockJobs.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -101,6 +101,8 @@ services:
     # Image tag - defaults to dev, override for production
     # Example: BACKEND_IMAGE=collegefinder-backend:latest
     image: ${BACKEND_IMAGE:-collegefinder-backend:dev}
+    # Build locally; do not pull this tag from Docker Hub
+    pull_policy: build
     
     # Container name - defaults to dev name, override for production
     # Example: BACKEND_CONTAINER=collegefinder_backend_prod

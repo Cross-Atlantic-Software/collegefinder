@@ -33,7 +33,7 @@ export default function InstructionsScreen({
     },
     {
       label: 'Step 3',
-      title: 'Start Test',
+      title: 'Start Mock Test',
       description: 'Begin only when you are ready to continue in a focused environment.',
     },
   ];

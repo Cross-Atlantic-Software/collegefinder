@@ -10,9 +10,10 @@ interface TestRulesProps {
   onBack: () => void;
   backLabel?: string;
   loading?: boolean;
+  startButtonLabel?: string;
 }
 
-export default function TestRules({ examName, formatRules, onStartTest, onBack, backLabel = 'Back to Exams', loading = false }: TestRulesProps) {
+export default function TestRules({ examName, formatRules, onStartTest, onBack, backLabel = 'Back to Exams', loading = false, startButtonLabel = 'Start Mock Test' }: TestRulesProps) {
   const { format, rules, marking_scheme, sections } = formatRules;
 
   // Calculate total questions (handle empty sections)
@@ -78,7 +79,7 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
                   <div key={subKey} className="rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/70">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                        Section {subKey.split('_')[1]?.toUpperCase()} ({subsection.type})
+                        {subKey.includes('_') ? `Section ${subKey.split('_')[1]?.toUpperCase()}` : subKey} ({subsection.type})
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {subsection.questions} questions × {subsection.marks_per_question} marks
@@ -173,7 +174,7 @@ export default function TestRules({ examName, formatRules, onStartTest, onBack, 
           disabled={loading}
           className="px-8 rounded-full !border-black !bg-black !text-[#FAD53C] hover:!bg-black/90"
         >
-          {loading ? 'Starting Test...' : 'Start Test'}
+          {loading ? 'Starting Mock Test...' : startButtonLabel}
         </Button>
       </div>
     </div>
