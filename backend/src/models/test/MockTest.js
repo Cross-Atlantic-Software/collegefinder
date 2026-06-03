@@ -97,6 +97,22 @@ class MockTest {
     return result.rows[0] || null;
   }
 
+  static async setGenerationError(id, errorMessage) {
+    const result = await db.query(
+      'UPDATE exam_mocks SET generation_error = $1 WHERE id = $2 RETURNING *',
+      [errorMessage || null, id]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async clearGenerationError(id) {
+    const result = await db.query(
+      'UPDATE exam_mocks SET generation_error = NULL WHERE id = $1 RETURNING *',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
   /**
    * Update total_questions count on a mock test
    */

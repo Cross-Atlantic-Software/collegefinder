@@ -65,6 +65,7 @@ const init = async () => {
       'exam_city.sql',        // Exam city taxonomy table
       'categories.sql',       // Categories taxonomy table
       'colleges.sql',         // Colleges module (colleges + college_details + college_programs + cutoffs + seat_matrix + key_dates + documents + counselling + recommended_exams)
+      'upload_jobs.sql',      // Bulk Excel upload jobs (lectures/colleges admin); depends on admin_users, lectures
       'institutes.sql',       // Institutes (Coachings) module: institutes + institute_details + institute_exams + institute_exam_specialization + institute_statistics + institute_courses
       'scholarships.sql',     // Scholarships module: scholarships + eligible_categories + applicable_states + documents_required + scholarship_exams
       'loans.sql',            // Loans module: loan_providers + disbursement_process + eligible_countries + eligible_course_types
@@ -125,7 +126,13 @@ const runMigrations = async () => {
     'ensure_colleges_columns_2026.sql',
     'update_government_identification_apaar_id.sql',
     'add_description_status_to_career_goals.sql',
+    'add_stream_id_to_career_goals_taxonomies.sql',
     'add_exam_fields_and_related_tables.sql',
+    'add_exam_popularity_rank.sql',
+    'add_generation_prompt_to_exams.sql',
+    'add_exam_shortlist_meta.sql',
+    'restructure_exams_module_fields_2026.sql',
+    'exam_type_and_mode_free_text_2026.sql',
     'add_institutes_tables.sql',
     'add_scholarships_tables.sql',
     'add_loans_tables.sql',
@@ -135,6 +142,7 @@ const runMigrations = async () => {
     'add_logo_file_name_to_exams.sql',
     'add_logo_filename_to_entities.sql',
     'add_updated_by_to_streams.sql',
+    'add_sort_order_to_streams.sql',
     'add_updated_by_and_nullable_logo_to_career_goals.sql',
     'add_exam_domicile_programs.sql',
     'add_branch_to_college_seat_matrix.sql',
@@ -163,7 +171,8 @@ const runMigrations = async () => {
     'add_colleges_linked_exam_count.sql',
     'add_institute_branches_number_student_strength.sql',
     'add_exam_difficulty_level.sql',
-    'add_colleges_nirf_ranking_admission_timeline.sql'
+    'add_colleges_nirf_ranking_admission_timeline.sql',
+    'add_exam_mocks_generation_error.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

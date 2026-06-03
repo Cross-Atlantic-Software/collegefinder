@@ -30,7 +30,7 @@ export interface ExamFormat {
       marks: number;
       subsections: {
         [key: string]: {
-          type: 'MCQ' | 'Numerical';
+          type: 'MCQ' | 'Numerical' | Question['question_type'];
           questions: number;
           marks_per_question: number;
           required?: number; // e.g. 5 for numerical "attempt any 5 of 10"
@@ -557,16 +557,21 @@ export async function startMockTest(examId: number, paperNumber?: number): Promi
 
 /**
  * Get the next mock number for an exam (respects multi-paper: if Mock 1 Paper 2 is pending, returns 1).
+ * @param trigger When true, starts background generation if the mock does not exist yet.
  */
-export async function getNextMockNumber(examId: number): Promise<ApiResponse<{
-  mock: { id: number; order_index: number; status: string; total_questions: number } | null;
+export async function getNextMockNumber(
+  examId: number,
+  options?: { trigger?: boolean }
+): Promise<ApiResponse<{
+  mock: { id: number; order_index: number; status: string; total_questions: number; generation_error?: string | null } | null;
   next_mock_number: number;
   completed_mocks?: number;
   number_of_papers?: number;
   status?: string;
   message?: string;
 }>> {
-  return apiRequest(`/mock-tests/exams/${examId}/next`, { method: 'GET' });
+  const trigger = options?.trigger ? 'true' : 'false';
+  return apiRequest(`/mock-tests/exams/${examId}/next?trigger=${trigger}`, { method: 'GET' });
 }
 
 /** Status of one paper within a multi-paper mock */

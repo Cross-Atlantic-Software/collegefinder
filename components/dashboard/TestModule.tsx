@@ -5,10 +5,12 @@ import { getAllExams } from "@/api";
 import type { Exam } from "@/api/exams";
 import { getExamFormats, getTestRules, getUserAnalyticsSummary, getNextMockNumber, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
+import MockPreparingScreen from "@/components/test/MockPreparingScreen";
 import AnalyticsTab from "@/components/test/AnalyticsTab";
 import { formatDurationMinutes } from "@/lib/formatDuration";
+import { buildFormatFromExamPattern } from "@/lib/examMockFormat";
 
-type ViewState = 'exam-selection' | 'format-selection' | 'test-active';
+type ViewState = 'exam-selection' | 'format-selection' | 'mock-preparing' | 'test-active';
 
 function getFormatTotalQuestions(format: ExamFormat): number {
   return Object.values(format.sections || {}).reduce(
@@ -19,23 +21,26 @@ function getFormatTotalQuestions(format: ExamFormat): number {
   );
 }
 
-/** Fallback format when API returns no format or empty sections (avoids client crash). */
+/** Fallback when API formats fail — uses exam_pattern when available. */
 function buildFallbackFormat(exam: Exam): ExamFormat {
+  if (exam.examPattern) {
+    return buildFormatFromExamPattern(exam);
+  }
   return {
     format_id: 'default',
     name: `${exam.name} Practice Test`,
-    duration_minutes: 60,
-    total_marks: 0,
+    duration_minutes: 180,
+    total_marks: 200,
     sections: {
-      Practice: {
-        name: 'Practice',
-        marks: 0,
+      General: {
+        name: 'General',
+        marks: 200,
         subsections: {
-          'Section A': { type: 'MCQ', questions: 1, marks_per_question: 1 },
+          'Section A': { type: 'mcq_single', questions: 50, marks_per_question: 4 },
         },
       },
     },
-    marking_scheme: { correct: 1, incorrect: -0.25, unattempted: 0 },
+    marking_scheme: { correct: 4, incorrect: -1, unattempted: 0 },
     rules: [
       'Practice mode - answer questions at your own pace',
       'Questions are AI-generated based on exam syllabus',
@@ -59,6 +64,7 @@ export default function TestModule() {
   const [error, setError] = useState<string | null>(null);
   const [examAttemptStats, setExamAttemptStats] = useState<Map<number, { lastAttemptedAt: string | null; totalMocks: number }>>(new Map());
   const [nextMockByExam, setNextMockByExam] = useState<Map<number, number>>(new Map());
+  const [selectedMockNumber, setSelectedMockNumber] = useState(1);
   const [historyStatsLoading, setHistoryStatsLoading] = useState(false);
 
   useEffect(() => {
@@ -102,29 +108,16 @@ export default function TestModule() {
     fetchHistoryStats();
   }, [activeTab, viewState, historyAnalyticsExam, exams]);
 
-  // Fetch next mock number per exam for Practice list (so multi-paper: if Mock 1 Paper 2 is pending, button shows "Start Mock 1").
+  // Button labels use analytics (completed attempts + 1). Generation is triggered when user picks an exam.
   useEffect(() => {
     if (exams.length === 0 || activeTab !== "practice" || viewState !== "exam-selection") return;
-    const fetchNextMocks = async () => {
-      const results = await Promise.all(
-        exams.map(async (exam) => {
-          try {
-            const res = await getNextMockNumber(exam.id);
-            const n = res.success && res.data?.next_mock_number != null ? res.data.next_mock_number : null;
-            return { examId: exam.id, nextMock: n } as const;
-          } catch {
-            return { examId: exam.id, nextMock: null } as const;
-          }
-        })
-      );
-      const map = new Map<number, number>();
-      for (const { examId, nextMock } of results) {
-        if (nextMock != null) map.set(examId, nextMock);
-      }
-      setNextMockByExam(map);
-    };
-    fetchNextMocks();
-  }, [exams, activeTab, viewState]);
+    const map = new Map<number, number>();
+    for (const exam of exams) {
+      const attempted = examAttemptStats.get(exam.id)?.totalMocks ?? 0;
+      map.set(exam.id, attempted + 1);
+    }
+    setNextMockByExam(map);
+  }, [exams, activeTab, viewState, examAttemptStats]);
 
   const fetchExams = async () => {
     try {
@@ -143,87 +136,95 @@ export default function TestModule() {
     }
   };
 
+  const loadFormatsForExam = async (exam: Exam): Promise<boolean> => {
+    const formatsResponse = await getExamFormats(exam.id);
+    if (formatsResponse.success && formatsResponse.data && Object.keys(formatsResponse.data.formats).length > 0) {
+      setAvailableFormats(formatsResponse.data.formats);
+      const formatEntries = Object.entries(formatsResponse.data.formats);
+      const examNumberOfPapers = exam.number_of_papers ?? 1;
+      let formatIndex = 0;
+      if (formatEntries.length > 1 && examNumberOfPapers <= 1) {
+        try {
+          const analyticsRes = await getUserAnalyticsSummary(exam.id);
+          const attempts = analyticsRes.data?.attempts ?? [];
+          formatIndex = attempts.length % formatEntries.length;
+        } catch {
+          // use first format
+        }
+      }
+      const [formatId, format] = formatEntries[formatIndex];
+      const hasSections = format?.sections && Object.keys(format.sections).length > 0;
+      const formatWithId = hasSections
+        ? { ...format, format_id: formatId }
+        : buildFallbackFormat(exam);
+      setSelectedFormat(formatWithId);
+      if (!hasSections) {
+        setFormatRules({
+          format: formatWithId,
+          rules: formatWithId.rules,
+          marking_scheme: formatWithId.marking_scheme,
+          sections: formatWithId.sections ?? {},
+        });
+        return true;
+      }
+      const rulesResponse = await getTestRules(exam.id, formatId);
+      if (rulesResponse.success && rulesResponse.data) {
+        setFormatRules(rulesResponse.data);
+        return true;
+      }
+      setError('Failed to load test rules');
+      return false;
+    }
+
+    const fallbackFormat = buildFallbackFormat(exam);
+    setSelectedFormat(fallbackFormat);
+    setFormatRules({
+      format: fallbackFormat,
+      rules: fallbackFormat.rules,
+      marking_scheme: fallbackFormat.marking_scheme,
+      sections: fallbackFormat.sections ?? {},
+    });
+    return true;
+  };
+
   const handleExamSelect = async (exam: Exam) => {
+    const mockNum = nextMockByExam.get(exam.id) ?? (examAttemptStats.get(exam.id)?.totalMocks ?? 0) + 1;
     setSelectedExam(exam);
+    setSelectedMockNumber(mockNum);
+    setError(null);
+
+    try {
+      const res = await getNextMockNumber(exam.id, { trigger: true });
+      const status = res.data?.mock?.status ?? res.data?.status;
+      if (status === 'ready') {
+        setFormatLoading(true);
+        const ok = await loadFormatsForExam(exam);
+        setViewState(ok ? 'test-active' : 'exam-selection');
+        setFormatLoading(false);
+        return;
+      }
+    } catch {
+      // fall through to preparing screen
+    }
+
+    setViewState('mock-preparing');
+  };
+
+  const handleMockReady = async () => {
+    if (!selectedExam) return;
     setFormatLoading(true);
     setError(null);
-    
     try {
-      // Always fetch formats first - we ALWAYS show notice card before test
-      const formatsResponse = await getExamFormats(exam.id);
-      if (formatsResponse.success && formatsResponse.data && Object.keys(formatsResponse.data.formats).length > 0) {
-        setAvailableFormats(formatsResponse.data.formats);
-        const formatEntries = Object.entries(formatsResponse.data.formats);
-        const examNumberOfPapers = exam.number_of_papers ?? 1;
-        // For multi-paper exams, always use the first format (MultiPaperTestInterface handles paper selection)
-        // For single-paper exams with multiple format variants, rotate based on analytics
-        let formatIndex = 0;
-        if (formatEntries.length > 1 && examNumberOfPapers <= 1) {
-          try {
-            const analyticsRes = await getUserAnalyticsSummary(exam.id);
-            const attempts = analyticsRes.data?.attempts ?? [];
-            formatIndex = attempts.length % formatEntries.length;
-          } catch {
-            // use 0 (first format) if analytics fail
-          }
-        }
-        const [formatId, format] = formatEntries[formatIndex];
-        const hasSections = format?.sections && Object.keys(format.sections).length > 0;
-        const formatWithId = hasSections
-          ? { ...format, format_id: formatId }
-          : buildFallbackFormat(exam);
-        setSelectedFormat(formatWithId);
-        if (!hasSections) {
-          setFormatRules({
-            format: formatWithId,
-            rules: formatWithId.rules,
-            marking_scheme: formatWithId.marking_scheme,
-            sections: formatWithId.sections ?? {},
-          });
-          setViewState('test-active');
-        } else {
-          setRulesLoading(true);
-          setError(null);
-          try {
-            const rulesResponse = await getTestRules(exam.id, formatId);
-            if (rulesResponse.success && rulesResponse.data) {
-              setFormatRules(rulesResponse.data);
-              setViewState('test-active');
-            } else {
-              setError('Failed to load test rules');
-              setViewState('exam-selection');
-            }
-          } catch (err) {
-            console.error('Error fetching rules:', err);
-            setError('Failed to load test rules');
-            setViewState('exam-selection');
-          } finally {
-            setRulesLoading(false);
-          }
-        }
-      } else {
-        // No formats - go directly to fullscreen with basic format
-        const fallbackFormat = buildFallbackFormat(exam);
-        setSelectedFormat(fallbackFormat);
-        setFormatRules({
-          format: fallbackFormat,
-          rules: fallbackFormat.rules,
-          marking_scheme: fallbackFormat.marking_scheme,
-          sections: fallbackFormat.sections ?? {},
-        });
+      const ok = await loadFormatsForExam(selectedExam);
+      if (ok) {
         setViewState('test-active');
+      } else {
+        setViewState('exam-selection');
       }
-    } catch (error) {
-      console.error('Error fetching exam formats:', error);
-      const fallbackFormat = buildFallbackFormat(exam);
-      setSelectedFormat(fallbackFormat);
-      setFormatRules({
-        format: fallbackFormat,
-        rules: fallbackFormat.rules,
-        marking_scheme: fallbackFormat.marking_scheme,
-        sections: fallbackFormat.sections ?? {},
-      });
-      setViewState('test-active');
+    } catch (err) {
+      console.error('Error loading formats:', err);
+      setError('Failed to load test format');
+      setViewState('exam-selection');
     } finally {
       setFormatLoading(false);
     }
@@ -258,6 +259,7 @@ export default function TestModule() {
     setSelectedFormat(null);
     setAvailableFormats({});
     setFormatRules(null);
+    setSelectedMockNumber(1);
     setError(null);
   };
 
@@ -268,7 +270,20 @@ export default function TestModule() {
     setError(null);
   };
 
-  // Render different views based on state
+  // Mock is generating — dedicated preparing screen on the mock test page
+  if (viewState === 'mock-preparing' && selectedExam) {
+    return (
+      <MockPreparingScreen
+        examId={selectedExam.id}
+        examName={selectedExam.name}
+        mockNumber={selectedMockNumber}
+        onReady={handleMockReady}
+        onBack={handleBackToExams}
+      />
+    );
+  }
+
+  // Render test when mock is ready
   if (viewState === 'test-active' && selectedExam) {
     const examNumberOfPapers = selectedExam.number_of_papers ?? 1;
     return (
@@ -461,9 +476,11 @@ export default function TestModule() {
                               variant="themeButton"
                               size="sm"
                               className="rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
-                              disabled={formatLoading}
+                              disabled={formatLoading && selectedExam?.id === exam.id}
                             >
-                              {formatLoading && selectedExam?.id === exam.id ? 'Loading...' : `Start Mock ${nextMockNumber}`}
+                              {selectedExam?.id === exam.id && formatLoading
+                                ? 'Preparing...'
+                                : `Start Mock ${nextMockNumber}`}
                             </Button>
                           </div>
                         </div>

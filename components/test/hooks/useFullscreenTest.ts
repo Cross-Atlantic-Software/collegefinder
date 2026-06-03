@@ -67,14 +67,14 @@ export function useFullscreenTest({ examId, format, paperNumber, onExit }: UseFu
     setFullscreenExitWarning,
   } = useFullscreenAndWarnings({ testAttemptId });
 
-  // —— Start test ——
+  // —— Start test (mock is already ready before this screen) ——
   const startTest = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const startRes = await startMockTest(examId, paperNumber);
       if (!startRes.success || !startRes.data) {
-        setError(startRes.message || 'Failed to start test. Please try again shortly.');
+        setError(startRes.message || 'Failed to start mock test. Please try again.');
         return;
       }
       const { test_attempt_id, mock_test_id } = startRes.data;

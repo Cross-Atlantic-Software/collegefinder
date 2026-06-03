@@ -62,7 +62,17 @@ function resolveFormatForPaper(rawFormat, paperNumber = 1) {
  * @returns {Promise<Array<object>>} Array of params for geminiService.generateQuestion
  */
 async function buildQuestionParamsList(exam, paperNumber = 1) {
-  const rawFormat = exam.format && typeof exam.format === 'object' ? exam.format : {};
+  let rawFormat =
+    exam.format && typeof exam.format === 'object' && Object.keys(exam.format).length > 0
+      ? exam.format
+      : null;
+
+  if (!rawFormat) {
+    const ExamPattern = require('../../../models/exam/ExamPattern');
+    const pattern = await ExamPattern.findByExamId(exam.id);
+    const { resolveRawFormatForExam } = require('../../../utils/examFormatTemplates');
+    rawFormat = resolveRawFormatForExam(exam, pattern) || {};
+  }
 
   let generation_prompt = null;
   try {

@@ -23,8 +23,8 @@ const validateMockNumber = [
 ];
 
 /**
- * @route   GET /api/mock-tests/exams/:examId/next
- * @desc    Get the next mock test for the authenticated user (based on progression)
+ * @route   GET /api/mock-tests/exams/:examId/next?trigger=true|false
+ * @desc    Get the next mock test for the authenticated user. Pass trigger=true to start generation.
  * @access  Private
  */
 router.get(

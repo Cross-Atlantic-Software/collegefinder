@@ -11,7 +11,7 @@ function startMockGenerationWorker() {
   const { getRedisConnection } = require('../../redisConnection');
   const worker = new Worker(QUEUE_NAME, processMockGeneration, {
     connection: getRedisConnection(),
-    concurrency: 2,
+    concurrency: 1,
     lockDuration: 120000,    // 2 min — mock generation can be long
     stalledInterval: 30000, // check for stalled jobs every 30s
     maxStalledCount: 5,     // allow more recoveries before failing

@@ -49,14 +49,23 @@ const STREAMS = [
   'Science (PCM)',
   'Science (PCB)',
   'Commerce',
-  'Arts/Humanities'
+  'Arts/Humanities',
+  'Default'
 ];
 
 const CAREER_GOALS = [
-  { label: 'Engineering & Technology', description: 'Careers in engineering, software, data, and core technology fields.' },
-  { label: 'Medical & Healthcare', description: 'Careers in medicine, nursing, allied health, and clinical sciences.' },
-  { label: 'Management & Business', description: 'Careers in management, entrepreneurship, and business operations.' },
-  { label: 'Civil Services & Government', description: 'Public sector and government-focused career paths.' }
+  { label: 'Engineering & Technology', stream: 'Science (PCM)', description: 'Careers in engineering, software, data, and core technology fields.' },
+  { label: 'Data Science & Analytics', stream: 'Science (PCM)', description: 'Careers in data, AI, statistics, and quantitative analysis.' },
+  { label: 'Architecture & Design', stream: 'Science (PCM)', description: 'Careers in architecture, product design, and built environment.' },
+  { label: 'Medical & Healthcare', stream: 'Science (PCB)', description: 'Careers in medicine, nursing, allied health, and clinical sciences.' },
+  { label: 'Biotechnology & Life Sciences', stream: 'Science (PCB)', description: 'Careers in biotech, research, genetics, and life sciences.' },
+  { label: 'Pharmacy & Allied Health', stream: 'Science (PCB)', description: 'Careers in pharmacy, physiotherapy, and allied health professions.' },
+  { label: 'Management & Business', stream: 'Commerce', description: 'Careers in management, entrepreneurship, and business operations.' },
+  { label: 'Finance & Accounting', stream: 'Commerce', description: 'Careers in finance, banking, accounting, and corporate finance.' },
+  { label: 'Economics & Policy', stream: 'Commerce', description: 'Careers in economics, public policy, and business analytics.' },
+  { label: 'Civil Services & Government', stream: 'Arts/Humanities', description: 'Public sector and government-focused career paths.' },
+  { label: 'Law & Public Policy', stream: 'Arts/Humanities', description: 'Careers in law, judiciary, policy, and advocacy.' },
+  { label: 'Media & Creative Arts', stream: 'Arts/Humanities', description: 'Careers in journalism, design, film, and creative industries.' }
 ];
 
 const CAREERS = [
@@ -196,23 +205,33 @@ const EXAMS = [
 ];
 
 async function upsertTaxonomies() {
-  for (const streamName of STREAMS) {
+  for (let i = 0; i < STREAMS.length; i++) {
+    const streamName = STREAMS[i];
     await db.query(
-      `INSERT INTO streams (name, status)
-       VALUES ($1, TRUE)
+      `INSERT INTO streams (name, status, show_on_site, sort_order)
+       VALUES ($1, TRUE, TRUE, $2)
        ON CONFLICT (name)
-       DO UPDATE SET status = TRUE, updated_at = CURRENT_TIMESTAMP`,
-      [streamName]
+       DO UPDATE SET status = TRUE, show_on_site = TRUE, sort_order = EXCLUDED.sort_order, updated_at = CURRENT_TIMESTAMP`,
+      [streamName, i]
     );
   }
 
   for (const goal of CAREER_GOALS) {
+    const streamRow = await db.query(
+      `SELECT id FROM streams WHERE name = $1 LIMIT 1`,
+      [goal.stream]
+    );
+    const streamId = streamRow.rows[0]?.id ?? null;
     await db.query(
-      `INSERT INTO career_goals_taxonomies (label, description, status)
-       VALUES ($1, $2, TRUE)
+      `INSERT INTO career_goals_taxonomies (label, description, status, stream_id)
+       VALUES ($1, $2, TRUE, $3)
        ON CONFLICT (label)
-       DO UPDATE SET description = EXCLUDED.description, status = TRUE, updated_at = CURRENT_TIMESTAMP`,
-      [goal.label, goal.description]
+       DO UPDATE SET
+         description = EXCLUDED.description,
+         status = TRUE,
+         stream_id = EXCLUDED.stream_id,
+         updated_at = CURRENT_TIMESTAMP`,
+      [goal.label, goal.description, streamId]
     );
   }
 
@@ -288,15 +307,14 @@ async function upsertTaxonomies() {
 
   for (const exam of EXAMS) {
     await db.query(
-      `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, format, number_of_papers, website)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
-       ON CONFLICT (code)
+      `INSERT INTO exams_taxonomies (name, code, description, exam_type, conducting_authority, number_of_papers, website)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (code) WHERE code IS NOT NULL AND trim(code) <> ''
        DO UPDATE SET
          name = EXCLUDED.name,
          description = EXCLUDED.description,
          exam_type = EXCLUDED.exam_type,
          conducting_authority = EXCLUDED.conducting_authority,
-         format = EXCLUDED.format,
          number_of_papers = EXCLUDED.number_of_papers,
          website = EXCLUDED.website,
          updated_at = CURRENT_TIMESTAMP`,
@@ -306,7 +324,6 @@ async function upsertTaxonomies() {
         exam.description,
         exam.exam_type,
         exam.conducting_authority,
-        JSON.stringify(exam.format),
         exam.number_of_papers,
         exam.website ?? null
       ]

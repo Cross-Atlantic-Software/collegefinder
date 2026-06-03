@@ -6,8 +6,9 @@
  * Job data shape: { examId: number, mockNumber: number, mockTestId: number }
  */
 const db = require('../../../config/database');
-const geminiService = require('../../../services/geminiService');
+const questionGenerationService = require('../../../services/questionGenerationService');
 const { buildQuestionParamsList } = require('./buildParams');
+const { generateTemplateQuestions, shouldUseTemplateQuestions } = require('./templateQuestions');
 const { KNOWN_TYPES, BATCH_SIZE, GEMINI_CONCURRENCY, FAILED_QUESTION_RETRIES } = require('./config');
 
 /**
@@ -101,6 +102,27 @@ async function processMockGeneration(job) {
 
   console.log(`📋 [Worker] Generating ${paramsToGenerate.length} questions for mock ${mockNumber} of "${exam.name}" (${existingCount}/${totalNeeded} done)`);
 
+  if (shouldUseTemplateQuestions()) {
+    console.log(`📝 [Worker] MOCK_USE_TEMPLATE_QUESTIONS=true — using local template questions (no Gemini)`);
+    const total = await generateTemplateQuestions({
+      examId,
+      mockTestId,
+      paperNumber,
+      questionParams,
+      existingCount,
+    });
+    await db.query(
+      "UPDATE exam_mocks SET status = 'ready', total_questions = $1, generation_error = NULL WHERE id = $2",
+      [total, mockTestId]
+    );
+    await db.query(
+      'UPDATE exams_taxonomies SET total_mocks_generated = total_mocks_generated + 1 WHERE id = $1',
+      [examId]
+    );
+    console.log(`✅ [Worker] Mock ${mockNumber} paper ${paperNumber} ready (template) — ${total} questions`);
+    return;
+  }
+
   const allInserted = [];
   let unknownTypes = new Set();
 
@@ -120,7 +142,7 @@ async function processMockGeneration(job) {
     }
 
     const batchParams = paramsToGenerate.slice(i, i + BATCH_SIZE);
-    const batchResult = await geminiService.generateQuestionsBatch(batchParams, GEMINI_CONCURRENCY);
+    const batchResult = await questionGenerationService.generateQuestionsBatch(batchParams, GEMINI_CONCURRENCY);
 
     if (batchResult.successCount === 0) {
       throw new Error(`Batch of ${batchParams.length} question generations failed for exam ${examId}`);
@@ -138,7 +160,7 @@ async function processMockGeneration(job) {
         let question = null;
         for (let attempt = 1; attempt <= FAILED_QUESTION_RETRIES && !question; attempt++) {
           try {
-            question = await geminiService.generateQuestion(param);
+            question = await questionGenerationService.generateQuestion(param);
             batchResult.successful.push({ question, index: failIndex });
             console.log(`✅ [Worker] Retry ${attempt} succeeded for question at index ${failIndex}`);
           } catch (retryErr) {
@@ -263,7 +285,7 @@ async function processMockGeneration(job) {
 
   await db.query(`
     UPDATE exam_mocks
-    SET status = 'ready', total_questions = $1
+    SET status = 'ready', total_questions = $1, generation_error = NULL
     WHERE id = $2
   `, [totalInserted, mockTestId]);
 
@@ -280,12 +302,13 @@ async function handleFailed(job, err) {
   const { mockTestId } = job.data || {};
   if (!mockTestId) return;
 
-  console.error(`❌ [Worker] Mock generation failed permanently for mockTestId=${mockTestId}:`, err.message);
+  const errMsg = err?.message || String(err);
+  console.error(`❌ [Worker] Mock generation failed permanently for mockTestId=${mockTestId}:`, errMsg);
 
   try {
     await db.query(
-      "UPDATE exam_mocks SET status = 'failed' WHERE id = $1 AND status != 'ready'",
-      [mockTestId]
+      "UPDATE exam_mocks SET status = 'failed', generation_error = $2 WHERE id = $1 AND status != 'ready'",
+      [mockTestId, errMsg.slice(0, 2000)]
     );
   } catch (dbErr) {
     console.error('❌ [Worker] Could not update exam_mocks status to failed:', dbErr.message);

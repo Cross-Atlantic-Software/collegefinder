@@ -356,17 +356,20 @@ class Exam {
   }
 
   /**
-   * Legacy: format JSON was removed from DB; always no structural format from row.
+   * Mock-test formats derived from exam code templates + exam_pattern row.
    */
   static async getFormats(examId) {
-    return null;
+    const { getFormatsForExam } = require('../../utils/examFormatTemplates');
+    return getFormatsForExam(examId);
   }
 
-  /**
-   * @deprecated no longer stored
-   */
   static async getFormatConfig(examId, formatId) {
-    return null;
+    const exam = await Exam.findById(examId);
+    if (!exam) return null;
+    const ExamPattern = require('../exam/ExamPattern');
+    const pattern = await ExamPattern.findByExamId(examId);
+    const { resolveFormatConfig } = require('../../utils/examFormatTemplates');
+    return resolveFormatConfig(exam, pattern, formatId);
   }
 
   /**
@@ -404,7 +407,8 @@ class Exam {
   }
 
   static async hasFormat(examId) {
-    return false;
+    const formats = await Exam.getFormats(examId);
+    return formats != null && Object.keys(formats).length > 0;
   }
 }
 
