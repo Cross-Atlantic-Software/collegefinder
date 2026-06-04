@@ -115,6 +115,9 @@ class AcademicsController {
           user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
             ? academics.user_shortlisted_exams
             : [],
+          already_filled_form: Array.isArray(academics.already_filled_form)
+            ? academics.already_filled_form
+            : [],
           matric_subjects: matricSubjects,
           subjects: subjects,
           is_pursuing_12th: academics.is_pursuing_12th || false
@@ -229,6 +232,9 @@ class AcademicsController {
           stream_id: academics.stream_id,
           user_shortlisted_exams: Array.isArray(academics.user_shortlisted_exams)
             ? academics.user_shortlisted_exams
+            : [],
+          already_filled_form: Array.isArray(academics.already_filled_form)
+            ? academics.already_filled_form
             : [],
           matric_subjects: matricSubjects,
           subjects: subjects,

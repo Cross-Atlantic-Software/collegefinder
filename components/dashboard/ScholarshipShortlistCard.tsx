@@ -9,7 +9,6 @@ import {
   LINKED_EXAM_CHIPS_CARD_MAX,
 } from "@/components/dashboard/LinkedExamChips";
 import { ScholarshipCardMetaFields } from "@/components/dashboard/ScholarshipCardMetaFields";
-import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
 
 export type ScholarshipShortlistCardProps = {
   scholarship: DashboardScholarship;
@@ -34,8 +33,8 @@ export function ScholarshipShortlistCard({
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
-      <div className="flex gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
-        <div className="min-w-0 flex-1 space-y-1">
+      <div className="border-b border-slate-100 p-3 dark:border-slate-800">
+        <div className="min-w-0 space-y-1">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
             {scholarship.scholarship_name}
           </h3>
@@ -49,7 +48,6 @@ export function ScholarshipShortlistCard({
             </p>
           ) : null}
         </div>
-        <ScholarshipLogo scholarship={scholarship} className="h-16 w-16 shrink-0 p-1.5" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">

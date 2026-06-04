@@ -19,7 +19,7 @@ import { slugifyCollegeName } from "@/lib/collegeSlug";
 
 type TabId = "recommended" | "shortlisted" | "all";
 
-const PER_PAGE = 10;
+const PER_PAGE = 8;
 
 type TabCollege = DashboardCollege & {
   detailHref: string;

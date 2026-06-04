@@ -5,6 +5,7 @@ import {
   getDashboardExamsMeta,
   getDashboardExamsTab,
   updateShortlistedExam,
+  updateAlreadyFilledForm,
   type DashboardExamTabId,
 } from "@/api/exams";
 
@@ -67,6 +68,27 @@ export function useDashboardExamsTabQuery(opts: {
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
     enabled,
+  });
+}
+
+export function useUpdateAlreadyFilledFormMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ examId, filled }: { examId: number; filled: boolean }) =>
+      updateAlreadyFilledForm(examId, filled),
+    onSuccess: (res) => {
+      if (!res.success || !res.data) return;
+      qc.setQueryData(DASHBOARD_EXAM_META_KEY, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          alreadyFilledFormExamIds: res.data!.alreadyFilledFormExamIds,
+          shortlistedExamIds: res.data!.shortlistedExamIds,
+        };
+      });
+      void qc.invalidateQueries({ queryKey: ["dashboard-exams-tab"] });
+      void qc.invalidateQueries({ queryKey: ["profile-academics-filled"] });
+    },
   });
 }
 

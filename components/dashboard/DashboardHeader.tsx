@@ -30,15 +30,6 @@ export default function DashboardHeader() {
     return completion?.percentage ?? 0;
   }, [completion?.percentage, completionLoading]);
 
-  const targetIntake = useMemo(() => {
-    const year = academics?.postmatric_passing_year;
-    if (year == null || Number.isNaN(Number(year))) {
-      return academicsLoading ? "…" : "—";
-    }
-    const y = Number(year);
-    return String(academics?.is_pursuing_12th ? y + 1 : y);
-  }, [academics?.postmatric_passing_year, academics?.is_pursuing_12th, academicsLoading]);
-
   const airRank = "—";
 
   return (
@@ -50,7 +41,7 @@ export default function DashboardHeader() {
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{fullName}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:justify-items-end">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:justify-items-end">
             <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">AIR</p>
               <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{airRank}</p>
@@ -58,10 +49,6 @@ export default function DashboardHeader() {
             <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Stream</p>
               <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{stream}</p>
-            </div>
-            <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Intake</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{targetIntake}</p>
             </div>
             <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Profile</p>

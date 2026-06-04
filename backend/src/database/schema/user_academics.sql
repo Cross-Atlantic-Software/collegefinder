@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_academics (
   stream VARCHAR(100), -- PCM, PCB, Commerce, Humanities/Arts, Others (kept for backward compatibility)
   stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL, -- Foreign key to streams table
   user_shortlisted_exams INTEGER[] DEFAULT '{}', -- Exam IDs shortlisted by user in dashboard
+  already_filled_form INTEGER[] DEFAULT '{}', -- exams_taxonomies IDs user marked as already filled
   user_shortlisted_colleges INTEGER[] DEFAULT '{}', -- College IDs shortlisted by user in dashboard
   user_shortlisted_institutes INTEGER[] DEFAULT '{}', -- Coaching institute IDs shortlisted on dashboard
   user_shortlisted_scholarships INTEGER[] DEFAULT '{}', -- Scholarship IDs shortlisted on dashboard
@@ -77,6 +78,7 @@ ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS postmatric_result_status VAR
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream VARCHAR(100);
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL;
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_exams INTEGER[] DEFAULT '{}';
+ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS already_filled_form INTEGER[] DEFAULT '{}';
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_colleges INTEGER[] DEFAULT '{}';
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_institutes INTEGER[] DEFAULT '{}';
 ALTER TABLE user_academics ADD COLUMN IF NOT EXISTS user_shortlisted_scholarships INTEGER[] DEFAULT '{}';
@@ -114,6 +116,7 @@ COMMENT ON COLUMN user_academics.postmatric_result_status IS 'Result status for 
 COMMENT ON COLUMN user_academics.stream IS '12th standard stream: PCM, PCB, Commerce, Humanities/Arts, Others (deprecated - use stream_id)';
 COMMENT ON COLUMN user_academics.stream_id IS 'Foreign key reference to streams table';
 COMMENT ON COLUMN user_academics.user_shortlisted_exams IS 'Dashboard shortlisted exam IDs selected by the user';
+COMMENT ON COLUMN user_academics.already_filled_form IS 'exams_taxonomies IDs for exams whose registration form the user already filled';
 COMMENT ON COLUMN user_academics.subjects IS '12th standard subject breakdown: [{"name": "Physics", "percent": 89}, ...]';
 COMMENT ON COLUMN user_academics.matric_subjects IS '10th standard subject breakdown: [{"name": "Math", "percent": 89, "obtainedMarks": 89, "totalMarks": 100}, ...]';
 COMMENT ON COLUMN user_academics.is_pursuing_12th IS 'Whether the user is currently pursuing 12th standard (true) or has completed it (false)';

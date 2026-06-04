@@ -160,6 +160,8 @@ export async function getAcademics(): Promise<ApiResponse<{
   stream_id: number | null;
   subjects: Array<{ subject_id?: number; name: string; percent: number; obtainedMarks?: number; totalMarks?: number }>;
   is_pursuing_12th: boolean;
+  already_filled_form?: number[];
+  user_shortlisted_exams?: number[];
 } | null>> {
   return apiRequest(API_ENDPOINTS.AUTH.PROFILE_ACADEMICS, {
     method: 'GET',

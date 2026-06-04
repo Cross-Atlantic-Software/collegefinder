@@ -123,6 +123,7 @@ export const API_ENDPOINTS = {
     LOANS: '/admin/loans',
     AUTOMATION_EXAMS: '/admin/automation-exams',
     AUTOMATION_EXAMS_FULL: '/admin/automation-exams-full',
+    AUTOMATION_EXAMS_TAXONOMY_OPTIONS: '/admin/automation-exams/taxonomy-options',
     COUNSELLOR: '/admin/counsellor',
     COUNSELLOR_SEARCH: '/admin/counsellor/search',
     COUNSELLOR_RESULTS: '/admin/counsellor/results',

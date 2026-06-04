@@ -27,6 +27,7 @@ type Application = {
   status: ApplicationStatus;
   created_at: string;
   session_id?: string;
+  source?: string;
 };
 
 function ApplicationCard({
@@ -168,7 +169,8 @@ function ApplicationCard({
             </Button>
           )}
 
-          {(app.status === "completed" || app.status === "failed") && (
+          {(app.status === "completed" || app.status === "failed") &&
+            app.source !== "already_filled_form" && (
             <Button
               variant="themeButtonOutline"
               size="sm"

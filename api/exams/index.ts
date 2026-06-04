@@ -253,12 +253,14 @@ export interface DashboardExamsPagination {
 export async function getDashboardExamsMeta(): Promise<ApiResponse<{
   streamId: number | null;
   shortlistedExamIds: number[];
+  alreadyFilledFormExamIds: number[];
   recommendedExamIds: number[];
   message?: string;
 }>> {
   return apiRequest<{
     streamId: number | null;
     shortlistedExamIds: number[];
+    alreadyFilledFormExamIds: number[];
     recommendedExamIds: number[];
     message?: string;
   }>('/auth/profile/dashboard-exams/meta', { method: 'GET' });
@@ -303,4 +305,20 @@ export async function updateShortlistedExam(exam_id: number, shortlisted: boolea
       body: JSON.stringify({ exam_id, shortlisted }),
     }
   );
+}
+
+export async function updateAlreadyFilledForm(
+  exam_id: number,
+  filled: boolean
+): Promise<ApiResponse<{
+  alreadyFilledFormExamIds: number[];
+  shortlistedExamIds: number[];
+}>> {
+  return apiRequest<{
+    alreadyFilledFormExamIds: number[];
+    shortlistedExamIds: number[];
+  }>('/auth/profile/already-filled-form', {
+    method: 'PUT',
+    body: JSON.stringify({ exam_id, filled }),
+  });
 }

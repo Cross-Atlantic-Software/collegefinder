@@ -16,7 +16,7 @@ import {
 } from '@/lib/dashboardScholarshipQueries';
 import { useQueryClient } from '@tanstack/react-query';
 
-const PER_PAGE = 10;
+const PER_PAGE = 8;
 
 type TabId = DashboardScholarshipTabId;
 

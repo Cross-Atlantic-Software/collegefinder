@@ -17,7 +17,7 @@ import {
 import { usePrefetchExamDetail } from "@/lib/examDetailQueries";
 
 type TabId = "recommended" | "shortlisted" | "all";
-const PER_PAGE = 10;
+const PER_PAGE = 8;
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "recommended", label: "Recommended", icon: <FiSearch /> },
