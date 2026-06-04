@@ -1439,6 +1439,13 @@ router.get('/automation-exams', authenticateAdmin, requireModuleAccess('automati
 router.get('/automation-exams-full', authenticateAdmin, requireModuleAccess('automation_exams'), AutomationExamController.getAllExams);
 
 /**
+ * @route   GET /api/admin/automation-exams/taxonomy-options
+ * @desc    List exams_taxonomies for automation exam create dropdown
+ * @access  Private (Admin)
+ */
+router.get('/automation-exams/taxonomy-options', authenticateAdmin, requireModuleAccess('automation_exams'), AutomationExamController.getTaxonomyExamOptions);
+
+/**
  * @route   GET /api/admin/automation-exams/:id
  * @desc    Get a single automation exam by ID
  * @access  Private (Admin)

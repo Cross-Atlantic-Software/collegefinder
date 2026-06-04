@@ -8,6 +8,7 @@ import { getAllExams, getExamPreferences, updateExamPreferences, type PreviousEx
 import { Button, Select, SelectOption, useToast } from "../../shared";
 import { getAllStates, getDistrictsForState } from "@/lib/data/indianStatesDistricts";
 import DocumentVault from "./DocumentVault";
+import { AlreadyFilledExamsSection } from "./AlreadyFilledExamsSection";
 
 const getBarColor = (percent: number) => {
     if (percent >= 85) return "bg-green-500";
@@ -1245,6 +1246,7 @@ export default function AcademicsProfile() {
                     <h2 className="text-base font-bold text-black">Document Vault</h2>
                     <p className="text-sm text-black/50">Upload and manage your documents securely.</p>
                 </div>
+                <AlreadyFilledExamsSection />
                 <DocumentVault />
             </div>
 

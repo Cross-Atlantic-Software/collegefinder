@@ -10,7 +10,6 @@ import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistBut
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
-import { ScholarshipLogo } from "@/components/dashboard/ScholarshipLogo";
 import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
 import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
 import { useUpdateShortlistedScholarshipMutation } from "@/lib/dashboardScholarshipQueries";
@@ -156,22 +155,19 @@ export default function ScholarshipDetailPage() {
     <DetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
         <div className="px-4 py-3 md:px-6">
-          <div className="flex items-center gap-3">
-            <ScholarshipLogo scholarship={scholarship} className="h-14 w-14 shrink-0 p-1.5" />
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
-                {scholarship.scholarship_name}
-              </h1>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {[
-                  scholarship.scholarship_type,
-                  scholarship.conducting_authority,
-                  scholarship.scholarship_amount,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "Scholarship"}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
+              {scholarship.scholarship_name}
+            </h1>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              {[
+                scholarship.scholarship_type,
+                scholarship.conducting_authority,
+                scholarship.scholarship_amount,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Scholarship"}
+            </p>
           </div>
         </div>
       </section>

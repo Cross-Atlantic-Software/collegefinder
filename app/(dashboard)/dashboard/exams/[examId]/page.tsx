@@ -23,6 +23,7 @@ import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
 import {
   useDashboardExamsMetaQuery,
   useUpdateShortlistedExamMutation,
+  useUpdateAlreadyFilledFormMutation,
 } from "@/lib/dashboardExamShortlistQueries";
 
 type SectionId =
@@ -153,6 +154,7 @@ export default function ExamDetailPage() {
   const taggedLecturePreviews = pageData?.taggedLecturePreviews ?? [];
   const { data: examMeta } = useDashboardExamsMetaQuery();
   const updateShortlist = useUpdateShortlistedExamMutation();
+  const updateAlreadyFilled = useUpdateAlreadyFilledFormMutation();
 
   const sections = useMemo(() => (exam ? buildExamDetailSections(exam) : []), [exam]);
   const levelBadge = exam ? examLevelBadge(exam.exam_type) : null;
@@ -160,10 +162,15 @@ export default function ExamDetailPage() {
   const websiteUrl = exam?.website?.trim() || null;
 
   const shortlistedIds = examMeta?.shortlistedExamIds ?? [];
+  const alreadyFilledIds = examMeta?.alreadyFilledFormExamIds ?? [];
   const isShortlisted =
     examNumericId != null && shortlistedIds.includes(examNumericId);
+  const isAlreadyFilled =
+    examNumericId != null && alreadyFilledIds.includes(examNumericId);
   const shortlistSaving =
     updateShortlist.isPending && updateShortlist.variables?.examId === examNumericId;
+  const alreadyFilledSaving =
+    updateAlreadyFilled.isPending && updateAlreadyFilled.variables?.examId === examNumericId;
 
   const breadcrumbTrail = SOURCE_BREADCRUMBS[from] || [
     { label: "Dashboard", href: "/dashboard" },
@@ -179,6 +186,14 @@ export default function ExamDetailPage() {
     updateShortlist.mutate({
       examId: examNumericId,
       shortlisted: !isShortlisted,
+    });
+  };
+
+  const toggleAlreadyFilled = () => {
+    if (examNumericId == null || updateAlreadyFilled.isPending) return;
+    updateAlreadyFilled.mutate({
+      examId: examNumericId,
+      filled: !isAlreadyFilled,
     });
   };
 
@@ -311,6 +326,19 @@ export default function ExamDetailPage() {
                   shortlistLabel="Shortlist exam"
                   disabled={examNumericId == null}
                 />
+                <Button
+                  variant={isAlreadyFilled ? "themeButtonOutline" : "themeButton"}
+                  size="sm"
+                  className="w-full justify-center !rounded-full"
+                  onClick={toggleAlreadyFilled}
+                  disabled={examNumericId == null || alreadyFilledSaving}
+                >
+                  {alreadyFilledSaving
+                    ? "Saving..."
+                    : isAlreadyFilled
+                      ? "Already Filled ✓"
+                      : "Already Filled"}
+                </Button>
                 {websiteUrl ? (
                   <Button
                     variant="themeButtonOutline"

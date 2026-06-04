@@ -6,14 +6,19 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import {
   getAllAutomationExams,
+  getAutomationTaxonomyExamOptions,
   createAutomationExam,
   updateAutomationExam,
   deleteAutomationExam,
   AutomationExam,
   CreateAutomationExamData,
+  TaxonomyExamOption,
 } from '@/api/admin/automation-exams';
+import { getAllExamsAdmin } from '@/api/admin/exams';
+import { getApiBaseUrl, getBrowserAdminToken } from '@/api/client';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiLink, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
-import { ConfirmationModal, useToast } from '@/components/shared';
+import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
+import type { DropdownOption } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 
 export default function AutomationExamsPage() {
@@ -45,6 +50,9 @@ export default function AutomationExamsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [taxonomyExams, setTaxonomyExams] = useState<TaxonomyExamOption[]>([]);
+  const [selectedTaxonomyId, setSelectedTaxonomyId] = useState<number | null>(null);
+  const [taxonomyLoading, setTaxonomyLoading] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -115,8 +123,66 @@ export default function AutomationExamsPage() {
     setAgentConfigText('{}');
     setNotificationEmailsText('');
     setEditingExam(null);
+    setSelectedTaxonomyId(null);
     setError(null);
   };
+
+  const loadTaxonomyExams = async () => {
+    setTaxonomyLoading(true);
+    try {
+      const response = await getAutomationTaxonomyExamOptions();
+      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+        setTaxonomyExams(response.data);
+        return;
+      }
+
+      const fallback = await getAllExamsAdmin();
+      if (fallback.success && fallback.data?.exams?.length) {
+        setTaxonomyExams(
+          fallback.data.exams.map((exam) => ({
+            id: exam.id,
+            name: exam.name,
+            code: exam.code,
+            website: exam.website ?? null,
+          }))
+        );
+        return;
+      }
+
+      const token = getBrowserAdminToken();
+      if (token) {
+        const raw = await fetch(`${getApiBaseUrl()}/admin/automation-exams/taxonomy-options`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (raw.ok) {
+          const body = await raw.json();
+          if (Array.isArray(body?.data) && body.data.length > 0) {
+            setTaxonomyExams(body.data);
+            return;
+          }
+        }
+      }
+
+      setTaxonomyExams([]);
+      showError(
+        response.message ||
+          'Could not load exam catalog. Restart the backend server and ensure exams exist in Exams taxonomy.'
+      );
+    } catch (err) {
+      console.error('Error loading taxonomy exams:', err);
+      setTaxonomyExams([]);
+      showError('Failed to load exam catalog');
+    } finally {
+      setTaxonomyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showModal && !editingExam) {
+      void loadTaxonomyExams();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, editingExam]);
 
   const handleCreate = () => {
     resetForm();
@@ -149,6 +215,11 @@ export default function AutomationExamsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!editingExam && selectedTaxonomyId == null) {
+      setError('Please select an exam from the catalog');
+      return;
+    }
 
     if (!formData.name.trim()) {
       setError('Exam name is required');
@@ -267,11 +338,44 @@ export default function AutomationExamsPage() {
       .replace(/^-+|-+$/g, '');
   };
 
+  const slugFromTaxonomyCode = (code: string) =>
+    code
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  const taxonomyDropdownOptions: DropdownOption<number>[] = taxonomyExams.map((exam) => ({
+    value: exam.id,
+    label: exam.code ? `${exam.name} (${exam.code})` : exam.name,
+  }));
+
+  const handleTaxonomySelect = (taxonomyId: number) => {
+    const exam = taxonomyExams.find((e) => e.id === taxonomyId);
+    if (!exam) return;
+
+    setSelectedTaxonomyId(taxonomyId);
+    const slug = exam.code
+      ? slugFromTaxonomyCode(exam.code)
+      : generateSlug(exam.name);
+    setFormData((prev) => ({
+      ...prev,
+      name: exam.name,
+      slug: slug || generateSlug(exam.name),
+      url: exam.website?.trim() || '',
+    }));
+  };
+
   const handleNameChange = (name: string) => {
-    setFormData({ ...formData, name });
-    if (!editingExam) {
-      setFormData(prev => ({ ...prev, name, slug: generateSlug(name) }));
-    }
+    setFormData((prev) => {
+      const next = { ...prev, name };
+      if (!editingExam && selectedTaxonomyId == null) {
+        next.slug = generateSlug(name);
+      }
+      return next;
+    });
   };
 
   return (
@@ -413,18 +517,44 @@ export default function AutomationExamsPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Name */}
-              <div>
+              {/* Exam Name */}
+              <div className="relative z-[60]">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Exam Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
+                {editingExam ? (
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                ) : taxonomyLoading ? (
+                  <p className="text-sm text-slate-500 py-2">Loading exams...</p>
+                ) : taxonomyExams.length === 0 ? (
+                  <p className="text-sm text-amber-700 py-2 rounded-lg border border-amber-200 bg-amber-50 px-3">
+                    No exams in catalog. Add exams under Admin → Exams, restart the backend, then try again.
+                  </p>
+                ) : (
+                  <>
+                    <Dropdown<number>
+                      options={taxonomyDropdownOptions}
+                      value={selectedTaxonomyId}
+                      onChange={handleTaxonomySelect}
+                      placeholder="Search and select an exam..."
+                      searchable
+                      maxMenuHeight={200}
+                      usePortal={false}
+                      className="w-full"
+                    />
+                    {formData.name ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Selected: <span className="font-medium text-slate-700">{formData.name}</span>
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
 
               {/* Slug */}

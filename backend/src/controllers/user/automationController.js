@@ -63,10 +63,22 @@ exports.getMyApplications = async (req, res, next) => {
         query += ` ORDER BY aa.created_at DESC`;
 
         const result = await pool.query(query, params);
+        let rows = result.rows;
+
+        const { buildSyntheticCompletedApplications } = require('../../services/alreadyFilledFormService');
+        const synthetics = await buildSyntheticCompletedApplications(userId, rows);
+
+        if (synthetics.length > 0) {
+            if (!status || status === 'all') {
+                rows = [...rows, ...synthetics];
+            } else if (status === 'completed') {
+                rows = [...rows, ...synthetics];
+            }
+        }
 
         res.json({
             success: true,
-            data: result.rows
+            data: rows
         });
     } catch (error) {
         console.error('Error fetching user applications:', error);

@@ -56,6 +56,7 @@ class UserAcademics {
       stream,
       stream_id,
       user_shortlisted_exams,
+      already_filled_form,
       subjects,
       matric_subjects,
       is_pursuing_12th
@@ -181,6 +182,13 @@ class UserAcademics {
         addUpdate('stream', stream);
         addUpdate('stream_id', stream_id);
         addUpdate('user_shortlisted_exams', user_shortlisted_exams);
+        if (already_filled_form !== undefined) {
+          const normalizedFilled = Array.isArray(already_filled_form)
+            ? already_filled_form.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n > 0)
+            : [];
+          updates.push(`already_filled_form = $${paramCount++}`);
+          values.push(normalizedFilled);
+        }
         addUpdate('is_pursuing_12th', is_pursuing_12th);
         
         // Handle JSONB fields
@@ -217,9 +225,9 @@ class UserAcademics {
             postmatric_total_marks, postmatric_obtained_marks, postmatric_percentage, postmatric_state, postmatric_city,
             matric_marks_type, matric_cgpa, matric_result_status,
             postmatric_marks_type, postmatric_cgpa, postmatric_result_status,
-            stream, stream_id, user_shortlisted_exams, subjects, matric_subjects, is_pursuing_12th
+            stream, stream_id, user_shortlisted_exams, already_filled_form, subjects, matric_subjects, is_pursuing_12th
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29::jsonb, $30::jsonb, $31)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30::jsonb, $31::jsonb, $32)
           RETURNING *`,
           [
             userIdNum,
@@ -251,6 +259,9 @@ class UserAcademics {
             stream_id || null,
             Array.isArray(user_shortlisted_exams)
               ? user_shortlisted_exams.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n > 0)
+              : [],
+            Array.isArray(already_filled_form)
+              ? already_filled_form.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n > 0)
               : [],
             subjectsParam,  // JSON string - cast to jsonb
             matricSubjectsParam,  // JSON string - cast to jsonb

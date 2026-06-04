@@ -6,6 +6,23 @@ const { pool } = require('../../config/database');
 
 class AutomationExamController {
     /**
+     * Exams from exams_taxonomies for linking automation configs (dropdown in admin UI)
+     */
+    static async getTaxonomyExamOptions(req, res) {
+        try {
+            const result = await pool.query(`
+                SELECT id, name, code, website
+                FROM exams_taxonomies
+                ORDER BY name ASC
+            `);
+            res.json({ success: true, data: result.rows });
+        } catch (error) {
+            console.error('Error fetching taxonomy exam options:', error);
+            res.status(500).json({ success: false, message: 'Failed to fetch exam catalog' });
+        }
+    }
+
+    /**
      * Get all automation exams
      */
     static async getAllExams(req, res) {

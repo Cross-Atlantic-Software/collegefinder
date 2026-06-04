@@ -164,6 +164,7 @@ async function loadDashboardExamShortlistContext(userId) {
       streamExams: [],
       recommendedExamIds: [],
       shortlistedExamIds: [],
+      alreadyFilledFormExamIds: [],
       message: 'Select your stream in profile to view exams.',
     };
   }
@@ -209,9 +210,14 @@ async function loadDashboardExamShortlistContext(userId) {
   const shortlistedRaw = Array.isArray(academics?.user_shortlisted_exams)
     ? academics.user_shortlisted_exams
     : [];
-  const shortlistedExamIds = shortlistedRaw
+  const filledRaw = Array.isArray(academics?.already_filled_form) ? academics.already_filled_form : [];
+  const alreadyFilledFormExamIds = filledRaw
     .map((id) => Number(id))
     .filter((id) => Number.isInteger(id) && allExamIdSet.has(id));
+  const shortlistedExamIds = [...new Set([
+    ...shortlistedRaw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && allExamIdSet.has(id)),
+    ...alreadyFilledFormExamIds,
+  ])];
 
   let message;
   if (streamExams.length === 0) {
@@ -226,6 +232,7 @@ async function loadDashboardExamShortlistContext(userId) {
     streamExams,
     recommendedExamIds,
     shortlistedExamIds,
+    alreadyFilledFormExamIds,
     message,
   };
 }
@@ -1381,6 +1388,7 @@ class ExamsTaxonomyController {
         data: {
           streamId: ctx.streamId,
           shortlistedExamIds: ctx.shortlistedExamIds,
+          alreadyFilledFormExamIds: ctx.alreadyFilledFormExamIds,
           recommendedExamIds: ctx.recommendedExamIds,
           message: ctx.message,
         },
@@ -1549,6 +1557,46 @@ class ExamsTaxonomyController {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch exam details',
+      });
+    }
+  }
+
+  /**
+   * Mark exam form as already filled (adds to already_filled_form, shortlist, completed application when possible)
+   * PUT /api/auth/profile/already-filled-form
+   */
+  static async updateAlreadyFilledForm(req, res) {
+    try {
+      const userId = req.user.id;
+      const examId = Number(req.body.exam_id);
+      const filled = req.body.filled !== false;
+
+      if (!Number.isInteger(examId) || examId < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'exam_id must be a positive integer',
+        });
+      }
+
+      const { setExamAlreadyFilled } = require('../../services/alreadyFilledFormService');
+      const result = await setExamAlreadyFilled(userId, examId, filled);
+
+      return res.json({
+        success: true,
+        data: result,
+        message: filled ? 'Marked as already filled' : 'Removed from already filled',
+      });
+    } catch (error) {
+      if (error.message === 'EXAM_NOT_FOUND') {
+        return res.status(404).json({ success: false, message: 'Exam not found' });
+      }
+      if (error.message === 'INVALID_EXAM_ID') {
+        return res.status(400).json({ success: false, message: 'exam_id must be a positive integer' });
+      }
+      console.error('Error updating already filled form:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update already filled form',
       });
     }
   }

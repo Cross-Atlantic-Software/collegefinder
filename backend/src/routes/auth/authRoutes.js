@@ -366,6 +366,13 @@ router.get('/profile/dashboard-exams', authenticate, ExamsController.getDashboar
 router.put('/profile/shortlisted-exams', authenticate, ExamsController.updateShortlistedExams);
 
 /**
+ * @route   PUT /api/auth/profile/already-filled-form
+ * @desc    Mark or unmark an exam as already filled (user_academics.already_filled_form)
+ * @access  Private
+ */
+router.put('/profile/already-filled-form', authenticate, ExamsController.updateAlreadyFilledForm);
+
+/**
  * @route   GET /api/auth/profile/recommended-colleges
  * @desc    Get recommended colleges for user (colleges whose recommended exams match user's recommended exam IDs)
  * @access  Private

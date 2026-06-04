@@ -29,6 +29,13 @@ export interface CreateAutomationExamData {
   notification_emails?: string[];
 }
 
+export interface TaxonomyExamOption {
+  id: number;
+  name: string;
+  code: string | null;
+  website: string | null;
+}
+
 export interface UpdateAutomationExamData {
   name?: string;
   slug?: string;
@@ -39,6 +46,15 @@ export interface UpdateAutomationExamData {
   notify_on_complete?: boolean;
   notify_on_failure?: boolean;
   notification_emails?: string[];
+}
+
+/**
+ * Exams catalog (exams_taxonomies) for create-form dropdown
+ */
+export async function getAutomationTaxonomyExamOptions(): Promise<ApiResponse<TaxonomyExamOption[]>> {
+  return apiRequest(API_ENDPOINTS.ADMIN.AUTOMATION_EXAMS_TAXONOMY_OPTIONS, {
+    method: 'GET',
+  });
 }
 
 /**
