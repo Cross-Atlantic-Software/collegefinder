@@ -1,9 +1,11 @@
 /**
- * Mark exams as already filled (outside automation) and sync shortlist + applications.
+ * Mark exams as already filled (outside automation) and sync shortlist + automation_applications.
  */
 const { pool } = require('../config/database');
 const UserAcademics = require('../models/user/UserAcademics');
 const Exam = require('../models/taxonomy/Exam');
+
+const ALREADY_FILLED_ADMIN_NOTE = 'already_filled_form';
 
 function normalizeExamIdArray(raw) {
   if (!Array.isArray(raw)) return [];
@@ -30,47 +32,125 @@ async function findAutomationExamIdForTaxonomy(taxonomyExamId) {
   const slug = slugFromTaxonomyCode(exam.code);
   if (slug) {
     const bySlug = await pool.query(
-      'SELECT id FROM automation_exams WHERE LOWER(slug) = LOWER($1) AND is_active = TRUE LIMIT 1',
+      'SELECT id FROM automation_exams WHERE LOWER(slug) = LOWER($1) LIMIT 1',
       [slug]
     );
     if (bySlug.rows.length > 0) return bySlug.rows[0].id;
   }
 
   const byName = await pool.query(
-    'SELECT id FROM automation_exams WHERE LOWER(name) = LOWER($1) AND is_active = TRUE LIMIT 1',
+    'SELECT id FROM automation_exams WHERE LOWER(name) = LOWER($1) LIMIT 1',
     [exam.name]
   );
   if (byName.rows.length > 0) return byName.rows[0].id;
   return null;
 }
 
+async function resolveUniqueAutomationSlug(baseSlug, taxonomyExamId) {
+  const root = baseSlug || `exam-${taxonomyExamId}`;
+  let slug = root;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const check = await pool.query('SELECT id FROM automation_exams WHERE LOWER(slug) = LOWER($1)', [
+      slug,
+    ]);
+    if (check.rows.length === 0) return slug;
+    slug = `${root}-${taxonomyExamId}`;
+    if (attempt > 0) slug = `${root}-${taxonomyExamId}-${attempt + 1}`;
+  }
+  return `exam-${taxonomyExamId}-${Date.now()}`;
+}
+
+/**
+ * Ensure an automation_exams row exists for a catalog exam (creates inactive stub when missing).
+ */
+async function ensureAutomationExamForTaxonomy(taxonomyExamId) {
+  const existingId = await findAutomationExamIdForTaxonomy(taxonomyExamId);
+  if (existingId) return existingId;
+
+  const exam = await Exam.findById(taxonomyExamId);
+  if (!exam) return null;
+
+  const baseSlug = slugFromTaxonomyCode(exam.code);
+  const slug = await resolveUniqueAutomationSlug(baseSlug, taxonomyExamId);
+  const url =
+    typeof exam.website === 'string' && exam.website.trim()
+      ? exam.website.trim()
+      : `https://collegefinder.local/exams/${slug}`;
+
+  const defaultAgentConfig = {
+    max_retries: 3,
+    screenshot_interval_ms: 1000,
+    human_intervention_timeout_seconds: 300,
+    success_patterns: [],
+    error_patterns: [],
+    captcha: {
+      auto_solve_enabled: false,
+      provider: 'manual',
+      timeout_seconds: 30,
+    },
+  };
+
+  const result = await pool.query(
+    `INSERT INTO automation_exams (
+       name, slug, url, is_active, field_mappings, agent_config
+     ) VALUES ($1, $2, $3, FALSE, '{}'::jsonb, $4::jsonb)
+     RETURNING id`,
+    [exam.name, slug, url, JSON.stringify(defaultAgentConfig)]
+  );
+
+  return result.rows[0]?.id ?? null;
+}
+
 async function ensureAutomationApplicationCompleted(userId, taxonomyExamId) {
-  const automationExamId = await findAutomationExamIdForTaxonomy(taxonomyExamId);
+  const automationExamId = await ensureAutomationExamForTaxonomy(taxonomyExamId);
   if (!automationExamId) return;
 
   const existing = await pool.query(
-    `SELECT id, status FROM automation_applications
+    `SELECT id, status, admin_notes
+     FROM automation_applications
      WHERE user_id = $1 AND exam_id = $2
-     ORDER BY created_at DESC LIMIT 1`,
+     ORDER BY created_at DESC`,
     [userId, automationExamId]
   );
 
-  if (existing.rows.length > 0) {
-    const row = existing.rows[0];
-    if (row.status !== 'completed') {
+  const completedRow = existing.rows.find((row) => row.status === 'completed');
+  if (completedRow) {
+    if (completedRow.admin_notes !== ALREADY_FILLED_ADMIN_NOTE) {
       await pool.query(
-        `UPDATE automation_applications SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [row.id]
+        `UPDATE automation_applications
+         SET admin_notes = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [ALREADY_FILLED_ADMIN_NOTE, completedRow.id]
       );
     }
     return;
   }
 
-  await pool.query(
-    `INSERT INTO automation_applications (user_id, exam_id, status, created_at)
-     VALUES ($1, $2, 'completed', CURRENT_TIMESTAMP)`,
-    [userId, automationExamId]
+  const activeRow = existing.rows.find((row) =>
+    ['pending', 'approved', 'running', 'failed'].includes(row.status)
   );
+  if (activeRow) {
+    await pool.query(
+      `UPDATE automation_applications
+       SET status = 'completed', admin_notes = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [ALREADY_FILLED_ADMIN_NOTE, activeRow.id]
+    );
+    return;
+  }
+
+  await pool.query(
+    `INSERT INTO automation_applications (user_id, exam_id, status, admin_notes, created_at)
+     VALUES ($1, $2, 'completed', $3, CURRENT_TIMESTAMP)`,
+    [userId, automationExamId, ALREADY_FILLED_ADMIN_NOTE]
+  );
+}
+
+async function syncAlreadyFilledAutomationApplications(userId) {
+  const filledIds = await getAlreadyFilledFormExamIds(userId);
+  for (const taxonomyId of filledIds) {
+    await ensureAutomationApplicationCompleted(userId, taxonomyId);
+  }
 }
 
 async function getAlreadyFilledFormExamIds(userId) {
@@ -115,54 +195,20 @@ async function setExamAlreadyFilled(userId, examId, filled) {
   };
 }
 
-async function buildSyntheticCompletedApplications(userId, dbApplications) {
-  const filledIds = await getAlreadyFilledFormExamIds(userId);
-  if (filledIds.length === 0) return [];
-
-  const taxonomyRows = await pool.query(
-    `SELECT id, name, code FROM exams_taxonomies WHERE id = ANY($1::int[])`,
-    [filledIds]
-  );
-  const taxonomyById = new Map(taxonomyRows.rows.map((r) => [Number(r.id), r]));
-
-  const automationExamIdsInApps = new Set(
-    dbApplications.map((a) => Number(a.exam_id)).filter((n) => Number.isInteger(n) && n > 0)
-  );
-
-  const synthetics = [];
-  for (const taxonomyId of filledIds) {
-    const taxonomy = taxonomyById.get(taxonomyId);
-    if (!taxonomy) continue;
-
-    const automationExamId = await findAutomationExamIdForTaxonomy(taxonomyId);
-    if (automationExamId && automationExamIdsInApps.has(automationExamId)) {
-      const hasCompleted = dbApplications.some(
-        (a) => Number(a.exam_id) === automationExamId && a.status === 'completed'
-      );
-      if (hasCompleted) continue;
-    }
-
-    synthetics.push({
-      id: -taxonomyId,
-      user_id: userId,
-      exam_id: taxonomyId,
-      exam_name: taxonomy.name,
-      exam_slug: taxonomy.code ? slugFromTaxonomyCode(taxonomy.code) : String(taxonomyId),
-      exam_url: null,
-      status: 'completed',
-      session_id: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      source: 'already_filled_form',
-    });
+function mapApplicationSource(row) {
+  if (row?.admin_notes === ALREADY_FILLED_ADMIN_NOTE || row?.source === 'already_filled_form') {
+    return 'already_filled_form';
   }
-
-  return synthetics;
+  return undefined;
 }
 
 module.exports = {
   normalizeExamIdArray,
   getAlreadyFilledFormExamIds,
   setExamAlreadyFilled,
-  buildSyntheticCompletedApplications,
+  ensureAutomationExamForTaxonomy,
+  ensureAutomationApplicationCompleted,
+  syncAlreadyFilledAutomationApplications,
+  mapApplicationSource,
+  ALREADY_FILLED_ADMIN_NOTE,
 };

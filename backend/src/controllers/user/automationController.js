@@ -37,6 +37,9 @@ exports.getMyApplications = async (req, res, next) => {
         const userId = req.user.id;
         const { status } = req.query;
 
+        const { syncAlreadyFilledAutomationApplications, mapApplicationSource } = require('../../services/alreadyFilledFormService');
+        await syncAlreadyFilledAutomationApplications(userId);
+
         let query = `
             SELECT 
                 aa.id,
@@ -44,6 +47,7 @@ exports.getMyApplications = async (req, res, next) => {
                 aa.exam_id,
                 aa.status,
                 aa.session_id,
+                aa.admin_notes,
                 aa.created_at,
                 aa.updated_at,
                 e.name as exam_name,
@@ -63,18 +67,23 @@ exports.getMyApplications = async (req, res, next) => {
         query += ` ORDER BY aa.created_at DESC`;
 
         const result = await pool.query(query, params);
-        let rows = result.rows;
+        const { findTaxonomyExamIdForAutomation } = require('../../services/journeyPhaseDatesService');
 
-        const { buildSyntheticCompletedApplications } = require('../../services/alreadyFilledFormService');
-        const synthetics = await buildSyntheticCompletedApplications(userId, rows);
-
-        if (synthetics.length > 0) {
-            if (!status || status === 'all') {
-                rows = [...rows, ...synthetics];
-            } else if (status === 'completed') {
-                rows = [...rows, ...synthetics];
-            }
-        }
+        const rows = await Promise.all(
+            result.rows.map(async (row) => {
+                const taxonomy = await findTaxonomyExamIdForAutomation(
+                    row.exam_id,
+                    row.exam_name,
+                    row.exam_slug
+                );
+                const source = mapApplicationSource(row);
+                return {
+                    ...row,
+                    taxonomy_exam_id: taxonomy?.id ?? null,
+                    ...(source ? { source } : {}),
+                };
+            })
+        );
 
         res.json({
             success: true,

@@ -284,8 +284,10 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   if (ed) {
     push(dates, field("Application opens", formatExamDate(ed.application_start_date)));
     push(dates, field("Application closes", formatExamDate(ed.application_close_date)));
+    push(dates, field("Admit card date", formatExamDate(ed.admit_card_date)));
     push(dates, field("Exam date", formatExamDate(ed.exam_date)));
     push(dates, field("Result date", formatExamDate(ed.result_date)));
+    push(dates, field("Counselling date", formatExamDate(ed.counselling_date)));
     push(dates, field("Application fee", formatInrFee(ed.application_fees)));
   }
   if (dates.length) {

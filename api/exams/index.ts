@@ -8,8 +8,10 @@ export interface ExamDatesPublic {
   exam_id: number;
   application_start_date: string | null;
   application_close_date: string | null;
+  admit_card_date: string | null;
   exam_date: string | null;
   result_date: string | null;
+  counselling_date: string | null;
   application_fees: number | null;
   created_at?: string;
   updated_at?: string;
@@ -255,6 +257,46 @@ export async function getDashboardExamsMeta(): Promise<ApiResponse<{
   shortlistedExamIds: number[];
   alreadyFilledFormExamIds: number[];
   recommendedExamIds: number[];
+  phase1ApplicationStarts: Array<{
+    examId: number;
+    examName: string;
+    applicationStartDate: string;
+  }>;
+  phase2ApplicationCloses: Array<{
+    examId: number;
+    examName: string;
+    applicationCloseDate: string;
+  }>;
+  phase3AdmitCardDates: Array<{
+    examId: number;
+    examName: string;
+    admitCardDate: string;
+  }>;
+  phase4MockTestReminders: Array<{
+    examId: number;
+    examName: string;
+    examDate: string;
+    mockTestDate: string;
+  }>;
+  phase4MockTestSummary: {
+    completedInWindow: number;
+    totalInWindow: number;
+  };
+  phase5ExamDates: Array<{
+    examId: number;
+    examName: string;
+    examDate: string;
+  }>;
+  phase6ResultDates: Array<{
+    examId: number;
+    examName: string;
+    resultDate: string;
+  }>;
+  phase7CounsellingDates: Array<{
+    examId: number;
+    examName: string;
+    counsellingDate: string;
+  }>;
   message?: string;
 }>> {
   return apiRequest<{
@@ -262,6 +304,46 @@ export async function getDashboardExamsMeta(): Promise<ApiResponse<{
     shortlistedExamIds: number[];
     alreadyFilledFormExamIds: number[];
     recommendedExamIds: number[];
+    phase1ApplicationStarts: Array<{
+      examId: number;
+      examName: string;
+      applicationStartDate: string;
+    }>;
+    phase2ApplicationCloses: Array<{
+      examId: number;
+      examName: string;
+      applicationCloseDate: string;
+    }>;
+    phase3AdmitCardDates: Array<{
+      examId: number;
+      examName: string;
+      admitCardDate: string;
+    }>;
+    phase4MockTestReminders: Array<{
+      examId: number;
+      examName: string;
+      examDate: string;
+      mockTestDate: string;
+    }>;
+    phase4MockTestSummary: {
+      completedInWindow: number;
+      totalInWindow: number;
+    };
+    phase5ExamDates: Array<{
+      examId: number;
+      examName: string;
+      examDate: string;
+    }>;
+    phase6ResultDates: Array<{
+      examId: number;
+      examName: string;
+      resultDate: string;
+    }>;
+    phase7CounsellingDates: Array<{
+      examId: number;
+      examName: string;
+      counsellingDate: string;
+    }>;
     message?: string;
   }>('/auth/profile/dashboard-exams/meta', { method: 'GET' });
 }

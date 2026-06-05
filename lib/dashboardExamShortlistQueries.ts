@@ -86,6 +86,7 @@ export function useUpdateAlreadyFilledFormMutation() {
           shortlistedExamIds: res.data!.shortlistedExamIds,
         };
       });
+      void qc.invalidateQueries({ queryKey: DASHBOARD_EXAM_META_KEY });
       void qc.invalidateQueries({ queryKey: ["dashboard-exams-tab"] });
       void qc.invalidateQueries({ queryKey: ["profile-academics-filled"] });
     },
@@ -106,6 +107,7 @@ export function useUpdateShortlistedExamMutation() {
           shortlistedExamIds: res.data!.shortlistedExamIds,
         };
       });
+      void qc.invalidateQueries({ queryKey: DASHBOARD_EXAM_META_KEY });
       void qc.invalidateQueries({ queryKey: ["dashboard-exams-tab"], exact: false });
       void qc.invalidateQueries({ queryKey: ["exam-detail"], exact: false });
     },
