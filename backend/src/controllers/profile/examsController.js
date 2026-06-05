@@ -21,6 +21,7 @@ const {
   collectMappedExamIdsForUserInterests,
   TOP_N,
 } = require('../../services/examDashboardRecommendation');
+const { normalizeExamDateIso } = require('../../utils/examDateUtils');
 const Stream = require('../../models/taxonomy/Stream');
 const Subject = require('../../models/taxonomy/Subject');
 const CareerGoal = require('../../models/taxonomy/CareerGoal');
@@ -234,6 +235,75 @@ async function loadDashboardExamShortlistContext(userId) {
     shortlistedExamIds,
     alreadyFilledFormExamIds,
     message,
+  };
+}
+
+/**
+ * Application start / close dates for recommended + shortlisted exams (dashboard journey phases 1–2).
+ */
+async function loadJourneyExamPhaseDates(ctx) {
+  const empty = {
+    phase1ApplicationStarts: [],
+    phase2ApplicationCloses: [],
+    phase4MockTestReminders: [],
+    phase4MockTestSummary: { completedInWindow: 0, totalInWindow: 0 },
+  };
+  const idSet = new Set([
+    ...(ctx.recommendedExamIds || []),
+    ...(ctx.shortlistedExamIds || []),
+  ]);
+  if (idSet.size === 0) return empty;
+
+  const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
+  const ids = [...idSet].filter((id) => examById.has(id));
+  if (ids.length === 0) return empty;
+
+  const datesRows = await ExamDates.findByExamIds(ids);
+  const dateMap = new Map(datesRows.map((d) => [Number(d.exam_id), d]));
+
+  const phase1ApplicationStarts = [];
+  const phase2ApplicationCloses = [];
+
+  for (const id of ids) {
+    const dates = dateMap.get(id);
+    const exam = examById.get(id);
+    const examName = exam?.name || `Exam ${id}`;
+
+    const startRaw = dates?.application_start_date;
+    const applicationStartDate = normalizeExamDateIso(startRaw);
+    if (applicationStartDate) {
+      phase1ApplicationStarts.push({
+        examId: id,
+        examName,
+        applicationStartDate,
+      });
+    }
+
+    const closeRaw = dates?.application_close_date;
+    const applicationCloseDate = normalizeExamDateIso(closeRaw);
+    if (applicationCloseDate) {
+      phase2ApplicationCloses.push({
+        examId: id,
+        examName,
+        applicationCloseDate,
+      });
+    }
+  }
+
+  phase1ApplicationStarts.sort((a, b) => a.applicationStartDate.localeCompare(b.applicationStartDate));
+  phase2ApplicationCloses.sort((a, b) => a.applicationCloseDate.localeCompare(b.applicationCloseDate));
+
+  const { loadPhase4MockTestReminders } = require('../../services/phase4MockTestService');
+  const phase4Mock = await loadPhase4MockTestReminders(ctx);
+
+  return {
+    phase1ApplicationStarts,
+    phase2ApplicationCloses,
+    phase4MockTestReminders: phase4Mock.reminders,
+    phase4MockTestSummary: {
+      completedInWindow: phase4Mock.completedInWindow,
+      totalInWindow: phase4Mock.totalInWindow,
+    },
   };
 }
 
@@ -1383,6 +1453,28 @@ class ExamsTaxonomyController {
   static async getDashboardExamsMeta(req, res) {
     try {
       const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      const {
+        loadPhase3AdmitCardDatesForUser,
+        loadPhase5ExamDatesForUser,
+        loadPhase6ResultDatesForUser,
+        loadPhase7CounsellingDatesForUser,
+      } = require('../../services/journeyPhaseDatesService');
+      const journeyDates =
+        ctx.streamId != null
+          ? await loadJourneyExamPhaseDates(ctx)
+          : {
+              phase1ApplicationStarts: [],
+              phase2ApplicationCloses: [],
+              phase4MockTestReminders: [],
+              phase4MockTestSummary: { completedInWindow: 0, totalInWindow: 0 },
+            };
+      const [phase3AdmitCardDates, phase5ExamDates, phase6ResultDates, phase7CounsellingDates] =
+        await Promise.all([
+        loadPhase3AdmitCardDatesForUser(req.user.id),
+        loadPhase5ExamDatesForUser(req.user.id),
+        loadPhase6ResultDatesForUser(req.user.id),
+        loadPhase7CounsellingDatesForUser(req.user.id),
+      ]);
       return res.json({
         success: true,
         data: {
@@ -1390,6 +1482,14 @@ class ExamsTaxonomyController {
           shortlistedExamIds: ctx.shortlistedExamIds,
           alreadyFilledFormExamIds: ctx.alreadyFilledFormExamIds,
           recommendedExamIds: ctx.recommendedExamIds,
+          phase1ApplicationStarts: journeyDates.phase1ApplicationStarts,
+          phase2ApplicationCloses: journeyDates.phase2ApplicationCloses,
+          phase4MockTestReminders: journeyDates.phase4MockTestReminders,
+          phase4MockTestSummary: journeyDates.phase4MockTestSummary,
+          phase3AdmitCardDates,
+          phase5ExamDates,
+          phase6ResultDates,
+          phase7CounsellingDates,
           message: ctx.message,
         },
       });
@@ -1562,7 +1662,7 @@ class ExamsTaxonomyController {
   }
 
   /**
-   * Mark exam form as already filled (adds to already_filled_form, shortlist, completed application when possible)
+   * Mark exam form as already filled (adds to already_filled_form, shortlist, automation_applications completed row)
    * PUT /api/auth/profile/already-filled-form
    */
   static async updateAlreadyFilledForm(req, res) {
@@ -1671,8 +1771,10 @@ class ExamsTaxonomyController {
         'logo_filename',
         'application_start_date',
         'application_close_date',
+        'admit_card_date',
         'exam_date',
         'result_date',
+        'counselling_date',
         'application_fees',
         'mode',
         'domicile',
@@ -1709,8 +1811,10 @@ class ExamsTaxonomyController {
         'jee_main.png',
         '2025-12-01',
         '2026-01-15',
+        '2026-01-20',
         '2026-01-25',
         '2026-02-15',
+        '2026-03-01',
         2000,
         'Online',
         'All India',
@@ -1747,8 +1851,10 @@ class ExamsTaxonomyController {
         'neet.png',
         '2025-11-01',
         '2025-12-15',
+        '2026-04-20',
         '2026-05-05',
         '2026-06-20',
+        '2026-07-01',
         2000,
         'Offline',
         'All India',
@@ -1808,7 +1914,7 @@ class ExamsTaxonomyController {
 
       const headers = [
         'name', 'code', 'description', 'exam_type', 'difficulty_level', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
-        'application_start_date', 'application_close_date', 'exam_date', 'result_date', 'application_fees', 'mode', 'domicile',
+        'application_start_date', 'application_close_date', 'admit_card_date', 'exam_date', 'result_date', 'counselling_date', 'application_fees', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
@@ -1850,8 +1956,10 @@ class ExamsTaxonomyController {
           examLogoUrl,
           (dates && dates.application_start_date) ? String(dates.application_start_date).slice(0, 10) : '',
           (dates && dates.application_close_date) ? String(dates.application_close_date).slice(0, 10) : '',
+          (dates && dates.admit_card_date) ? String(dates.admit_card_date).slice(0, 10) : '',
           (dates && dates.exam_date) ? String(dates.exam_date).slice(0, 10) : '',
           (dates && dates.result_date) ? String(dates.result_date).slice(0, 10) : '',
+          (dates && dates.counselling_date) ? String(dates.counselling_date).slice(0, 10) : '',
           appFees,
           (pattern && pattern.mode) ? pattern.mode : '',
           domicileStr,
@@ -2218,17 +2326,21 @@ class ExamsTaxonomyController {
         try {
           const appStart = parseDate(row.application_start_date ?? row.Application_Start_Date);
           const appClose = parseDate(row.application_close_date ?? row.Application_Close_Date);
+          const admitCardDate = parseDate(row.admit_card_date ?? row.Admit_Card_Date);
           const examDate = parseDate(row.exam_date ?? row.Exam_Date);
           const resultDate = parseDate(row.result_date ?? row.Result_Date);
+          const counsellingDate = parseDate(row.counselling_date ?? row.Counselling_Date);
           const feesRaw = row.application_fees ?? row.Application_Fees;
           const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw)) : null;
-          if (appStart || appClose || examDate || resultDate || (application_fees != null && !Number.isNaN(application_fees))) {
+          if (appStart || appClose || admitCardDate || examDate || resultDate || counsellingDate || (application_fees != null && !Number.isNaN(application_fees))) {
             await ExamDates.create({
               exam_id: examId,
               application_start_date: appStart,
               application_close_date: appClose,
+              admit_card_date: admitCardDate,
               exam_date: examDate,
               result_date: resultDate,
+              counselling_date: counsellingDate,
               application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null
             });
           }

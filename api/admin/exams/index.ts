@@ -27,8 +27,10 @@ export interface ExamDates {
   exam_id: number;
   application_start_date: string | null;
   application_close_date: string | null;
+  admit_card_date: string | null;
   exam_date: string | null;
   result_date: string | null;
+  counselling_date: string | null;
   application_fees: number | null;
   created_at: string;
   updated_at: string;

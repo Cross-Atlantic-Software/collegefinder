@@ -172,7 +172,10 @@ const runMigrations = async () => {
     'add_institute_branches_number_student_strength.sql',
     'add_exam_difficulty_level.sql',
     'add_colleges_nirf_ranking_admission_timeline.sql',
-    'add_exam_mocks_generation_error.sql'
+    'add_exam_mocks_generation_error.sql',
+    'add_already_filled_form_to_user_academics.sql',
+    'add_admit_card_date_to_exam_dates.sql',
+    'add_counselling_date_to_exam_dates.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

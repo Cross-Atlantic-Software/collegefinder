@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { FiX, FiPlay, FiRefreshCw } from "react-icons/fi";
 import { Button, Notification } from "@/components/shared";
 import { getApiBaseUrl } from "@/api/client";
+import { DASHBOARD_EXAM_META_KEY } from "@/lib/dashboardExamShortlistQueries";
 
 interface AutomationExam {
     id: number;
@@ -24,6 +26,7 @@ export function StudentExamCreateModal({
     onClose,
     onStartWorkflow,
 }: StudentExamCreateModalProps) {
+    const queryClient = useQueryClient();
     const [exams, setExams] = useState<AutomationExam[]>([]);
     const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +100,8 @@ export function StudentExamCreateModal({
                 const data = await response.json();
                 throw new Error(data.message || 'Failed to create application');
             }
+
+            void queryClient.invalidateQueries({ queryKey: DASHBOARD_EXAM_META_KEY });
 
             // Close modal and immediately start workflow
             onClose();

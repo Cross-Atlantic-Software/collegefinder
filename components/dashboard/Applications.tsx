@@ -24,6 +24,7 @@ type Application = {
   exam_id: number;
   exam_name: string;
   exam_slug: string;
+  taxonomy_exam_id?: number | null;
   status: ApplicationStatus;
   created_at: string;
   session_id?: string;
@@ -39,7 +40,7 @@ function ApplicationCard({
   onStartWorkflow: (app: Application) => void;
   onViewProgress: (app: Application) => void;
 }) {
-  const detailHref = `/dashboard/exams/${app.exam_id || app.exam_slug}?from=dashboard-applications`;
+  const detailHref = `/dashboard/exams/${app.taxonomy_exam_id ?? app.exam_slug ?? app.exam_id}?from=dashboard-applications`;
 
   const getStatusConfig = (status: ApplicationStatus) => {
     switch (status) {

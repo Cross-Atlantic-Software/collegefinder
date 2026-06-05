@@ -102,8 +102,10 @@ export default function ExamsPage() {
     examDates: {
       application_start_date: '',
       application_close_date: '',
+      admit_card_date: '',
       exam_date: '',
       result_date: '',
+      counselling_date: '',
       application_fees: '',
     },
     eligibilityCriteria: {
@@ -335,8 +337,10 @@ export default function ExamsPage() {
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
           application_close_date: formData.examDates.application_close_date || null,
+          admit_card_date: formData.examDates.admit_card_date || null,
           exam_date: formData.examDates.exam_date || null,
           result_date: formData.examDates.result_date || null,
+          counselling_date: formData.examDates.counselling_date || null,
           application_fees: formData.examDates.application_fees?.trim()
             ? parseFloat(formData.examDates.application_fees)
             : null,
@@ -458,8 +462,10 @@ export default function ExamsPage() {
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
+            admit_card_date: toDateInputValue(data.examDates?.admit_card_date),
             exam_date: toDateInputValue(data.examDates?.exam_date),
             result_date: toDateInputValue(data.examDates?.result_date),
+            counselling_date: toDateInputValue(data.examDates?.counselling_date),
             application_fees:
               data.examDates?.application_fees != null && !Number.isNaN(Number(data.examDates.application_fees))
                 ? String(data.examDates.application_fees)
@@ -557,8 +563,10 @@ export default function ExamsPage() {
       examDates: {
         application_start_date: '',
         application_close_date: '',
+        admit_card_date: '',
         exam_date: '',
         result_date: '',
+        counselling_date: '',
         application_fees: '',
       },
       eligibilityCriteria: {
@@ -1200,6 +1208,21 @@ export default function ExamsPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Admit Card Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.examDates.admit_card_date}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examDates: { ...formData.examDates, admit_card_date: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Exam date
                       </label>
                       <input
@@ -1221,6 +1244,21 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({
                           ...formData,
                           examDates: { ...formData.examDates, result_date: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Counselling date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.examDates.counselling_date}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          examDates: { ...formData.examDates, counselling_date: e.target.value }
                         })}
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
@@ -1696,14 +1734,16 @@ export default function ExamsPage() {
                   <p className="text-sm text-slate-900">{viewingExamData.exam.number_of_papers}</p>
                 </div>
               )}
-              {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.exam_date || viewingExamData.examDates.result_date || viewingExamData.examDates.application_fees != null) && (
+              {viewingExamData.examDates && (viewingExamData.examDates.application_start_date || viewingExamData.examDates.application_close_date || viewingExamData.examDates.admit_card_date || viewingExamData.examDates.exam_date || viewingExamData.examDates.result_date || viewingExamData.examDates.counselling_date || viewingExamData.examDates.application_fees != null) && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Dates &amp; mode</label>
                   <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.examDates.application_start_date && <p>Application start: {String(viewingExamData.examDates.application_start_date).slice(0, 10)}</p>}
                     {viewingExamData.examDates.application_close_date && <p>Application close: {String(viewingExamData.examDates.application_close_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.admit_card_date && <p>Admit card date: {String(viewingExamData.examDates.admit_card_date).slice(0, 10)}</p>}
                     {viewingExamData.examDates.exam_date && <p>Exam date: {String(viewingExamData.examDates.exam_date).slice(0, 10)}</p>}
                     {viewingExamData.examDates.result_date && <p>Result date: {String(viewingExamData.examDates.result_date).slice(0, 10)}</p>}
+                    {viewingExamData.examDates.counselling_date && <p>Counselling date: {String(viewingExamData.examDates.counselling_date).slice(0, 10)}</p>}
                     {viewingExamData.examDates.application_fees != null && <p>Application fee: ₹{viewingExamData.examDates.application_fees}</p>}
                     {viewingExamData.examPattern?.mode && <p>Mode: {viewingExamData.examPattern.mode}</p>}
                     {viewingExamData.eligibilityCriteria?.domicile && <p>Domicile: {viewingExamData.eligibilityCriteria.domicile}</p>}

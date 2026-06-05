@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { BiCheck, BiChevronLeft, BiChevronRight } from "react-icons/bi";
 import { Button } from "../shared";
 import UpcomingDeadlinesCard from "./UpcomingDeadlinesCard";
-import type { Milestone, StudyPhase } from "./UpcomingDeadlinesCard";
+import { useDashboardExamsMetaQuery } from "@/lib/dashboardExamShortlistQueries";
+import { buildJourneyPhases, buildJourneyMilestones } from "@/lib/dashboardJourneyPhases";
 
 type PlannerProgressStep = {
   id: string;
@@ -12,98 +13,6 @@ type PlannerProgressStep = {
   description: string;
   status: "completed" | "current" | "upcoming";
 };
-
-const upcomingDeadlinePhases: StudyPhase[] = [
-  {
-    id: "phase-1",
-    label: "Your Journey Begins",
-    subtitle: "Application Start",
-    start: "2026-01-15",
-    end: "2026-02-28",
-    status: "done",
-    progress: 100,
-    deadlines: [{ label: "Application Start", start: "2026-01-15", end: "2026-02-28" }],
-  },
-  {
-    id: "phase-2",
-    label: "Last Call to Apply",
-    subtitle: "Application End",
-    start: "2026-03-01",
-    end: "2026-03-31",
-    status: "done",
-    progress: 100,
-    deadlines: [{ label: "Application End", start: "2026-03-01", end: "2026-03-31" }],
-  },
-  {
-    id: "phase-3",
-    label: "Grab Your Hall Ticket",
-    subtitle: "Admit Card",
-    start: "2026-04-01",
-    end: "2026-04-30",
-    status: "active",
-    progress: 72,
-    deadlines: [{ label: "Admit Card", start: "2026-04-01", end: "2026-04-30" }],
-  },
-  {
-    id: "phase-4",
-    label: "Warm-Up Round",
-    subtitle: "Mock Test",
-    start: "2026-05-01",
-    end: "2026-06-15",
-    status: "active",
-    progress: 48,
-    deadlines: [{ label: "Mock Test", start: "2026-05-01", end: "2026-06-15" }],
-  },
-  {
-    id: "phase-5",
-    label: "The Big Day",
-    subtitle: "Exam",
-    start: "2026-06-16",
-    end: "2026-07-20",
-    status: "upcoming",
-    progress: 0,
-    deadlines: [{ label: "Exam", start: "2026-06-16", end: "2026-07-20" }],
-  },
-  {
-    id: "phase-6",
-    label: "Moment of Truth",
-    subtitle: "Result",
-    start: "2026-07-21",
-    end: "2026-08-31",
-    status: "upcoming",
-    progress: 0,
-    deadlines: [{ label: "Result", start: "2026-07-21", end: "2026-08-31" }],
-  },
-  {
-    id: "phase-7",
-    label: "Choose Your Future",
-    subtitle: "Counselling",
-    start: "2026-09-01",
-    end: "2026-11-30",
-    status: "upcoming",
-    progress: 0,
-    deadlines: [{ label: "Counselling", start: "2026-09-01", end: "2026-11-30" }],
-  },
-];
-
-const upcomingDeadlineMilestones: Milestone[] = [
-  { id: "ms-1", label: "Onboarding Audit", date: "2026-02-12", status: "completed" },
-  { id: "ms-2", label: "Syllabus Mapping", date: "2026-02-22", status: "completed" },
-  { id: "ms-3", label: "Checkpoint Alpha", date: "2026-03-04", status: "completed" },
-  { id: "ms-4", label: "Chapter Set A", date: "2026-03-16", status: "completed" },
-  { id: "ms-5", label: "Speed Drill 1", date: "2026-03-26", status: "completed" },
-  { id: "ms-6", label: "Mock Lite 1", date: "2026-04-03", status: "completed" },
-  { id: "ms-7", label: "Checkpoint Beta", date: "2026-04-14", status: "pending" },
-  { id: "ms-8", label: "Revision Sync", date: "2026-04-27", status: "pending" },
-  { id: "ms-9", label: "Mock Lite 2", date: "2026-05-08", status: "pending" },
-  { id: "ms-10", label: "PYQ Batch A", date: "2026-05-19", status: "pending" },
-  { id: "ms-11", label: "Checkpoint Gamma", date: "2026-06-02", status: "pending" },
-  { id: "ms-12", label: "Mock Full 1", date: "2026-06-15", status: "pending" },
-  { id: "ms-13", label: "Application Draft", date: "2026-07-04", status: "pending" },
-  { id: "ms-14", label: "Counselling Form", date: "2026-09-12", status: "overdue" },
-  { id: "ms-15", label: "Final Revision Lock", date: "2026-10-20", status: "pending" },
-  { id: "ms-16", label: "Final Exam", date: "2026-11-18", status: "pending", kind: "exam" },
-];
 
 const recommendations = [
   {
@@ -201,50 +110,13 @@ const quickStudyPicks = [
 
 const ACTIVE_RECOMMENDATION_MS = 6800;
 
-const plannerProgressSteps: PlannerProgressStep[] = [
-  {
-    id: "progress-1",
-    title: "Your Journey Begins",
-    description: "Application Start",
-    status: "completed",
-  },
-  {
-    id: "progress-2",
-    title: "Last Call to Apply",
-    description: "Application End",
-    status: "completed",
-  },
-  {
-    id: "progress-3",
-    title: "Grab Your Hall Ticket",
-    description: "Admit Card",
-    status: "current",
-  },
-  {
-    id: "progress-4",
-    title: "Warm-Up Round",
-    description: "Mock Test",
-    status: "upcoming",
-  },
-  {
-    id: "progress-5",
-    title: "The Big Day",
-    description: "Exam",
-    status: "upcoming",
-  },
-  {
-    id: "progress-6",
-    title: "Moment of Truth",
-    description: "Result",
-    status: "upcoming",
-  },
-  {
-    id: "progress-7",
-    title: "Choose Your Future",
-    description: "Counselling",
-    status: "upcoming",
-  },
-];
+const phaseStatusToProgressStep = (
+  status: import("./UpcomingDeadlinesCard").StudyPhase["status"],
+): PlannerProgressStep["status"] => {
+  if (status === "done") return "completed";
+  if (status === "active") return "current";
+  return "upcoming";
+};
 
 const getYoutubeId = (url: string) => {
   const match = url.match(/[?&]v=([^&]+)/);
@@ -465,6 +337,49 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "cen
 };
 
 export default function MiddleContent() {
+  const { data: examMeta, isLoading: examMetaLoading, isError: examMetaError } =
+    useDashboardExamsMetaQuery();
+  const journeyPhaseDates = useMemo(
+    () => ({
+      phase1ApplicationStarts: examMeta?.phase1ApplicationStarts,
+      phase2ApplicationCloses: examMeta?.phase2ApplicationCloses,
+      phase3AdmitCardDates: examMeta?.phase3AdmitCardDates,
+      phase4MockTestReminders: examMeta?.phase4MockTestReminders,
+      phase4MockTestSummary: examMeta?.phase4MockTestSummary,
+      phase5ExamDates: examMeta?.phase5ExamDates,
+      phase6ResultDates: examMeta?.phase6ResultDates,
+      phase7CounsellingDates: examMeta?.phase7CounsellingDates,
+    }),
+    [
+      examMeta?.phase1ApplicationStarts,
+      examMeta?.phase2ApplicationCloses,
+      examMeta?.phase3AdmitCardDates,
+      examMeta?.phase4MockTestReminders,
+      examMeta?.phase4MockTestSummary,
+      examMeta?.phase5ExamDates,
+      examMeta?.phase6ResultDates,
+      examMeta?.phase7CounsellingDates,
+    ],
+  );
+  const journeyPhases = useMemo(
+    () => buildJourneyPhases(journeyPhaseDates),
+    [journeyPhaseDates],
+  );
+  const journeyMilestones = useMemo(
+    () => buildJourneyMilestones(journeyPhaseDates),
+    [journeyPhaseDates],
+  );
+  const plannerProgressSteps = useMemo<PlannerProgressStep[]>(
+    () =>
+      journeyPhases.map((phase) => ({
+        id: phase.id,
+        title: phase.label,
+        description: phase.subtitle ?? "",
+        status: phaseStatusToProgressStep(phase.status),
+      })),
+    [journeyPhases],
+  );
+
   const [activeRecommendationIndex, setActiveRecommendationIndex] = useState(0);
   const [activeRecommendationProgress, setActiveRecommendationProgress] = useState(0);
 
@@ -561,10 +476,20 @@ export default function MiddleContent() {
       <section className="relative grid gap-3 xl:grid-cols-[2.15fr,1fr]">
         <div className="relative z-30 flex max-h-[calc(100vh-180px)] min-h-0 flex-col gap-3 overflow-visible">
           <article>
-            <UpcomingDeadlinesCard
-              phases={upcomingDeadlinePhases}
-              milestones={upcomingDeadlineMilestones}
-            />
+            {examMetaLoading ? (
+              <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                Loading your journey planner…
+              </div>
+            ) : examMetaError ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                Could not load journey dates. Check your profile stream and try refreshing the page.
+              </div>
+            ) : (
+              <UpcomingDeadlinesCard
+                phases={journeyPhases}
+                milestones={journeyMilestones}
+              />
+            )}
           </article>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
