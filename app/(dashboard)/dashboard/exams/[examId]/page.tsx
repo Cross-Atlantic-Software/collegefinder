@@ -10,6 +10,7 @@ import { Sidebar, TopBar } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
+import { ExamDetailLinkedCoaching } from "@/components/dashboard/ExamDetailLinkedCoaching";
 import { ExamDetailLinkedScholarships } from "@/components/dashboard/ExamDetailLinkedScholarships";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ExamDetailSections } from "@/components/dashboard/ExamDetailSections";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/examDisplay";
 import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
+import { useExamLinkedInstitutesQuery } from "@/lib/examLinkedInstitutesQueries";
 import {
   useDashboardExamsMetaQuery,
   useUpdateShortlistedExamMutation,
@@ -148,6 +150,10 @@ export default function ExamDetailPage() {
     linkedCollegesData?.colleges ?? pageData?.linkedColleges ?? [];
   const linkedCollegesTotal =
     linkedCollegesData?.totalCount ?? pageData?.linkedCollegesTotal ?? 0;
+  const { data: linkedInstitutesData, isLoading: institutesLoading } =
+    useExamLinkedInstitutesQuery(examNumericId);
+  const linkedInstitutes = linkedInstitutesData?.institutes ?? [];
+  const linkedInstitutesTotal = linkedInstitutesData?.totalCount ?? 0;
   const linkedScholarships = pageData?.linkedScholarships ?? [];
   const linkedScholarshipTotal = pageData?.linkedScholarshipTotal ?? 0;
   const taggedLectureCount = pageData?.taggedLectureCount ?? 0;
@@ -305,6 +311,11 @@ export default function ExamDetailPage() {
               colleges={linkedColleges}
               totalCount={linkedCollegesTotal}
               isLoading={collegesLoading && !!exam}
+            />
+            <ExamDetailLinkedCoaching
+              institutes={linkedInstitutes}
+              totalCount={linkedInstitutesTotal}
+              isLoading={institutesLoading && !!exam}
             />
             <ExamDetailLinkedScholarships
               scholarships={linkedScholarships}

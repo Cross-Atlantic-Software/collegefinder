@@ -887,6 +887,17 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         registration_link,
+        abbreviation,
+        category,
+        exam_frequency,
+        exam_pattern,
+        avg_applicant_2023,
+        avg_applicant_2024,
+        avg_applicant_2025,
+        avg_applicant_prev_three,
+        eligibility,
+        qualified_candidate,
+        success_rate,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -945,6 +956,17 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         registration_link,
+        abbreviation,
+        category,
+        exam_frequency,
+        exam_pattern,
+        avg_applicant_2023,
+        avg_applicant_2024,
+        avg_applicant_2025,
+        avg_applicant_prev_three,
+        eligibility,
+        qualified_candidate,
+        success_rate,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -1020,6 +1042,17 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         registration_link,
+        abbreviation,
+        category,
+        exam_frequency,
+        exam_pattern,
+        avg_applicant_2023,
+        avg_applicant_2024,
+        avg_applicant_2025,
+        avg_applicant_prev_three,
+        eligibility,
+        qualified_candidate,
+        success_rate,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -1088,6 +1121,18 @@ class ExamsTaxonomyController {
         number_of_papers,
         website,
         registration_link: registration_link !== undefined ? registration_link : undefined,
+        abbreviation: abbreviation !== undefined ? abbreviation : undefined,
+        category: category !== undefined ? category : undefined,
+        exam_frequency: exam_frequency !== undefined ? exam_frequency : undefined,
+        exam_pattern: exam_pattern !== undefined ? exam_pattern : undefined,
+        avg_applicant_2023: avg_applicant_2023 !== undefined ? avg_applicant_2023 : undefined,
+        avg_applicant_2024: avg_applicant_2024 !== undefined ? avg_applicant_2024 : undefined,
+        avg_applicant_2025: avg_applicant_2025 !== undefined ? avg_applicant_2025 : undefined,
+        avg_applicant_prev_three:
+          avg_applicant_prev_three !== undefined ? avg_applicant_prev_three : undefined,
+        eligibility: eligibility !== undefined ? eligibility : undefined,
+        qualified_candidate: qualified_candidate !== undefined ? qualified_candidate : undefined,
+        success_rate: success_rate !== undefined ? success_rate : undefined,
         documents_required: documents_required !== undefined ? documents_required : undefined,
         counselling: counselling !== undefined ? counselling : undefined,
         exam_popularity_rank: exam_popularity_rank !== undefined ? exam_popularity_rank : undefined,
@@ -1817,6 +1862,17 @@ class ExamsTaxonomyController {
         'website',
         'registration_link',
         'exam_popularity_rank',
+        'abbreviation',
+        'category',
+        'exam_frequency',
+        'exam_pattern',
+        'avg_applicant_2023',
+        'avg_applicant_2024',
+        'avg_applicant_2025',
+        'avg_applicant_prev_three',
+        'eligibility',
+        'qualified_candidate',
+        'success_rate',
         'interests',
         'programs'
       ];
@@ -1858,6 +1914,17 @@ class ExamsTaxonomyController {
         'https://jeemain.nta.nic.in',
         'https://jeemain.nta.nic.in/registration',
         '1',
+        'JEE',
+        'Engineering',
+        'Twice a year',
+        'MCQ-based CBT with Physics, Chemistry, Mathematics',
+        1200000,
+        1250000,
+        1300000,
+        1250000,
+        'Class 12 with PCM; age as per NTA rules',
+        250000,
+        '21%',
         'Building Apps & Software, Designing Machines & Robots',
         'B.Tech, B.E.'
       ];
@@ -1899,6 +1966,17 @@ class ExamsTaxonomyController {
         'https://neet.nta.nic.in',
         'https://neet.nta.nic.in/registration',
         '2',
+        'NEET',
+        'Medical',
+        'Once a year',
+        'Pen-paper test with 200 MCQs from PCB',
+        2000000,
+        2100000,
+        2200000,
+        2100000,
+        'Class 12 with PCB; minimum age 17',
+        900000,
+        '45%',
         'Medicine & Healthcare',
         'MBBS, BDS'
       ];
@@ -1943,6 +2021,9 @@ class ExamsTaxonomyController {
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
         'website', 'registration_link', 'exam_popularity_rank',
+        'abbreviation', 'category', 'exam_frequency', 'exam_pattern',
+        'avg_applicant_2023', 'avg_applicant_2024', 'avg_applicant_2025', 'avg_applicant_prev_three',
+        'eligibility', 'qualified_candidate', 'success_rate',
         'programs', 'Interests'
       ];
       const rows = [headers];
@@ -2007,6 +2088,17 @@ class ExamsTaxonomyController {
           exam.exam_popularity_rank != null && !Number.isNaN(Number(exam.exam_popularity_rank))
             ? String(exam.exam_popularity_rank)
             : '',
+          exam.abbreviation || '',
+          exam.category || '',
+          exam.exam_frequency || '',
+          exam.exam_pattern || '',
+          exam.avg_applicant_2023 != null ? String(exam.avg_applicant_2023) : '',
+          exam.avg_applicant_2024 != null ? String(exam.avg_applicant_2024) : '',
+          exam.avg_applicant_2025 != null ? String(exam.avg_applicant_2025) : '',
+          exam.avg_applicant_prev_three != null ? String(exam.avg_applicant_prev_three) : '',
+          exam.eligibility || '',
+          exam.qualified_candidate != null ? String(exam.qualified_candidate) : '',
+          exam.success_rate || '',
           programNames,
           interestNames
         ]);
@@ -2307,6 +2399,34 @@ class ExamsTaxonomyController {
           examPopularityRank = parseInt(String(popRaw), 10);
         }
 
+        const parseOptionalIntCell = (row, ...keys) => {
+          const raw = getCell(row, ...keys);
+          if (raw === '') return null;
+          const n = parseInt(String(raw), 10);
+          return Number.isNaN(n) ? null : n;
+        };
+        const parseOptionalTextCell = (row, ...keys) => {
+          const raw = getCell(row, ...keys);
+          return raw ? raw.trim() : null;
+        };
+
+        const abbreviationVal = parseOptionalTextCell(row, 'abbreviation', 'Abbreviation');
+        const categoryVal = parseOptionalTextCell(row, 'category', 'Category');
+        const examFrequencyVal = parseOptionalTextCell(row, 'exam_frequency', 'Exam_Frequency', 'Exam Frequency');
+        const examPatternTextVal = parseOptionalTextCell(row, 'exam_pattern', 'Exam_Pattern', 'Exam Pattern');
+        const avgApplicant2023 = parseOptionalIntCell(row, 'avg_applicant_2023', 'Avg_Applicant_2023', 'Avg Applicant 2023');
+        const avgApplicant2024 = parseOptionalIntCell(row, 'avg_applicant_2024', 'Avg_Applicant_2024', 'Avg Applicant 2024');
+        const avgApplicant2025 = parseOptionalIntCell(row, 'avg_applicant_2025', 'Avg_Applicant_2025', 'Avg Applicant 2025');
+        const avgApplicantPrevThree = parseOptionalIntCell(
+          row,
+          'avg_applicant_prev_three',
+          'Avg_Applicant_Prev_Three',
+          'Avg Applicant Prev Three'
+        );
+        const eligibilityVal = parseOptionalTextCell(row, 'eligibility', 'Eligibility');
+        const qualifiedCandidate = parseOptionalIntCell(row, 'qualified_candidate', 'Qualified_Candidate', 'Qualified Candidate');
+        const successRateVal = parseOptionalTextCell(row, 'success_rate', 'Success_Rate', 'Success Rate');
+
         const numPapersRaw = getCell(row, 'number_of_papers', 'Number_Of_Papers') || row.number_of_papers || row.Number_Of_Papers || '';
         const numberOfPapers = (numPapersRaw !== '' && !isNaN(parseInt(String(numPapersRaw), 10)))
           ? Math.max(1, Math.min(10, parseInt(String(numPapersRaw), 10)))
@@ -2339,6 +2459,17 @@ class ExamsTaxonomyController {
             number_of_papers: numberOfPapers,
             website: websiteVal,
             registration_link: registrationLinkVal,
+            abbreviation: abbreviationVal,
+            category: categoryVal,
+            exam_frequency: examFrequencyVal,
+            exam_pattern: examPatternTextVal,
+            avg_applicant_2023: avgApplicant2023,
+            avg_applicant_2024: avgApplicant2024,
+            avg_applicant_2025: avgApplicant2025,
+            avg_applicant_prev_three: avgApplicantPrevThree,
+            eligibility: eligibilityVal,
+            qualified_candidate: qualifiedCandidate,
+            success_rate: successRateVal,
             documents_required: documentsRequired,
             counselling: counsellingText,
             exam_popularity_rank: examPopularityRank,

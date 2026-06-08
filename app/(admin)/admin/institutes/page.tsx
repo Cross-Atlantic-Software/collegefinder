@@ -125,6 +125,11 @@ export default function InstitutesPage() {
     referral_contact_email: '',
     branches_number: '',
     student_strength: '',
+    fee_type: '',
+    fee_band: '',
+    batch_category: '',
+    course_cycle: '',
+    parent_institute: '',
     institute_description: '',
     demo_available: false,
     scholarship_available: false,
@@ -298,6 +303,11 @@ export default function InstitutesPage() {
         referral_contact_email: formData.referral_contact_email.trim() || null,
         branches_number: formData.branches_number.trim() || null,
         student_strength: formData.student_strength.trim() || null,
+        fee_type: formData.fee_type.trim() || null,
+        fee_band: formData.fee_band.trim() || null,
+        batch_category: formData.batch_category.trim() || null,
+        course_cycle: formData.course_cycle.trim() || null,
+        parent_institute: formData.parent_institute.trim() || null,
         institute_description: formData.institute_description.trim() || null,
         demo_available: formData.demo_available,
         scholarship_available: formData.scholarship_available,
@@ -399,6 +409,11 @@ export default function InstitutesPage() {
           referral_contact_email: d.institute.referral_contact_email ?? '',
           branches_number: d.institute.branches_number ?? '',
           student_strength: d.institute.student_strength ?? '',
+          fee_type: d.institute.fee_type ?? '',
+          fee_band: d.institute.fee_band ?? '',
+          batch_category: d.institute.batch_category ?? '',
+          course_cycle: d.institute.course_cycle ?? '',
+          parent_institute: d.institute.parent_institute ?? '',
           institute_description: d.instituteDetails?.institute_description ?? '',
           demo_available: d.instituteDetails?.demo_available ?? false,
           scholarship_available: d.instituteDetails?.scholarship_available ?? false,
@@ -464,6 +479,11 @@ export default function InstitutesPage() {
       referral_contact_email: '',
       branches_number: '',
       student_strength: '',
+      fee_type: '',
+      fee_band: '',
+      batch_category: '',
+      course_cycle: '',
+      parent_institute: '',
       institute_description: '',
       demo_available: false,
       scholarship_available: false,
@@ -1004,6 +1024,56 @@ export default function InstitutesPage() {
                       className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Fee type</label>
+                    <input
+                      type="text"
+                      value={formData.fee_type}
+                      onChange={(e) => setFormData({ ...formData, fee_type: e.target.value })}
+                      placeholder="e.g. Annual, Per course"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Fee band</label>
+                    <input
+                      type="text"
+                      value={formData.fee_band}
+                      onChange={(e) => setFormData({ ...formData, fee_band: e.target.value })}
+                      placeholder="e.g. ₹1.5L–₹2.5L"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Batch category</label>
+                    <input
+                      type="text"
+                      value={formData.batch_category}
+                      onChange={(e) => setFormData({ ...formData, batch_category: e.target.value })}
+                      placeholder="e.g. JEE Advanced, NEET"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Course cycle</label>
+                    <input
+                      type="text"
+                      value={formData.course_cycle}
+                      onChange={(e) => setFormData({ ...formData, course_cycle: e.target.value })}
+                      placeholder="e.g. 1-year intensive, 2-year program"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Parent institute</label>
+                    <input
+                      type="text"
+                      value={formData.parent_institute}
+                      onChange={(e) => setFormData({ ...formData, parent_institute: e.target.value })}
+                      placeholder="e.g. Allen Career Institute"
+                      className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                    />
+                  </div>
                 </>
               )}
 
@@ -1285,6 +1355,21 @@ export default function InstitutesPage() {
               <p><strong>Contact:</strong> {viewingData.institute?.contact_number ?? '-'}</p>
               <p><strong>Branches number:</strong> {viewingData.institute?.branches_number?.trim() || '-'}</p>
               <p><strong>Student strength:</strong> {viewingData.institute?.student_strength?.trim() || '-'}</p>
+              {viewingData.institute?.fee_type && (
+                <p><strong>Fee type:</strong> {viewingData.institute.fee_type}</p>
+              )}
+              {viewingData.institute?.fee_band && (
+                <p><strong>Fee band:</strong> {viewingData.institute.fee_band}</p>
+              )}
+              {viewingData.institute?.batch_category && (
+                <p><strong>Batch category:</strong> {viewingData.institute.batch_category}</p>
+              )}
+              {viewingData.institute?.course_cycle && (
+                <p><strong>Course cycle:</strong> {viewingData.institute.course_cycle}</p>
+              )}
+              {viewingData.institute?.parent_institute && (
+                <p><strong>Parent institute:</strong> {viewingData.institute.parent_institute}</p>
+              )}
               <p><strong>Website:</strong>{' '}
                 {viewingData.institute?.website ? (
                   <a href={viewingData.institute.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.institute.website}</a>

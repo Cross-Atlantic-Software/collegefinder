@@ -21,6 +21,11 @@ export interface Institute {
   branches_number?: string | null;
   /** Free-text student strength (e.g. "5000+" or "2 lakh"). */
   student_strength?: string | null;
+  fee_type?: string | null;
+  fee_band?: string | null;
+  batch_category?: string | null;
+  course_cycle?: string | null;
+  parent_institute?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +129,11 @@ export async function createInstitute(data: {
   referral_contact_email?: string | null;
   branches_number?: string | null;
   student_strength?: string | null;
+  fee_type?: string | null;
+  fee_band?: string | null;
+  batch_category?: string | null;
+  course_cycle?: string | null;
+  parent_institute?: string | null;
   institute_description?: string | null;
   demo_available?: boolean;
   scholarship_available?: boolean;
@@ -153,6 +163,11 @@ export async function updateInstitute(
     referral_contact_email?: string | null;
     branches_number?: string | null;
     student_strength?: string | null;
+    fee_type?: string | null;
+    fee_band?: string | null;
+    batch_category?: string | null;
+    course_cycle?: string | null;
+    parent_institute?: string | null;
     institute_description?: string | null;
     demo_available?: boolean;
     scholarship_available?: boolean;

@@ -242,6 +242,9 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
 
   push(overview, field("Exam name", exam.name));
   push(overview, field("Exam code", exam.code));
+  push(overview, field("Abbreviation", exam.abbreviation));
+  push(overview, field("Category", exam.category));
+  push(overview, field("Exam frequency", exam.exam_frequency));
   push(overview, field("Exam type", exam.exam_type));
   if (hasDisplayValue(exam.description)) {
     push(overview, field("Description", exam.description));
@@ -322,7 +325,29 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     sections.push({ id: "pattern", title: "Exam pattern", fields: pattern });
   }
 
+  if (hasDisplayValue(exam.exam_pattern)) {
+    sections.push({
+      id: "pattern-overview",
+      title: "Exam pattern overview",
+      fields: [field("Pattern", exam.exam_pattern)!],
+    });
+  }
+
+  const applicantStats: ExamField[] = [];
+  push(applicantStats, field("Avg applicants (2023)", exam.avg_applicant_2023));
+  push(applicantStats, field("Avg applicants (2024)", exam.avg_applicant_2024));
+  push(applicantStats, field("Avg applicants (2025)", exam.avg_applicant_2025));
+  push(applicantStats, field("Avg applicants (prev 3 years)", exam.avg_applicant_prev_three));
+  push(applicantStats, field("Qualified candidates", exam.qualified_candidate));
+  push(applicantStats, field("Success rate", exam.success_rate));
+  if (applicantStats.length) {
+    sections.push({ id: "applicant-stats", title: "Applicant statistics", fields: applicantStats });
+  }
+
   const eligibility: ExamField[] = [];
+  if (hasDisplayValue(exam.eligibility)) {
+    push(eligibility, field("Eligibility summary", exam.eligibility));
+  }
   const el = exam.eligibilityCriteria;
   if (el) {
     const streams = (el.stream_labels ?? []).filter(Boolean).join(", ");

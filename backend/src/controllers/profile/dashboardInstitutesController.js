@@ -5,6 +5,7 @@ const InstituteDetails = require('../../models/institute/InstituteDetails');
 const InstituteStatistics = require('../../models/institute/InstituteStatistics');
 const InstituteCourse = require('../../models/institute/InstituteCourse');
 const Lecture = require('../../models/taxonomy/Lecture');
+const Exam = require('../../models/taxonomy/Exam');
 const db = require('../../config/database');
 const {
   sortDeliveryInstitutes,
@@ -346,6 +347,48 @@ async function getDashboardInstitutes(req, res) {
 }
 
 /**
+ * Coaching institutes linked to this exam (institute_exams + institute_exam_specialization).
+ * GET /api/auth/profile/exams/:examId/institutes
+ */
+async function getInstitutesForExam(req, res) {
+  try {
+    const examId = parseInt(req.params.examId, 10);
+    if (!Number.isInteger(examId) || examId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'examId must be a positive integer',
+      });
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    const instituteIds = await InstituteExam.getInstituteIdsByExamIds([examId]);
+    const institutes = await enrichInstituteRows(await Institute.findByIds(instituteIds));
+
+    return res.json({
+      success: true,
+      data: {
+        examId,
+        institutes,
+        totalCount: institutes.length,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching institutes for exam:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch coaching institutes for exam',
+    });
+  }
+}
+
+/**
  * PUT /api/auth/profile/shortlisted-institutes
  */
 async function updateShortlistedInstitutes(req, res) {
@@ -411,5 +454,6 @@ module.exports = {
   getDashboardInstitutesMeta,
   getDashboardInstitutesTab,
   getDashboardInstituteByRef,
+  getInstitutesForExam,
   updateShortlistedInstitutes,
 };

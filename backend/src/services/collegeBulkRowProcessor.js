@@ -212,9 +212,18 @@ async function processCollegeBulkRow({ row, rowNum }) {
   const parentUniversityVal = getCell(row, 'parent_university', 'Parent university');
   const nirfRankingRaw = getCell(row, 'nirf_ranking', 'NIRF ranking');
   const admissionTimelineVal = getCell(row, 'admission_timeline', 'Admission timeline');
+  const abbreviationVal = getCell(row, 'abbreviation', 'Abbreviation') || null;
+  const programCountRaw = getCell(row, 'program_count', 'Program count', 'Program Count');
+  const placementRateVal = getCell(row, 'placement_rate', 'Placement rate', 'Placement Rate') || null;
+  const programFeeVal = getCell(row, 'program_fee', 'Program fee', 'Program Fee') || null;
+  const averagePackageVal = getCell(row, 'average_package', 'Average package', 'Average Package') || null;
   const nirfRankingVal =
     nirfRankingRaw && /^\d+$/.test(String(nirfRankingRaw).trim())
       ? parseInt(String(nirfRankingRaw).trim(), 10)
+      : null;
+  const programCountVal =
+    programCountRaw && /^\d+$/.test(String(programCountRaw).trim())
+      ? parseInt(String(programCountRaw).trim(), 10)
       : null;
   const majorProgramNamesRaw = (row.major_program_names ?? '').toString().trim();
 
@@ -300,6 +309,11 @@ async function processCollegeBulkRow({ row, rowNum }) {
       parent_university: parentUniversityVal || null,
       nirf_ranking: nirfRankingVal,
       admission_timeline: admissionTimelineVal || null,
+      abbreviation: abbreviationVal,
+      program_count: programCountVal,
+      placement_rate: placementRateVal,
+      program_fee: programFeeVal,
+      average_package: averagePackageVal,
       state: stateTrim || null,
       city: cityTrim || null,
     });

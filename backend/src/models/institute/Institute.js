@@ -67,10 +67,17 @@ class Institute {
       referral_contact_email,
       branches_number,
       student_strength,
+      fee_type,
+      fee_band,
+      batch_category,
+      course_cycle,
+      parent_institute,
     } = data;
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, branches_number, student_strength)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, branches_number, student_strength, fee_type, fee_band, batch_category, course_cycle, parent_institute)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
       [
         institute_name,
         institute_location || null,
@@ -83,6 +90,11 @@ class Institute {
         referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
         branches_number != null ? String(branches_number).trim() || null : null,
         student_strength != null ? String(student_strength).trim() || null : null,
+        trimText(fee_type),
+        trimText(fee_band),
+        trimText(batch_category),
+        trimText(course_cycle),
+        trimText(parent_institute),
       ]
     );
     return result.rows[0];
@@ -112,10 +124,17 @@ class Institute {
       referral_contact_email,
       branches_number,
       student_strength,
+      fee_type,
+      fee_band,
+      batch_category,
+      course_cycle,
+      parent_institute,
     } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
     if (institute_name !== undefined) { updates.push(`institute_name = $${paramCount++}`); values.push(institute_name); }
     if (institute_location !== undefined) { updates.push(`institute_location = $${paramCount++}`); values.push(institute_location); }
     if (google_maps_link !== undefined) {
@@ -138,6 +157,26 @@ class Institute {
     if (student_strength !== undefined) {
       updates.push(`student_strength = $${paramCount++}`);
       values.push(student_strength != null ? String(student_strength).trim() || null : null);
+    }
+    if (fee_type !== undefined) {
+      updates.push(`fee_type = $${paramCount++}`);
+      values.push(trimText(fee_type));
+    }
+    if (fee_band !== undefined) {
+      updates.push(`fee_band = $${paramCount++}`);
+      values.push(trimText(fee_band));
+    }
+    if (batch_category !== undefined) {
+      updates.push(`batch_category = $${paramCount++}`);
+      values.push(trimText(batch_category));
+    }
+    if (course_cycle !== undefined) {
+      updates.push(`course_cycle = $${paramCount++}`);
+      values.push(trimText(course_cycle));
+    }
+    if (parent_institute !== undefined) {
+      updates.push(`parent_institute = $${paramCount++}`);
+      values.push(trimText(parent_institute));
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);
