@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
-import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, Topic } from '@/api';
+import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, deleteAllTopics, downloadTopicsBulkTemplate, bulkUploadTopics, Topic } from '@/api';
 import { getAllSubjectsPublic } from '@/api';
 import { getAllExamsAdmin } from '@/api/admin/exams';
-import { FiPlus, FiSearch, FiX, FiImage } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiX, FiImage, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function TopicsPage() {
   const router = useRouter();
@@ -41,6 +42,15 @@ export default function TopicsPage() {
   const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkExcelFile, setBulkExcelFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; errors: number; errorDetails: { row: number; message: string }[] } | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const { canDelete } = useAdminPermissions();
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -125,29 +135,40 @@ export default function TopicsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const nameTrim = formData.name.trim();
+    if (!formData.sub_id) {
+      const msg = 'Subject is required';
+      setError(msg);
+      showError(msg);
+      return;
+    }
+    if (!nameTrim) {
+      const msg = 'Topic name is required';
+      setError(msg);
+      showError(msg);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('sub_id', formData.sub_id);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('home_display', String(formData.home_display));
-      formDataToSend.append('status', String(formData.status));
-      formDataToSend.append('description', formData.description || '');
-      formDataToSend.append('sort_order', String(formData.sort_order));
-      const examIds = (formData.exam_ids || []).slice(0, MAX_EXAMS);
-      formDataToSend.append('exam_ids', JSON.stringify(examIds));
+      const payload = editingTopic
+        ? {
+            sub_id: parseInt(formData.sub_id, 10),
+            name: nameTrim,
+            home_display: formData.home_display,
+            status: formData.status,
+            sort_order: formData.sort_order,
+          }
+        : {
+            sub_id: parseInt(formData.sub_id, 10),
+            name: nameTrim,
+          };
 
-      if (thumbnailFile) {
-        formDataToSend.append('thumbnail', thumbnailFile);
-      }
-
-      let response;
-      if (editingTopic) {
-        response = await updateTopic(editingTopic.id, formDataToSend);
-      } else {
-        response = await createTopic(formDataToSend);
-      }
+      const response = editingTopic
+        ? await updateTopic(editingTopic.id, payload)
+        : await createTopic(payload);
 
       if (response.success) {
         showSuccess(editingTopic ? 'Topic updated successfully' : 'Topic created successfully');
@@ -157,8 +178,8 @@ export default function TopicsPage() {
         setError(response.message || 'Failed to save topic');
         showError(response.message || 'Failed to save topic');
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'An error occurred while saving topic';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while saving topic';
       setError(errorMessage);
       showError(errorMessage);
     } finally {
@@ -260,6 +281,71 @@ export default function TopicsPage() {
     resetForm();
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      await downloadTopicsBulkTemplate();
+      showSuccess('Template downloaded');
+    } catch {
+      showError('Failed to download template');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkExcelFile) {
+      setBulkError('Please select an Excel file');
+      return;
+    }
+    try {
+      setBulkUploading(true);
+      setBulkError(null);
+      setBulkResult(null);
+      const response = await bulkUploadTopics(bulkExcelFile);
+      if (response.success && response.data) {
+        setBulkResult({
+          created: response.data.created,
+          errors: response.data.errors || 0,
+          errorDetails: response.data.errorDetails || [],
+        });
+        showSuccess(response.message || `Created ${response.data.created} topic(s)`);
+        fetchTopics();
+        if (response.data.errors === 0) {
+          setBulkExcelFile(null);
+          setShowBulkModal(false);
+        }
+      } else {
+        setBulkError(response.message || 'Bulk upload failed');
+      }
+    } catch {
+      setBulkError('An error occurred during bulk upload');
+      showError('Bulk upload failed');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    try {
+      setIsDeletingAll(true);
+      const response = await deleteAllTopics();
+      if (response.success) {
+        showSuccess(response.message || 'All topics deleted successfully');
+        setShowDeleteAllConfirm(false);
+        fetchTopics();
+      } else {
+        showError(response.message || 'Failed to delete all topics');
+        setShowDeleteAllConfirm(false);
+      }
+    } catch {
+      showError('An error occurred while deleting all topics');
+      setShowDeleteAllConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (error && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
@@ -307,13 +393,34 @@ export default function TopicsPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Topic
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowBulkModal(true); setBulkResult(null); setBulkError(null); setBulkExcelFile(null); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA]"
+              >
+                <FiUpload className="h-4 w-4" />
+                Upload Excel
+              </button>
+              {canDelete && allTopics.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeletingAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              )}
+              <button
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <FiPlus className="h-4 w-4" />
+                Add Topic
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -562,7 +669,7 @@ export default function TopicsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !formData.sub_id || !formData.name.trim()}
                   className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : editingTopic ? 'Update' : 'Create'}
@@ -660,6 +767,93 @@ export default function TopicsPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         confirmButtonStyle="danger"
+      />
+
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bulk Upload Topics</h2>
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="text-slate-500 hover:text-slate-800">
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
+                <p className="text-xs text-slate-600 mb-3">Columns: topic_name, subject_names (must match exactly one existing subject).</p>
+                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-100">
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">topic_name</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">subject_names</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Algebra</td>
+                        <td className="px-3 py-2 text-slate-800">Mathematics</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-[#F6F8FA] disabled:opacity-50"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  {downloadingTemplate ? 'Downloading...' : 'Download template'}
+                </button>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Upload your Excel file</h3>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setBulkExcelFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+              {bulkError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm rounded-lg">{bulkError}</div>}
+              {bulkResult && (
+                <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-green-700">Created: {bulkResult.created}</p>
+                  {bulkResult.errors > 0 && <p className="text-amber-700 mt-1">Errors: {bulkResult.errors} row(s)</p>}
+                  {bulkResult.errorDetails?.length > 0 && (
+                    <ul className="mt-2 text-xs text-slate-600 max-h-32 overflow-auto">
+                      {bulkResult.errorDetails.map((err, i) => (
+                        <li key={i}>Row {err.row}: {err.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-200 px-4 py-3 flex justify-end gap-2">
+              <button onClick={() => { setShowBulkModal(false); setBulkExcelFile(null); setBulkResult(null); setBulkError(null); }} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-700 hover:bg-[#F6F8FA]">
+                Close
+              </button>
+              <button onClick={handleBulkUpload} disabled={!bulkExcelFile || bulkUploading} className="px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+                {bulkUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllConfirm}
+        title="Delete All Topics"
+        message={`Are you sure you want to delete all ${allTopics.length} topics? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmButtonStyle="danger"
+        isLoading={isDeletingAll}
       />
     </div>
   );
