@@ -175,7 +175,8 @@ const runMigrations = async () => {
     'add_exam_mocks_generation_error.sql',
     'add_already_filled_form_to_user_academics.sql',
     'add_admit_card_date_to_exam_dates.sql',
-    'add_counselling_date_to_exam_dates.sql'
+    'add_counselling_date_to_exam_dates.sql',
+    'add_registration_link_to_exams.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

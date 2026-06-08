@@ -392,6 +392,7 @@ async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
         negativeMarking,
         ageLimit,
         ex.website,
+        ex.registration_link,
         ex.counselling,
       ],
       search
@@ -885,6 +886,7 @@ class ExamsTaxonomyController {
         conducting_authority,
         number_of_papers,
         website,
+        registration_link,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -942,6 +944,7 @@ class ExamsTaxonomyController {
         conducting_authority,
         number_of_papers,
         website,
+        registration_link,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -1016,6 +1019,7 @@ class ExamsTaxonomyController {
         conducting_authority,
         number_of_papers,
         website,
+        registration_link,
         documents_required,
         counselling,
         exam_popularity_rank,
@@ -1083,6 +1087,7 @@ class ExamsTaxonomyController {
         conducting_authority,
         number_of_papers,
         website,
+        registration_link: registration_link !== undefined ? registration_link : undefined,
         documents_required: documents_required !== undefined ? documents_required : undefined,
         counselling: counselling !== undefined ? counselling : undefined,
         exam_popularity_rank: exam_popularity_rank !== undefined ? exam_popularity_rank : undefined,
@@ -1810,6 +1815,7 @@ class ExamsTaxonomyController {
         'cutoff_st',
         'target_rank_range',
         'website',
+        'registration_link',
         'exam_popularity_rank',
         'interests',
         'programs'
@@ -1850,6 +1856,7 @@ class ExamsTaxonomyController {
         '85.0',
         'Top 10k',
         'https://jeemain.nta.nic.in',
+        'https://jeemain.nta.nic.in/registration',
         '1',
         'Building Apps & Software, Designing Machines & Robots',
         'B.Tech, B.E.'
@@ -1890,6 +1897,7 @@ class ExamsTaxonomyController {
         '88.0',
         'Top 50k',
         'https://neet.nta.nic.in',
+        'https://neet.nta.nic.in/registration',
         '2',
         'Medicine & Healthcare',
         'MBBS, BDS'
@@ -1934,7 +1942,7 @@ class ExamsTaxonomyController {
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
-        'website', 'exam_popularity_rank',
+        'website', 'registration_link', 'exam_popularity_rank',
         'programs', 'Interests'
       ];
       const rows = [headers];
@@ -1995,6 +2003,7 @@ class ExamsTaxonomyController {
           (cutoff && cutoff.cutoff_st) || '',
           (cutoff && cutoff.target_rank_range) || '',
           exam.website || '',
+          exam.registration_link || '',
           exam.exam_popularity_rank != null && !Number.isNaN(Number(exam.exam_popularity_rank))
             ? String(exam.exam_popularity_rank)
             : '',
@@ -2287,6 +2296,11 @@ class ExamsTaxonomyController {
         const websiteRaw = getCell(row, 'website', 'Website') || getCellByKeyword(row, 'website');
         const websiteVal = websiteRaw ? websiteRaw.trim() : null;
 
+        const registrationRaw =
+          getCell(row, 'registration_link', 'Registration_Link', 'Registration Link') ||
+          getCellByKeyword(row, 'registration');
+        const registrationLinkVal = registrationRaw ? registrationRaw.trim() : null;
+
         const popRaw = getCell(row, 'exam_popularity_rank', 'Exam_Popularity_Rank', 'popularity_rank', 'Popularity_Rank');
         let examPopularityRank = null;
         if (popRaw !== '' && !Number.isNaN(parseInt(String(popRaw), 10))) {
@@ -2324,6 +2338,7 @@ class ExamsTaxonomyController {
             logo_file_name: logoFilename || null,
             number_of_papers: numberOfPapers,
             website: websiteVal,
+            registration_link: registrationLinkVal,
             documents_required: documentsRequired,
             counselling: counsellingText,
             exam_popularity_rank: examPopularityRank,

@@ -16,6 +16,7 @@ export interface Exam {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  registration_link?: string | null;
   /** Lower = more popular when sorting; null if unset */
   exam_popularity_rank?: number | null;
   created_at: string;
@@ -176,6 +177,7 @@ export async function createExam(data: {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  registration_link?: string | null;
   exam_popularity_rank?: number | null;
   examDates?: Partial<ExamDates>;
   eligibilityCriteria?: Partial<ExamEligibilityCriteria>;
@@ -213,6 +215,7 @@ export async function updateExam(
     counselling?: string | null;
     number_of_papers?: number;
     website?: string | null;
+    registration_link?: string | null;
     exam_popularity_rank?: number | null;
     examDates?: Partial<ExamDates>;
     eligibilityCriteria?: Partial<ExamEligibilityCriteria>;

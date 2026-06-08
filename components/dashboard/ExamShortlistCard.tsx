@@ -14,8 +14,9 @@ export type ExamShortlistCardProps = {
   isShortlisted: boolean;
   shortlistSaving: boolean;
   onShortlist: () => void;
-  onApply: () => void;
+  onApply?: () => void;
   onPrefetchDetail?: () => void;
+  onApplyMissingLink?: () => void;
 };
 
 export function ExamShortlistCard({
@@ -28,7 +29,13 @@ export function ExamShortlistCard({
   onShortlist,
   onApply,
   onPrefetchDetail,
+  onApplyMissingLink,
 }: ExamShortlistCardProps) {
+  const registrationUrl = exam.registration_link?.trim();
+  const applyHref = registrationUrl
+    ? (registrationUrl.startsWith("http") ? registrationUrl : `https://${registrationUrl}`)
+    : undefined;
+
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
       <ExamCardHeader exam={exam} name={name} />
@@ -61,7 +68,10 @@ export function ExamShortlistCard({
               variant="themeButton"
               size="sm"
               type="button"
-              onClick={onApply}
+              href={applyHref}
+              target={applyHref ? "_blank" : undefined}
+              rel={applyHref ? "noopener noreferrer" : undefined}
+              onClick={applyHref ? undefined : onApplyMissingLink ?? onApply}
               className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
             >
               Apply
