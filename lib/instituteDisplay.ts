@@ -32,6 +32,23 @@ function instituteDescriptionText(institute: DashboardInstituteDetail): string |
 }
 
 /** Card/list blurb from DB description or location fields only. */
+/** Stats line for exam-detail linked coaching cards. */
+export function instituteExamDetailStatsLine(
+  inst: Pick<
+    DashboardInstituteDetail,
+    "fee_type" | "fee_band" | "batch_category" | "course_cycle" | "parent_institute"
+  >
+): string | null {
+  const parts = [
+    inst.fee_type?.trim(),
+    inst.fee_band?.trim(),
+    inst.batch_category?.trim(),
+    inst.course_cycle?.trim(),
+    inst.parent_institute?.trim(),
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export function instituteCardOverviewText(
   inst: Pick<
     DashboardInstituteDetail,
@@ -128,6 +145,11 @@ export function buildInstituteDetailSections(
   pushItem(overview, "Contact", institute.contact_number);
   pushItem(overview, "Branches", institute.branches_number);
   pushItem(overview, "Student Strength", institute.student_strength);
+  pushItem(overview, "Fee type", institute.fee_type);
+  pushItem(overview, "Fee band", institute.fee_band);
+  pushItem(overview, "Batch category", institute.batch_category);
+  pushItem(overview, "Course cycle", institute.course_cycle);
+  pushItem(overview, "Parent institute", institute.parent_institute);
   pushItem(overview, "Demo Available", formatYesNo(institute.instituteDetails?.demo_available));
   pushItem(
     overview,

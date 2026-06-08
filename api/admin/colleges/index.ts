@@ -18,6 +18,11 @@ export interface College {
   parent_university?: string | null;
   nirf_ranking?: number | null;
   admission_timeline?: string | null;
+  abbreviation?: string | null;
+  program_count?: number | null;
+  placement_rate?: string | null;
+  program_fee?: string | null;
+  average_package?: string | null;
   created_at: string;
   updated_at: string;
 }

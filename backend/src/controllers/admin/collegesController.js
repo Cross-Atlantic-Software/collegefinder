@@ -58,6 +58,11 @@ async function buildCollegesBulkTemplateBuffer() {
     'college_type',
     'nirf_ranking',
     'admission_timeline',
+    'abbreviation',
+    'program_count',
+    'placement_rate',
+    'program_fee',
+    'average_package',
     'website',
     'logo_url',
     'logo_filename',
@@ -84,6 +89,11 @@ async function buildCollegesBulkTemplateBuffer() {
       'Central,State',
       '12',
       'Applications open Jan–Mar; counselling Apr–Jul',
+      'IITD',
+      '50',
+      '95%',
+      '₹2.5L per year',
+      '₹18 LPA avg',
       'https://www.iitd.ac.in',
       'https://example.com/logos/iit-delhi.png',
       'iit-delhi.png',
@@ -107,6 +117,11 @@ async function buildCollegesBulkTemplateBuffer() {
       'State',
       '85',
       'State counselling May–Aug',
+      'SCE',
+      '12',
+      '78%',
+      '₹1.2L per year',
+      '₹6 LPA avg',
       'https://www.sce.ac.in',
       'https://example.com/logos/state-college.png',
       'state-college.png',
@@ -412,6 +427,11 @@ class CollegesController {
         parent_university,
         nirf_ranking,
         admission_timeline,
+        abbreviation,
+        program_count,
+        placement_rate,
+        program_fee,
+        average_package,
         state,
         city,
         major_program_ids,
@@ -457,6 +477,17 @@ class CollegesController {
             : null,
         admission_timeline:
           admission_timeline != null ? String(admission_timeline).trim() || null : null,
+        abbreviation:
+          abbreviation != null ? String(abbreviation).trim() || null : null,
+        program_count:
+          program_count != null && program_count !== ''
+            ? parseInt(program_count, 10)
+            : null,
+        placement_rate:
+          placement_rate != null ? String(placement_rate).trim() || null : null,
+        program_fee: program_fee != null ? String(program_fee).trim() || null : null,
+        average_package:
+          average_package != null ? String(average_package).trim() || null : null,
         state: stateTrim || null,
         city: cityTrim || null
       });
@@ -539,6 +570,11 @@ class CollegesController {
         parent_university,
         nirf_ranking,
         admission_timeline,
+        abbreviation,
+        program_count,
+        placement_rate,
+        program_fee,
+        average_package,
         state,
         city,
         major_program_ids,
@@ -599,6 +635,28 @@ class CollegesController {
         admission_timeline:
           admission_timeline !== undefined
             ? (admission_timeline != null ? String(admission_timeline).trim() || null : null)
+            : undefined,
+        abbreviation:
+          abbreviation !== undefined
+            ? (abbreviation != null ? String(abbreviation).trim() || null : null)
+            : undefined,
+        program_count:
+          program_count !== undefined
+            ? (program_count != null && program_count !== ''
+              ? parseInt(program_count, 10)
+              : null)
+            : undefined,
+        placement_rate:
+          placement_rate !== undefined
+            ? (placement_rate != null ? String(placement_rate).trim() || null : null)
+            : undefined,
+        program_fee:
+          program_fee !== undefined
+            ? (program_fee != null ? String(program_fee).trim() || null : null)
+            : undefined,
+        average_package:
+          average_package !== undefined
+            ? (average_package != null ? String(average_package).trim() || null : null)
             : undefined,
       };
 
@@ -737,7 +795,9 @@ class CollegesController {
     try {
       const colleges = await College.findAll();
       const headers = [
-        'college_name', 'parent_university', 'state', 'city', 'college_location', 'college_type', 'nirf_ranking', 'admission_timeline', 'major_program_names', 'website',
+        'college_name', 'parent_university', 'state', 'city', 'college_location', 'college_type', 'nirf_ranking', 'admission_timeline',
+        'abbreviation', 'program_count', 'placement_rate', 'program_fee', 'average_package',
+        'major_program_names', 'website',
         'college_logo', 'logo_url', 'logo_filename', 'college_description',
         'program_names', 'branch_courses', 'program_descriptions', 'program_duration_units', 'program_durations',
         'intake_capacities', 'previous_year_cutoff', 'expected_cutoff',
@@ -884,6 +944,11 @@ class CollegesController {
           c.college_type || '',
           c.nirf_ranking != null ? String(c.nirf_ranking) : '',
           c.admission_timeline || '',
+          c.abbreviation || '',
+          c.program_count != null ? String(c.program_count) : '',
+          c.placement_rate || '',
+          c.program_fee || '',
+          c.average_package || '',
           majorProgramNamesStr,
           c.website || '',
           c.college_logo || '',

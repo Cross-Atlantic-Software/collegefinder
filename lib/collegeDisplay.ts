@@ -15,6 +15,19 @@ export function collegeOverviewText(c: DashboardCollege): string | null {
 }
 
 /** Card body blurb — description only (location shown separately on the card). */
+/** Stats line for exam-detail linked college cards. */
+export function collegeExamDetailStatsLine(c: DashboardCollege): string | null {
+  const parts = [
+    c.placement_rate?.trim(),
+    c.average_package?.trim(),
+    c.program_fee?.trim(),
+    c.program_count != null && Number.isFinite(Number(c.program_count))
+      ? `${c.program_count} programs`
+      : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export function collegeCardOverviewText(c: DashboardCollege): string {
   const desc = c.collegeDetails?.college_description?.trim();
   if (desc) return desc.length > 220 ? `${desc.slice(0, 217)}…` : desc;
@@ -153,12 +166,17 @@ export function buildProgramItems(p: DashboardCollegeProgram): Array<{ label: st
 export function buildCollegeOverviewItems(c: DashboardCollege): Array<{ label: string; value: string }> {
   const items: Array<{ label: string; value: string }> = [];
   pushItem(items, "College name", c.college_name);
+  pushItem(items, "Abbreviation", c.abbreviation);
   pushItem(items, "Location", c.college_location);
   pushItem(items, "City", c.city);
   pushItem(items, "State", c.state);
   pushItem(items, "Parent university", c.parent_university);
   pushNumber(items, "NIRF ranking", c.nirf_ranking != null ? Number(c.nirf_ranking) : null);
   pushItem(items, "Admission timeline", c.admission_timeline);
+  pushNumber(items, "Program count", c.program_count != null ? Number(c.program_count) : null);
+  pushItem(items, "Placement rate", c.placement_rate);
+  pushItem(items, "Program fee", c.program_fee);
+  pushItem(items, "Average package", c.average_package);
   const desc = c.collegeDetails?.college_description?.trim();
   if (desc) pushItem(items, "Description", desc);
   const updated = formatCollegeDate(c.updated_at);

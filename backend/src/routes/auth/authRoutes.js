@@ -352,6 +352,13 @@ router.get('/profile/dashboard-exams/exam/:examId', authenticate, ExamsControlle
 router.get('/profile/exams/:examId/colleges', authenticate, ProfileCollegesController.getCollegesForExam);
 
 /**
+ * @route   GET /api/auth/profile/exams/:examId/institutes
+ * @desc    Coaching institutes linked to this exam (institute_exams + institute_exam_specialization)
+ * @access  Private
+ */
+router.get('/profile/exams/:examId/institutes', authenticate, DashboardInstitutesController.getInstitutesForExam);
+
+/**
  * @route   GET /api/auth/profile/dashboard-exams
  * @desc    Stream-filtered exams + recommended + shortlisted IDs for dashboard tabs (legacy full payload)
  * @access  Private

@@ -12,6 +12,17 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   number_of_papers INTEGER NOT NULL DEFAULT 1,
   website VARCHAR(500),
   registration_link VARCHAR(500),
+  abbreviation VARCHAR(100),
+  category TEXT,
+  exam_frequency TEXT,
+  exam_pattern TEXT,
+  avg_applicant_2023 INTEGER,
+  avg_applicant_2024 INTEGER,
+  avg_applicant_2025 INTEGER,
+  avg_applicant_prev_three INTEGER,
+  eligibility TEXT,
+  qualified_candidate INTEGER,
+  success_rate TEXT,
   documents_required TEXT,
   counselling TEXT,
   generation_prompt TEXT,
@@ -40,6 +51,17 @@ BEGIN
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS number_of_papers INTEGER NOT NULL DEFAULT 1;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS website VARCHAR(500);
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS registration_link VARCHAR(500);
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS abbreviation VARCHAR(100);
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS category TEXT;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS exam_frequency TEXT;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS exam_pattern TEXT;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS avg_applicant_2023 INTEGER;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS avg_applicant_2024 INTEGER;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS avg_applicant_2025 INTEGER;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS avg_applicant_prev_three INTEGER;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS eligibility TEXT;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS qualified_candidate INTEGER;
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS success_rate TEXT;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS documents_required TEXT;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS counselling TEXT;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS generation_prompt TEXT;

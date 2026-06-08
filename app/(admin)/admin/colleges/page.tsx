@@ -86,6 +86,11 @@ export default function CollegesPage() {
     parent_university: '',
     nirf_ranking: '' as number | '',
     admission_timeline: '',
+    abbreviation: '',
+    program_count: '' as number | '',
+    placement_rate: '',
+    program_fee: '',
+    average_package: '',
     college_logo: '',
     logo_url: '',
     logo_filename: '',
@@ -267,6 +272,14 @@ export default function CollegesPage() {
             ? Number(formData.nirf_ranking)
             : null,
         admission_timeline: formData.admission_timeline.trim() || null,
+        abbreviation: formData.abbreviation.trim() || null,
+        program_count:
+          formData.program_count !== '' && formData.program_count != null
+            ? Number(formData.program_count)
+            : null,
+        placement_rate: formData.placement_rate.trim() || null,
+        program_fee: formData.program_fee.trim() || null,
+        average_package: formData.average_package.trim() || null,
         college_logo: formData.college_logo.trim() || null,
         logo_url: formData.logo_url.trim() || null,
         logo_filename: formData.logo_filename.trim() || null,
@@ -369,6 +382,11 @@ export default function CollegesPage() {
           parent_university: d.college.parent_university ?? '',
           nirf_ranking: d.college.nirf_ranking ?? '',
           admission_timeline: d.college.admission_timeline ?? '',
+          abbreviation: d.college.abbreviation ?? '',
+          program_count: d.college.program_count ?? '',
+          placement_rate: d.college.placement_rate ?? '',
+          program_fee: d.college.program_fee ?? '',
+          average_package: d.college.average_package ?? '',
           college_logo: d.college.college_logo ?? '',
           logo_url: d.college.logo_url ?? '',
           logo_filename: d.college.logo_filename ?? '',
@@ -447,6 +465,11 @@ export default function CollegesPage() {
       parent_university: '',
       nirf_ranking: '' as number | '',
       admission_timeline: '',
+      abbreviation: '',
+      program_count: '' as number | '',
+      placement_rate: '',
+      program_fee: '',
+      average_package: '',
       college_logo: '',
       logo_url: '',
       logo_filename: '',
@@ -851,6 +874,16 @@ export default function CollegesPage() {
                 <input type="number" min={1} value={formData.nirf_ranking} onChange={(e) => setFormData({ ...formData, nirf_ranking: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} placeholder="e.g. 12" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
                 <label className="block text-xs font-medium text-slate-700 mb-1">Admission timeline</label>
                 <textarea value={formData.admission_timeline} onChange={(e) => setFormData({ ...formData, admission_timeline: e.target.value })} placeholder="e.g. Applications open Jan–Mar; counselling Apr–Jul" rows={2} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Abbreviation</label>
+                <input type="text" value={formData.abbreviation} onChange={(e) => setFormData({ ...formData, abbreviation: e.target.value })} placeholder="e.g. IITD, SCE" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Program count</label>
+                <input type="number" min={0} step={1} value={formData.program_count} onChange={(e) => setFormData({ ...formData, program_count: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} placeholder="e.g. 12" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Placement rate</label>
+                <input type="text" value={formData.placement_rate} onChange={(e) => setFormData({ ...formData, placement_rate: e.target.value })} placeholder="e.g. 95%" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Program fee</label>
+                <input type="text" value={formData.program_fee} onChange={(e) => setFormData({ ...formData, program_fee: e.target.value })} placeholder="e.g. ₹2.5L per year" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
+                <label className="block text-xs font-medium text-slate-700 mb-1 mt-3">Average package</label>
+                <input type="text" value={formData.average_package} onChange={(e) => setFormData({ ...formData, average_package: e.target.value })} placeholder="e.g. ₹18 LPA avg" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
@@ -1196,6 +1229,21 @@ export default function CollegesPage() {
                   )}
                   {viewingData.admission_timeline && (
                     <p className="text-sm text-slate-600 whitespace-pre-wrap"><strong>Admission timeline:</strong> {viewingData.admission_timeline}</p>
+                  )}
+                  {viewingData.abbreviation && (
+                    <p className="text-sm text-slate-600"><strong>Abbreviation:</strong> {viewingData.abbreviation}</p>
+                  )}
+                  {viewingData.program_count != null && (
+                    <p className="text-sm text-slate-600"><strong>Program count:</strong> {viewingData.program_count}</p>
+                  )}
+                  {viewingData.placement_rate && (
+                    <p className="text-sm text-slate-600"><strong>Placement rate:</strong> {viewingData.placement_rate}</p>
+                  )}
+                  {viewingData.program_fee && (
+                    <p className="text-sm text-slate-600"><strong>Program fee:</strong> {viewingData.program_fee}</p>
+                  )}
+                  {viewingData.average_package && (
+                    <p className="text-sm text-slate-600"><strong>Average package:</strong> {viewingData.average_package}</p>
                   )}
                   {viewingData.website && <p className="text-sm text-slate-600"><strong>Website:</strong> <a href={viewingData.website} target="_blank" rel="noopener noreferrer" className="text-[#341050] hover:underline">{viewingData.website}</a></p>}
                   {viewingData.college_logo && (

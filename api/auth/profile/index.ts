@@ -461,6 +461,11 @@ export interface DashboardCollege {
   parent_university?: string | null;
   nirf_ranking?: number | null;
   admission_timeline?: string | null;
+  abbreviation?: string | null;
+  program_count?: number | null;
+  placement_rate?: string | null;
+  program_fee?: string | null;
+  average_package?: string | null;
   linked_exam_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -485,6 +490,19 @@ export async function getCollegesForExam(
   totalCount: number;
 }>> {
   return apiRequest(`/auth/profile/exams/${examId}/colleges`, {
+    method: 'GET',
+  });
+}
+
+/** Coaching institutes linked to this exam (institute_exams + institute_exam_specialization). */
+export async function getInstitutesForExam(
+  examId: number
+): Promise<ApiResponse<{
+  examId: number;
+  institutes: DashboardInstitute[];
+  totalCount: number;
+}>> {
+  return apiRequest(`/auth/profile/exams/${examId}/institutes`, {
     method: 'GET',
   });
 }
@@ -599,6 +617,11 @@ export interface DashboardInstitute {
   linkedExams?: DashboardLinkedExam[];
   branches_number?: string | null;
   student_strength?: string | null;
+  fee_type?: string | null;
+  fee_band?: string | null;
+  batch_category?: string | null;
+  course_cycle?: string | null;
+  parent_institute?: string | null;
   instituteDetails?: Pick<
     DashboardInstituteDetails,
     'demo_available' | 'scholarship_available'

@@ -88,6 +88,19 @@ export interface Exam {
   number_of_papers?: number;
   website?: string | null;
   registration_link?: string | null;
+  abbreviation?: string | null;
+  category?: string | null;
+  exam_frequency?: string | null;
+  /** Free-text exam pattern overview on main exam row (distinct from examPattern relation). */
+  exam_pattern?: string | null;
+  avg_applicant_2023?: number | null;
+  avg_applicant_2024?: number | null;
+  avg_applicant_2025?: number | null;
+  avg_applicant_prev_three?: number | null;
+  /** Free-text eligibility summary on main exam row (distinct from eligibilityCriteria relation). */
+  eligibility?: string | null;
+  qualified_candidate?: number | null;
+  success_rate?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
   difficulty_level?: string | null;

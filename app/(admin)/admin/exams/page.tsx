@@ -29,7 +29,7 @@ import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { getAllSubjects, type Subject } from '@/api/admin/subjects';
 import { getAllPrograms, type Program } from '@/api/admin/programs';
 import { getAllCareerGoalsAdmin, type CareerGoalAdmin } from '@/api';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage, FiGlobe, FiCheckSquare, FiLayout } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiCalendar, FiUser, FiFileText, FiBarChart, FiTarget, FiEye, FiDownload, FiFile, FiImage, FiGlobe, FiCheckSquare, FiLayout, FiTrendingUp } from 'react-icons/fi';
 import { ConfirmationModal, useToast, MultiSelect, Dropdown } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -51,6 +51,14 @@ function formHoursToStoredDuration(hoursStr: string): number | null {
   const h = parseFloat(t);
   if (Number.isNaN(h) || h < 0) return null;
   return Math.round(h);
+}
+
+function parseOptionalWholeNumber(raw: string, label: string): number | null | 'invalid' {
+  const t = raw.trim();
+  if (t === '') return null;
+  const n = parseInt(t, 10);
+  if (Number.isNaN(n)) return 'invalid';
+  return n;
 }
 
 export default function ExamsPage() {
@@ -85,10 +93,11 @@ export default function ExamsPage() {
     totalPages: number;
   } | null>(null);
   const [totalDbCount, setTotalDbCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'statistics' | 'contactDetails' | 'careerGoals'>('basic');
   const [formData, setFormData] = useState({
     name: '',
     code: '',
+    abbreviation: '',
     description: '',
     exam_logo: '',
     exam_type: '',
@@ -100,6 +109,16 @@ export default function ExamsPage() {
     website: '',
     registration_link: '',
     exam_popularity_rank: '',
+    category: '',
+    exam_frequency: '',
+    exam_pattern: '',
+    avg_applicant_2023: '',
+    avg_applicant_2024: '',
+    avg_applicant_2025: '',
+    avg_applicant_prev_three: '',
+    eligibility: '',
+    qualified_candidate: '',
+    success_rate: '',
     examDates: {
       application_start_date: '',
       application_close_date: '',
@@ -322,9 +341,28 @@ export default function ExamsPage() {
         exam_popularity_rank = n;
       }
 
+      const numericFields: { key: keyof typeof formData; label: string }[] = [
+        { key: 'avg_applicant_2023', label: 'Avg applicants (2023)' },
+        { key: 'avg_applicant_2024', label: 'Avg applicants (2024)' },
+        { key: 'avg_applicant_2025', label: 'Avg applicants (2025)' },
+        { key: 'avg_applicant_prev_three', label: 'Avg applicants (prev 3 years)' },
+        { key: 'qualified_candidate', label: 'Qualified candidates' },
+      ];
+      const parsedNumbers: Record<string, number | null> = {};
+      for (const { key, label } of numericFields) {
+        const parsed = parseOptionalWholeNumber(String(formData[key] ?? ''), label);
+        if (parsed === 'invalid') {
+          showError(`${label} must be a whole number or left empty`);
+          setIsSaving(false);
+          return;
+        }
+        parsedNumbers[key] = parsed;
+      }
+
       const submitData = {
         name: formData.name,
         code: formData.code?.trim() ? formData.code.trim() : null,
+        abbreviation: formData.abbreviation?.trim() || null,
         description: formData.description || undefined,
         exam_logo: formData.exam_logo || null,
         exam_type: formData.exam_type || null,
@@ -335,6 +373,16 @@ export default function ExamsPage() {
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         website: formData.website || null,
         registration_link: formData.registration_link || null,
+        category: formData.category?.trim() || null,
+        exam_frequency: formData.exam_frequency?.trim() || null,
+        exam_pattern: formData.exam_pattern?.trim() || null,
+        avg_applicant_2023: parsedNumbers.avg_applicant_2023,
+        avg_applicant_2024: parsedNumbers.avg_applicant_2024,
+        avg_applicant_2025: parsedNumbers.avg_applicant_2025,
+        avg_applicant_prev_three: parsedNumbers.avg_applicant_prev_three,
+        eligibility: formData.eligibility?.trim() || null,
+        qualified_candidate: parsedNumbers.qualified_candidate,
+        success_rate: formData.success_rate?.trim() || null,
         exam_popularity_rank,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
@@ -448,6 +496,7 @@ export default function ExamsPage() {
         const nextForm: typeof formData = {
           name: e?.name ?? '',
           code: e?.code ?? '',
+          abbreviation: e?.abbreviation ?? '',
           description: e?.description ?? '',
           exam_logo: e?.exam_logo ?? '',
           exam_type: e?.exam_type ?? '',
@@ -462,6 +511,31 @@ export default function ExamsPage() {
             e?.exam_popularity_rank != null && !Number.isNaN(Number(e.exam_popularity_rank))
               ? String(e.exam_popularity_rank)
               : '',
+          category: e?.category ?? '',
+          exam_frequency: e?.exam_frequency ?? '',
+          exam_pattern: e?.exam_pattern ?? '',
+          avg_applicant_2023:
+            e?.avg_applicant_2023 != null && !Number.isNaN(Number(e.avg_applicant_2023))
+              ? String(e.avg_applicant_2023)
+              : '',
+          avg_applicant_2024:
+            e?.avg_applicant_2024 != null && !Number.isNaN(Number(e.avg_applicant_2024))
+              ? String(e.avg_applicant_2024)
+              : '',
+          avg_applicant_2025:
+            e?.avg_applicant_2025 != null && !Number.isNaN(Number(e.avg_applicant_2025))
+              ? String(e.avg_applicant_2025)
+              : '',
+          avg_applicant_prev_three:
+            e?.avg_applicant_prev_three != null && !Number.isNaN(Number(e.avg_applicant_prev_three))
+              ? String(e.avg_applicant_prev_three)
+              : '',
+          eligibility: e?.eligibility ?? '',
+          qualified_candidate:
+            e?.qualified_candidate != null && !Number.isNaN(Number(e.qualified_candidate))
+              ? String(e.qualified_candidate)
+              : '',
+          success_rate: e?.success_rate ?? '',
           examDates: {
             application_start_date: toDateInputValue(data.examDates?.application_start_date),
             application_close_date: toDateInputValue(data.examDates?.application_close_date),
@@ -553,6 +627,7 @@ export default function ExamsPage() {
     setFormData({
       name: '',
       code: '',
+      abbreviation: '',
       description: '',
       exam_logo: '',
       exam_type: '',
@@ -564,6 +639,16 @@ export default function ExamsPage() {
       website: '',
       registration_link: '',
       exam_popularity_rank: '',
+      category: '',
+      exam_frequency: '',
+      exam_pattern: '',
+      avg_applicant_2023: '',
+      avg_applicant_2024: '',
+      avg_applicant_2025: '',
+      avg_applicant_prev_three: '',
+      eligibility: '',
+      qualified_candidate: '',
+      success_rate: '',
       examDates: {
         application_start_date: '',
         application_close_date: '',
@@ -743,13 +828,14 @@ export default function ExamsPage() {
     }
   };
 
-  type ExamFormTabId = 'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'contactDetails' | 'careerGoals';
+  type ExamFormTabId = 'basic' | 'examDetails' | 'criteria' | 'pattern' | 'cutoff' | 'statistics' | 'contactDetails' | 'careerGoals';
   const tabs: { id: ExamFormTabId; label: string; icon: typeof FiFileText }[] = [
     { id: 'basic', label: 'Basic Info', icon: FiFileText },
     { id: 'examDetails', label: 'Exam Details', icon: FiCalendar },
     { id: 'criteria', label: 'Criteria', icon: FiCheckSquare },
     { id: 'pattern', label: 'Pattern', icon: FiLayout },
     { id: 'cutoff', label: 'Rank & Cutoff', icon: FiBarChart },
+    { id: 'statistics', label: 'Statistics', icon: FiTrendingUp },
     { id: 'contactDetails', label: 'Contact Details', icon: FiGlobe },
     { id: 'careerGoals', label: 'Interests', icon: FiTarget },
   ];
@@ -1051,6 +1137,17 @@ export default function ExamsPage() {
                         onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
                         placeholder="e.g., JEE_MAIN, NEET"
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Abbreviation</label>
+                      <input
+                        type="text"
+                        value={formData.abbreviation}
+                        onChange={(e) => setFormData({ ...formData, abbreviation: e.target.value })}
+                        placeholder="e.g., JEE, NEET"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
                       />
                     </div>
 
@@ -1566,6 +1663,124 @@ export default function ExamsPage() {
                   </>
                 )}
 
+                {/* Statistics Tab */}
+                {activeTab === 'statistics' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Category</label>
+                      <input
+                        type="text"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        placeholder="e.g., Engineering, Medical"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Exam frequency</label>
+                      <input
+                        type="text"
+                        value={formData.exam_frequency}
+                        onChange={(e) => setFormData({ ...formData, exam_frequency: e.target.value })}
+                        placeholder="e.g., Once a year, Twice a year"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Exam pattern (overview)</label>
+                      <textarea
+                        value={formData.exam_pattern}
+                        onChange={(e) => setFormData({ ...formData, exam_pattern: e.target.value })}
+                        placeholder="Free-text exam pattern summary"
+                        rows={3}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Eligibility (summary)</label>
+                      <textarea
+                        value={formData.eligibility}
+                        onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
+                        placeholder="Free-text eligibility summary"
+                        rows={3}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Avg applicants (2023)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={formData.avg_applicant_2023}
+                          onChange={(e) => setFormData({ ...formData, avg_applicant_2023: e.target.value })}
+                          placeholder="e.g., 1200000"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Avg applicants (2024)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={formData.avg_applicant_2024}
+                          onChange={(e) => setFormData({ ...formData, avg_applicant_2024: e.target.value })}
+                          placeholder="e.g., 1250000"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Avg applicants (2025)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={formData.avg_applicant_2025}
+                          onChange={(e) => setFormData({ ...formData, avg_applicant_2025: e.target.value })}
+                          placeholder="e.g., 1300000"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Avg applicants (prev 3 years)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={formData.avg_applicant_prev_three}
+                          onChange={(e) => setFormData({ ...formData, avg_applicant_prev_three: e.target.value })}
+                          placeholder="e.g., 1250000"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Qualified candidates</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={formData.qualified_candidate}
+                          onChange={(e) => setFormData({ ...formData, qualified_candidate: e.target.value })}
+                          placeholder="e.g., 250000"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Success rate</label>
+                        <input
+                          type="text"
+                          value={formData.success_rate}
+                          onChange={(e) => setFormData({ ...formData, success_rate: e.target.value })}
+                          placeholder="e.g., 21%"
+                          className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {/* Contact Details Tab */}
                 {activeTab === 'contactDetails' && (
                   <>
@@ -1704,6 +1919,52 @@ export default function ExamsPage() {
                 <label className="block text-xs font-medium text-slate-700 mb-1">Code</label>
                 <p className="text-sm text-slate-900 font-mono">{viewingExamData.exam.code || '—'}</p>
               </div>
+              {viewingExamData.exam.abbreviation && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Abbreviation</label>
+                  <p className="text-sm text-slate-900">{viewingExamData.exam.abbreviation}</p>
+                </div>
+              )}
+              {(viewingExamData.exam.category ||
+                viewingExamData.exam.exam_frequency ||
+                viewingExamData.exam.exam_pattern ||
+                viewingExamData.exam.eligibility ||
+                viewingExamData.exam.avg_applicant_2023 != null ||
+                viewingExamData.exam.avg_applicant_2024 != null ||
+                viewingExamData.exam.avg_applicant_2025 != null ||
+                viewingExamData.exam.avg_applicant_prev_three != null ||
+                viewingExamData.exam.qualified_candidate != null ||
+                viewingExamData.exam.success_rate) && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Statistics</label>
+                  <div className="space-y-1 text-sm text-slate-900">
+                    {viewingExamData.exam.category && <p>Category: {viewingExamData.exam.category}</p>}
+                    {viewingExamData.exam.exam_frequency && <p>Exam frequency: {viewingExamData.exam.exam_frequency}</p>}
+                    {viewingExamData.exam.exam_pattern && (
+                      <p className="whitespace-pre-wrap">Exam pattern: {viewingExamData.exam.exam_pattern}</p>
+                    )}
+                    {viewingExamData.exam.eligibility && (
+                      <p className="whitespace-pre-wrap">Eligibility: {viewingExamData.exam.eligibility}</p>
+                    )}
+                    {viewingExamData.exam.avg_applicant_2023 != null && (
+                      <p>Avg applicants (2023): {viewingExamData.exam.avg_applicant_2023}</p>
+                    )}
+                    {viewingExamData.exam.avg_applicant_2024 != null && (
+                      <p>Avg applicants (2024): {viewingExamData.exam.avg_applicant_2024}</p>
+                    )}
+                    {viewingExamData.exam.avg_applicant_2025 != null && (
+                      <p>Avg applicants (2025): {viewingExamData.exam.avg_applicant_2025}</p>
+                    )}
+                    {viewingExamData.exam.avg_applicant_prev_three != null && (
+                      <p>Avg applicants (prev 3 years): {viewingExamData.exam.avg_applicant_prev_three}</p>
+                    )}
+                    {viewingExamData.exam.qualified_candidate != null && (
+                      <p>Qualified candidates: {viewingExamData.exam.qualified_candidate}</p>
+                    )}
+                    {viewingExamData.exam.success_rate && <p>Success rate: {viewingExamData.exam.success_rate}</p>}
+                  </div>
+                </div>
+              )}
               {(viewingExamData.exam.documents_required || viewingExamData.exam.counselling) && (
                 <div className="space-y-2 text-sm text-slate-900">
                   {viewingExamData.exam.documents_required && (

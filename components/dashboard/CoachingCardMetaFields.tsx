@@ -61,6 +61,12 @@ export function CoachingCardMetaFields({
   if (institute.student_strength?.trim()) {
     infoFields.push({ label: "Student Strength", value: institute.student_strength.trim() });
   }
+  if (institute.fee_band?.trim()) {
+    infoFields.push({ label: "Fee band", value: institute.fee_band.trim() });
+  }
+  if (institute.batch_category?.trim()) {
+    infoFields.push({ label: "Batch category", value: institute.batch_category.trim() });
+  }
 
   const availabilityTicks: Array<{ label: string; tooltip: string }> = [];
   if (demoAvailable) {

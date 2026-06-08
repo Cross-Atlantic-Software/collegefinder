@@ -321,6 +321,11 @@ class InstitutesController {
         city,
         branches_number,
         student_strength,
+        fee_type,
+        fee_band,
+        batch_category,
+        course_cycle,
+        parent_institute,
       } = req.body;
 
       if (!institute_name || !institute_name.trim()) {
@@ -356,6 +361,11 @@ class InstitutesController {
         referral_contact_email: referral_contact_email != null ? String(referral_contact_email).trim() || null : null,
         branches_number: toInstituteMetricText(branches_number),
         student_strength: toInstituteMetricText(student_strength),
+        fee_type: fee_type != null ? String(fee_type).trim() || null : null,
+        fee_band: fee_band != null ? String(fee_band).trim() || null : null,
+        batch_category: batch_category != null ? String(batch_category).trim() || null : null,
+        course_cycle: course_cycle != null ? String(course_cycle).trim() || null : null,
+        parent_institute: parent_institute != null ? String(parent_institute).trim() || null : null,
         state: stateTrim,
         city: cityTrim,
       });
@@ -440,6 +450,11 @@ class InstitutesController {
         city,
         branches_number,
         student_strength,
+        fee_type,
+        fee_band,
+        batch_category,
+        course_cycle,
+        parent_institute,
       } = req.body;
 
       if (institute_name && institute_name.trim() !== existing.institute_name) {
@@ -473,6 +488,26 @@ class InstitutesController {
           branches_number !== undefined ? toInstituteMetricText(branches_number) : undefined,
         student_strength:
           student_strength !== undefined ? toInstituteMetricText(student_strength) : undefined,
+        fee_type:
+          fee_type !== undefined
+            ? (fee_type != null ? String(fee_type).trim() || null : null)
+            : undefined,
+        fee_band:
+          fee_band !== undefined
+            ? (fee_band != null ? String(fee_band).trim() || null : null)
+            : undefined,
+        batch_category:
+          batch_category !== undefined
+            ? (batch_category != null ? String(batch_category).trim() || null : null)
+            : undefined,
+        course_cycle:
+          course_cycle !== undefined
+            ? (course_cycle != null ? String(course_cycle).trim() || null : null)
+            : undefined,
+        parent_institute:
+          parent_institute !== undefined
+            ? (parent_institute != null ? String(parent_institute).trim() || null : null)
+            : undefined,
       };
 
       if (hasStateKey || hasCityKey) {
@@ -596,6 +631,11 @@ class InstitutesController {
         'contact_number',
         'branches_number',
         'student_strength',
+        'fee_type',
+        'fee_band',
+        'batch_category',
+        'course_cycle',
+        'parent_institute',
         'institute_description',
         'demo_available',
         'scholarship_available',
@@ -624,6 +664,11 @@ class InstitutesController {
           '9876543210',
           '25',
           '5000+',
+          'Annual',
+          '₹1.5L–₹2.5L',
+          'JEE Advanced',
+          '1-year intensive',
+          'Allen Career Institute',
           'Premier coaching for JEE and NEET.',
           'TRUE',
           'TRUE',
@@ -642,18 +687,9 @@ class InstitutesController {
           'Kota',
           'Allen, Kota',
           'Rajasthan',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
+          '', '', '', '', '', '', '', '',
+          '', '', '', '', '',
+          '', '', '', '', '', '',
           'NEET Foundation',
           'Class 11-12',
           '12',
@@ -673,6 +709,11 @@ class InstitutesController {
           '',
           '',
           '',
+          'Annual',
+          '₹50k–₹1L',
+          'Foundation',
+          '2-year program',
+          'Unacademy',
           'Online learning platform.',
           'TRUE',
           'FALSE',
@@ -768,6 +809,7 @@ class InstitutesController {
       const institutes = await Institute.findAll();
       const headers = [
         'institute_name', 'state', 'city', 'institute_location', 'google_maps_link', 'type', 'logo_filename', 'website', 'contact_number', 'branches_number', 'student_strength',
+        'fee_type', 'fee_band', 'batch_category', 'course_cycle', 'parent_institute',
         'institute_description', 'demo_available', 'scholarship_available', 'ranking_score', 'success_rate', 'student_rating',
         'course_names'
       ];
@@ -812,6 +854,11 @@ class InstitutesController {
           inst.contact_number || '',
           metricTextForExport(inst.branches_number),
           metricTextForExport(inst.student_strength),
+          inst.fee_type || '',
+          inst.fee_band || '',
+          inst.batch_category || '',
+          inst.course_cycle || '',
+          inst.parent_institute || '',
           (detail.institute_description != null ? detail.institute_description : '') || '',
           (detail.demo_available === true || detail.demo_available === 't') ? 'TRUE' : 'FALSE',
           (detail.scholarship_available === true || detail.scholarship_available === 't') ? 'TRUE' : 'FALSE',
@@ -998,6 +1045,11 @@ class InstitutesController {
         const contactNumber = getCell(row, 'contact_number', 'contact_Number') || null;
         const branchesNumberRaw = getCell(row, 'branches_number', 'branches_Number', 'branches number');
         const studentStrengthRaw = getCell(row, 'student_strength', 'student_Strength', 'student strength');
+        const feeTypeVal = getCell(row, 'fee_type', 'Fee_Type', 'Fee Type') || null;
+        const feeBandVal = getCell(row, 'fee_band', 'Fee_Band', 'Fee Band') || null;
+        const batchCategoryVal = getCell(row, 'batch_category', 'Batch_Category', 'Batch Category') || null;
+        const courseCycleVal = getCell(row, 'course_cycle', 'Course_Cycle', 'Course Cycle') || null;
+        const parentInstituteVal = getCell(row, 'parent_institute', 'Parent_Institute', 'Parent Institute') || null;
         const description = getCell(row, 'institute_description', 'institute_Description') || null;
         const demoAvailable = parseBool(row.demo_available, true);
         const scholarshipAvailable = parseBool(row.scholarship_available, false);
@@ -1032,6 +1084,11 @@ class InstitutesController {
             contact_number: contactNumber,
             branches_number: toInstituteMetricText(branchesNumberRaw),
             student_strength: toInstituteMetricText(studentStrengthRaw),
+            fee_type: feeTypeVal,
+            fee_band: feeBandVal,
+            batch_category: batchCategoryVal,
+            course_cycle: courseCycleVal,
+            parent_institute: parentInstituteVal,
             state: stateTrim || null,
             city: cityTrim || null,
           });

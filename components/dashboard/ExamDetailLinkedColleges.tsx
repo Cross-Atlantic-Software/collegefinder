@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { DashboardCollege } from "@/api/auth/profile";
 import { Button } from "@/components/shared";
 import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
-import { collegeCardSubtitle, collegeLocationLine, collegeOverviewText } from "@/lib/collegeDisplay";
+import { collegeCardSubtitle, collegeLocationLine, collegeOverviewText, collegeExamDetailStatsLine } from "@/lib/collegeDisplay";
 import { slugifyCollegeName } from "@/lib/collegeSlug";
 
 const LOCAL_COLLEGE_IMAGES = [
@@ -54,6 +54,11 @@ function CollegeCard({ college }: { college: DashboardCollege }) {
         <p className="line-clamp-1 text-[11px] text-slate-600 dark:text-slate-400">
           {collegeLocationLine(college) || "Location not listed"}
         </p>
+        {collegeExamDetailStatsLine(college) ? (
+          <p className="line-clamp-2 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+            {collegeExamDetailStatsLine(college)}
+          </p>
+        ) : null}
         {collegeOverviewText(college) ? (
           <p className="line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
             {collegeOverviewText(college)}

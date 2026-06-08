@@ -180,10 +180,22 @@ class College {
       parent_university,
       nirf_ranking,
       admission_timeline,
+      abbreviation,
+      program_count,
+      placement_rate,
+      program_fee,
+      average_package,
     } = data;
+    const parseOptionalInt = (val) => {
+      if (val == null || val === '') return null;
+      const n = parseInt(val, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
     const result = await db.query(
-      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, logo_filename, website, state, city, parent_university, nirf_ranking, admission_timeline)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      `INSERT INTO colleges (college_name, college_location, college_type, college_logo, logo_url, logo_filename, website, state, city, parent_university, nirf_ranking, admission_timeline, abbreviation, program_count, placement_rate, program_fee, average_package)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
       [
         college_name,
         college_location || null,
@@ -197,6 +209,11 @@ class College {
         parent_university != null ? String(parent_university).trim() || null : null,
         nirf_ranking != null && nirf_ranking !== '' ? parseInt(nirf_ranking, 10) : null,
         admission_timeline != null ? String(admission_timeline).trim() || null : null,
+        trimText(abbreviation),
+        parseOptionalInt(program_count),
+        trimText(placement_rate),
+        trimText(program_fee),
+        trimText(average_package),
       ]
     );
     return result.rows[0];
@@ -216,10 +233,22 @@ class College {
       parent_university,
       nirf_ranking,
       admission_timeline,
+      abbreviation,
+      program_count,
+      placement_rate,
+      program_fee,
+      average_package,
     } = data;
     const updates = [];
     const values = [];
     let paramCount = 1;
+    const parseOptionalInt = (val) => {
+      if (val == null || val === '') return null;
+      const n = parseInt(val, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
     if (college_name !== undefined) {
       updates.push(`college_name = $${paramCount++}`);
       values.push(college_name);
@@ -273,6 +302,26 @@ class College {
       values.push(
         admission_timeline != null ? String(admission_timeline).trim() || null : null
       );
+    }
+    if (abbreviation !== undefined) {
+      updates.push(`abbreviation = $${paramCount++}`);
+      values.push(trimText(abbreviation));
+    }
+    if (program_count !== undefined) {
+      updates.push(`program_count = $${paramCount++}`);
+      values.push(parseOptionalInt(program_count));
+    }
+    if (placement_rate !== undefined) {
+      updates.push(`placement_rate = $${paramCount++}`);
+      values.push(trimText(placement_rate));
+    }
+    if (program_fee !== undefined) {
+      updates.push(`program_fee = $${paramCount++}`);
+      values.push(trimText(program_fee));
+    }
+    if (average_package !== undefined) {
+      updates.push(`average_package = $${paramCount++}`);
+      values.push(trimText(average_package));
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

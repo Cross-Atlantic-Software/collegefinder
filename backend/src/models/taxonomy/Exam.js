@@ -196,6 +196,17 @@ class Exam {
       number_of_papers,
       website,
       registration_link,
+      abbreviation,
+      category,
+      exam_frequency,
+      exam_pattern,
+      avg_applicant_2023,
+      avg_applicant_2024,
+      avg_applicant_2025,
+      avg_applicant_prev_three,
+      eligibility,
+      qualified_candidate,
+      success_rate,
       documents_required,
       counselling,
       exam_popularity_rank,
@@ -207,9 +218,16 @@ class Exam {
       exam_popularity_rank != null && exam_popularity_rank !== '' && !Number.isNaN(parseInt(exam_popularity_rank, 10))
         ? parseInt(exam_popularity_rank, 10)
         : null;
+    const parseOptionalInt = (val) => {
+      if (val == null || val === '') return null;
+      const n = parseInt(val, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
     const result = await db.query(
-      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, registration_link, documents_required, counselling, exam_popularity_rank, difficulty_level)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, registration_link, abbreviation, category, exam_frequency, exam_pattern, avg_applicant_2023, avg_applicant_2024, avg_applicant_2025, avg_applicant_prev_three, eligibility, qualified_candidate, success_rate, documents_required, counselling, exam_popularity_rank, difficulty_level)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *`,
       [
         name,
         codeVal,
@@ -221,6 +239,17 @@ class Exam {
         papers,
         website || null,
         registration_link || null,
+        trimText(abbreviation),
+        trimText(category),
+        trimText(exam_frequency),
+        trimText(exam_pattern),
+        parseOptionalInt(avg_applicant_2023),
+        parseOptionalInt(avg_applicant_2024),
+        parseOptionalInt(avg_applicant_2025),
+        parseOptionalInt(avg_applicant_prev_three),
+        trimText(eligibility),
+        parseOptionalInt(qualified_candidate),
+        trimText(success_rate),
         documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null,
         counselling != null && String(counselling).trim() ? String(counselling).trim() : null,
         rankVal,
@@ -245,6 +274,17 @@ class Exam {
       number_of_papers,
       website,
       registration_link,
+      abbreviation,
+      category,
+      exam_frequency,
+      exam_pattern,
+      avg_applicant_2023,
+      avg_applicant_2024,
+      avg_applicant_2025,
+      avg_applicant_prev_three,
+      eligibility,
+      qualified_candidate,
+      success_rate,
       documents_required,
       counselling,
       exam_popularity_rank,
@@ -254,6 +294,13 @@ class Exam {
     const updates = [];
     const values = [];
     let paramCount = 1;
+    const parseOptionalInt = (val) => {
+      if (val == null || val === '') return null;
+      const n = parseInt(val, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    const trimText = (val) =>
+      val != null && String(val).trim() ? String(val).trim() : null;
 
     if (name !== undefined) {
       updates.push(`name = $${paramCount++}`);
@@ -296,6 +343,50 @@ class Exam {
     if (registration_link !== undefined) {
       updates.push(`registration_link = $${paramCount++}`);
       values.push(registration_link || null);
+    }
+    if (abbreviation !== undefined) {
+      updates.push(`abbreviation = $${paramCount++}`);
+      values.push(trimText(abbreviation));
+    }
+    if (category !== undefined) {
+      updates.push(`category = $${paramCount++}`);
+      values.push(trimText(category));
+    }
+    if (exam_frequency !== undefined) {
+      updates.push(`exam_frequency = $${paramCount++}`);
+      values.push(trimText(exam_frequency));
+    }
+    if (exam_pattern !== undefined) {
+      updates.push(`exam_pattern = $${paramCount++}`);
+      values.push(trimText(exam_pattern));
+    }
+    if (avg_applicant_2023 !== undefined) {
+      updates.push(`avg_applicant_2023 = $${paramCount++}`);
+      values.push(parseOptionalInt(avg_applicant_2023));
+    }
+    if (avg_applicant_2024 !== undefined) {
+      updates.push(`avg_applicant_2024 = $${paramCount++}`);
+      values.push(parseOptionalInt(avg_applicant_2024));
+    }
+    if (avg_applicant_2025 !== undefined) {
+      updates.push(`avg_applicant_2025 = $${paramCount++}`);
+      values.push(parseOptionalInt(avg_applicant_2025));
+    }
+    if (avg_applicant_prev_three !== undefined) {
+      updates.push(`avg_applicant_prev_three = $${paramCount++}`);
+      values.push(parseOptionalInt(avg_applicant_prev_three));
+    }
+    if (eligibility !== undefined) {
+      updates.push(`eligibility = $${paramCount++}`);
+      values.push(trimText(eligibility));
+    }
+    if (qualified_candidate !== undefined) {
+      updates.push(`qualified_candidate = $${paramCount++}`);
+      values.push(parseOptionalInt(qualified_candidate));
+    }
+    if (success_rate !== undefined) {
+      updates.push(`success_rate = $${paramCount++}`);
+      values.push(trimText(success_rate));
     }
     if (documents_required !== undefined) {
       const v = documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null;
