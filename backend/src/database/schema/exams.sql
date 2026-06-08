@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   logo_file_name VARCHAR(255),
   number_of_papers INTEGER NOT NULL DEFAULT 1,
   website VARCHAR(500),
+  registration_link VARCHAR(500),
   documents_required TEXT,
   counselling TEXT,
   generation_prompt TEXT,
@@ -38,6 +39,7 @@ BEGIN
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS logo_file_name VARCHAR(255);
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS number_of_papers INTEGER NOT NULL DEFAULT 1;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS website VARCHAR(500);
+    ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS registration_link VARCHAR(500);
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS documents_required TEXT;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS counselling TEXT;
     ALTER TABLE exams_taxonomies ADD COLUMN IF NOT EXISTS generation_prompt TEXT;

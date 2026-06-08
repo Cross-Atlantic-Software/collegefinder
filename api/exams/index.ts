@@ -87,6 +87,7 @@ export interface Exam {
   counselling?: string | null;
   number_of_papers?: number;
   website?: string | null;
+  registration_link?: string | null;
   /** Lower = more popular for All Exams tab ordering; optional. */
   exam_popularity_rank?: number | null;
   difficulty_level?: string | null;

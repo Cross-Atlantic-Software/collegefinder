@@ -84,7 +84,8 @@ class Exam {
         COALESCE(description, '') ILIKE $1 ESCAPE '\\' OR
         COALESCE(conducting_authority, '') ILIKE $1 ESCAPE '\\' OR
         COALESCE(exam_type, '') ILIKE $1 ESCAPE '\\' OR
-        COALESCE(website, '') ILIKE $1 ESCAPE '\\'
+        COALESCE(website, '') ILIKE $1 ESCAPE '\\' OR
+        COALESCE(registration_link, '') ILIKE $1 ESCAPE '\\'
       )`;
       params.push(pattern);
     }
@@ -194,6 +195,7 @@ class Exam {
       logo_file_name,
       number_of_papers,
       website,
+      registration_link,
       documents_required,
       counselling,
       exam_popularity_rank,
@@ -206,8 +208,8 @@ class Exam {
         ? parseInt(exam_popularity_rank, 10)
         : null;
     const result = await db.query(
-      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, documents_required, counselling, exam_popularity_rank, difficulty_level)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      `INSERT INTO exams_taxonomies (name, code, description, exam_logo, exam_type, conducting_authority, logo_file_name, number_of_papers, website, registration_link, documents_required, counselling, exam_popularity_rank, difficulty_level)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
       [
         name,
         codeVal,
@@ -218,6 +220,7 @@ class Exam {
         logo_file_name || null,
         papers,
         website || null,
+        registration_link || null,
         documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null,
         counselling != null && String(counselling).trim() ? String(counselling).trim() : null,
         rankVal,
@@ -241,6 +244,7 @@ class Exam {
       logo_file_name,
       number_of_papers,
       website,
+      registration_link,
       documents_required,
       counselling,
       exam_popularity_rank,
@@ -288,6 +292,10 @@ class Exam {
     if (website !== undefined) {
       updates.push(`website = $${paramCount++}`);
       values.push(website || null);
+    }
+    if (registration_link !== undefined) {
+      updates.push(`registration_link = $${paramCount++}`);
+      values.push(registration_link || null);
     }
     if (documents_required !== undefined) {
       const v = documents_required != null && String(documents_required).trim() ? String(documents_required).trim() : null;

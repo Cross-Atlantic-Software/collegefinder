@@ -98,6 +98,7 @@ export default function ExamsPage() {
     counselling: '',
     number_of_papers: '1',
     website: '',
+    registration_link: '',
     exam_popularity_rank: '',
     examDates: {
       application_start_date: '',
@@ -333,6 +334,7 @@ export default function ExamsPage() {
         counselling: formData.counselling?.trim() || null,
         number_of_papers: formData.number_of_papers ? parseInt(formData.number_of_papers, 10) : 1,
         website: formData.website || null,
+        registration_link: formData.registration_link || null,
         exam_popularity_rank,
         examDates: {
           application_start_date: formData.examDates.application_start_date || null,
@@ -455,6 +457,7 @@ export default function ExamsPage() {
           counselling: e?.counselling ?? '',
           number_of_papers: e?.number_of_papers != null ? String(e.number_of_papers) : '1',
           website: e?.website ?? '',
+          registration_link: e?.registration_link ?? '',
           exam_popularity_rank:
             e?.exam_popularity_rank != null && !Number.isNaN(Number(e.exam_popularity_rank))
               ? String(e.exam_popularity_rank)
@@ -559,6 +562,7 @@ export default function ExamsPage() {
       counselling: '',
       number_of_papers: '1',
       website: '',
+      registration_link: '',
       exam_popularity_rank: '',
       examDates: {
         application_start_date: '',
@@ -1579,6 +1583,18 @@ export default function ExamsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Registration link
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.registration_link}
+                        onChange={(e) => setFormData({ ...formData, registration_link: e.target.value })}
+                        placeholder="e.g., https://jeemain.nta.nic.in/registration"
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         Popularity rank
                       </label>
                       <p className="text-xs text-slate-500 mb-1.5">
@@ -1790,12 +1806,15 @@ export default function ExamsPage() {
                   </div>
                 </div>
               )}
-              {(viewingExamData.exam.website || viewingExamData.exam.exam_popularity_rank != null) && (
+              {(viewingExamData.exam.website || viewingExamData.exam.registration_link || viewingExamData.exam.exam_popularity_rank != null) && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Contact Details</label>
                   <div className="text-sm text-slate-900 space-y-1">
                     {viewingExamData.exam.website && (
                       <p>Website: <a href={viewingExamData.exam.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.website}</a></p>
+                    )}
+                    {viewingExamData.exam.registration_link && (
+                      <p>Registration link: <a href={viewingExamData.exam.registration_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{viewingExamData.exam.registration_link}</a></p>
                     )}
                     {viewingExamData.exam.exam_popularity_rank != null && (
                       <p>Popularity rank: <span className="tabular-nums">{viewingExamData.exam.exam_popularity_rank}</span></p>

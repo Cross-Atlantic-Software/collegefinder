@@ -6,7 +6,6 @@ import { FiSearch } from "react-icons/fi";
 import { FaCheckCircle } from "react-icons/fa";
 import { MdSchool } from "react-icons/md";
 import type { Exam } from "@/api/exams";
-import { ExamApplicationModal } from "./ExamApplicationModal";
 import { ExamShortlistCard } from "@/components/dashboard/ExamShortlistCard";
 import {
   dashboardExamTabKey,
@@ -15,6 +14,7 @@ import {
   useUpdateShortlistedExamMutation,
 } from "@/lib/dashboardExamShortlistQueries";
 import { usePrefetchExamDetail } from "@/lib/examDetailQueries";
+import { useToast } from "@/components/shared";
 
 type TabId = "recommended" | "shortlisted" | "all";
 const PER_PAGE = 8;
@@ -65,8 +65,7 @@ export default function ShortlistExams({
   searchQuery: controlledSearch = "",
 }: ShortlistExamsProps = {}) {
   const queryClient = useQueryClient();
-  const [selectedExam, setSelectedExam] = useState<{ name: string; id?: string } | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { showError } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("recommended");
   const rawQuery = controlledSearch ?? "";
   const [debouncedSearch, setDebouncedSearch] = useState(rawQuery);
@@ -290,10 +289,9 @@ export default function ShortlistExams({
                         isShortlisted={isShortlisted(row.examId)}
                         shortlistSaving={savingId === row.examId}
                         onShortlist={() => toggleShortlist(row.examId)}
-                        onApply={() => {
-                          setSelectedExam({ name: row.name, id: String(row.examId) });
-                          setIsModalOpen(true);
-                        }}
+                        onApplyMissingLink={() =>
+                          showError(`Registration link is not available for ${row.name}`)
+                        }
                         onPrefetchDetail={() => prefetchExamDetail(String(row.examId))}
                       />
                     ))}
@@ -335,19 +333,6 @@ export default function ShortlistExams({
           </div>
         </div>
       </section>
-
-      {selectedExam ? (
-        <ExamApplicationModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedExam(null);
-          }}
-          examName={selectedExam.name}
-          examId={selectedExam.id}
-          onSubmit={async () => {}}
-        />
-      ) : null}
     </div>
   );
 }
