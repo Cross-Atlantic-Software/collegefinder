@@ -5,14 +5,34 @@ import { BiCheck, BiChevronLeft, BiChevronRight } from "react-icons/bi";
 import { Button } from "../shared";
 import UpcomingDeadlinesCard from "./UpcomingDeadlinesCard";
 import { useDashboardExamsMetaQuery } from "@/lib/dashboardExamShortlistQueries";
+import {
+  useDocumentVaultQuery,
+  useDashboardCollegesQuery,
+  useDashboardScholarshipsQuery,
+  useDashboardInstitutesQuery,
+  useProfileCompletionQuery,
+} from "@/lib/dashboardSidebarQueries";
+import { useStrengthPaymentStatusQuery, useGoalSelectionStatusQuery } from "@/lib/strengthQueries";
 import { buildJourneyPhases, buildJourneyMilestones } from "@/lib/dashboardJourneyPhases";
-
-type PlannerProgressStep = {
-  id: string;
-  title: string;
-  description: string;
-  status: "completed" | "current" | "upcoming";
-};
+import { calculateDocumentVaultCompletion } from "@/lib/documentVault";
+import {
+  getProgressMeterDotColor,
+  getExamShortlistProgressPercent,
+  getCollegeDiscoveryProgressPercent,
+  getScholarshipTrackerProgressPercent,
+  getCoachingShortlistProgressPercent,
+  getApplicationReadyProgressPercent,
+  getWeeklyMockTestsProgressPercent,
+  getPerformanceInsightsDotColor,
+  getRankPredictorDotColor,
+  getRankPredictorProgressPercent,
+  getCounsellingReadyDotColor,
+  getAptitudeMappingDotColor,
+  getAptitudeMappingProgressPercent,
+  getGoalSelectionDotColor,
+  getGoalSelectionProgressPercent,
+  type ProgressMeterStep,
+} from "@/lib/progressMeter";
 
 const recommendations = [
   {
@@ -110,13 +130,45 @@ const quickStudyPicks = [
 
 const ACTIVE_RECOMMENDATION_MS = 6800;
 
-const phaseStatusToProgressStep = (
-  status: import("./UpcomingDeadlinesCard").StudyPhase["status"],
-): PlannerProgressStep["status"] => {
-  if (status === "done") return "completed";
-  if (status === "active") return "current";
-  return "upcoming";
-};
+function ProgressMeterDot({
+  percent,
+  isLoading = false,
+  dotColor,
+}: {
+  percent: number;
+  isLoading?: boolean;
+  dotColor?: string;
+}) {
+  if (isLoading) {
+    return (
+      <span className="relative z-10 inline-flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700" />
+    );
+  }
+
+  const color = dotColor ?? getProgressMeterDotColor(percent);
+  const isComplete = percent >= 100;
+
+  if (isComplete) {
+    return (
+      <span
+        className="relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-white"
+        style={{ backgroundColor: color }}
+      >
+        <BiCheck className="h-3 w-3" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full">
+      <span
+        className="absolute inset-0 animate-progress-pulse-scale rounded-full opacity-50"
+        style={{ backgroundColor: color }}
+      />
+      <span className="relative h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+    </span>
+  );
+}
 
 const getYoutubeId = (url: string) => {
   const match = url.match(/[?&]v=([^&]+)/);
@@ -339,6 +391,18 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "cen
 export default function MiddleContent() {
   const { data: examMeta, isLoading: examMetaLoading, isError: examMetaError } =
     useDashboardExamsMetaQuery();
+  const { data: strengthPayment, isLoading: strengthPaymentLoading } =
+    useStrengthPaymentStatusQuery();
+  const { data: goalSelection, isLoading: goalSelectionLoading } =
+    useGoalSelectionStatusQuery();
+  const { data: profileCompletion, isLoading: profileCompletionLoading } =
+    useProfileCompletionQuery();
+  const { data: documentVault, isLoading: documentVaultLoading } = useDocumentVaultQuery();
+  const { data: collegesMeta, isLoading: collegesMetaLoading } = useDashboardCollegesQuery();
+  const { data: scholarshipsMeta, isLoading: scholarshipsMetaLoading } =
+    useDashboardScholarshipsQuery();
+  const { data: institutesMeta, isLoading: institutesMetaLoading } =
+    useDashboardInstitutesQuery();
   const journeyPhaseDates = useMemo(
     () => ({
       phase1ApplicationStarts: examMeta?.phase1ApplicationStarts,
@@ -369,15 +433,245 @@ export default function MiddleContent() {
     () => buildJourneyMilestones(journeyPhaseDates),
     [journeyPhaseDates],
   );
-  const plannerProgressSteps = useMemo<PlannerProgressStep[]>(
+  const profileCompletionPercent = profileCompletion?.percentage ?? 0;
+  const documentVaultStats = useMemo(
+    () => calculateDocumentVaultCompletion(documentVault ?? undefined),
+    [documentVault],
+  );
+  const shortlistedExamsCount = examMeta?.shortlistedExamIds?.length ?? 0;
+  const examShortlistPercent = useMemo(
+    () => getExamShortlistProgressPercent(shortlistedExamsCount),
+    [shortlistedExamsCount],
+  );
+  const shortlistedCollegesCount = collegesMeta?.shortlistedCollegeIds?.length ?? 0;
+  const collegeDiscoveryPercent = useMemo(
+    () => getCollegeDiscoveryProgressPercent(shortlistedCollegesCount),
+    [shortlistedCollegesCount],
+  );
+  const shortlistedScholarshipsCount = scholarshipsMeta?.shortlistedScholarshipIds?.length ?? 0;
+  const scholarshipTrackerPercent = useMemo(
+    () => getScholarshipTrackerProgressPercent(shortlistedScholarshipsCount),
+    [shortlistedScholarshipsCount],
+  );
+  const shortlistedCoachingCount = institutesMeta?.shortlistedInstituteIds?.length ?? 0;
+  const coachingShortlistPercent = useMemo(
+    () => getCoachingShortlistProgressPercent(shortlistedCoachingCount),
+    [shortlistedCoachingCount],
+  );
+  const applicationReadyStats = useMemo(
     () =>
-      journeyPhases.map((phase) => ({
-        id: phase.id,
-        title: phase.label,
-        description: phase.subtitle ?? "",
-        status: phaseStatusToProgressStep(phase.status),
-      })),
-    [journeyPhases],
+      getApplicationReadyProgressPercent(
+        examMeta?.shortlistedExamIds ?? [],
+        examMeta?.automationFilledExamIds ?? [],
+      ),
+    [examMeta?.automationFilledExamIds, examMeta?.shortlistedExamIds],
+  );
+  const weeklyCompletedMockCount = examMeta?.weeklyCompletedMockCount ?? 0;
+  const weeklyMockTestsPercent = useMemo(
+    () => getWeeklyMockTestsProgressPercent(weeklyCompletedMockCount),
+    [weeklyCompletedMockCount],
+  );
+  const performanceInsights = examMeta?.performanceInsights;
+  const performanceInsightsPercent = performanceInsights?.percent ?? 0;
+  const rankPredictor = examMeta?.rankPredictor;
+  const rankPredictorIsImproving = rankPredictor?.isImproving ?? true;
+  const rankPredictorPercent = getRankPredictorProgressPercent(rankPredictorIsImproving);
+  const counsellingReady = examMeta?.counsellingReady;
+  const counsellingReadyPercent = counsellingReady?.percent ?? 0;
+  const aptitudeMappingIsPaid = strengthPayment?.payment_status === "paid";
+  const aptitudeMappingPercent = getAptitudeMappingProgressPercent(aptitudeMappingIsPaid);
+  const goalSelectionHasStrengths = goalSelection?.hasStrengths ?? false;
+  const goalSelectionPercent = getGoalSelectionProgressPercent(goalSelectionHasStrengths);
+  const progressMeterSteps = useMemo<ProgressMeterStep[]>(
+    () => [
+      {
+        id: "profile-completed",
+        title: "Profile Completed",
+        description: profileCompletionLoading
+          ? "Loading profile progress…"
+          : `${profileCompletionPercent}% complete`,
+        percent: profileCompletionPercent,
+        isLoading: profileCompletionLoading,
+      },
+      {
+        id: "document-vault",
+        title: "Document Vault",
+        description: documentVaultLoading
+          ? "Loading document vault…"
+          : `${documentVaultStats.percentage}% complete · ${documentVaultStats.completedFields}/${documentVaultStats.totalFields} uploaded`,
+        percent: documentVaultStats.percentage,
+        isLoading: documentVaultLoading,
+      },
+      {
+        id: "exam-shortlisted",
+        title: "Exam Shortlisted",
+        description: examMetaLoading
+          ? "Loading exam shortlist…"
+          : `${shortlistedExamsCount} shortlisted · ${examShortlistPercent}% complete`,
+        percent: examShortlistPercent,
+        isLoading: examMetaLoading,
+      },
+      {
+        id: "college-discovery",
+        title: "College Discovery",
+        description: collegesMetaLoading
+          ? "Loading college shortlist…"
+          : `${shortlistedCollegesCount} shortlisted · ${collegeDiscoveryPercent}% complete`,
+        percent: collegeDiscoveryPercent,
+        isLoading: collegesMetaLoading,
+      },
+      {
+        id: "scholarship-tracker",
+        title: "Scholarship Tracker",
+        description: scholarshipsMetaLoading
+          ? "Loading scholarship shortlist…"
+          : `${shortlistedScholarshipsCount} shortlisted · ${scholarshipTrackerPercent}% complete`,
+        percent: scholarshipTrackerPercent,
+        isLoading: scholarshipsMetaLoading,
+      },
+      {
+        id: "coaching-shortlisted",
+        title: "Coaching Shortlisted",
+        description: institutesMetaLoading
+          ? "Loading coaching shortlist…"
+          : `${shortlistedCoachingCount} shortlisted · ${coachingShortlistPercent}% complete`,
+        percent: coachingShortlistPercent,
+        isLoading: institutesMetaLoading,
+      },
+      {
+        id: "application-ready",
+        title: "Application Ready",
+        description: examMetaLoading
+          ? "Loading application progress…"
+          : applicationReadyStats.totalCount === 0
+            ? "Shortlist exams to track application readiness"
+            : `${applicationReadyStats.filledCount}/${applicationReadyStats.totalCount} forms filled · ${applicationReadyStats.percent}% complete`,
+        percent: applicationReadyStats.percent,
+        isLoading: examMetaLoading,
+      },
+      {
+        id: "mock-tests",
+        title: "Mock Tests",
+        description: examMetaLoading
+          ? "Loading mock test progress…"
+          : `${weeklyCompletedMockCount} completed this week · ${weeklyMockTestsPercent}% complete`,
+        percent: weeklyMockTestsPercent,
+        isLoading: examMetaLoading,
+      },
+      {
+        id: "performance-insights",
+        title: "Performance Insights Tracked",
+        description: examMetaLoading
+          ? "Loading performance insights…"
+          : !performanceInsights?.hasDueWeeks
+            ? "Warm-up tracking starts closer to your exam dates"
+            : `${performanceInsights.satisfiedWeeks}/${performanceInsights.dueWeeks} weekly checks passed · ${performanceInsightsPercent}% complete`,
+        percent: performanceInsightsPercent,
+        isLoading: examMetaLoading,
+        dotColor: getPerformanceInsightsDotColor(performanceInsightsPercent),
+      },
+      {
+        id: "rank-predictor",
+        title: "Rank Predictor",
+        description: examMetaLoading
+          ? "Loading rank trend…"
+          : (rankPredictor?.attemptCount ?? 0) === 0
+            ? "No ranked attempts yet · take a mock to start tracking"
+            : (rankPredictor?.attemptCount ?? 0) === 1
+              ? `First ranked attempt · AIR #${rankPredictor?.currentRank ?? "—"}`
+              : rankPredictorIsImproving
+                ? `Rank improved · AIR #${rankPredictor?.previousRank ?? "—"} → #${rankPredictor?.currentRank ?? "—"}`
+                : `Rank declined · AIR #${rankPredictor?.previousRank ?? "—"} → #${rankPredictor?.currentRank ?? "—"}`,
+        percent: rankPredictorPercent,
+        isLoading: examMetaLoading,
+        dotColor: getRankPredictorDotColor(rankPredictorIsImproving),
+      },
+      {
+        id: "counselling-ready",
+        title: "Counselling Ready",
+        description: examMetaLoading
+          ? "Loading counselling readiness…"
+          : (counsellingReady?.totalCount ?? 0) === 0 && !counsellingReady?.hasCounsellingDates
+            ? "Complete applications with counselling dates to track readiness"
+            : !counsellingReady?.hasCounsellingDates
+              ? "No counselling dates set for completed applications yet"
+              : counsellingReady?.isReady
+                ? `${counsellingReady.activeCount}/${counsellingReady.totalCount} counselling windows active · 100% ready`
+                : `${counsellingReady?.activeCount ?? 0}/${counsellingReady?.totalCount ?? 0} counselling windows active · ${counsellingReadyPercent}% ready`,
+        percent: counsellingReadyPercent,
+        isLoading: examMetaLoading,
+        dotColor: getCounsellingReadyDotColor(counsellingReadyPercent),
+      },
+      {
+        id: "aptitude-mapping",
+        title: "Aptitude Mapping Done",
+        description: strengthPaymentLoading
+          ? "Loading aptitude mapping status…"
+          : aptitudeMappingIsPaid
+            ? "Aptitude mapping payment complete · 100%"
+            : "Complete aptitude mapping payment · 0%",
+        percent: aptitudeMappingPercent,
+        isLoading: strengthPaymentLoading,
+        dotColor: getAptitudeMappingDotColor(aptitudeMappingIsPaid),
+      },
+      {
+        id: "goal-selection",
+        title: "Goal Selection",
+        description: goalSelectionLoading
+          ? "Loading goal selection status…"
+          : goalSelectionHasStrengths
+            ? "Strengths mapped · 100% complete"
+            : "Awaiting strength mapping · 0% complete",
+        percent: goalSelectionPercent,
+        isLoading: goalSelectionLoading,
+        dotColor: getGoalSelectionDotColor(goalSelectionHasStrengths),
+      },
+    ],
+    [
+      applicationReadyStats.filledCount,
+      applicationReadyStats.percent,
+      applicationReadyStats.totalCount,
+      aptitudeMappingIsPaid,
+      aptitudeMappingPercent,
+      coachingShortlistPercent,
+      collegeDiscoveryPercent,
+      collegesMetaLoading,
+      counsellingReady?.activeCount,
+      counsellingReady?.hasCounsellingDates,
+      counsellingReady?.isReady,
+      counsellingReady?.totalCount,
+      counsellingReadyPercent,
+      documentVaultLoading,
+      documentVaultStats.completedFields,
+      documentVaultStats.percentage,
+      documentVaultStats.totalFields,
+      examMetaLoading,
+      examShortlistPercent,
+      goalSelectionHasStrengths,
+      goalSelectionLoading,
+      goalSelectionPercent,
+      institutesMetaLoading,
+      performanceInsights?.dueWeeks,
+      performanceInsights?.hasDueWeeks,
+      performanceInsights?.satisfiedWeeks,
+      performanceInsightsPercent,
+      profileCompletionLoading,
+      profileCompletionPercent,
+      rankPredictor?.attemptCount,
+      rankPredictor?.currentRank,
+      rankPredictor?.previousRank,
+      rankPredictorIsImproving,
+      rankPredictorPercent,
+      scholarshipTrackerPercent,
+      scholarshipsMetaLoading,
+      shortlistedCoachingCount,
+      shortlistedCollegesCount,
+      shortlistedExamsCount,
+      shortlistedScholarshipsCount,
+      strengthPaymentLoading,
+      weeklyCompletedMockCount,
+      weeklyMockTestsPercent,
+    ],
   );
 
   const [activeRecommendationIndex, setActiveRecommendationIndex] = useState(0);
@@ -465,9 +759,9 @@ export default function MiddleContent() {
           animation: slideUpVideo 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         @keyframes progressPulseScale {
-          0% { transform: scale(0.94); box-shadow: 0 0 0 0 rgba(250, 213, 60, 0.45); }
-          50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(250, 213, 60, 0.18); }
-          100% { transform: scale(0.94); box-shadow: 0 0 0 0 rgba(250, 213, 60, 0.45); }
+          0% { transform: scale(0.94); opacity: 0.5; }
+          50% { transform: scale(1.1); opacity: 0.28; }
+          100% { transform: scale(0.94); opacity: 0.5; }
         }
         .animate-progress-pulse-scale {
           animation: progressPulseScale 1.8s ease-in-out infinite;
@@ -496,65 +790,56 @@ export default function MiddleContent() {
             <article className="relative z-20 flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                Track how consistently you are finishing planned tasks this week.
+                Track profile and milestone progress across your admission journey.
               </p>
               <div className="mt-2.5 flex-1 rounded-xl bg-slate-50/70 p-2 dark:bg-slate-800/40">
-                
-
                 <div className="space-y-0.5">
-                  {plannerProgressSteps.map((step, idx) => {
-                    const isCompleted = step.status === "completed";
-                    const isCurrent = step.status === "current";
-                    const isLast = idx === plannerProgressSteps.length - 1;
+                  {progressMeterSteps.map((step, idx) => {
+                    const isLast = idx === progressMeterSteps.length - 1;
+                    const connectorColor = step.isLoading
+                      ? "#cbd5e1"
+                      : (step.dotColor ?? getProgressMeterDotColor(step.percent));
 
                     return (
                       <div key={step.id} className="relative flex gap-2 pb-1.5 last:pb-0">
                         <div className="relative flex w-5 shrink-0 justify-center">
                           {!isLast && (
                             <span
-                              className={`absolute left-1/2 top-5 h-[calc(100%+1px)] w-[1.5px] -translate-x-1/2 ${
-                                isCompleted || isCurrent ? "bg-[#FAD53C]" : "bg-slate-300 dark:bg-slate-600"
-                              }`}
+                              className="absolute left-1/2 top-5 h-[calc(100%+1px)] w-[1.5px] -translate-x-1/2"
+                              style={{ backgroundColor: connectorColor }}
                               aria-hidden="true"
                             />
                           )}
 
-                          {isCompleted && (
-                            <span className="relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#FAD53C] text-slate-900">
-                              <BiCheck className="h-3 w-3" />
-                            </span>
-                          )}
-
-                          {isCurrent && (
-                            <span className="relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full">
-                              <span className="absolute inset-0 rounded-full bg-[#FAD53C] animate-progress-pulse-scale" />
-                              <span className="relative h-3 w-3 rounded-full bg-black" />
-                            </span>
-                            
-                          )}
-
-                          {!isCompleted && !isCurrent && (
-                            <span className="relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800">
-                              <span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-500" />
-                            </span>
-                          )}
+                          <ProgressMeterDot
+                            percent={step.percent}
+                            isLoading={step.isLoading}
+                            dotColor={step.dotColor}
+                          />
                         </div>
 
                         <div className="min-w-0 pt-[1px]">
-                          <p
-                            className={`text-[13px] font-semibold leading-tight ${
-                              isCurrent ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-200"
-                            }`}
-                          >
+                          <p className="text-[13px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
                             {step.title}
                           </p>
-                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">{step.description}</p>
+                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                            {step.description}
+                          </p>
                         </div>
                       </div>
                     );
                   })}
 
-                  <p className="pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">18 of 22 planned tasks completed this week.</p>
+                  {!profileCompletionLoading &&
+                    !documentVaultLoading &&
+                    !examMetaLoading &&
+                    !collegesMetaLoading &&
+                    !scholarshipsMetaLoading &&
+                    !institutesMetaLoading && (
+                    <p className="pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      Progress updates as you complete your profile, upload documents, build shortlists, fill applications, and take mock tests.
+                    </p>
+                  )}
                 </div>
               </div>
             </article>

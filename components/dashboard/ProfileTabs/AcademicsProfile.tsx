@@ -1241,7 +1241,7 @@ export default function AcademicsProfile() {
             </div>
 
             {/* Document Vault Section */}
-            <div className="space-y-5 border-t border-black/8 pt-6">
+            <div id="document-vault-section" className="space-y-5 border-t border-black/8 pt-6">
                 <div>
                     <h2 className="text-base font-bold text-black">Document Vault</h2>
                     <p className="text-sm text-black/50">Upload and manage your documents securely.</p>

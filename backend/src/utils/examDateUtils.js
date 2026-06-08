@@ -34,8 +34,23 @@ function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** ISO week start (Monday) as YYYY-MM-DD — matches PostgreSQL date_trunc('week', …) in UTC. */
+function weekStartIsoFromIsoDate(isoDate) {
+  const base = normalizeExamDateIso(isoDate);
+  if (!base) return null;
+
+  const d = new Date(`${base}T12:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
 module.exports = {
   normalizeExamDateIso,
   addDaysToIsoDate,
   todayIsoDate,
+  weekStartIsoFromIsoDate,
 };

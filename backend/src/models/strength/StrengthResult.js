@@ -18,7 +18,34 @@ class StrengthResult {
       }
       if (!row.assigned_expert_ids) row.assigned_expert_ids = [];
     }
-    return row;
+    return result.rows[0] || null;
+  }
+
+  /** True when strength_results.strengths has at least one non-empty entry. */
+  static async hasStrengths(userId) {
+    const result = await db.query(
+      'SELECT strengths FROM strength_results WHERE user_id = $1',
+      [userId]
+    );
+    const row = result.rows[0];
+    if (!row) return false;
+
+    let strengths = row.strengths;
+    if (strengths == null) return false;
+
+    if (typeof strengths === 'string') {
+      try {
+        strengths = JSON.parse(strengths);
+      } catch {
+        return strengths.trim().length > 0;
+      }
+    }
+
+    if (Array.isArray(strengths)) {
+      return strengths.some((item) => item != null && String(item).trim().length > 0);
+    }
+
+    return String(strengths).trim().length > 0;
   }
 
   static async create(data) {

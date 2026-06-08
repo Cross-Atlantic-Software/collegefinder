@@ -213,6 +213,98 @@ class TestAttempt {
     return parseInt(result.rows[0].count, 10);
   }
 
+  /** Set of Monday week-start keys (YYYY-MM-DD) with at least one completed mock. */
+  static async getCompletedMockWeekStarts(userId) {
+    const { normalizeExamDateIso, weekStartIsoFromIsoDate } = require('../../utils/examDateUtils');
+    const result = await db.query(
+      `
+      SELECT completed_at::date AS completed_date
+      FROM user_exam_attempts
+      WHERE user_id = $1
+        AND exam_mock_id IS NOT NULL
+        AND completed_at IS NOT NULL
+    `,
+      [userId],
+    );
+
+    const weeks = new Set();
+    for (const row of result.rows) {
+      const iso = normalizeExamDateIso(row.completed_date);
+      if (!iso) continue;
+      const weekStart = weekStartIsoFromIsoDate(iso);
+      if (weekStart) weeks.add(weekStart);
+    }
+    return weeks;
+  }
+
+  /** Completed mock attempts for the user in the current calendar week (Mon start). */
+  static async countCompletedMocksInCurrentWeek(userId) {
+    const result = await db.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM user_exam_attempts
+      WHERE user_id = $1
+        AND exam_mock_id IS NOT NULL
+        AND completed_at IS NOT NULL
+        AND completed_at >= date_trunc('week', CURRENT_TIMESTAMP)
+    `,
+      [userId],
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  }
+
+  /**
+   * Rank predictor progress: compare latest ranked attempt vs previous.
+   * Lower rank_position is better. Green when 0–1 attempts or rank improved.
+   */
+  static async getRankPredictorProgress(userId) {
+    const result = await db.query(
+      `
+      SELECT rank_position
+      FROM user_exam_attempts
+      WHERE user_id = $1
+        AND completed_at IS NOT NULL
+        AND rank_position IS NOT NULL
+      ORDER BY completed_at DESC, id DESC
+    `,
+      [userId],
+    );
+
+    const ranks = result.rows
+      .map((row) => Number(row.rank_position))
+      .filter((rank) => Number.isFinite(rank) && rank > 0);
+    const attemptCount = ranks.length;
+
+    if (attemptCount === 0) {
+      return {
+        attemptCount: 0,
+        isImproving: true,
+        currentRank: null,
+        previousRank: null,
+      };
+    }
+
+    if (attemptCount === 1) {
+      return {
+        attemptCount: 1,
+        isImproving: true,
+        currentRank: ranks[0],
+        previousRank: null,
+      };
+    }
+
+    const currentRank = ranks[0];
+    const previousRank = ranks[1];
+    const isImproving = previousRank > currentRank;
+
+    return {
+      attemptCount,
+      isImproving,
+      currentRank,
+      previousRank,
+    };
+  }
+
   /**
    * Delete test attempt
    */

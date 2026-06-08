@@ -1,6 +1,7 @@
 const DocumentVault = require('../../models/user/DocumentVault');
 const { uploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
 const { validationResult } = require('express-validator');
+const { validateDocumentUpload } = require('../../utils/documentVaultValidation');
 
 class DocumentVaultController {
   /**
@@ -181,6 +182,20 @@ class DocumentVaultController {
         return res.status(400).json({
           success: false,
           message: 'File signature validation failed. The file may be corrupted or not match its extension'
+        });
+      }
+
+      const qualityError = validateDocumentUpload({
+        fieldName,
+        buffer: fileBuffer,
+        fileName,
+        mimeType,
+        fileSize,
+      });
+      if (qualityError) {
+        return res.status(400).json({
+          success: false,
+          message: qualityError,
         });
       }
 

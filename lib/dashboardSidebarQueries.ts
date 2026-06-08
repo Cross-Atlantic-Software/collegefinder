@@ -1,11 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getAcademics, getProfileCompletion } from "@/api";
+import { getAcademics, getProfileCompletion, getDocumentVault } from "@/api";
 import { getDashboardCollegesMeta } from "@/api/auth/profile";
 import { getDashboardInstitutesMeta, getDashboardScholarshipsMeta } from "@/api/auth/profile";
 
 export const PROFILE_COMPLETION_KEY = ["profile-completion"] as const;
+export const DOCUMENT_VAULT_KEY = ["document-vault"] as const;
 export const DASHBOARD_ACADEMICS_KEY = ["dashboard-academics"] as const;
 export const DASHBOARD_COLLEGES_KEY = ["dashboard-colleges-meta"] as const;
 export const DASHBOARD_INSTITUTES_KEY = ["dashboard-institutes-meta"] as const;
@@ -25,6 +26,20 @@ export function useProfileCompletionQuery() {
       const res = await getProfileCompletion();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load profile completion");
+      }
+      return res.data;
+    },
+    ...sidebarQueryDefaults,
+  });
+}
+
+export function useDocumentVaultQuery() {
+  return useQuery({
+    queryKey: DOCUMENT_VAULT_KEY,
+    queryFn: async () => {
+      const res = await getDocumentVault();
+      if (!res.success) {
+        throw new Error(res.message || "Failed to load document vault");
       }
       return res.data;
     },

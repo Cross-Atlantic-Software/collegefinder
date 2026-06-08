@@ -3,11 +3,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { User, GraduationCap, Target, Info, Pencil, Trash2, ChevronRight, ShieldCheck, KeyRound } from "lucide-react";
 import { uploadProfilePhoto, deleteProfilePhoto } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "../../shared";
+import {
+  calculateDocumentVaultCompletion,
+  getFileExtension,
+  isImageDocumentUrl,
+  listUploadedDocuments,
+} from "@/lib/documentVault";
+import { useDocumentVaultQuery } from "@/lib/dashboardSidebarQueries";
 
 import BasicInfoForm from "./BasicInfoForm";
 import AcademicsProfile from "./AcademicsProfile";
@@ -167,32 +174,29 @@ export default function ProfileTabs() {
   ];
 
   const [activeExamIndex, setActiveExamIndex] = useState(0);
+  const { data: documentVault, isLoading: documentVaultLoading } = useDocumentVaultQuery();
+  const uploadedDocuments = useMemo(
+    () => listUploadedDocuments(documentVault ?? undefined),
+    [documentVault],
+  );
+  const documentVaultCompletion = useMemo(
+    () => calculateDocumentVaultCompletion(documentVault ?? undefined),
+    [documentVault],
+  );
+  const [viewingDocument, setViewingDocument] = useState<{ url: string; label: string } | null>(null);
 
-  const documentPreviewCards = [
-    {
-      name: "Aadhar Card",
-      type: "ID Proof",
-      status: "Verified",
-      image: "https://images.unsplash.com/photo-1588693959825-ed0ef8bd8e19?q=80&w=240&auto=format&fit=crop",
-      cta: "Preview",
-    },
-    {
-      name: "10th Marksheet",
-      type: "Academic",
-      status: "Uploaded",
-      image: "https://images.unsplash.com/photo-1544144433-d50aff500b91?q=80&w=240&auto=format&fit=crop",
-      cta: "Open",
-    },
-    {
-      name: "JEE Admit Card",
-      type: "Exam",
-      status: "Ready",
-      image: "https://images.unsplash.com/photo-1606326608690-4e0281b1e588?q=80&w=240&auto=format&fit=crop",
-      cta: "View",
-    },
-  ];
+  const openDocumentVaultTab = () => {
+    setActiveTab("academics");
+    window.setTimeout(() => {
+      document.getElementById("document-vault-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 150);
+  };
 
   return (
+    <>
     <section className="bg-white dark:bg-slate-900">
       <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -391,77 +395,102 @@ export default function ProfileTabs() {
                   </div>
                 </article>
 
-                {/* ── Document Vault ── horizontal scroll-snap card carousel */}
-                <article className="min-w-0 flex flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
-                  <div className="flex items-center justify-between shrink-0">
+                <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
+                  <div className="flex shrink-0 items-center justify-between">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Document Vault</h3>
                       <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                        Tap a card to preview or open.
+                        {documentVaultLoading
+                          ? "Loading documents…"
+                          : `${documentVaultCompletion.completedFields} of ${documentVaultCompletion.totalFields} uploaded (${documentVaultCompletion.percentage}%)`}
                       </p>
                     </div>
                     <button
                       type="button"
+                      onClick={openDocumentVaultTab}
                       className="shrink-0 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-slate-600 transition hover:border-black hover:bg-black hover:text-white dark:border-slate-700 dark:text-slate-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
                     >
                       + Upload
                     </button>
                   </div>
 
-                  {/* Horizontal scroll-snap carousel — industry standard doc card layout */}
                   <div className="mt-3 flex-1 overflow-hidden">
-                    <div
-                      className="flex h-full gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      style={{ scrollSnapType: "x mandatory" }}
-                    >
-                      {documentPreviewCards.map((doc) => (
-                        <div
-                          key={doc.name}
-                          className="group shrink-0 w-[140px] flex flex-col overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition-all duration-200 hover:border-[#FAD53C] hover:shadow-md cursor-pointer dark:border-slate-800 dark:bg-slate-800/60"
-                          style={{ scrollSnapAlign: "start" }}
+                    {documentVaultLoading ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="shimmer-skeleton h-28 rounded-xl" />
+                        <div className="shimmer-skeleton h-28 rounded-xl" />
+                      </div>
+                    ) : uploadedDocuments.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-800/40">
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                          No documents uploaded yet.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={openDocumentVaultTab}
+                          className="mt-3 rounded-full border border-black px-3 py-1.5 text-[10px] font-semibold text-black transition hover:bg-black hover:text-white dark:border-slate-400 dark:text-slate-200 dark:hover:bg-white dark:hover:text-black"
                         >
-                          {/* Large image preview — fills top 60% */}
-                          <div className="relative w-full overflow-hidden bg-slate-200 dark:bg-slate-700" style={{ paddingBottom: "70%" }}>
-                            <Image
-                              src={doc.image}
-                              alt={doc.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              unoptimized
-                            />
-                            {/* Status badge — top-right overlay */}
-                            <span className={`absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                              doc.status === "Verified"
-                                ? "bg-emerald-500 text-white"
-                                : doc.status === "Ready"
-                                ? "bg-sky-500 text-white"
-                                : "bg-amber-400 text-black"
-                            }`}>
-                              {doc.status === "Verified" && <ShieldCheck className="h-2.5 w-2.5" />}
-                              {doc.status}
-                            </span>
-                            {/* Type chip — bottom-left */}
-                            <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur-sm">
-                              {doc.type}
-                            </span>
-                          </div>
+                          Open Document Vault
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="flex h-full gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        style={{ scrollSnapType: "x mandatory" }}
+                      >
+                        {uploadedDocuments.map((doc) => {
+                          const isImage = isImageDocumentUrl(doc.url);
+                          const fileType = isImage ? "Image" : getFileExtension(doc.url).toUpperCase() || "PDF";
 
-                          {/* Card footer */}
-                          <div className="flex flex-1 flex-col justify-between px-2.5 py-2">
-                            <p className="text-[12px] font-semibold leading-tight text-slate-900 line-clamp-2 dark:text-slate-100">
-                              {doc.name}
-                            </p>
-                            <button
-                              type="button"
-                              className="mt-2 w-full rounded-full border border-black bg-transparent py-1 text-[10px] font-semibold text-black transition group-hover:bg-black group-hover:text-white dark:border-slate-400 dark:text-slate-200 dark:group-hover:border-white dark:group-hover:bg-white dark:group-hover:text-black"
+                          return (
+                            <div
+                              key={doc.key}
+                              className="group flex w-[140px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition-all duration-200 hover:border-[#FAD53C] hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60"
+                              style={{ scrollSnapAlign: "start" }}
                             >
-                              {doc.cta}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                              <div
+                                className="relative w-full overflow-hidden bg-slate-200 dark:bg-slate-700"
+                                style={{ paddingBottom: "70%" }}
+                              >
+                                {isImage ? (
+                                  <Image
+                                    src={doc.url}
+                                    alt={doc.label}
+                                    fill
+                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                    {fileType}
+                                  </div>
+                                )}
+                                <span className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                  <ShieldCheck className="h-2.5 w-2.5" />
+                                  Uploaded
+                                </span>
+                                <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur-sm">
+                                  {fileType}
+                                </span>
+                              </div>
 
-                    </div>
+                              <div className="flex flex-1 flex-col justify-between px-2.5 py-2">
+                                <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                                  {doc.label}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingDocument({ url: doc.url, label: doc.label })}
+                                  className="mt-2 w-full rounded-full border border-black bg-transparent py-1 text-[10px] font-semibold text-black transition group-hover:bg-black group-hover:text-white dark:border-slate-400 dark:text-slate-200 dark:group-hover:border-white dark:group-hover:bg-white dark:group-hover:text-black"
+                                >
+                                  Preview
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </article>
 
@@ -472,5 +501,37 @@ export default function ProfileTabs() {
         </div>
       </div>
     </section>
+    {viewingDocument && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-700">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingDocument.label}</h2>
+            <button
+              type="button"
+              onClick={() => setViewingDocument(null)}
+              className="text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            >
+              Close
+            </button>
+          </div>
+          <div className="flex flex-1 items-center justify-center overflow-auto bg-slate-50 p-4 dark:bg-slate-800/40">
+            {isImageDocumentUrl(viewingDocument.url) ? (
+              <img
+                src={viewingDocument.url}
+                alt={viewingDocument.label}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <iframe
+                src={viewingDocument.url}
+                className="h-full min-h-[600px] w-full border-0"
+                title={viewingDocument.label}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

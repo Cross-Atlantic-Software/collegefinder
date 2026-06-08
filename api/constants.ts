@@ -141,6 +141,7 @@ export const API_ENDPOINTS = {
   // Strength endpoints (user-facing)
   STRENGTH: {
     PAYMENT_STATUS: '/strength/payment-status',
+    GOAL_SELECTION_STATUS: '/strength/goal-selection-status',
     FORM_DATA: '/strength/form-data',
     PAY: '/strength/pay',
     RESULTS: '/strength/results',

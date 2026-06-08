@@ -100,6 +100,37 @@ async function loadApplicationExamDateItems(userId, dateColumn, valueKey) {
   return items;
 }
 
+/** Taxonomy exam IDs with a completed row in automation_applications for this user. */
+async function loadAutomationCompletedTaxonomyExamIds(userId) {
+  await syncAlreadyFilledAutomationApplications(userId);
+
+  const appsResult = await pool.query(
+    `SELECT DISTINCT ON (aa.exam_id)
+       aa.exam_id,
+       e.name AS exam_name,
+       e.slug AS exam_slug
+     FROM automation_applications aa
+     LEFT JOIN automation_exams e ON aa.exam_id = e.id
+     WHERE aa.user_id = $1 AND aa.status = 'completed'
+     ORDER BY aa.exam_id, aa.created_at DESC`,
+    [userId]
+  );
+
+  const taxonomyIds = [];
+  for (const row of appsResult.rows) {
+    const taxonomy = await findTaxonomyExamIdForAutomation(
+      row.exam_id,
+      row.exam_name,
+      row.exam_slug
+    );
+    if (taxonomy?.id) {
+      taxonomyIds.push(Number(taxonomy.id));
+    }
+  }
+
+  return [...new Set(taxonomyIds.filter((id) => Number.isInteger(id) && id > 0))];
+}
+
 /** Phase 3 — admit_card_date from automation_applications exams. */
 async function loadPhase3AdmitCardDatesForUser(userId) {
   return loadApplicationExamDateItems(userId, 'admit_card_date', 'admitCardDate');
@@ -127,4 +158,5 @@ module.exports = {
   loadPhase7CounsellingDatesForUser,
   findTaxonomyExamIdForAutomation,
   loadApplicationExamTaxonomyMap,
+  loadAutomationCompletedTaxonomyExamIds,
 };
