@@ -256,6 +256,27 @@ export async function getDashboardExamsMeta(): Promise<ApiResponse<{
   streamId: number | null;
   shortlistedExamIds: number[];
   alreadyFilledFormExamIds: number[];
+  automationFilledExamIds: number[];
+  weeklyCompletedMockCount: number;
+  performanceInsights: {
+    percent: number;
+    satisfiedWeeks: number;
+    dueWeeks: number;
+    hasDueWeeks: boolean;
+  };
+  rankPredictor: {
+    attemptCount: number;
+    isImproving: boolean;
+    currentRank: number | null;
+    previousRank: number | null;
+  };
+  counsellingReady: {
+    percent: number;
+    activeCount: number;
+    totalCount: number;
+    hasCounsellingDates: boolean;
+    isReady: boolean;
+  };
   recommendedExamIds: number[];
   phase1ApplicationStarts: Array<{
     examId: number;
@@ -303,6 +324,27 @@ export async function getDashboardExamsMeta(): Promise<ApiResponse<{
     streamId: number | null;
     shortlistedExamIds: number[];
     alreadyFilledFormExamIds: number[];
+    automationFilledExamIds: number[];
+    weeklyCompletedMockCount: number;
+    performanceInsights: {
+      percent: number;
+      satisfiedWeeks: number;
+      dueWeeks: number;
+      hasDueWeeks: boolean;
+    };
+    rankPredictor: {
+      attemptCount: number;
+      isImproving: boolean;
+      currentRank: number | null;
+      previousRank: number | null;
+    };
+    counsellingReady: {
+      percent: number;
+      activeCount: number;
+      totalCount: number;
+      hasCounsellingDates: boolean;
+      isReady: boolean;
+    };
     recommendedExamIds: number[];
     phase1ApplicationStarts: Array<{
       examId: number;

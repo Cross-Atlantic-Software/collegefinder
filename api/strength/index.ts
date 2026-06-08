@@ -17,6 +17,10 @@ export interface StrengthPaymentStatus {
   paid_at: string | null;
 }
 
+export interface GoalSelectionStatus {
+  hasStrengths: boolean;
+}
+
 export interface CareerRecommendation {
   career: string;
   details: string;
@@ -41,6 +45,10 @@ export interface StrengthResultData {
 
 export async function getStrengthPaymentStatus(): Promise<ApiResponse<StrengthPaymentStatus>> {
   return apiRequest<StrengthPaymentStatus>(API_ENDPOINTS.STRENGTH.PAYMENT_STATUS, { method: 'GET' });
+}
+
+export async function getGoalSelectionStatus(): Promise<ApiResponse<GoalSelectionStatus>> {
+  return apiRequest<GoalSelectionStatus>(API_ENDPOINTS.STRENGTH.GOAL_SELECTION_STATUS, { method: 'GET' });
 }
 
 export async function getStrengthFormData(): Promise<ApiResponse<StrengthFormData>> {

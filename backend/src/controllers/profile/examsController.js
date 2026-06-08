@@ -1453,12 +1453,16 @@ class ExamsTaxonomyController {
   static async getDashboardExamsMeta(req, res) {
     try {
       const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      const TestAttempt = require('../../models/test/TestAttempt');
       const {
         loadPhase3AdmitCardDatesForUser,
         loadPhase5ExamDatesForUser,
         loadPhase6ResultDatesForUser,
         loadPhase7CounsellingDatesForUser,
+        loadAutomationCompletedTaxonomyExamIds,
       } = require('../../services/journeyPhaseDatesService');
+      const { loadPerformanceInsightsProgress } = require('../../services/performanceInsightsService');
+      const { loadCounsellingReadyProgress } = require('../../services/counsellingReadyService');
       const journeyDates =
         ctx.streamId != null
           ? await loadJourneyExamPhaseDates(ctx)
@@ -1468,19 +1472,31 @@ class ExamsTaxonomyController {
               phase4MockTestReminders: [],
               phase4MockTestSummary: { completedInWindow: 0, totalInWindow: 0 },
             };
-      const [phase3AdmitCardDates, phase5ExamDates, phase6ResultDates, phase7CounsellingDates] =
+      const [phase3AdmitCardDates, phase5ExamDates, phase6ResultDates, phase7CounsellingDates, automationFilledExamIdsRaw, weeklyCompletedMockCount, performanceInsights, rankPredictor, counsellingReady] =
         await Promise.all([
         loadPhase3AdmitCardDatesForUser(req.user.id),
         loadPhase5ExamDatesForUser(req.user.id),
         loadPhase6ResultDatesForUser(req.user.id),
         loadPhase7CounsellingDatesForUser(req.user.id),
+        loadAutomationCompletedTaxonomyExamIds(req.user.id),
+        TestAttempt.countCompletedMocksInCurrentWeek(req.user.id),
+        loadPerformanceInsightsProgress(req.user.id, ctx),
+        TestAttempt.getRankPredictorProgress(req.user.id),
+        loadCounsellingReadyProgress(req.user.id),
       ]);
+      const allExamIdSet = new Set((ctx.streamExams || []).map((e) => Number(e.id)));
+      const automationFilledExamIds = automationFilledExamIdsRaw.filter((id) => allExamIdSet.has(id));
       return res.json({
         success: true,
         data: {
           streamId: ctx.streamId,
           shortlistedExamIds: ctx.shortlistedExamIds,
           alreadyFilledFormExamIds: ctx.alreadyFilledFormExamIds,
+          automationFilledExamIds,
+          weeklyCompletedMockCount,
+          performanceInsights,
+          rankPredictor,
+          counsellingReady,
           recommendedExamIds: ctx.recommendedExamIds,
           phase1ApplicationStarts: journeyDates.phase1ApplicationStarts,
           phase2ApplicationCloses: journeyDates.phase2ApplicationCloses,

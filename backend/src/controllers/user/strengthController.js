@@ -101,6 +101,23 @@ class StrengthController {
   }
 
   /**
+   * GET /api/strength/goal-selection-status
+   * Whether strength_results.strengths has data for progress meter.
+   */
+  static async getGoalSelectionStatus(req, res) {
+    try {
+      const hasStrengths = await StrengthResult.hasStrengths(req.user.id);
+      res.json({
+        success: true,
+        data: { hasStrengths },
+      });
+    } catch (error) {
+      console.error('Error fetching goal selection status:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch goal selection status' });
+    }
+  }
+
+  /**
    * GET /api/strength/results
    * Get strength results for the current user (only if paid)
    */

@@ -4,6 +4,7 @@ const { authenticate } = require('../../middleware/auth');
 const StrengthController = require('../../controllers/user/strengthController');
 
 router.get('/payment-status', authenticate, StrengthController.getPaymentStatus);
+router.get('/goal-selection-status', authenticate, StrengthController.getGoalSelectionStatus);
 router.get('/form-data', authenticate, StrengthController.getFormData);
 router.post('/pay', authenticate, StrengthController.pay);
 router.get('/results', authenticate, StrengthController.getResults);

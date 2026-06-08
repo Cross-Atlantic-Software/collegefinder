@@ -25,7 +25,6 @@ import {
   FiList,
   FiPackage,
   FiTag,
-  FiGrid,
   FiHome,
   FiAward,
   FiClipboard,
@@ -106,7 +105,6 @@ const navGroups: NavGroup[] = [
       { label: 'Subtopics', href: '/admin/subtopics', icon: <FiList className="h-4 w-4" />, moduleCode: 'subtopics' },
       // { label: 'Levels', href: '/admin/levels', icon: <FiList className="h-4 w-4" />, moduleCode: 'levels' },
       { label: 'Program Categories', href: '/admin/programs', icon: <FiPackage className="h-4 w-4" />, moduleCode: 'programs' },
-      { label: 'Branches / Courses', href: '/admin/branches', icon: <FiGrid className="h-4 w-4" />, moduleCode: 'branches' },
     ],
   },
   {

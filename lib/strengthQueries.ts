@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getStrengthPaymentStatus, getStrengthResults } from "@/api/strength";
+import { getStrengthPaymentStatus, getStrengthResults, getGoalSelectionStatus } from "@/api/strength";
 
 export const STRENGTH_PAYMENT_STATUS_KEY = ["strength-payment-status"] as const;
+export const STRENGTH_GOAL_SELECTION_STATUS_KEY = ["strength-goal-selection-status"] as const;
 export const STRENGTH_RESULTS_KEY = ["strength-results"] as const;
 
 export function useStrengthPaymentStatusQuery(enabled = true) {
@@ -13,6 +14,24 @@ export function useStrengthPaymentStatusQuery(enabled = true) {
       const res = await getStrengthPaymentStatus();
       if (!res.success || !res.data) {
         throw new Error(res.message || "Failed to load strength payment status");
+      }
+      return res.data;
+    },
+    staleTime: 120_000,
+    gcTime: 10 * 60_000,
+    retry: 2,
+    refetchOnWindowFocus: false,
+    enabled,
+  });
+}
+
+export function useGoalSelectionStatusQuery(enabled = true) {
+  return useQuery({
+    queryKey: STRENGTH_GOAL_SELECTION_STATUS_KEY,
+    queryFn: async () => {
+      const res = await getGoalSelectionStatus();
+      if (!res.success || !res.data) {
+        throw new Error(res.message || "Failed to load goal selection status");
       }
       return res.data;
     },
