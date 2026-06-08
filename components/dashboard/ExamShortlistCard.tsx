@@ -68,10 +68,13 @@ export function ExamShortlistCard({
               variant="themeButton"
               size="sm"
               type="button"
-              href={applyHref}
-              target={applyHref ? "_blank" : undefined}
-              rel={applyHref ? "noopener noreferrer" : undefined}
-              onClick={applyHref ? undefined : onApplyMissingLink ?? onApply}
+              onClick={() => {
+                if (applyHref) {
+                  window.open(applyHref, "_blank", "noopener,noreferrer");
+                  return;
+                }
+                (onApplyMissingLink ?? onApply)?.();
+              }}
               className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
             >
               Apply
