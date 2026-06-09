@@ -1,4 +1,5 @@
 const EXAM_DIFFICULTY_LEVELS = Object.freeze([
+  'Beginner',
   'Advanced',
   'Intermediate',
   'Intermediate - advanced',
