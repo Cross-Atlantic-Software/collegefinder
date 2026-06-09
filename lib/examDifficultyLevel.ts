@@ -1,4 +1,5 @@
 export const EXAM_DIFFICULTY_LEVELS = [
+  "Beginner",
   "Advanced",
   "Intermediate",
   "Intermediate - advanced",

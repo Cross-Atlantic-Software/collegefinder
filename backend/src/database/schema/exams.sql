@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS exams_taxonomies (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT exams_taxonomies_difficulty_level_check CHECK (
     difficulty_level IS NULL
-    OR difficulty_level IN ('Advanced', 'Intermediate', 'Intermediate - advanced')
+    OR difficulty_level IN ('Beginner', 'Advanced', 'Intermediate', 'Intermediate - advanced')
   )
 );
 

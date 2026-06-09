@@ -41,16 +41,27 @@ class ExamEligibilityCriteria {
   /**
    * Create eligibility criteria
    */
+  static normalizeAgeLimit(data) {
+    if (data.age_limit != null && String(data.age_limit).trim() !== '') {
+      return String(data.age_limit).trim();
+    }
+    const { age_limit_min, age_limit_max } = data;
+    const parts = [age_limit_min, age_limit_max].filter(
+      (x) => x != null && String(x).trim() !== ''
+    );
+    return parts.length > 0 ? parts.join(' – ') : null;
+  }
+
   static async create(data) {
-    const { exam_id, stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile } = data;
+    const { exam_id, stream_ids, subject_ids, attempt_limit, domicile } = data;
+    const age_limit = this.normalizeAgeLimit(data);
     const result = await db.query(
-      'INSERT INTO exam_eligibility_criteria (exam_id, stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      'INSERT INTO exam_eligibility_criteria (exam_id, stream_ids, subject_ids, age_limit, attempt_limit, domicile) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [
         exam_id,
         stream_ids && Array.isArray(stream_ids) ? stream_ids : [],
         subject_ids && Array.isArray(subject_ids) ? subject_ids : [],
-        age_limit_min || null,
-        age_limit_max || null,
+        age_limit,
         attempt_limit || null,
         domicile || null
       ]
@@ -62,7 +73,7 @@ class ExamEligibilityCriteria {
    * Update eligibility criteria
    */
   static async update(examId, data) {
-    const { stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile } = data;
+    const { stream_ids, subject_ids, age_limit, attempt_limit, domicile } = data;
     
     const updates = [];
     const values = [];
@@ -76,13 +87,13 @@ class ExamEligibilityCriteria {
       updates.push(`subject_ids = $${paramCount++}`);
       values.push(Array.isArray(subject_ids) ? subject_ids : []);
     }
-    if (age_limit_min !== undefined) {
-      updates.push(`age_limit_min = $${paramCount++}`);
-      values.push(age_limit_min);
-    }
-    if (age_limit_max !== undefined) {
-      updates.push(`age_limit_max = $${paramCount++}`);
-      values.push(age_limit_max);
+    if (
+      age_limit !== undefined ||
+      data.age_limit_min !== undefined ||
+      data.age_limit_max !== undefined
+    ) {
+      updates.push(`age_limit = $${paramCount++}`);
+      values.push(this.normalizeAgeLimit(data));
     }
     if (attempt_limit !== undefined) {
       updates.push(`attempt_limit = $${paramCount++}`);
@@ -115,13 +126,13 @@ class ExamEligibilityCriteria {
    * Upsert eligibility criteria (create or update)
    */
   static async upsert(data) {
-    const { exam_id, stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile } = data;
+    const { exam_id, stream_ids, subject_ids, attempt_limit, domicile } = data;
     const existing = await this.findByExamId(exam_id);
     
     if (existing) {
-      return await this.update(exam_id, { stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile });
+      return await this.update(exam_id, data);
     } else {
-      return await this.create({ exam_id, stream_ids, subject_ids, age_limit_min, age_limit_max, attempt_limit, domicile });
+      return await this.create({ exam_id, stream_ids, subject_ids, ...data, attempt_limit, domicile });
     }
   }
 
