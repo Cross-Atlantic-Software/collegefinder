@@ -966,7 +966,6 @@ export default function ExamsPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">LOGO</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CODE</th>
                       <th className="px-3 py-2 text-center text-xs font-semibold text-slate-700 w-20">RANK</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">AUTHORITY</th>
@@ -976,7 +975,7 @@ export default function ExamsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {exams.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                           {debouncedSearch.trim()
                             ? 'No exams found matching your search'
                             : totalDbCount === 0
@@ -1005,9 +1004,6 @@ export default function ExamsPage() {
                           </td>
                           <td className="px-4 py-2">
                             <span className="text-sm font-medium text-slate-900">{exam.name}</span>
-                          </td>
-                          <td className="px-4 py-2">
-                            <span className="text-sm text-slate-600 font-mono">{exam.code || '—'}</span>
                           </td>
                           <td className="px-3 py-2 text-center">
                             <span className="text-sm text-slate-600 tabular-nums">

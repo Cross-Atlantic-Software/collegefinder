@@ -25,7 +25,7 @@ export interface ExamEligibilityPublic {
   subject_ids: number[];
   age_limit: string | null;
   /** Free text in admin; legacy rows may still be numeric from DB. */
-  attempt_limit: string | number | null;
+  attempt_limit: string | null;
   domicile?: string | null;
   stream_labels?: string[];
   subject_labels?: string[];
