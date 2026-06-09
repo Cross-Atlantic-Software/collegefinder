@@ -24,6 +24,20 @@ class Institute {
     return result.rows[0] || null;
   }
 
+  /** Case-insensitive lookup by unique bulk-upload key `institute_cityname`. */
+  static async findByInstituteCityName(name) {
+    const trimmed = name != null ? String(name).trim() : '';
+    if (!trimmed) return null;
+    const result = await db.query(
+      `SELECT * FROM institutes
+       WHERE institute_cityname IS NOT NULL
+         AND LOWER(TRIM(institute_cityname)) = LOWER($1)
+       LIMIT 1`,
+      [trimmed]
+    );
+    return result.rows[0] || null;
+  }
+
   /** Match dashboard route slug (`slugifyInstituteName`). */
   static async findBySlug(slug) {
     const s = slug != null ? String(slug).trim().toLowerCase() : '';
@@ -72,12 +86,15 @@ class Institute {
       batch_category,
       course_cycle,
       parent_institute,
+      institute_cityname,
+      state,
+      city,
     } = data;
     const trimText = (val) =>
       val != null && String(val).trim() ? String(val).trim() : null;
     const result = await db.query(
-      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, branches_number, student_strength, fee_type, fee_band, batch_category, course_cycle, parent_institute)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+      `INSERT INTO institutes (institute_name, institute_location, google_maps_link, type, logo, logo_filename, website, contact_number, referral_contact_email, branches_number, student_strength, fee_type, fee_band, batch_category, course_cycle, parent_institute, institute_cityname, state, city)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *`,
       [
         institute_name,
         institute_location || null,
@@ -95,6 +112,9 @@ class Institute {
         trimText(batch_category),
         trimText(course_cycle),
         trimText(parent_institute),
+        trimText(institute_cityname),
+        trimText(state),
+        trimText(city),
       ]
     );
     return result.rows[0];
@@ -129,6 +149,9 @@ class Institute {
       batch_category,
       course_cycle,
       parent_institute,
+      institute_cityname,
+      state,
+      city,
     } = data;
     const updates = [];
     const values = [];
@@ -177,6 +200,18 @@ class Institute {
     if (parent_institute !== undefined) {
       updates.push(`parent_institute = $${paramCount++}`);
       values.push(trimText(parent_institute));
+    }
+    if (institute_cityname !== undefined) {
+      updates.push(`institute_cityname = $${paramCount++}`);
+      values.push(trimText(institute_cityname));
+    }
+    if (state !== undefined) {
+      updates.push(`state = $${paramCount++}`);
+      values.push(trimText(state));
+    }
+    if (city !== undefined) {
+      updates.push(`city = $${paramCount++}`);
+      values.push(trimText(city));
     }
     if (updates.length === 0) return await this.findById(id);
     values.push(id);

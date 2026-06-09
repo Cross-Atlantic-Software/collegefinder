@@ -180,8 +180,11 @@ const runMigrations = async () => {
     'add_exam_metadata_fields_to_exams.sql',
     'add_college_metadata_fields.sql',
     'add_coaching_metadata_fields_to_institutes.sql',
+    'add_college_institute_state_city.sql',
+    'add_institute_cityname.sql',
     'add_beginner_exam_difficulty_level.sql',
-    'exam_eligibility_attempt_limit_to_text.sql'
+    'exam_eligibility_attempt_limit_to_text.sql',
+    'scholarships_stream_ids_multiselect.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

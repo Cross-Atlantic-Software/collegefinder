@@ -60,7 +60,11 @@ async function enrichScholarshipRows(scholarships) {
 
   const streamIds = [
     ...new Set(
-      scholarships.map((s) => s.stream_id).filter((id) => id != null && Number(id) > 0)
+      scholarships.flatMap((s) =>
+        (Array.isArray(s.stream_ids) ? s.stream_ids : [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
     ),
   ];
   const streamRows = streamIds.length ? await Stream.findByIds(streamIds) : [];
@@ -69,7 +73,12 @@ async function enrichScholarshipRows(scholarships) {
   return scholarships.map((sch) => {
     const linkedExams = examMap.get(sch.id) || [];
     const linkedColleges = collegeMap.get(sch.id) || [];
-    const streamId = sch.stream_id != null ? Number(sch.stream_id) : null;
+    const schStreamIds = (Array.isArray(sch.stream_ids) ? sch.stream_ids : [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    const streamNames = schStreamIds
+      .map((id) => streamNameById.get(id))
+      .filter((name) => name != null && String(name).trim());
     const stateNames = applicableStatesMap.get(sch.id) || [];
     return {
       ...sch,
@@ -77,8 +86,9 @@ async function enrichScholarshipRows(scholarships) {
       linkedColleges,
       linkedExamCount: linkedExams.length,
       linkedCollegeCount: linkedColleges.length,
-      stream_name:
-        streamId && streamNameById.has(streamId) ? streamNameById.get(streamId) : null,
+      stream_ids: schStreamIds,
+      stream_name: streamNames.length ? streamNames.join(', ') : null,
+      stream_names: streamNames,
       applicableStates: stateNames.map((state_name) => ({ state_name })),
     };
   });

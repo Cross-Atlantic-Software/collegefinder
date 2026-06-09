@@ -21,7 +21,7 @@ import {
 } from '@/api/admin/scholarships';
 import { getAllStreams, type Stream } from '@/api/admin/streams';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
-import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
+import { ConfirmationModal, useToast, MultiSelect } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
@@ -51,6 +51,7 @@ export default function ScholarshipsPage() {
   const [viewingData, setViewingData] = useState<{
     scholarship: Scholarship;
     streamName?: string | null;
+    streamNames?: string[];
     eligibleCategories: ScholarshipEligibleCategory[];
     applicableStates: ScholarshipApplicableState[];
     documentsRequired: ScholarshipDocumentRequired[];
@@ -64,7 +65,7 @@ export default function ScholarshipsPage() {
     conducting_authority: '',
     scholarship_type: '',
     description: '',
-    stream_id: '' as string | number,
+    stream_ids: [] as number[],
     income_limit: '',
     minimum_marks_required: '',
     scholarship_amount: '',
@@ -188,7 +189,7 @@ export default function ScholarshipsPage() {
         conducting_authority: formData.conducting_authority.trim() || null,
         scholarship_type: formData.scholarship_type.trim() || null,
         description: formData.description.trim() || null,
-        stream_id: formData.stream_id === '' ? null : Number(formData.stream_id),
+        stream_ids: formData.stream_ids,
         income_limit: formData.income_limit.trim() || null,
         minimum_marks_required: formData.minimum_marks_required.trim() || null,
         scholarship_amount: formData.scholarship_amount.trim() || null,
@@ -256,6 +257,7 @@ export default function ScholarshipsPage() {
         setViewingData({
           scholarship: response.data.scholarship,
           streamName: response.data.streamName,
+          streamNames: response.data.streamNames,
           eligibleCategories: response.data.eligibleCategories || [],
           applicableStates: response.data.applicableStates || [],
           documentsRequired: response.data.documentsRequired || [],
@@ -282,7 +284,7 @@ export default function ScholarshipsPage() {
           conducting_authority: d.scholarship.conducting_authority ?? '',
           scholarship_type: d.scholarship.scholarship_type ?? '',
           description: d.scholarship.description ?? '',
-          stream_id: d.scholarship.stream_id ?? '',
+          stream_ids: Array.isArray(d.scholarship.stream_ids) ? d.scholarship.stream_ids : [],
           income_limit: d.scholarship.income_limit ?? '',
           minimum_marks_required: d.scholarship.minimum_marks_required ?? '',
           scholarship_amount: d.scholarship.scholarship_amount ?? '',
@@ -347,7 +349,7 @@ export default function ScholarshipsPage() {
       conducting_authority: '',
       scholarship_type: '',
       description: '',
-      stream_id: '',
+      stream_ids: [],
       income_limit: '',
       minimum_marks_required: '',
       scholarship_amount: '',
@@ -714,12 +716,17 @@ export default function ScholarshipsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Stream</label>
-                    <Dropdown<number>
-                      value={typeof formData.stream_id === 'number' ? formData.stream_id : null}
-                      onChange={(v) => setFormData({ ...formData, stream_id: v })}
-                      options={streams.map((st) => ({ value: st.id, label: st.name }))}
-                      placeholder="Select stream"
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Streams</label>
+                    <MultiSelect
+                      options={streams.map((st) => ({ value: st.id.toString(), label: st.name }))}
+                      value={formData.stream_ids.map((id) => id.toString())}
+                      onChange={(selected) =>
+                        setFormData({
+                          ...formData,
+                          stream_ids: selected.map((s) => parseInt(s, 10)),
+                        })
+                      }
+                      placeholder="Select streams"
                       className="w-full"
                     />
                   </div>
@@ -1037,7 +1044,7 @@ export default function ScholarshipsPage() {
             <div className="space-y-2 text-sm text-slate-700">
               <p><strong>Conducting Authority:</strong> {viewingData.scholarship?.conducting_authority ?? '-'}</p>
               <p><strong>Type:</strong> {viewingData.scholarship?.scholarship_type ?? '-'}</p>
-              <p><strong>Stream:</strong> {viewingData.streamName ?? '-'}</p>
+              <p><strong>Streams:</strong> {viewingData.streamName ?? viewingData.streamNames?.join(', ') ?? '-'}</p>
               <p><strong>Income limit:</strong> {viewingData.scholarship?.income_limit ?? '-'}</p>
               <p><strong>Minimum marks required:</strong> {viewingData.scholarship?.minimum_marks_required ?? '-'}</p>
               <p><strong>Scholarship amount:</strong> {viewingData.scholarship?.scholarship_amount ?? '-'}</p>

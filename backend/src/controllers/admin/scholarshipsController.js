@@ -10,12 +10,65 @@ const Exam = require('../../models/taxonomy/Exam');
 const College = require('../../models/college/College');
 const { splitList, parseDate } = require('../../utils/bulkUploadUtils');
 
+function normalizeStreamIds(value) {
+  if (value == null) return [];
+  const raw = Array.isArray(value) ? value : [value];
+  return [
+    ...new Set(
+      raw
+        .map((id) => parseInt(id, 10))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    ),
+  ];
+}
+
+function resolveStreamIdsFromBody(body) {
+  if (body.stream_ids !== undefined) {
+    return normalizeStreamIds(body.stream_ids);
+  }
+  if (body.stream_id !== undefined && body.stream_id !== null && body.stream_id !== '') {
+    return normalizeStreamIds([body.stream_id]);
+  }
+  return undefined;
+}
+
 async function resolveStreamNameToId(nameStr) {
   if (!nameStr || typeof nameStr !== 'string') return null;
   const name = nameStr.trim();
   if (!name) return null;
   const stream = await Stream.findByName(name);
   return stream ? stream.id : null;
+}
+
+async function resolveStreamNamesToIds(nameStr) {
+  const names = splitList(nameStr);
+  if (!names.length) return [];
+  const ids = [];
+  for (const name of names) {
+    const id = await resolveStreamNameToId(name);
+    if (id == null) {
+      return { error: `stream not found: "${name}"` };
+    }
+    ids.push(id);
+  }
+  return { ids: [...new Set(ids)] };
+}
+
+async function loadStreamNamesForScholarship(scholarship) {
+  const streamIds = normalizeStreamIds(scholarship?.stream_ids);
+  if (!streamIds.length) {
+    return { streamIds: [], streamNames: [], streamName: null };
+  }
+  const streamRows = await Stream.findByIds(streamIds);
+  const nameById = new Map(streamRows.map((s) => [s.id, s.name]));
+  const streamNames = streamIds
+    .map((id) => nameById.get(id))
+    .filter((name) => name != null && String(name).trim());
+  return {
+    streamIds,
+    streamNames,
+    streamName: streamNames.length ? streamNames.join(', ') : null,
+  };
 }
 
 class ScholarshipsController {
@@ -46,10 +99,10 @@ class ScholarshipsController {
       ]);
 
       let streamName = null;
-      if (scholarship.stream_id != null) {
-        const stream = await Stream.findById(scholarship.stream_id);
-        if (stream && stream.name) streamName = stream.name;
-      }
+      let streamNames = [];
+      const streamInfo = await loadStreamNamesForScholarship(scholarship);
+      streamName = streamInfo.streamName;
+      streamNames = streamInfo.streamNames;
       const examNames = [];
       for (const eid of examIds || []) {
         const ex = await Exam.findById(eid);
@@ -66,6 +119,7 @@ class ScholarshipsController {
         data: {
           scholarship,
           streamName,
+          streamNames,
           eligibleCategories: eligibleCategories || [],
           applicableStates: applicableStates || [],
           documentsRequired: documentsRequired || [],
@@ -127,7 +181,7 @@ class ScholarshipsController {
         conducting_authority: conducting_authority ? conducting_authority.trim() : null,
         scholarship_type: scholarship_type ? scholarship_type.trim() : null,
         description: description ? description.trim() : null,
-        stream_id: stream_id ?? null,
+        stream_ids: resolveStreamIdsFromBody(req.body) ?? [],
         income_limit: income_limit != null ? String(income_limit).trim() : null,
         minimum_marks_required: minimum_marks_required != null ? String(minimum_marks_required).trim() : null,
         scholarship_amount: scholarship_amount != null ? String(scholarship_amount).trim() : null,
@@ -237,12 +291,14 @@ class ScholarshipsController {
         }
       }
 
+      const resolvedStreamIds = resolveStreamIdsFromBody(req.body);
+
       await Scholarship.update(scholarshipId, {
         scholarship_name: scholarship_name !== undefined ? scholarship_name.trim() : undefined,
         conducting_authority: conducting_authority !== undefined ? (conducting_authority && conducting_authority.trim()) || null : undefined,
         scholarship_type: scholarship_type !== undefined ? (scholarship_type && scholarship_type.trim()) || null : undefined,
         description: description !== undefined ? (description && description.trim()) || null : undefined,
-        stream_id: stream_id !== undefined ? (stream_id ?? null) : undefined,
+        stream_ids: resolvedStreamIds !== undefined ? resolvedStreamIds : undefined,
         income_limit: income_limit !== undefined ? (income_limit != null ? String(income_limit).trim() : null) : undefined,
         minimum_marks_required: minimum_marks_required !== undefined ? (minimum_marks_required != null ? String(minimum_marks_required).trim() : null) : undefined,
         scholarship_amount: scholarship_amount !== undefined ? (scholarship_amount != null ? String(scholarship_amount).trim() : null) : undefined,
@@ -466,11 +522,8 @@ class ScholarshipsController {
         const catStr = (categories && categories.length) ? categories.map((c) => c.category || '').filter(Boolean).join(';') : '';
         const stateStr = (states && states.length) ? states.map((st) => st.state_name || '').filter(Boolean).join(';') : '';
         const docsStr = (docs && docs.length) ? docs.map((d) => d.document_name || '').filter(Boolean).join(';') : '';
-        let streamName = '';
-        if (s.stream_id != null) {
-          const stream = await Stream.findById(s.stream_id);
-          if (stream && stream.name) streamName = stream.name;
-        }
+        const streamInfo = await loadStreamNamesForScholarship(s);
+        const streamName = streamInfo.streamName || '';
         rows.push([
           s.scholarship_name || '',
           s.conducting_authority || '',
@@ -573,18 +626,19 @@ class ScholarshipsController {
         }
 
         const streamNameRaw = getVal(row, 'stream_name', 'stream_Name');
-        const streamIdRaw = getVal(row, 'stream_id', 'stream_Id');
-        let stream_id = null;
+        const streamIdsRaw = getVal(row, 'stream_ids', 'stream_Ids') || getVal(row, 'stream_id', 'stream_Id');
+        let stream_ids = [];
         if (streamNameRaw) {
-          stream_id = await resolveStreamNameToId(streamNameRaw);
-          if (stream_id == null) {
-            errors.push({ row: rowNum, message: `stream not found: "${streamNameRaw}"` });
+          const resolved = await resolveStreamNamesToIds(streamNameRaw);
+          if (resolved.error) {
+            errors.push({ row: rowNum, message: resolved.error });
             continue;
           }
-        } else if (streamIdRaw) {
-          stream_id = parseInt(streamIdRaw, 10);
-          if (isNaN(stream_id)) {
-            errors.push({ row: rowNum, message: 'stream_id must be a number when provided' });
+          stream_ids = resolved.ids;
+        } else if (streamIdsRaw) {
+          stream_ids = normalizeStreamIds(splitList(streamIdsRaw));
+          if (!stream_ids.length) {
+            errors.push({ row: rowNum, message: 'stream_ids must contain valid numbers when provided' });
             continue;
           }
         }
@@ -604,7 +658,7 @@ class ScholarshipsController {
             conducting_authority: getVal(row, 'conducting_authority') || null,
             scholarship_type: getVal(row, 'scholarship_type') || null,
             description: getVal(row, 'description') || null,
-            stream_id,
+            stream_ids,
             income_limit: getVal(row, 'income_limit') || null,
             minimum_marks_required: getVal(row, 'minimum_marks_required') || null,
             scholarship_amount: getVal(row, 'scholarship_amount') || null,

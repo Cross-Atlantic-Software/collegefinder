@@ -71,6 +71,36 @@ function formatExamPatternDurationHoursSearch(value) {
 }
 
 /**
+ * Dashboard exam pool = eligibility stream match on each exam row
+ * PLUS exams from Admin → Mapping → Recommended exams (student stream + Default stream).
+ */
+async function loadStreamExamsForDashboard(streamNum, defaultStreamId) {
+  const fromEligibility = await Exam.findEligibleForUserStreamOrDefault(streamNum, defaultStreamId);
+  const streamIds = [streamNum];
+  if (defaultStreamId != null && Number(defaultStreamId) !== streamNum) {
+    streamIds.push(Number(defaultStreamId));
+  }
+  const mappingLists = await Promise.all(
+    streamIds.map((sid) => StreamInterestRecommendation.findByStream(sid))
+  );
+  const mappingExamIds = new Set();
+  for (const rows of mappingLists) {
+    for (const row of rows) {
+      for (const raw of row.exam_ids || []) {
+        const n = Number(raw);
+        if (Number.isInteger(n) && n > 0) mappingExamIds.add(n);
+      }
+    }
+  }
+  const fromMapping =
+    mappingExamIds.size > 0 ? await Exam.findByIds([...mappingExamIds]) : [];
+  const byId = new Map();
+  for (const e of fromEligibility) byId.set(Number(e.id), e);
+  for (const e of fromMapping) byId.set(Number(e.id), e);
+  return sortExamsByPopularityRank([...byId.values()]);
+}
+
+/**
  * Interest tags for recommendation: exam_career_goal ∪ admin stream_interest_recommendation_mappings.
  * Recommended ordering uses only exams listed in admin mappings when those exist for the student's interests.
  */
@@ -141,7 +171,12 @@ async function buildDashboardExamRecommendationInputs(
     defaultStreamId
   );
   if (mappedExamIds.size > 0) {
-    examsForRecommendation = streamExams.filter((e) => mappedExamIds.has(Number(e.id)));
+    const filtered = streamExams.filter((e) => mappedExamIds.has(Number(e.id)));
+    if (filtered.length > 0) {
+      examsForRecommendation = filtered;
+    } else {
+      examsForRecommendation = await Exam.findByIds([...mappedExamIds]);
+    }
   }
 
   return {
@@ -174,7 +209,7 @@ async function loadDashboardExamShortlistContext(userId) {
   const defaultRow = await Stream.findByName('Default');
   const defaultStreamId = defaultRow?.id != null ? Number(defaultRow.id) : null;
 
-  const streamExams = await Exam.findEligibleForUserStreamOrDefault(streamNum, defaultStreamId);
+  const streamExams = await loadStreamExamsForDashboard(streamNum, defaultStreamId);
 
   const careerGoalIds = careerGoalsRow?.interests ?? [];
   const normalizedCareerGoalIds = Array.isArray(careerGoalIds)
@@ -1398,7 +1433,7 @@ class ExamsTaxonomyController {
       const streamIdNum = Number(streamId);
       const defaultRow = await Stream.findByName('Default');
       const defaultStreamId = defaultRow?.id != null ? Number(defaultRow.id) : null;
-      const streamExams = await Exam.findEligibleForUserStreamOrDefault(streamIdNum, defaultStreamId);
+      const streamExams = await loadStreamExamsForDashboard(streamIdNum, defaultStreamId);
 
       const {
         interestStreamById,
