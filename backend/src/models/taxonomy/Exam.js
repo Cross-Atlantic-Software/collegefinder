@@ -106,6 +106,21 @@ class Exam {
     return { rows: dataResult.rows, total };
   }
 
+  /** Batch load exams by primary key (preserves popularity sort). */
+  static async findByIds(ids) {
+    const normalized = [...new Set(
+      (ids || []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+    )];
+    if (normalized.length === 0) return [];
+    const result = await db.query(
+      `SELECT * FROM exams_taxonomies
+       WHERE id = ANY($1::int[])
+       ORDER BY exam_popularity_rank ASC NULLS LAST, name ASC`,
+      [normalized]
+    );
+    return result.rows;
+  }
+
   /**
    * Find exam taxonomy by ID
    */

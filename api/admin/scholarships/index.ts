@@ -8,7 +8,7 @@ export interface Scholarship {
   conducting_authority: string | null;
   scholarship_type: string | null;
   description: string | null;
-  stream_id: number | null;
+  stream_ids: number[];
   income_limit: string | null;
   minimum_marks_required: string | null;
   scholarship_amount: string | null;
@@ -60,6 +60,7 @@ export async function getAllScholarshipsAdmin(): Promise<ApiResponse<{ scholarsh
 export async function getScholarshipById(id: number): Promise<ApiResponse<{
   scholarship: Scholarship;
   streamName?: string | null;
+  streamNames?: string[];
   eligibleCategories: ScholarshipEligibleCategory[];
   applicableStates: ScholarshipApplicableState[];
   documentsRequired: ScholarshipDocumentRequired[];
@@ -76,7 +77,7 @@ export async function createScholarship(data: {
   conducting_authority?: string | null;
   scholarship_type?: string | null;
   description?: string | null;
-  stream_id?: number | null;
+  stream_ids?: number[];
   income_limit?: string | null;
   minimum_marks_required?: string | null;
   scholarship_amount?: string | null;
@@ -113,7 +114,7 @@ export async function updateScholarship(
     conducting_authority?: string | null;
     scholarship_type?: string | null;
     description?: string | null;
-    stream_id?: number | null;
+    stream_ids?: number[];
     income_limit?: string | null;
     minimum_marks_required?: string | null;
     scholarship_amount?: string | null;

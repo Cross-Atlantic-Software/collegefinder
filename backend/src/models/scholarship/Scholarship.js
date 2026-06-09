@@ -1,5 +1,17 @@
 const db = require('../../config/database');
 
+function normalizeStreamIds(value) {
+  if (value == null) return [];
+  const raw = Array.isArray(value) ? value : [value];
+  return [
+    ...new Set(
+      raw
+        .map((id) => parseInt(id, 10))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    ),
+  ];
+}
+
 class Scholarship {
   static async findAll() {
     const result = await db.query(
@@ -60,7 +72,7 @@ class Scholarship {
       conducting_authority,
       scholarship_type,
       description,
-      stream_id,
+      stream_ids,
       income_limit,
       minimum_marks_required,
       scholarship_amount,
@@ -73,7 +85,7 @@ class Scholarship {
     const result = await db.query(
       `INSERT INTO scholarships (
         scholarship_name, conducting_authority, scholarship_type, description,
-        stream_id, income_limit, minimum_marks_required, scholarship_amount,
+        stream_ids, income_limit, minimum_marks_required, scholarship_amount,
         selection_process, application_start_date, application_end_date, mode, official_website
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
@@ -81,7 +93,7 @@ class Scholarship {
         conducting_authority || null,
         scholarship_type || null,
         description || null,
-        stream_id ?? null,
+        normalizeStreamIds(stream_ids),
         income_limit || null,
         minimum_marks_required || null,
         scholarship_amount || null,
@@ -98,7 +110,7 @@ class Scholarship {
   static async update(id, data) {
     const fields = [
       'scholarship_name', 'conducting_authority', 'scholarship_type', 'description',
-      'stream_id', 'income_limit', 'minimum_marks_required', 'scholarship_amount',
+      'stream_ids', 'income_limit', 'minimum_marks_required', 'scholarship_amount',
       'selection_process', 'application_start_date', 'application_end_date', 'mode', 'official_website'
     ];
     const updates = [];
@@ -107,7 +119,11 @@ class Scholarship {
     for (const key of fields) {
       if (data[key] !== undefined) {
         updates.push(`${key} = $${paramCount++}`);
-        values.push(data[key] === '' ? null : data[key]);
+        if (key === 'stream_ids') {
+          values.push(normalizeStreamIds(data[key]));
+        } else {
+          values.push(data[key] === '' ? null : data[key]);
+        }
       }
     }
     if (updates.length === 0) return await this.findById(id);

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS scholarships (
   conducting_authority VARCHAR(500),
   scholarship_type VARCHAR(100),
   description TEXT,
-  stream_id INTEGER REFERENCES streams(id) ON DELETE SET NULL,
+  stream_ids INTEGER[] DEFAULT '{}',
   income_limit VARCHAR(255),
   minimum_marks_required VARCHAR(255),
   scholarship_amount VARCHAR(255),
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS scholarships (
 );
 
 CREATE INDEX IF NOT EXISTS idx_scholarships_name ON scholarships(scholarship_name);
-CREATE INDEX IF NOT EXISTS idx_scholarships_stream_id ON scholarships(stream_id);
+CREATE INDEX IF NOT EXISTS idx_scholarships_stream_ids ON scholarships USING GIN (stream_ids);
 
 DROP TRIGGER IF EXISTS update_scholarships_updated_at ON scholarships;
 CREATE TRIGGER update_scholarships_updated_at BEFORE UPDATE ON scholarships
