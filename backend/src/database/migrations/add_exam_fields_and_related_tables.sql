@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS exam_eligibility_criteria (
   subject_ids INTEGER[] DEFAULT '{}', -- Array of subject IDs from subjects table
   age_limit_min INTEGER,
   age_limit_max INTEGER,
-  attempt_limit INTEGER,
+  attempt_limit VARCHAR(200),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(exam_id)
