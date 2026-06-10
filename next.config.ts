@@ -29,8 +29,11 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: false,
     // Lowers peak memory during `next build` on small VPS instances.
     serverMinification: false,
+    // Windows: parallel page-data workers often fail with spawn UNKNOWN (-4094).
+    workerThreads: false,
+    cpus: 1,
     // Rewrites proxy /api/* to Express; default 10MB truncates counsellor PDF uploads.
-    middlewareClientMaxBodySize: '50mb',
+    proxyClientMaxBodySize: '50mb',
   },
   // Proxy /api to backend so browser requests to same-origin /api/* reach the Express server
   async rewrites() {

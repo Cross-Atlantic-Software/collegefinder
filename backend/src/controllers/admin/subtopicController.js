@@ -1,5 +1,6 @@
 const Subtopic = require('../../models/taxonomy/Subtopic');
 const Topic = require('../../models/taxonomy/Topic');
+const Subject = require('../../models/taxonomy/Subject');
 const { validationResult } = require('express-validator');
 const XLSX = require('xlsx');
 const { getCell } = require('../../utils/bulkUploadUtils');
@@ -9,6 +10,41 @@ const uploadExcel = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
+
+/** Normalized composite key: same subtopic name is allowed under different topics. */
+function subtopicTopicKey(subtopicName, topicName, subjectName = '') {
+  const sub = String(subtopicName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const topic = String(topicName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const subject = String(subjectName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return `${subject}::${topic}::${sub}`;
+}
+
+async function resolveTopicForSubtopicBulk(topicName, subjectName) {
+  const topicMatches = await Topic.findAllByTrimmedNameInsensitive(topicName);
+  if (topicMatches.length === 0) {
+    return { error: `topic not found: "${topicName}"` };
+  }
+
+  if (subjectName) {
+    const subject = await Subject.findByName(subjectName);
+    if (!subject) {
+      return { error: `subject not found: "${subjectName}"` };
+    }
+    const topic = topicMatches.find((t) => t.sub_id === subject.id);
+    if (!topic) {
+      return { error: `topic "${topicName}" not found under subject "${subjectName}"` };
+    }
+    return { topic, subjectName: subject.name };
+  }
+
+  if (topicMatches.length > 1) {
+    return {
+      error: `multiple topics named "${topicName}"; add subject_name to identify the correct topic`,
+    };
+  }
+
+  return { topic: topicMatches[0], subjectName: '' };
+}
 
 class SubtopicController {
   /**
@@ -106,14 +142,6 @@ class SubtopicController {
       const nameTrim = String(name || '').trim();
       if (!nameTrim) {
         return res.status(400).json({ success: false, message: 'Name is required' });
-      }
-
-      const globalDup = await Subtopic.findAllByTrimmedNameInsensitive(nameTrim);
-      if (globalDup.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'A subtopic with this name already exists (subtopic names are unique)',
-        });
       }
 
       const existingInTopic = await Subtopic.findByTopicIdAndNameInsensitive(parseInt(topic_id, 10), nameTrim);
@@ -222,15 +250,15 @@ class SubtopicController {
    * DELETE /api/admin/subtopics/:id
    */
   /**
-   * Excel template: subtopic_name, topic_name (topic_name must match exactly one topic).
+   * Excel template: subtopic_name, topic_name, subject_name (subject_name required when topic names repeat).
    * GET /api/admin/subtopics/bulk-upload-template
    */
   static async downloadBulkTemplate(req, res) {
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
-        ['subtopic_name', 'topic_name'],
-        ['Linear Equations', 'Algebra Basics'],
+        ['subtopic_name', 'topic_name', 'subject_name'],
+        ['Linear Equations', 'Algebra Basics', 'Mathematics'],
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Subtopics');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -273,7 +301,7 @@ class SubtopicController {
 
       const created = [];
       const errors = [];
-      const seenSubtopicNames = new Set();
+      const seenSubtopicTopicKeys = new Set();
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -285,43 +313,38 @@ class SubtopicController {
           continue;
         }
 
-        const sk = subtopicName.toLowerCase().replace(/\s+/g, ' ').trim();
-        if (seenSubtopicNames.has(sk)) {
-          errors.push({ row: rowNum, message: `duplicate subtopic_name in file: "${subtopicName}"` });
-          continue;
-        }
-        seenSubtopicNames.add(sk);
-
         const topicName = getCell(row, 'topic_name', 'topic_Name', 'Topic_Name', 'Topic name');
         if (!topicName) {
           errors.push({ row: rowNum, message: 'topic_name is required' });
           continue;
         }
 
-        const topicMatches = await Topic.findAllByTrimmedNameInsensitive(topicName);
-        if (topicMatches.length === 0) {
-          errors.push({ row: rowNum, message: `topic not found: "${topicName}"` });
-          continue;
-        }
-        if (topicMatches.length > 1) {
+        const subjectName = getCell(row, 'subject_name', 'subject_Name', 'Subject_Name', 'Subject name');
+
+        const rowKey = subtopicTopicKey(subtopicName, topicName, subjectName);
+        if (seenSubtopicTopicKeys.has(rowKey)) {
           errors.push({
             row: rowNum,
-            message: `multiple topics named "${topicName}" in database; names must be unique`,
+            message: `duplicate subtopic "${subtopicName}" under topic "${topicName}"${subjectName ? ` / subject "${subjectName}"` : ''} in file`,
           });
           continue;
         }
+        seenSubtopicTopicKeys.add(rowKey);
 
-        const topicRow = topicMatches[0];
-
-        const existingGlobal = await Subtopic.findAllByTrimmedNameInsensitive(subtopicName);
-        if (existingGlobal.length > 0) {
-          errors.push({ row: rowNum, message: `subtopic already exists: "${subtopicName}"` });
+        const resolved = await resolveTopicForSubtopicBulk(topicName, subjectName);
+        if (resolved.error) {
+          errors.push({ row: rowNum, message: resolved.error });
           continue;
         }
 
+        const topicRow = resolved.topic;
+
         const inTopic = await Subtopic.findByTopicIdAndNameInsensitive(topicRow.id, subtopicName);
         if (inTopic) {
-          errors.push({ row: rowNum, message: `subtopic already exists under topic: "${subtopicName}"` });
+          errors.push({
+            row: rowNum,
+            message: `subtopic "${subtopicName}" already exists under topic "${topicName}"`,
+          });
           continue;
         }
 

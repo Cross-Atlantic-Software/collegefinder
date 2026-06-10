@@ -44,7 +44,16 @@ class Topic {
     return result.rows[0] || null;
   }
 
-  /** All topics whose trimmed name matches case-insensitively (for global uniqueness / Excel linking). */
+  /** Case-insensitive name match within subject (for create/update/bulk). */
+  static async findBySubjectIdAndNameInsensitive(subId, name) {
+    const result = await db.query(
+      `SELECT * FROM topics WHERE sub_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1`,
+      [subId, name]
+    );
+    return result.rows[0] || null;
+  }
+
+  /** All topics whose trimmed name matches case-insensitively. */
   static async findAllByTrimmedNameInsensitive(name) {
     const result = await db.query(
       `SELECT * FROM topics WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC`,
