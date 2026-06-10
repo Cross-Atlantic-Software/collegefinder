@@ -198,19 +198,14 @@ async function getExamPrepRecommendedLecture(userId, { sort = 'latest' } = {}) {
 
   const lectures = await rowsToLectureDtos(topRowsPerSubject);
 
-  const hasExamPool =
-    (ctx.examCtx.shortlistedExamIds || []).length > 0 ||
-    (ctx.examCtx.recommendedExamIds || []).length > 0;
-
   return {
     requiresStreamSelection: false,
     stream_id: ctx.streamId,
     lecture: lectures[0] ?? null,
     lectures,
-    message:
-      !lectures.length && hasExamPool
-        ? 'No videos match your shortlisted or recommended exams yet. Admins can tag lectures with exams in Lecture Manager.'
-        : undefined,
+    message: !lectures.length
+      ? 'No self-study videos are available for your stream yet.'
+      : undefined,
   };
 }
 

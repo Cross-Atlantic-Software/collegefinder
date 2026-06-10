@@ -349,7 +349,7 @@ class Lecture {
   }
 
   /**
-   * Video lectures tagged with a stream (lecture_streams), grouped by taxonomy subject (topic.sub_id).
+   * Video lectures for a student's stream: explicit lecture_streams tags OR subject.streams on the topic's subject.
    * Used for dashboard Exam Prep self-study feed.
    */
   static async findVideoLecturesForExamPrepByStream(streamId, { subjectId = null } = {}) {
@@ -385,7 +385,6 @@ class Lecture {
            + COALESCE(l.youtube_subscriber_count, 0)::numeric / 1000.0
          ) AS rank_score
        FROM lectures l
-       INNER JOIN lecture_streams ls ON ls.lecture_id = l.id AND ls.stream_id = $1
        INNER JOIN topics t ON l.topic_id = t.id
        INNER JOIN subjects subj ON t.sub_id = subj.id
        LEFT JOIN lecture_exams leex ON leex.lecture_id = l.id
@@ -396,6 +395,16 @@ class Lecture {
            OR (l.video_file IS NOT NULL AND TRIM(l.video_file) <> '')
          )
          AND ($2::int IS NULL OR subj.id = $2)
+         AND (
+           EXISTS (
+             SELECT 1 FROM lecture_streams ls
+             WHERE ls.lecture_id = l.id AND ls.stream_id = $1
+           )
+           OR EXISTS (
+             SELECT 1 FROM jsonb_array_elements(subj.streams) AS stream_elem
+             WHERE stream_elem::text::integer = $1 OR stream_elem::text = $3
+           )
+         )
        GROUP BY
          l.id,
          l.iframe_code,
@@ -411,7 +420,7 @@ class Lecture {
          subj.id,
          subj.name
        ORDER BY subj.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,
-      [sid, subjFilter]
+      [sid, subjFilter, String(sid)]
     );
     return result.rows;
   }

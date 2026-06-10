@@ -42,6 +42,49 @@ async function getLectureYoutubeMetaFromIframe(iframeCode) {
   }
 }
 
+function streamIdsFromSubjects(subjects) {
+  const streamIdSet = new Set();
+  for (const subject of subjects) {
+    if (!subject) continue;
+    const arr = Array.isArray(subject.streams) ? subject.streams : [];
+    for (const sid of arr) {
+      const n = typeof sid === 'number' ? sid : parseInt(String(sid), 10);
+      if (!Number.isNaN(n) && n > 0) streamIdSet.add(n);
+    }
+  }
+  return [...streamIdSet];
+}
+
+async function resolveTopicForLectureBulk(topicName, subjectNamesCell) {
+  const subjectParts = splitList(subjectNamesCell || '');
+  if (subjectParts.length === 1) {
+    const subject = await Subject.findByName(subjectParts[0]);
+    if (subject) {
+      const topic = await Topic.findBySubjectIdAndNameInsensitive(subject.id, topicName);
+      if (topic) {
+        return { topic, subjectFromTopic: subject };
+      }
+      return {
+        error: `topic "${topicName}" not found under subject "${subjectParts[0]}"`,
+      };
+    }
+  }
+
+  const matches = await Topic.findAllByTrimmedNameInsensitive(topicName);
+  if (matches.length === 0) {
+    return { error: `topic not found: "${topicName}"` };
+  }
+  if (matches.length > 1) {
+    return {
+      error: `multiple topics named "${topicName}"; add subject_names to identify the correct topic`,
+    };
+  }
+
+  const topic = matches[0];
+  const subjectFromTopic = topic.sub_id ? await Subject.findById(topic.sub_id) : null;
+  return { topic, subjectFromTopic };
+}
+
 /**
  * Process one Excel row for lecture bulk import.
  * @param {object} params
@@ -60,10 +103,14 @@ async function processLectureBulkRow({ row, rowNum, thumbnailMap, dupKey }) {
   if (!subtopicName) {
     return { ok: false, error: 'subtopic_name is required' };
   }
-  const topic = await Topic.findByName(topicName);
-  if (!topic) {
-    return { ok: false, error: `topic not found: "${topicName}"` };
+
+  const subjectNames = getCell(row, 'subject_names', 'subject_Names');
+  const resolvedTopic = await resolveTopicForLectureBulk(topicName, subjectNames);
+  if (resolvedTopic.error) {
+    return { ok: false, error: resolvedTopic.error };
   }
+  const topic = resolvedTopic.topic;
+
   const subtopic = await Subtopic.findByTopicIdAndNameInsensitive(topic.id, subtopicName);
   if (!subtopic) {
     return { ok: false, error: `subtopic not found under topic: "${subtopicName}"` };
@@ -82,7 +129,6 @@ async function processLectureBulkRow({ row, rowNum, thumbnailMap, dupKey }) {
   const key_topics_to_be_covered =
     keyTopicsCell && String(keyTopicsCell).trim() ? String(keyTopicsCell).trim() : null;
 
-  const subjectNames = getCell(row, 'subject_names', 'subject_Names');
   const examNames = getCell(row, 'exam_names', 'exam_Names');
 
   const linkRaw = getCell(
@@ -182,24 +228,22 @@ async function processLectureBulkRow({ row, rowNum, thumbnailMap, dupKey }) {
       youtube_subscriber_count: youtubeMeta?.subscriberCount ?? null,
     });
 
-    const subjectIds = [];
     const subjectsResolved = [];
     for (const nm of splitList(subjectNames)) {
-      const s = await Subject.findByName(nm);
-      if (s) {
-        subjectIds.push(s.id);
-        subjectsResolved.push(s);
+      const subj = await Subject.findByName(nm);
+      if (subj) {
+        subjectsResolved.push(subj);
       }
     }
-    const streamIdSet = new Set();
-    for (const s of subjectsResolved) {
-      const arr = Array.isArray(s.streams) ? s.streams : [];
-      for (const sid of arr) {
-        const n = typeof sid === 'number' ? sid : parseInt(String(sid), 10);
-        if (!Number.isNaN(n) && n > 0) streamIdSet.add(n);
-      }
+    if (
+      resolvedTopic.subjectFromTopic &&
+      !subjectsResolved.some((s) => s.id === resolvedTopic.subjectFromTopic.id)
+    ) {
+      subjectsResolved.push(resolvedTopic.subjectFromTopic);
     }
-    const streamIds = [...streamIdSet];
+
+    const streamIds = streamIdsFromSubjects(subjectsResolved);
+    const subjectIds = subjectsResolved.map((s) => s.id);
     const examIds = [];
     for (const nm of splitList(examNames)) {
       const e = await Exam.findByName(nm);
