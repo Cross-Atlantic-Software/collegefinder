@@ -694,19 +694,21 @@ export default function SubtopicsPage() {
             <div className="flex-1 overflow-auto p-4 space-y-4">
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-slate-600 mb-3">Columns: subtopic_name, topic_name (must match an existing topic exactly).</p>
+                <p className="text-xs text-slate-600 mb-3">Columns: subtopic_name, topic_name, subject_name (optional unless the same topic name exists under multiple subjects). The same subtopic name is allowed under different topics; duplicates are only rejected when subtopic, topic, and subject all match.</p>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-100">
                         <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">subtopic_name</th>
-                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">topic_name</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-r border-slate-200">topic_name</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-700 border-b border-slate-200">subject_name</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
                         <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Linear Equations</td>
-                        <td className="px-3 py-2 text-slate-800">Algebra</td>
+                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200">Algebra</td>
+                        <td className="px-3 py-2 text-slate-800">Mathematics</td>
                       </tr>
                     </tbody>
                   </table>

@@ -26,6 +26,13 @@ const uploadExcel = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+/** Normalized composite key: same topic name is allowed under different subjects. */
+function topicSubjectKey(topicName, subjectName) {
+  const topic = String(topicName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const subject = String(subjectName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return `${subject}::${topic}`;
+}
+
 class TopicController {
   /**
    * Get all topics
@@ -103,11 +110,11 @@ class TopicController {
         return res.status(400).json({ success: false, message: 'Name is required' });
       }
 
-      const duplicates = await Topic.findAllByTrimmedNameInsensitive(nameSame);
-      if (duplicates.length > 0) {
+      const duplicates = await Topic.findBySubjectIdAndNameInsensitive(parseInt(sub_id, 10), nameSame);
+      if (duplicates) {
         return res.status(400).json({
           success: false,
-          message: 'A topic with this name already exists (names are unique across all subjects)',
+          message: 'A topic with this name already exists for this subject',
         });
       }
 
@@ -165,13 +172,15 @@ class TopicController {
 
       const subjectId = sub_id != null ? parseInt(sub_id, 10) : existingTopic.sub_id;
       const nextName = name !== undefined ? String(name).trim() : existingTopic.name;
-      if (name !== undefined && nextName !== String(existingTopic.name).trim()) {
-        const duplicates = await Topic.findAllByTrimmedNameInsensitive(nextName);
-        const taken = duplicates.some((t) => t.id !== parseInt(id, 10));
-        if (taken) {
+      if (
+        (name !== undefined && nextName !== String(existingTopic.name).trim()) ||
+        (sub_id !== undefined && subjectId !== existingTopic.sub_id)
+      ) {
+        const inSubject = await Topic.findBySubjectIdAndNameInsensitive(subjectId, nextName);
+        if (inSubject && inSubject.id !== parseInt(id, 10)) {
           return res.status(400).json({
             success: false,
-            message: 'A topic with this name already exists (names are unique across all subjects)',
+            message: 'A topic with this name already exists for this subject',
           });
         }
       }
@@ -311,7 +320,7 @@ class TopicController {
 
       const created = [];
       const errors = [];
-      const seenTopicNames = new Set();
+      const seenTopicSubjectKeys = new Set();
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -322,13 +331,6 @@ class TopicController {
           errors.push({ row: rowNum, message: 'topic_name is required' });
           continue;
         }
-
-        const key = topicName.toLowerCase().replace(/\s+/g, ' ').trim();
-        if (seenTopicNames.has(key)) {
-          errors.push({ row: rowNum, message: `duplicate topic_name in file: "${topicName}"` });
-          continue;
-        }
-        seenTopicNames.add(key);
 
         const subjectCell = getCell(row, 'subject_names', 'subject_Names', 'Subject_Names', 'subject name', 'Subject name');
         if (!subjectCell) {
@@ -367,10 +369,24 @@ class TopicController {
         }
 
         const subId = uniqueIds[0];
+        const subjectName = resolvedSubjects[0].name;
 
-        const existingByName = await Topic.findAllByTrimmedNameInsensitive(topicName);
-        if (existingByName.length > 0) {
-          errors.push({ row: rowNum, message: `topic already exists: "${topicName}"` });
+        const rowKey = topicSubjectKey(topicName, subjectName);
+        if (seenTopicSubjectKeys.has(rowKey)) {
+          errors.push({
+            row: rowNum,
+            message: `duplicate topic "${topicName}" under subject "${subjectName}" in file`,
+          });
+          continue;
+        }
+        seenTopicSubjectKeys.add(rowKey);
+
+        const existingInSubject = await Topic.findBySubjectIdAndNameInsensitive(subId, topicName);
+        if (existingInSubject) {
+          errors.push({
+            row: rowNum,
+            message: `topic "${topicName}" already exists under subject "${subjectName}"`,
+          });
           continue;
         }
 

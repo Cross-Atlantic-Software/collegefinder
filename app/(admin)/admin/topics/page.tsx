@@ -781,7 +781,7 @@ export default function TopicsPage() {
             <div className="flex-1 overflow-auto p-4 space-y-4">
               <div className="bg-[#F6F8FA] border border-slate-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Sample template – Excel format</h3>
-                <p className="text-xs text-slate-600 mb-3">Columns: topic_name, subject_names (must match exactly one existing subject).</p>
+                <p className="text-xs text-slate-600 mb-3">Columns: topic_name, subject_names (must match exactly one existing subject). The same topic name is allowed under different subjects; duplicates are only rejected when both topic and subject match.</p>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead>
