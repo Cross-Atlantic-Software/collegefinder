@@ -20,7 +20,7 @@ const {
 } = require('../../utils/youtubeMetadata');
 const multer = require('multer');
 const db = require('../../config/database');
-const { generateAndPersistLectureHookSummary } = require('../../utils/lectureHookSummary');
+const { scheduleLectureHookSummary } = require('../../utils/lectureHookSummary');
 const {
   enqueueLectureHookSummary,
   enqueueLectureHookSummaryIfPending,
@@ -494,7 +494,7 @@ class LectureController {
       }
 
       try {
-        await generateAndPersistLectureHookSummary(lecture.id);
+        scheduleLectureHookSummary(lecture.id);
       } catch (hookErr) {
         console.error('lectureHookSummary (create):', hookErr.message || hookErr);
       }
@@ -622,6 +622,9 @@ class LectureController {
         updateData.iframe_code !== undefined
           ? updateData.iframe_code
           : existingLecture.iframe_code;
+      const iframeUnchanged =
+        iframe_code !== undefined &&
+        String(mergedIframe || '').trim() === String(existingLecture.iframe_code || '').trim();
       const effectiveIframe =
         finalContentType === 'VIDEO' &&
         !(mergedVideoFile && String(mergedVideoFile).trim())
@@ -629,30 +632,49 @@ class LectureController {
             ? String(mergedIframe).trim()
             : null
           : null;
-      const baseDesc =
-        description !== undefined ? description : existingLecture.description;
-      updateData.description = await enrichDescriptionFromYoutubeIframe(
-        effectiveIframe,
-        baseDesc
-      );
-      const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
-      const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
-      if (finalContentType === 'VIDEO' && youtubeTitle) {
-        const titleExists = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId);
-        if (titleExists && titleExists.id !== parseInt(id, 10)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Lecture with this YouTube title already exists for this subtopic',
-          });
+
+      const shouldRefreshYoutubeMeta =
+        finalContentType === 'VIDEO' &&
+        effectiveIframe &&
+        !iframeUnchanged &&
+        video_file === undefined;
+
+      if (shouldRefreshYoutubeMeta) {
+        const baseDesc =
+          description !== undefined ? description : existingLecture.description;
+        updateData.description = await enrichDescriptionFromYoutubeIframe(
+          effectiveIframe,
+          baseDesc
+        );
+        const youtubeMeta = await getLectureYoutubeMetaFromIframe(effectiveIframe);
+        const youtubeTitle = youtubeMeta?.title ? String(youtubeMeta.title).trim() : '';
+        if (youtubeTitle) {
+          const titleExists = await Lecture.findByYoutubeTitleAndSubtopicId(youtubeTitle, subtopicId);
+          if (titleExists && titleExists.id !== parseInt(id, 10)) {
+            return res.status(400).json({
+              success: false,
+              message: 'Lecture with this YouTube title already exists for this subtopic',
+            });
+          }
         }
-      }
-      if (finalContentType === 'VIDEO' && effectiveIframe) {
         updateData.youtube_title = youtubeMeta?.title || null;
         updateData.youtube_channel_name = youtubeMeta?.channelName || null;
         updateData.youtube_channel_id = youtubeMeta?.channelId || null;
         updateData.youtube_channel_url = youtubeMeta?.channelUrl || null;
         updateData.youtube_like_count = youtubeMeta?.likeCount ?? null;
         updateData.youtube_subscriber_count = youtubeMeta?.subscriberCount ?? null;
+
+        const mergedThumbBefore =
+          thumbnail !== undefined ? thumbnail : existingLecture.thumbnail;
+        const finalThumbnail = await enrichThumbnailFromYoutubeIframe(
+          effectiveIframe,
+          mergedThumbBefore
+        );
+        if (finalThumbnail !== null && finalThumbnail !== existingLecture.thumbnail) {
+          updateData.thumbnail = finalThumbnail;
+        } else if (thumbnail !== undefined) {
+          updateData.thumbnail = thumbnail;
+        }
       } else if (finalContentType === 'ARTICLE') {
         updateData.youtube_title = null;
         updateData.youtube_channel_name = null;
@@ -660,18 +682,13 @@ class LectureController {
         updateData.youtube_channel_url = null;
         updateData.youtube_like_count = null;
         updateData.youtube_subscriber_count = null;
-      }
-
-      const mergedThumbBefore =
-        thumbnail !== undefined ? thumbnail : existingLecture.thumbnail;
-      const finalThumbnail = await enrichThumbnailFromYoutubeIframe(
-        effectiveIframe,
-        mergedThumbBefore
-      );
-      if (finalThumbnail !== null && finalThumbnail !== existingLecture.thumbnail) {
-        updateData.thumbnail = finalThumbnail;
-      } else if (thumbnail !== undefined) {
-        updateData.thumbnail = thumbnail;
+      } else {
+        if (description !== undefined) {
+          updateData.description = description;
+        }
+        if (thumbnail !== undefined) {
+          updateData.thumbnail = thumbnail;
+        }
       }
 
       const lecture = await Lecture.update(parseInt(id), updateData);
@@ -687,7 +704,9 @@ class LectureController {
       }
 
       try {
-        await generateAndPersistLectureHookSummary(parseInt(id, 10));
+        if (shouldRefreshYoutubeMeta || description !== undefined || key_topics_to_be_covered !== undefined) {
+          scheduleLectureHookSummary(parseInt(id, 10));
+        }
       } catch (hookErr) {
         console.error('lectureHookSummary (update):', hookErr.message || hookErr);
       }

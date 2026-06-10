@@ -27,10 +27,10 @@ export function useExamPrepRecommendedQuery(
       }
       return res.data;
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
     gcTime: 10 * 60_000,
     retry: 2,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     enabled,
   });
 }
@@ -53,10 +53,10 @@ export function useExamPrepLecturesBySubjectQuery(opts: {
       }
       return res.data;
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
     gcTime: 10 * 60_000,
     retry: 2,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     enabled: enabled && !!subjectId,
   });
 }

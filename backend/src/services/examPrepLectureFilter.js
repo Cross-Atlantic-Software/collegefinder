@@ -26,24 +26,14 @@ function examTierForLecture(examIds, shortlistedSet, recommendedSet) {
 }
 
 /**
- * Keep lectures tagged with at least one shortlisted or recommended exam.
- * When the student has no shortlisted/recommended exams yet, keep all stream lectures.
+ * Tag lectures with exam-match tier for ordering.
+ * All stream-matched lectures are kept visible; tier 0/1 sort above untagged (tier 2).
  */
 function filterExamPrepLectureRows(rows, ctx) {
   const shortlistedSet = new Set((ctx.shortlistedExamIds || []).map(Number));
   const recommendedSet = new Set((ctx.recommendedExamIds || []).map(Number));
-  const pool = resolveExamPoolIds(ctx.shortlistedExamIds, ctx.recommendedExamIds);
 
-  let filtered = rows;
-  if (pool.length > 0) {
-    const poolSet = new Set(pool);
-    filtered = rows.filter((row) => {
-      const examIds = parseExamIds(row.exam_ids);
-      return examIds.some((id) => poolSet.has(id));
-    });
-  }
-
-  return filtered.map((row) => {
+  return rows.map((row) => {
     const examIds = parseExamIds(row.exam_ids);
     return {
       ...row,

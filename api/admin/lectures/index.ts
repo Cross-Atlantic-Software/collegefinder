@@ -83,7 +83,7 @@ export async function createLecture(data: FormData): Promise<ApiResponse<{
     method: 'POST',
     body: data,
     headers: {}, // Let browser set Content-Type with boundary for FormData
-  });
+  }, { timeout: 120_000 });
 }
 
 /**
@@ -99,7 +99,7 @@ export async function updateLecture(
     method: 'PUT',
     body: data,
     headers: {}, // Let browser set Content-Type with boundary for FormData
-  });
+  }, { timeout: 120_000 });
 }
 
 /**

@@ -15,10 +15,10 @@ export function useExamPrepSubjectsQuery(enabled = true) {
       }
       return res.data;
     },
-    staleTime: 120_000,
+    staleTime: 30_000,
     gcTime: 10 * 60_000,
     retry: 2,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     enabled,
   });
 }
