@@ -263,39 +263,75 @@ const examConfidenceSegments: DonutSegment[] = [
 
 const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "center" }: ConfidenceDonutProps) => {
   const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
-  const size = 220;
-  const center = size / 2;
-  const radius = 76;
-  const strokeWidth = 26;
-  const circumference = 2 * Math.PI * radius;
+
+  // --- Responsive radius via ResizeObserver ---
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [dim, setDim] = useState(160); // px — safe default before first measure
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = Math.floor(entry.contentRect.width);
+      if (w > 0) setDim(w);
+    });
+    ro.observe(el);
+    // Seed immediately from current layout
+    const w = Math.floor(el.getBoundingClientRect().width);
+    if (w > 0) setDim(w);
+    return () => ro.disconnect();
+  }, []);
+
+  // All SVG values scale linearly from the measured pixel width.
+  // Proportions are preserved from the original 220 px design:
+  //   radius     = 76 / 220  ≈ 34.5 %
+  //   strokeWidth = 26 / 220  ≈ 11.8 %
+  const size        = dim;
+  const center      = dim / 2;
+  const radius      = dim * 0.345;
+  const strokeWidth = Math.max(dim * 0.118, 6); // min 6 px so it never disappears
+  const circumference   = 2 * Math.PI * radius;
   const tangentGapLength = strokeWidth;
 
-  // Build per-segment dash params
-  let offsetAngle = 0; // degrees from top, accumulates
+  // Build per-segment dash params (same math, now all in dim-space)
+  let offsetAngle = 0;
   const segmentDefs = segments.map((seg) => {
-    const angleDeg = (seg.percent / 100) * 360;
-    const arcLength = (angleDeg / 360) * circumference;
+    const angleDeg   = (seg.percent / 100) * 360;
+    const arcLength  = (angleDeg / 360) * circumference;
     const visibleArc = Math.max(arcLength - tangentGapLength, 2);
-    const dashArray = `${visibleArc} ${circumference - visibleArc}`;
+    const dashArray  = `${visibleArc} ${circumference - visibleArc}`;
     const startLength = (offsetAngle / 360) * circumference + tangentGapLength / 2;
-    const dashOffset = circumference - startLength;
-    const midAngle = offsetAngle + angleDeg / 2;
+    const dashOffset  = circumference - startLength;
+    const midAngle    = offsetAngle + angleDeg / 2;
     offsetAngle += angleDeg;
     return { ...seg, dashArray, dashOffset, midAngle };
   });
 
   const hoveredSegment = segmentDefs.find((seg) => seg.id === hoveredSegmentId) ?? null;
-  const tooltipTheta = hoveredSegment ? ((hoveredSegment.midAngle - 90) * Math.PI) / 180 : 0;
-  const tooltipY = hoveredSegment ? Math.sin(tooltipTheta) : 0;
+  const tooltipTheta   = hoveredSegment ? ((hoveredSegment.midAngle - 90) * Math.PI) / 180 : 0;
+  const tooltipY       = hoveredSegment ? Math.sin(tooltipTheta) : 0;
   const tooltipYOffset = Math.max(-34, Math.min(34, tooltipY * 30));
+
+  // Centre label font scales with the donut.
+  // Inner clear diameter ≈ dim × (radius_ratio − strokeWidth_ratio/2) × 2 ≈ dim × 0.46
+  // Keep both fonts comfortably inside that space.
+  const innerClearPx = dim * (0.345 - 0.118 / 2) * 2; // usable inner diameter in px
+  const labelFontPx  = Math.max(Math.round(dim * 0.052), 8);   // ~8px at 160px
+  const valueFontPx  = Math.max(Math.round(dim * 0.105), 11);  // ~17px at 160px
 
   return (
     <div
-      className={`relative h-full overflow-visible rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/45 ${
+      className={`relative flex h-full flex-col items-center overflow-visible rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/45 ${
         hoveredSegment ? "z-[70]" : "z-10"
       }`}
     >
-      <div className="relative mx-auto mt-1 h-52 w-52 overflow-visible" onMouseLeave={() => setHoveredSegmentId(null)}>
+      {/* Fluid square measured by ResizeObserver — grows to fill column, capped at 208 px */}
+      <div
+        ref={wrapperRef}
+        className="relative mt-1 w-full max-w-[208px] overflow-visible"
+        style={{ aspectRatio: "1 / 1" }}
+        onMouseLeave={() => setHoveredSegmentId(null)}
+      >
         <svg
           viewBox={`0 0 ${size} ${size}`}
           className="h-full w-full"
@@ -303,15 +339,7 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "cen
           aria-hidden="true"
         >
           {/* Background track */}
-          <circle
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth={strokeWidth}
-            className=""
-          />
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="#ffffff" strokeWidth={strokeWidth} />
           {/* Coloured segments */}
           {segmentDefs.map((seg) => (
             <circle
@@ -340,19 +368,35 @@ const ConfidenceDonut = ({ totalLabel, totalValue, segments, tooltipAlign = "cen
           ))}
         </svg>
 
-        {/* Centre label — counter-rotated so text is upright */}
-        <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <div className="text-center">
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{totalLabel}</p>
-            <p className="mt-1 text-2xl font-bold leading-none text-slate-900 dark:text-slate-100">{totalValue}</p>
+        {/* Centre label — clipped to inner-circle width, fluid font sizes */}
+        <div className="pointer-events-none absolute inset-0 grid place-items-center overflow-hidden">
+          <div
+            className="flex flex-col items-center justify-center overflow-hidden text-center"
+            style={{
+              width:     `${innerClearPx * 0.78}px`, // 78% of inner clear diameter
+              maxHeight: `${innerClearPx * 0.65}px`, // prevent vertical overflow
+              gap:       `${Math.max(dim * 0.018, 2)}px`,
+            }}
+          >
+            <p
+              className="w-full truncate font-medium leading-tight text-slate-500 dark:text-slate-400"
+              style={{ fontSize: `${labelFontPx}px` }}
+            >
+              {totalLabel}
+            </p>
+            <p
+              className="w-full truncate font-bold leading-none text-slate-900 dark:text-slate-100"
+              style={{ fontSize: `${valueFontPx}px` }}
+            >
+              {totalValue}
+            </p>
           </div>
         </div>
 
+        {/* Hover tooltip */}
         <div
           className={`absolute top-1/2 z-[80] rounded-lg border border-slate-200 bg-white/95 p-3 text-left shadow-lg transition-all duration-300 ease-out dark:border-slate-700 dark:bg-slate-900/95 ${
-            hoveredSegment
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
+            hoveredSegment ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
           }`}
           style={{
             width: "min(220px, calc(100% - 8px))",
@@ -787,69 +831,94 @@ export default function MiddleContent() {
           </article>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
-            <article className="relative z-20 flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
+            <article className="relative z-20 flex h-full flex-col overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
+              {/* Card header — always visible */}
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 Track profile and milestone progress across your admission journey.
               </p>
-              <div className="mt-2.5 flex-1 rounded-xl bg-slate-50/70 p-2 dark:bg-slate-800/40">
-                <div className="space-y-0.5">
-                  {progressMeterSteps.map((step, idx) => {
-                    const isLast = idx === progressMeterSteps.length - 1;
-                    const connectorColor = step.isLoading
-                      ? "#cbd5e1"
-                      : (step.dotColor ?? getProgressMeterDotColor(step.percent));
 
-                    return (
-                      <div key={step.id} className="relative flex gap-2 pb-1.5 last:pb-0">
-                        <div className="relative flex w-5 shrink-0 justify-center">
-                          {!isLast && (
-                            <span
-                              className="absolute left-1/2 top-5 h-[calc(100%+1px)] w-[1.5px] -translate-x-1/2"
-                              style={{ backgroundColor: connectorColor }}
-                              aria-hidden="true"
+              {/* Scrollable step list with fade-out hint */}
+              <div className="relative mt-2.5 min-h-0 flex-1">
+                <style dangerouslySetInnerHTML={{ __html: `
+                  .progress-meter-scroll::-webkit-scrollbar { width: 3px; }
+                  .progress-meter-scroll::-webkit-scrollbar-track { background: transparent; }
+                  .progress-meter-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+                  .dark .progress-meter-scroll::-webkit-scrollbar-thumb { background: #475569; }
+                  .progress-meter-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+                ` }} />
+                <div
+                  className="progress-meter-scroll h-full overflow-y-auto rounded-xl bg-slate-50/70 p-2 dark:bg-slate-800/40"
+                >
+                  <div className="space-y-0.5">
+                    {progressMeterSteps.map((step, idx) => {
+                      const isLast = idx === progressMeterSteps.length - 1;
+                      const connectorColor = step.isLoading
+                        ? "#cbd5e1"
+                        : (step.dotColor ?? getProgressMeterDotColor(step.percent));
+
+                      return (
+                        <div key={step.id} className="relative flex gap-2 pb-1.5 last:pb-0">
+                          <div className="relative flex w-5 shrink-0 justify-center">
+                            {!isLast && (
+                              <span
+                                className="absolute left-1/2 top-5 h-[calc(100%+1px)] w-[1.5px] -translate-x-1/2"
+                                style={{ backgroundColor: connectorColor }}
+                                aria-hidden="true"
+                              />
+                            )}
+
+                            <ProgressMeterDot
+                              percent={step.percent}
+                              isLoading={step.isLoading}
+                              dotColor={step.dotColor}
                             />
-                          )}
+                          </div>
 
-                          <ProgressMeterDot
-                            percent={step.percent}
-                            isLoading={step.isLoading}
-                            dotColor={step.dotColor}
-                          />
+                          <div className="min-w-0 pt-[1px]">
+                            <p className="text-[13px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                              {step.title}
+                            </p>
+                            <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                              {step.description}
+                            </p>
+                          </div>
                         </div>
-
-                        <div className="min-w-0 pt-[1px]">
-                          <p className="text-[13px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
-                            {step.title}
-                          </p>
-                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
-                            {step.description}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {!profileCompletionLoading &&
-                    !documentVaultLoading &&
-                    !examMetaLoading &&
-                    !collegesMetaLoading &&
-                    !scholarshipsMetaLoading &&
-                    !institutesMetaLoading && (
-                    <p className="pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                      Progress updates as you complete your profile, upload documents, build shortlists, fill applications, and take mock tests.
-                    </p>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
+                {/* Bottom fade-out scroll hint */}
+                <div
+                  className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 rounded-b-xl"
+                  style={{
+                    background: "linear-gradient(to bottom, transparent, var(--progress-fade, #f8fafc))",
+                  }}
+                  aria-hidden="true"
+                />
               </div>
+
+              {/* Footer note — always visible */}
+              {!profileCompletionLoading &&
+                !documentVaultLoading &&
+                !examMetaLoading &&
+                !collegesMetaLoading &&
+                !scholarshipsMetaLoading &&
+                !institutesMetaLoading && (
+                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  Progress updates as you complete your profile, upload documents, build shortlists, fill applications, and take mock tests.
+                </p>
+              )}
             </article>
 
-            <article className="relative flex h-full flex-col overflow-visible rounded-2xl bg-white p-3 dark:bg-slate-900">
+            <article className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Confidence Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 See how your topic confidence is improving based on mock and revision performance.
               </p>
-              <div className="relative mt-2.5 grid flex-1 auto-rows-fr gap-2.5 overflow-visible sm:grid-cols-2">
+              {/* Two-column on wide panels, single-column when cramped.
+                  min-w-0 + overflow-hidden prevent any donut from escaping. */}
+              <div className="mt-2.5 grid min-w-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden [container-type:inline-size] sm:grid-cols-2">
                 <ConfidenceDonut
                   totalLabel="Total Topics"
                   totalValue="30"
