@@ -4,6 +4,7 @@ const { generateOTP, getOTPExpiry } = require('../../../utils/auth/otpGenerator'
 const { sendOTPEmail, sendPasswordResetEmail } = require('../../../utils/email/emailService');
 const crypto = require('crypto');
 const { generateToken } = require('../../../utils/auth/jwt');
+const { computeIsAdmin } = require('../../middleware/extensionAdmin');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const { downloadAndUploadToS3, deleteFromS3 } = require('../../../utils/storage/s3Upload');
@@ -564,6 +565,9 @@ class AuthController {
       // Ensure we send a proper boolean (not string or number)
       const finalOnboardingCompleted = onboardingCompleted === true;
 
+      // ExamFill extension renders the admin Builder UI based on this flag
+      const isAdmin = await computeIsAdmin(updatedUser.email);
+
       const responseData = {
         success: true,
         message: 'OTP verified successfully',
@@ -576,7 +580,8 @@ class AuthController {
             profile_photo: updatedUser.profile_photo || null,
             onboarding_completed: finalOnboardingCompleted, // Explicitly send as boolean
             createdAt: updatedUser.created_at,
-            has_password: Boolean(updatedUser.password_hash)
+            has_password: Boolean(updatedUser.password_hash),
+            is_admin: isAdmin
           },
           token
         }
@@ -683,7 +688,8 @@ class AuthController {
             onboarding_completed: onboardingCompleted,
             createdAt: updatedUser.created_at,
             lastLogin: updatedUser.last_login,
-            has_password: Boolean(updatedUser.password_hash)
+            has_password: Boolean(updatedUser.password_hash),
+            is_admin: await computeIsAdmin(updatedUser.email)
           }
         }
       });
