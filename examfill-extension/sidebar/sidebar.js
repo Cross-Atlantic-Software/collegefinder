@@ -189,6 +189,7 @@
 
   function showPortalLoginGuide() {
     $('portalDetectedName').textContent = `${examName} portal detected`;
+    $('portalLoginAdminCta').style.display = isAdmin ? 'flex' : 'none';
 
     // Show the email fill card if we have the user's email
     const email = profile?.student?.email;
@@ -967,6 +968,7 @@
     // Builder admin entry points
     $('openBuilderBtn').addEventListener('click', () => openBuilder());
     $('startBuilderBtn').addEventListener('click', () => openBuilder());
+    $('portalLoginOpenBuilderBtn').addEventListener('click', () => openBuilder());
     $('exitBuilderBtn').addEventListener('click', () => {
       if (adapter && adapter.sections?.length) showReadyState();
       else showNoAdapterState();

@@ -135,6 +135,15 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Password &amp; CAPTCHA must be filled manually — by design.
       </div>
+
+      <!-- Admin-only: some portals host the registration form on the login URL -->
+      <div id="portalLoginAdminCta" class="admin-toggle-card" style="display:none;">
+        <div class="admin-toggle-text">
+          <strong>Admin tools</strong>
+          <span>Form on this page? Scan it with the Builder.</span>
+        </div>
+        <button class="btn-secondary" id="portalLoginOpenBuilderBtn">Open Builder →</button>
+      </div>
     </section>
 
     <!-- ─── State: Ready to fill ─── -->
