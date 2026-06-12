@@ -188,7 +188,7 @@ export default function StepTwoB() {
               </div>
             ) : (
               <div className="max-h-[240px] overflow-y-auto scrollbar-hide pr-0.5 -mx-1 px-1">
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="flex flex-wrap gap-2.5">
                   {interestOptions.map((opt) => {
                     const active = selectedInterests.includes(opt.id);
                     return (
@@ -197,9 +197,9 @@ export default function StepTwoB() {
                         type="button"
                         onClick={() => toggleInterest(opt.id)}
                         className={[
-                          "flex flex-col items-center justify-center rounded-2xl p-3 text-center transition-all duration-200 min-h-[72px] border",
+                          "flex items-center gap-2 rounded-full border px-3.5 py-2 transition-all duration-200 group",
                           active
-                            ? "bg-[#f0c544] border-[#f0c544] text-slate-900 shadow-sm"
+                            ? "bg-[#FAD53C] border-[#FAD53C] text-slate-900 shadow-sm"
                             : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm",
                         ].join(" ")}
                       >
@@ -207,17 +207,19 @@ export default function StepTwoB() {
                           <Image
                             src={opt.logo}
                             alt={opt.label}
-                            width={28}
-                            height={28}
-                            className="mb-1.5 h-7 w-7 object-contain"
+                            width={20}
+                            height={20}
+                            className="h-5 w-5 object-contain shrink-0"
                             unoptimized
                           />
                         ) : (
-                          <span className="mb-1.5 text-base font-bold text-slate-700">
-                            {opt.label.charAt(0)}
-                          </span>
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                            <span className="text-[10px] font-bold text-slate-500">
+                              {opt.label.charAt(0)}
+                            </span>
+                          </div>
                         )}
-                        <span className="text-[10px] font-semibold leading-tight">{opt.label}</span>
+                        <span className="text-[12px] font-semibold leading-tight">{opt.label}</span>
                       </button>
                     );
                   })}
