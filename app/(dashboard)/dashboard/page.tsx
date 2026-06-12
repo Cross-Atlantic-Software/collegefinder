@@ -20,6 +20,7 @@ import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
 import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
+import Counselling from "@/components/dashboard/Counselling";
 
 type SectionId =
   | "dashboard"
@@ -31,6 +32,7 @@ type SectionId =
   | "applications"
   | "exam-prep"
   | "test-module"
+  | "counselling"
   | "know-your-strengths"
   | "admission-help"
   | "referral";
@@ -45,6 +47,7 @@ const VALID_SECTIONS: SectionId[] = [
   "applications",
   "exam-prep",
   "test-module",
+  "counselling",
   "know-your-strengths",
   "admission-help",
   "referral",
@@ -225,6 +228,8 @@ function DashboardPageContent() {
                 )}
 
                 {activeSection === "test-module" && <TestModule />}
+
+                {activeSection === "counselling" && <Counselling />}
 
                 {activeSection === "know-your-strengths" && (
                   <KnowYourStrengths
