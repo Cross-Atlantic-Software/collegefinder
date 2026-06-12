@@ -31,6 +31,8 @@
     section: null,        // last AI-generated section (sanitized) currently being edited
     fillReports: {}       // field_id → status returned by the live filler
   };
+  let lastKnownAdapterVersion = 0; // server adapter version; baseline for build recovery
+  let lastBuildBaseline = { version: 0, sectionIds: new Set() }; // snapshot taken before each build
 
   // ─── DOM ───
 
@@ -105,6 +107,7 @@
 
     profile  = profileRes.data;
     adapter  = adapterRes.success ? adapterRes.data : null;
+    lastKnownAdapterVersion = (adapter && adapter.version) || 0;
     if (adapter && adapter.exam_name) examName = adapter.exam_name;
 
     if (isPortalLoginPage) {
@@ -524,8 +527,9 @@
   async function runScanAndBuild() {
     setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Scanning…');
     $('builderResult').style.display = 'none';
+    removeCheckAgainButton();
 
-    const scan = await msg('SCAN_PAGE');
+    const scan = await msgSafe('SCAN_PAGE', undefined, 30000);
     if (!scan?.success) {
       setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Scan This Page');
       showBuilderResult('error', scan?.error || 'Failed to scan page');
@@ -538,18 +542,29 @@
       return;
     }
 
+    // Baseline for post-failure recovery: what the server had before this build.
+    lastBuildBaseline = {
+      version: lastKnownAdapterVersion,
+      sectionIds: new Set(((adapter && adapter.sections) || []).map((s) => s.section_id))
+    };
+
     setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Building with AI…');
 
-    const build = await msg('BUILD_ADAPTER_SECTION', { exam_id: examId, page: scan.page });
+    const build = await msgSafe('BUILD_ADAPTER_SECTION', { exam_id: examId, page: scan.page }, 160000);
     setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
 
     if (!build?.success) {
+      // The backend may have finished after the client gave up (timeout) —
+      // check before declaring failure.
+      if (await tryRecoverCompletedBuild()) return;
       showBuilderResult('error', build?.error || 'AI build failed');
+      showCheckAgainButton();
       return;
     }
 
     builderState.section = build.data.section;
     builderState.fillReports = {};
+    lastKnownAdapterVersion = build.data.version || lastKnownAdapterVersion;
 
     renderBuilderSection(builderState.section);
 
@@ -586,6 +601,62 @@
     } else {
       showBuilderResult('success', `Mapped ${builderState.section.fields.length} fields but none had a matching source. Review the mappings and click "Apply & Fill".`);
     }
+  }
+
+  /**
+   * After a client-side build failure (timeout etc.) the backend may still have
+   * completed and persisted the section. Re-fetch the adapter bypassing the
+   * background cache; a version bump beyond the pre-build baseline means a
+   * build landed.
+   */
+  async function tryRecoverCompletedBuild() {
+    const fresh = await msgSafe('GET_ADAPTER', { exam_id: examId, force: true }, 20000);
+    if (!fresh?.success || !fresh.data) return false;
+
+    const freshVersion = fresh.data.version || 0;
+    const sections = Array.isArray(fresh.data.sections) ? fresh.data.sections : [];
+    if (freshVersion <= lastBuildBaseline.version || sections.length === 0) return false;
+
+    adapter = fresh.data;
+    lastKnownAdapterVersion = freshVersion;
+
+    // Prefer a section_id the server didn't have before this build (appended);
+    // a re-built existing section keeps its id, so fall back to the last one.
+    const section = sections.find((s) => !lastBuildBaseline.sectionIds.has(s.section_id))
+      || sections[sections.length - 1];
+    builderState = { section, fillReports: {} };
+    renderBuilderSection(section);
+    showBuilderResult('success', 'Build completed in the background — mappings recovered. Review, then Apply & Fill or Save.');
+    removeCheckAgainButton();
+    return true;
+  }
+
+  function showCheckAgainButton() {
+    let btn = $('builderCheckAgainBtn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'builderCheckAgainBtn';
+      btn.className = 'btn-secondary full';
+      btn.style.marginTop = '8px';
+      btn.textContent = 'Check again — did the build finish?';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Checking…';
+        const recovered = await tryRecoverCompletedBuild();
+        if (!recovered) {
+          btn.disabled = false;
+          btn.textContent = 'Check again — did the build finish?';
+          showBuilderResult('error', 'No new section on the server yet — the build may still be running. Try again in a minute.');
+        }
+      });
+      $('builderResultArea').appendChild(btn);
+    }
+    btn.style.display = 'block';
+  }
+
+  function removeCheckAgainButton() {
+    const btn = $('builderCheckAgainBtn');
+    if (btn) btn.remove();
   }
 
   function renderBuilderSection(section) {
@@ -680,12 +751,12 @@
 
     setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', true, 'Saving…');
 
-    const result = await msg('BUILD_ADAPTER_SECTION', {
+    const result = await msgSafe('BUILD_ADAPTER_SECTION', {
       exam_id: examId,
       // Re-scan so the backend's selectors match what's actually on the page now.
       // Using the AI build endpoint here ALSO lets us merge by section_id.
       page: await reuseLastScannedPage(section)
-    });
+    }, 160000);
     setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', false, 'Save Section');
 
     if (!result?.success) {
@@ -693,6 +764,7 @@
       return;
     }
     showBuilderResult('success', `Saved. Adapter version: ${result.data.version}`);
+    lastKnownAdapterVersion = result.data.version || lastKnownAdapterVersion;
   }
 
   /**
@@ -996,6 +1068,22 @@
 
   function msg(type, payload) {
     return chrome.runtime.sendMessage({ type, payload });
+  }
+
+  /**
+   * sendMessage that can never hang the UI: rejections (MV3 worker killed,
+   * "message port closed") resolve to { success:false }, and a timeout guard
+   * covers the never-settles case.
+   */
+  function msgSafe(type, payload, timeoutMs = 30000) {
+    return Promise.race([
+      chrome.runtime.sendMessage({ type, payload }).catch((err) => ({
+        success: false, error: `Extension messaging failed: ${err.message}`
+      })),
+      new Promise((resolve) => setTimeout(() => resolve({
+        success: false, error: `Timed out after ${Math.round(timeoutMs / 1000)}s — try again`
+      }), timeoutMs))
+    ]);
   }
 
   /** Replace long document / S3 URLs with a short label in the sidebar */
