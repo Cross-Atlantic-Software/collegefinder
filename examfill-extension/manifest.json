@@ -21,7 +21,10 @@
     "https://*.mahacet.org/*",
     "https://*.bitsadmission.com/*",
     "https://*.vit.ac.in/*",
-    "https://*.eduquity.com/*"
+    "https://*.eduquity.com/*",
+    "https://*.upes.ac.in/*",
+    "https://*.bennett.edu.in/*",
+    "https://*.pearlacademy.com/*"
   ],
 
   "background": {
@@ -42,7 +45,10 @@
         "https://*.mahacet.org/*",
         "https://*.bitsadmission.com/*",
         "https://*.vit.ac.in/*",
-        "https://*.eduquity.com/*"
+        "https://*.eduquity.com/*",
+        "https://*.upes.ac.in/*",
+        "https://*.bennett.edu.in/*",
+        "https://*.pearlacademy.com/*"
       ],
       "js": [
         "utils/resolver.js",
