@@ -355,7 +355,8 @@ class GeminiService {
     }
 
     const temperature = typeof opts.temperature === 'number' ? opts.temperature : 0.2;
-    const maxOutputTokens = typeof opts.maxOutputTokens === 'number' ? opts.maxOutputTokens : 8192;
+    // Thinking models (2.5+) spend reasoning tokens from this same budget — keep it generous.
+    const maxOutputTokens = typeof opts.maxOutputTokens === 'number' ? opts.maxOutputTokens : 32768;
 
     const jsonModel = this.genAI.getGenerativeModel({
       model: this._modelName,
@@ -368,9 +369,15 @@ class GeminiService {
       }
     });
 
-    const doRequest = async () => {
-      const result = await jsonModel.generateContent(prompt);
+    const doRequest = async (promptText) => {
+      const result = await jsonModel.generateContent(promptText);
       const response = await result.response;
+      const finishReason = response.candidates?.[0]?.finishReason;
+      if (finishReason === 'MAX_TOKENS') {
+        // SDK returns the partial text silently; surface it as a clear error instead
+        // of letting JSON.parse fail with "Unterminated string".
+        throw new Error(`Gemini output truncated (finishReason=MAX_TOKENS, budget=${maxOutputTokens})`);
+      }
       const text = response.text();
       try {
         return JSON.parse(text);
@@ -389,8 +396,22 @@ class GeminiService {
       }
     };
 
+    // RECITATION / SAFETY blocks (response.text() throws for these), truncation, and
+    // parse failures are not retryable in withRetry — give them one explicit re-ask
+    // that demands compact output (smaller output also lowers recitation odds).
+    const RECOVERABLE = /MAX_TOKENS|RECITATION|SAFETY|blocked|Failed to parse Gemini JSON/i;
+    const COMPACT_SUFFIX =
+      '\n\nIMPORTANT: Your previous attempt was cut off or rejected. Emit the COMPLETE JSON object now, ' +
+      'minified on a single line — no indentation, no newlines, no markdown, nothing except the JSON.';
+
     return apiLimit(async () => {
-      return withRetry(doRequest, { operationName: 'generateJSON' });
+      try {
+        return await withRetry(() => doRequest(prompt), { operationName: 'generateJSON' });
+      } catch (err) {
+        if (!RECOVERABLE.test(err.message || '')) throw err;
+        console.warn(`⚠️  generateJSON recoverable failure (${String(err.message).slice(0, 120)}) — retrying once with compact-output instruction`);
+        return withRetry(() => doRequest(prompt + COMPACT_SUFFIX), { operationName: 'generateJSON (compact retry)' });
+      }
     });
   }
 

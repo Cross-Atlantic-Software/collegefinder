@@ -41,19 +41,34 @@ class AdapterBuilderService {
     const key = this._getOpenAIKey();
 
     if (key) {
-      const parsed = await this._callOpenAI(prompt, key);
-      return sanitizeSection(parsed, page);
+      try {
+        const parsed = await this._callOpenAI(prompt, key);
+        return sanitizeSection(parsed, page);
+      } catch (openAiErr) {
+        console.warn(`⚠️  AdapterBuilder: OpenAI failed (${openAiErr.message}) — trying Gemini fallback`);
+        try {
+          const parsed = await this._callGemini(prompt);
+          return sanitizeSection(parsed, page);
+        } catch (geminiErr) {
+          throw new Error(`OpenAI failed: ${openAiErr.message} — Gemini fallback also failed: ${geminiErr.message}`);
+        }
+      }
     }
 
     // Fallback: try Gemini
     try {
-      const GeminiService = require('../geminiService/GeminiService');
-      const gemini = new GeminiService();
-      const parsed = await gemini.generateJSON(prompt, { temperature: 0.15, maxOutputTokens: 8192 });
+      const parsed = await this._callGemini(prompt);
       return sanitizeSection(parsed, page);
     } catch (err) {
       throw new Error(`No AI service available. Set OPENAI_API_KEY in .env. (${err.message})`);
     }
+  }
+
+  _callGemini(prompt) {
+    const GeminiService = require('../geminiService/GeminiService');
+    const gemini = new GeminiService();
+    // 2.5-flash spends thinking tokens from this budget; 32k leaves headroom for big forms.
+    return gemini.generateJSON(prompt, { temperature: 0.15, maxOutputTokens: 32768 });
   }
 
   async _callOpenAI(prompt, apiKey) {
@@ -217,6 +232,7 @@ Return ONLY valid JSON, no prose, no markdown. Shape:
   - Required for "date". If the placeholder or label hints at "DD/MM/YYYY" use {"variant":"text","format":"DD/MM/YYYY"}. If it's a masked numeric input (no slashes shown) use {"variant":"masked_text","format":"DDMMYYYY"}.
 - Never fabricate a profile path. If unsure, set "source": null. The validator will drop fields with invalid sources.
 - "field_id" must be unique within the section.
+- Emit the JSON minified on a single line — no indentation or newlines inside the JSON.
 - Do NOT wrap the JSON in markdown code fences.
 - Do NOT include explanations.
 
