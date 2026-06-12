@@ -7,11 +7,15 @@ ALTER TABLE exam_adapters
   ADD COLUMN IF NOT EXISTS created_by      VARCHAR(120),
   ADD COLUMN IF NOT EXISTS updated_by      VARCHAR(120);
 
--- Backfill existing rows: anything currently active is treated as published.
+-- Backfill existing rows: anything currently active WITH CONTENT is treated as
+-- published. The sections guard makes this safe to re-run on every boot (this
+-- runner re-executes all migrations on db.init()): an empty adapter
+-- (sections: []) is a registered-but-unbuilt draft and must never be promoted.
 UPDATE exam_adapters
    SET status = 'published'
  WHERE is_active = TRUE
-   AND (status IS NULL OR status = 'draft');
+   AND (status IS NULL OR status = 'draft')
+   AND jsonb_array_length(adapter_config->'sections') > 0;
 
 -- Allow only known statuses.
 DO $$
