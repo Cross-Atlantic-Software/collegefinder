@@ -30,6 +30,7 @@ import {
   FaHandsHelping,
   FaChalkboardTeacher,
   FaAward,
+  FaGraduationCap,
 } from "react-icons/fa";
 import { IoPlayCircleOutline } from "react-icons/io5";
 import { MdSchool } from "react-icons/md";
@@ -53,6 +54,7 @@ type SectionId =
   | "applications"
   | "exam-prep"
   | "test-module"
+  | "counselling"
   | "know-your-strengths"
   | "admission-help"
   | "referral";
@@ -145,6 +147,14 @@ const baseNavItems: {
     icon: FiActivity,
     activeIcon: FaFlask,
     getValue: () => "0",
+  },
+  {
+    id: "counselling",
+    label: "Counselling",
+    sub: "College predictor",
+    icon: FaGraduationCap,
+    activeIcon: FaGraduationCap,
+    getValue: () => "",
   },
   {
     id: "know-your-strengths",
