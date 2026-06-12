@@ -39,16 +39,23 @@ const STATUS_LABEL: Record<PhaseStatus, string> = {
 };
 
 const phaseStatusClass: Record<PhaseStatus, string> = {
-  done: "bg-[#D3E5F9] text-black dark:bg-[#1e2a3b] dark:text-slate-200 border border-blue-200/50 dark:border-blue-800",
-  active: "bg-[#FAD53C] text-black shadow-[0_2px_10px_rgba(250,213,60,0.4)] relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[custom-shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/50 before:to-transparent",
-  upcoming: "bg-white/40 border-[2px] border-dashed border-[#FAD53C]/90 text-black/60 dark:bg-slate-900/40 dark:border-[#FAD53C]/80 dark:text-white/60",
-  overdue: "bg-[#0a0802] text-[#FAD53C]",
+  done: "bg-[#FAD53C]/30 text-[#6b5300] border border-[#FAD53C]/50 dark:bg-[#FAD53C]/15 dark:text-[#FAD53C] dark:border-[#FAD53C]/30",
+  active: "bg-[#FAD53C] text-[#5c3d00] border border-[#e6c000] shadow-[0_1px_6px_rgba(250,213,60,0.45)] relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[custom-shimmer_2.2s_ease-in-out_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/55 before:to-transparent",
+  upcoming: "bg-[#FAD53C]/10 border border-dashed border-[#FAD53C]/60 text-[#8a6d00] dark:bg-[#FAD53C]/5 dark:border-[#FAD53C]/40 dark:text-[#FAD53C]/70",
+  overdue: "bg-[#18100a] text-[#FAD53C] border border-[#FAD53C]/30",
+};
+
+const phaseStatusAccent: Record<PhaseStatus, string> = {
+  done:     "bg-[#FAD53C]/60",
+  active:   "bg-[#FAD53C]",
+  upcoming: "bg-[#FAD53C]/30",
+  overdue:  "bg-[#FAD53C]",
 };
 
 const milestoneStatusClass: Record<MilestoneStatus, string> = {
-  completed: "bg-[#FAD53C] border-black/70",
-  pending: "bg-[#FAD53C]/40 border-black/55",
-  overdue: "bg-black border-[#FAD53C]",
+  completed: "bg-[#FAD53C] border-[#b8960c]",
+  pending:   "bg-white border-slate-400 dark:bg-slate-700 dark:border-slate-500",
+  overdue:   "bg-black border-[#FAD53C]",
 };
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -56,9 +63,9 @@ const TIMELINE_PAST_PADDING_MONTHS = 2;
 const TIMELINE_FUTURE_PADDING_MONTHS = 6;
 const MONTH_ZOOM_PADDING_DAYS = 5;
 const MONTH_ZOOM_PX_PER_DAY = 32;
-const BASE_PX_PER_DAY = 12;
-const MIN_DEADLINE_BAR_PX = 172;
-const MIN_MONTH_TRACK_PX = 720;
+const BASE_PX_PER_DAY = 10;
+const MIN_DEADLINE_BAR_PX = 140;
+const MIN_MONTH_TRACK_PX = 360;
 
 const parseDate = (value: string) => new Date(`${value}T00:00:00`);
 
@@ -724,71 +731,81 @@ export default function UpcomingDeadlinesCard({
       </div>
 
       {viewMode === "timeline" ? (
-        <div className="mt-2 rounded-xl bg-slate-50/50 p-3 dark:bg-slate-800/20">
-          <div className="grid grid-cols-[120px_1fr] gap-3 sm:grid-cols-[148px_1fr]">
-            <div>
-              <div className="mb-2 h-8" />
-              {filteredPhases.map((phase, index) => {
-                const isSelected = selectedPhaseId === phase.id;
-                const phaseNumber = parsePhaseNumber(phase.id) ?? index + 1;
-                return (
-                <div key={phase.id} className="relative mb-2 last:mb-0">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPhase(phase.id)}
-                    className={`flex h-9 w-full flex-col justify-center rounded-md px-2 text-left transition-colors duration-200 ease-out ${
-                      isSelected
-                        ? "bg-[#FAD53C]/25 ring-1 ring-[#FAD53C]/80 dark:bg-[#FAD53C]/10"
-                        : "bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50"
-                    }`}
-                    title={`${phase.label}${phase.subtitle ? ` · ${phase.subtitle}` : ""} (${formatDate(phase.startDate)} - ${formatDate(phase.endDate)})`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-900 dark:text-slate-100">
-                        Phase {phaseNumber}
-                      </p>
+        <div className="mt-2 rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700/60 dark:bg-slate-900">
+          {/* Tip / zoom banner — sits ABOVE the grid so it doesn't shift alignment */}
+          {focusedMonth ? (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                Expanded view: <span className="text-slate-700 dark:text-slate-200">{focusedMonthLabel}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setFocusedMonth(null)}
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Full timeline
+              </button>
+            </div>
+          ) : (
+            <p className="mb-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              Tip: click a month label to expand crowded dates.
+            </p>
+          )}
+
+          <div className="grid grid-cols-[136px_1fr] gap-0 sm:grid-cols-[160px_1fr]">
+            {/* ── Phase list sidebar ── */}
+            <div className="border-r border-slate-200 pr-2 dark:border-slate-700">
+              {/* Header spacer — matches month header row exactly */}
+              <div className="flex h-8 items-end pb-1">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Phases</p>
+              </div>
+              {/* Phase rows — h-10 each, no extra gap */}
+              <div>
+                {filteredPhases.map((phase, index) => {
+                  const isSelected = selectedPhaseId === phase.id;
+                  const phaseNumber = parsePhaseNumber(phase.id) ?? index + 1;
+                  return (
+                  <div key={phase.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPhase(phase.id)}
+                      className={`group flex h-10 w-full items-center gap-2 rounded-lg px-2 text-left transition-all duration-150 ease-out ${
+                        isSelected
+                          ? "bg-[#FAD53C]/15 dark:bg-[#FAD53C]/10"
+                          : "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      }`}
+                      title={`${phase.label}${phase.subtitle ? ` · ${phase.subtitle}` : ""} (${formatDate(phase.startDate)} - ${formatDate(phase.endDate)})`}
+                    >
+                      {/* Left status accent */}
+                      <span className={`h-6 w-[3px] shrink-0 rounded-full transition-all duration-200 ${phaseStatusAccent[phase.status]} ${isSelected ? "opacity-100" : "opacity-40 group-hover:opacity-70"}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                          P{phaseNumber}
+                        </p>
+                        <p className="truncate text-[11px] font-semibold leading-tight text-slate-800 dark:text-slate-100">
+                          {phase.label}
+                        </p>
+                      </div>
                       {phase.status === "overdue" && (
-                        <span className="inline-block rounded-full bg-black px-1 py-[1px] text-[7px] font-bold uppercase tracking-wide text-[#FAD53C]">
-                          Missed
+                        <span className="shrink-0 rounded-full bg-black px-1.5 py-[2px] text-[7px] font-bold uppercase tracking-wide text-[#FAD53C]">
+                          Late
                         </span>
                       )}
-                    </div>
-                    <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      {phase.label}
-                    </p>
-                  </button>
-                  {index < filteredPhases.length - 1 && (
-                    <div className="absolute -bottom-1 left-2 right-2 h-px bg-slate-200 dark:bg-slate-700/50" />
-                  )}
-                </div>
-              );})}
+                    </button>
+                  </div>
+                );})}
+              </div>
             </div>
 
+            {/* ── Timeline area ── */}
             <div className="min-w-0">
-              {focusedMonth ? (
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    Expanded view: <span className="text-slate-700 dark:text-slate-200">{focusedMonthLabel}</span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setFocusedMonth(null)}
-                    className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    Full timeline
-                  </button>
-                </div>
-              ) : (
-                <p className="mb-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                  Tip: click a month label to expand crowded dates.
-                </p>
-              )}
               <div
                 ref={scrollContainerRef}
-                className="overflow-x-auto pb-2 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black [&::-webkit-scrollbar-thumb]:border-[3px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:border-slate-900"
+                className="overflow-x-auto pl-3 [scrollbar-width:thin] [scrollbar-color:#94a3b8_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/50"
               >
                 <div style={{ minWidth: `${timelineMinWidthPx}px` }}>
-                  <div className="relative mb-2 h-8">
+                  {/* Month header row — same h-8 as sidebar header */}
+                  <div className="relative h-8 border-b border-slate-200 dark:border-slate-700">
                     {activeTimeline.monthTicks.map((tick, idx) => {
                       const tickMonth = parseMonthTickId(tick.id);
                       const isFocused =
@@ -802,15 +819,11 @@ export default function UpcomingDeadlinesCard({
                           key={tick.id}
                           type="button"
                           onClick={() => toggleMonthFocus(tick.id)}
-                          title={
+                          title={isFocused ? "Click to return to full timeline" : "Click to expand this month"}
+                          className={`absolute bottom-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide transition-all duration-150 ${
                             isFocused
-                              ? "Click to return to full timeline"
-                              : "Click to expand this month"
-                          }
-                          className={`absolute top-0 rounded px-1 py-0.5 text-[10px] font-semibold transition-colors ${
-                            isFocused
-                              ? "bg-[#FAD53C] text-black ring-1 ring-[#FAD53C]/80"
-                              : "text-black/75 hover:bg-slate-200/80 dark:text-[#FAD53C]/95 dark:hover:bg-slate-800/80"
+                              ? "bg-[#FAD53C] text-black shadow-sm"
+                              : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                           } ${idx === 0 ? "left-0" : "-translate-x-1/2"}`}
                           style={idx === 0 ? undefined : { left: `${tick.leftPct}%` }}
                         >
@@ -820,12 +833,14 @@ export default function UpcomingDeadlinesCard({
                     })}
                   </div>
 
+                  {/* Timeline rows — same h-10, no gap, to match sidebar exactly */}
                   <div className="relative">
-                    <div className="relative space-y-2">
+                    <div className="relative">
                       {filteredPhases.map((phase, index) => {
                         const displayWidth = Math.max(phase.widthPct, minDeadlineWidthPct);
                         const tooltipBelow = index <= 1;
                         const isSelected = selectedPhaseId === phase.id;
+                        const isEvenRow = index % 2 === 0;
 
                         return (
                           <div
@@ -839,10 +854,12 @@ export default function UpcomingDeadlinesCard({
                                 handleSelectPhase(phase.id);
                               }
                             }}
-                            className={`group relative h-9 cursor-pointer overflow-visible rounded-lg border transition-colors duration-300 ease-out dark:bg-slate-900/45 ${
+                            className={`group relative h-10 cursor-pointer overflow-visible border-b border-slate-100 transition-colors duration-200 ease-out last:border-b-0 dark:border-slate-800 ${
                               isSelected
-                                ? "border-[#FAD53C] bg-[#FAD53C]/10 ring-1 ring-[#FAD53C]/50"
-                                : "border-black/15 bg-white/85 dark:border-slate-700/60"
+                                ? "bg-[#FAD53C]/10 dark:bg-[#FAD53C]/5"
+                                : isEvenRow
+                                  ? "bg-slate-50/50 hover:bg-[#FAD53C]/5 dark:bg-slate-800/20 dark:hover:bg-[#FAD53C]/5"
+                                  : "hover:bg-[#FAD53C]/5 dark:hover:bg-[#FAD53C]/5"
                             }`}
                           >
                             {isSelected && phase.computedDeadlines && phase.computedDeadlines.length > 0 ? (
@@ -878,7 +895,7 @@ export default function UpcomingDeadlinesCard({
                                       left: `${deadline.leftPct}%`,
                                       width: `${animateIn ? deadlineWidth : 0}%`,
                                       marginTop: `${overlapOffsetPx}px`,
-                                      zIndex: overlapsAnother ? 220 + overlapLane * 10 + deadlineIdx : 210,
+                                      zIndex: overlapsAnother ? 240 + overlapLane * 10 + deadlineIdx : 30,
                                     }}
                                   >
                                     <div
@@ -932,16 +949,16 @@ export default function UpcomingDeadlinesCard({
                                         event.stopPropagation();
                                         handleSelectPhase(phase.id);
                                       }}
-                                      className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${overlapClass} ${phaseStatusClass[phase.status]}`}
+                                      className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md border border-[#e6c000] bg-[#FAD53C] px-2 text-left text-[10px] font-semibold text-black shadow-sm transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:shadow-md ${overlapClass}`}
                                     >
-                                      <span className="w-full truncate px-1 text-left">{deadline.label}</span>
+                                      <span className="w-full truncate px-1 text-left font-semibold text-black">{deadline.label}</span>
                                     </button>
                                   </div>
                                 );
                               })
                             ) : isSelected ? (
                               <div
-                                className="group/item absolute top-1/2 z-[200] h-6 -translate-y-1/2"
+                                className="group/item absolute top-1/2 z-30 h-6 -translate-y-1/2"
                                 style={{
                                   left: `${phase.leftPct}%`,
                                   width: `${animateIn ? displayWidth : 0}%`,
@@ -1000,9 +1017,9 @@ export default function UpcomingDeadlinesCard({
                                     event.stopPropagation();
                                     handleSelectPhase(phase.id);
                                   }}
-                                  className={`flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-semibold transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-md ${phaseStatusClass[phase.status]}`}
+                                  className="flex h-full w-full flex-row items-center justify-center gap-1.5 overflow-hidden rounded-md border border-[#e6c000] bg-[#FAD53C] px-2 text-left text-[10px] font-bold text-black shadow-sm transition-[box-shadow,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:shadow-md"
                                 >
-                                  <span className="w-full truncate px-2 text-left">
+                                  <span className="w-full truncate px-2 text-left font-bold text-black">
                                     {phase.label}
                                     {phase.subtitle ? ` · ${phase.subtitle}` : ""}
                                   </span>
@@ -1021,31 +1038,35 @@ export default function UpcomingDeadlinesCard({
                     </div>
 
                     <div className="pointer-events-none absolute inset-0 z-20">
+                      {/* Past-time diagonal dashed stripes — thicker 2px lines */}
                       <div
                         className="pointer-events-none absolute bottom-0 left-0 top-0"
                         style={{
                           width: `${todayMarkerLeftPct}%`,
                           backgroundImage:
-                            "repeating-linear-gradient(-45deg, transparent 0 10px, rgba(0,0,0,0.12) 10px 20px)",
+                            "repeating-linear-gradient(-45deg, transparent 0 7px, rgba(0,0,0,0.10) 7px 9px)",
+                          backgroundColor: "rgba(248,250,252,0.30)",
                         }}
                       />
 
+                      {/* Month grid lines */}
                       {activeTimeline.monthTicks.map((tick) => (
                         <span
                           key={`grid-${tick.id}`}
-                          className="absolute bottom-0 top-0 w-px -translate-x-1/2 bg-black/10 dark:bg-[#FAD53C]/15"
+                          className="absolute bottom-0 top-0 w-px -translate-x-1/2 bg-slate-200/80 dark:bg-slate-700/60"
                           style={{ left: `${tick.leftPct}%` }}
                         />
                       ))}
 
+                      {/* Today marker */}
                       <div
                         className="absolute bottom-0 top-0 -translate-x-1/2"
                         style={{ left: `${todayMarkerLeftPct}%` }}
                       >
-                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-black px-2 py-0.5 text-[9px] font-semibold text-[#FAD53C] shadow-[0_0_0_2px_rgba(250,213,60,0.35)]">
+                        <span className="absolute -top-[22px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-2 py-[3px] text-[9px] font-semibold tracking-wide text-[#FAD53C] shadow-md dark:bg-black">
                           Today
                         </span>
-                        <span className="absolute bottom-0 top-0 w-0 border-l-2 border-dashed border-black/70 dark:border-[#FAD53C]/80" />
+                        <span className="absolute bottom-0 top-0 w-[2px] rounded-full bg-slate-900/80 dark:bg-[#FAD53C]/90" />
                       </div>
                     </div>
                   </div>
@@ -1056,48 +1077,65 @@ export default function UpcomingDeadlinesCard({
         </div>
       ) : (
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {(Object.keys(phaseBuckets) as PhaseStatus[]).map((status) => (
-            <section key={status} className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-slate-800/40">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                {STATUS_LABEL[status]}
-              </p>
-              <div className="mt-2 space-y-2">
+          {(Object.keys(phaseBuckets) as PhaseStatus[]).map((status) => {
+            const dotColor: Record<PhaseStatus,string> = {
+              done:     "bg-[#FAD53C]/60",
+              active:   "bg-[#FAD53C]",
+              upcoming: "bg-[#FAD53C]/30",
+              overdue:  "bg-[#FAD53C]",
+            };
+            return (
+            <section key={status} className="flex flex-col rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+              {/* Column header */}
+              <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+                <span className={`h-2 w-2 rounded-full ${dotColor[status]}`} />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {STATUS_LABEL[status]}
+                </p>
+                <span className="ml-auto rounded-full bg-slate-200 px-1.5 py-px text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                  {phaseBuckets[status].length}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5 p-2">
                 {phaseBuckets[status].map((phase) => (
                   <button
                     key={phase.id}
                     type="button"
                     onClick={() => handleSelectPhase(phase.id)}
-                    className={`block w-full rounded-lg border px-2 py-2 text-left ${
+                    className={`group w-full rounded-lg border bg-white px-3 py-2.5 text-left shadow-sm transition-all duration-150 hover:shadow-md dark:bg-slate-900 ${
                       selectedPhaseId === phase.id
-                        ? "border-[#FAD53C] bg-[#FAD53C]/10 dark:border-[#FAD53C]/70"
-                        : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                        ? "border-[#FAD53C] ring-1 ring-[#FAD53C]/50 dark:border-[#FAD53C]/70"
+                        : "border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{phase.label}</p>
-                    {phase.subtitle ? (
-                      <p className="truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        {phase.subtitle}
-                      </p>
-                    ) : null}
-                    <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                      {formatDate(phase.startDate)} - {formatDate(phase.endDate)}
+                    <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">{phase.label}</p>
+                    {phase.subtitle && (
+                      <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">{phase.subtitle}</p>
+                    )}
+                    <p className="mt-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      {formatDate(phase.startDate)} → {formatDate(phase.endDate)}
                     </p>
-                    <div className="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                      <div
-                        className="h-full rounded-full bg-action-500"
-                        style={{ width: `${Math.max(4, Math.min(phase.progress, 100))}%` }}
-                      />
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${dotColor[status]}`}
+                          style={{ width: `${Math.max(4, Math.min(phase.progress, 100))}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {phase.progress}%
+                      </span>
                     </div>
                   </button>
                 ))}
                 {phaseBuckets[status].length === 0 && (
-                  <p className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    No items
+                  <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[11px] text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                    Nothing here
                   </p>
                 )}
               </div>
             </section>
-          ))}
+          );})}
         </div>
       )}
 

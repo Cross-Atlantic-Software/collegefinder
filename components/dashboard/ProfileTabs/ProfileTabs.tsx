@@ -184,6 +184,7 @@ export default function ProfileTabs() {
     [documentVault],
   );
   const [viewingDocument, setViewingDocument] = useState<{ url: string; label: string } | null>(null);
+  const [showAllDocsModal, setShowAllDocsModal] = useState(false);
 
   const openDocumentVaultTab = () => {
     setActiveTab("academics");
@@ -306,13 +307,13 @@ export default function ProfileTabs() {
           style={{ animation: "fade-in 220ms ease-out" }}
           className="space-y-4"
         >
-          <div className="mx-auto grid w-full max-w-6xl gap-5 xl:h-[calc(100vh-220px)] xl:grid-cols-[1fr_280px]">
-            <div className="min-w-0 overflow-y-auto rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
+          <div className="mx-auto flex w-full max-w-7xl flex-col xl:flex-row gap-5 xl:items-start">
+            <div className="min-w-0 w-full xl:flex-1 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               {renderTabContent(activeTab)}
             </div>
 
-            <aside className="min-w-0 overflow-hidden xl:sticky xl:top-6 xl:self-start">
-              <div className="grid h-full min-h-0 gap-3" style={{ gridTemplateRows: "auto 1fr" }}>
+            <aside className="w-full shrink-0 xl:sticky xl:top-6 xl:w-[320px]">
+              <div className="flex flex-col gap-4">
 
                 {/* ── Recommended Exams ── sliding carousel */}
                 <article className="min-w-0 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
@@ -414,7 +415,7 @@ export default function ProfileTabs() {
                     </button>
                   </div>
 
-                  <div className="mt-3 flex-1 overflow-hidden">
+                  <div className="mt-4 flex-1">
                     {documentVaultLoading ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div className="shimmer-skeleton h-28 rounded-xl" />
@@ -434,19 +435,15 @@ export default function ProfileTabs() {
                         </button>
                       </div>
                     ) : (
-                      <div
-                        className="flex h-full gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                        style={{ scrollSnapType: "x mandatory" }}
-                      >
-                        {uploadedDocuments.map((doc) => {
+                      <div className="grid grid-cols-2 gap-3">
+                        {uploadedDocuments.slice(0, 3).map((doc) => {
                           const isImage = isImageDocumentUrl(doc.url);
                           const fileType = isImage ? "Image" : getFileExtension(doc.url).toUpperCase() || "PDF";
 
                           return (
                             <div
                               key={doc.key}
-                              className="group flex w-[140px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition-all duration-200 hover:border-[#FAD53C] hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60"
-                              style={{ scrollSnapAlign: "start" }}
+                              className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition-all duration-200 hover:border-[#FAD53C] hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60"
                             >
                               <div
                                 className="relative w-full overflow-hidden bg-slate-200 dark:bg-slate-700"
@@ -465,9 +462,8 @@ export default function ProfileTabs() {
                                     {fileType}
                                   </div>
                                 )}
-                                <span className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                <span className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
                                   <ShieldCheck className="h-2.5 w-2.5" />
-                                  Uploaded
                                 </span>
                                 <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur-sm">
                                   {fileType}
@@ -475,7 +471,7 @@ export default function ProfileTabs() {
                               </div>
 
                               <div className="flex flex-1 flex-col justify-between px-2.5 py-2">
-                                <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                                <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
                                   {doc.label}
                                 </p>
                                 <button
@@ -489,6 +485,30 @@ export default function ProfileTabs() {
                             </div>
                           );
                         })}
+
+                        {uploadedDocuments.length > 3 ? (
+                          <div
+                            onClick={() => setShowAllDocsModal(true)}
+                            className="group flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition-all duration-200 hover:border-black hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60"
+                            style={{ minHeight: "140px" }}
+                          >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                              <span className="text-sm font-bold">+{uploadedDocuments.length - 3}</span>
+                            </div>
+                            <p className="mt-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400">View All</p>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={openDocumentVaultTab}
+                            className="group flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-blue-300 bg-blue-50/50 transition-all duration-200 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-800/60 dark:bg-blue-900/10 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
+                            style={{ minHeight: "140px" }}
+                          >
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                              <span className="text-lg leading-none mb-0.5">+</span>
+                            </div>
+                            <p className="mt-2 text-[11px] font-semibold text-blue-600 dark:text-blue-400">Upload more</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -501,8 +521,74 @@ export default function ProfileTabs() {
         </div>
       </div>
     </section>
+    {showAllDocsModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+        <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-700">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">All Uploaded Documents</h2>
+            <button
+              type="button"
+              onClick={() => setShowAllDocsModal(false)}
+              className="text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            >
+              Close
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto bg-slate-50 p-4 dark:bg-slate-800/40">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {uploadedDocuments.map((doc) => {
+                const isImage = isImageDocumentUrl(doc.url);
+                const fileType = isImage ? "Image" : getFileExtension(doc.url).toUpperCase() || "PDF";
+
+                return (
+                  <div
+                    key={doc.key}
+                    className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-[#FAD53C] hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <div
+                      className="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-700/50"
+                      style={{ paddingBottom: "70%" }}
+                    >
+                      {isImage ? (
+                        <Image
+                          src={doc.url}
+                          alt={doc.label}
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                          {fileType}
+                        </div>
+                      )}
+                      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur-sm">
+                        {fileType}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-1 flex-col justify-between px-3 py-2.5">
+                      <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                        {doc.label}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setViewingDocument({ url: doc.url, label: doc.label })}
+                        className="mt-3 w-full rounded-full border border-black bg-transparent py-1 text-[10px] font-semibold text-black transition group-hover:bg-black group-hover:text-white dark:border-slate-400 dark:text-slate-200 dark:group-hover:border-white dark:group-hover:bg-white dark:group-hover:text-black"
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     {viewingDocument && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
         <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-700">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingDocument.label}</h2>
