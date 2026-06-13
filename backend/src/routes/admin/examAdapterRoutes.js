@@ -34,6 +34,22 @@ router.post(
   ExamAdapterController.create
 );
 
+// Discovered-field approval queue (must precede /:examId so it isn't captured)
+router.get(
+  '/discovered-fields',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  ExamAdapterController.listDiscoveredFields
+);
+
+router.patch(
+  '/discovered-fields/:id',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanEdit,
+  ExamAdapterController.reviewDiscoveredField
+);
+
 // Single adapter
 router.get(
   '/:examId',

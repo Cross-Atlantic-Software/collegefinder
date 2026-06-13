@@ -81,6 +81,23 @@ export interface ProfilePathEntry {
   label: string;
 }
 
+export type DiscoveredFieldStatus = 'pending' | 'approved' | 'rejected';
+
+export interface DiscoveredField {
+  id: number;
+  field_path: string;
+  type: string;
+  label: string;
+  status: DiscoveredFieldStatus;
+  discovered_from_exam: string | null;
+  discovered_label: string | null;
+  discovered_page_url: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── API ──────────────────────────────────────────────────────────────
 
 export async function listExamAdapters(): Promise<ApiResponse<ExamAdapter[]>> {
@@ -146,5 +163,24 @@ export async function setExamAdapterStatus(
 export async function deleteExamAdapter(examId: string): Promise<ApiResponse<{ exam_id: string }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}`, {
     method: 'DELETE'
+  });
+}
+
+export async function listDiscoveredFields(
+  status: DiscoveredFieldStatus = 'pending'
+): Promise<ApiResponse<DiscoveredField[]>> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/discovered-fields?status=${encodeURIComponent(status)}`,
+    { method: 'GET' }
+  );
+}
+
+export async function reviewDiscoveredField(
+  id: number,
+  action: 'approve' | 'reject'
+): Promise<ApiResponse<DiscoveredField>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/discovered-fields/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action })
   });
 }

@@ -253,6 +253,10 @@ function sanitizeSection(parsed, page) {
   const rawFields = Array.isArray(parsed.fields) ? parsed.fields : [];
   const seenFieldIds = new Set();
   const fields = [];
+  // Unmappable fields (DROP B) collected for the registry approval queue. The
+  // caller (buildSection controller) persists these and strips this property
+  // before saving/returning the section.
+  const discovered = [];
 
   for (const f of rawFields) {
     if (!f || typeof f !== 'object') continue;
@@ -264,7 +268,10 @@ function sanitizeSection(parsed, page) {
       continue;
     }
     if (!source) {
-      // No source means the AI couldn't map it — skip; admin can add manually in CMS.
+      // No source means the AI couldn't map it — capture it as a pending
+      // discovered field so an admin can approve it, then skip (unmapped until then).
+      const label = typeof f.label === 'string' ? f.label.trim() : '';
+      if (label) discovered.push({ label, type: ALLOWED_FIELD_TYPES.has(f.type) ? f.type : 'text' });
       continue;
     }
 
@@ -312,7 +319,8 @@ function sanitizeSection(parsed, page) {
     section_id,
     section_name,
     page_indicator,
-    fields
+    fields,
+    _discovered: discovered
   };
 }
 

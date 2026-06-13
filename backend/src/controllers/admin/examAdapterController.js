@@ -13,7 +13,7 @@
  */
 
 const db = require('../../config/database');
-const { PROFILE_PATHS, isValidSource } = require('../../services/adapterBuilderService/profileSchema');
+const { PROFILE_PATHS, isValidSource, refreshRegistryCache } = require('../../services/adapterBuilderService/profileSchema');
 
 class ExamAdapterController {
   static async list(req, res) {
@@ -247,6 +247,59 @@ class ExamAdapterController {
     } catch (err) {
       console.error('Error deleting adapter:', err);
       res.status(500).json({ success: false, message: err.message || 'Failed to delete adapter' });
+    }
+  }
+
+  // ─── Discovered-field approval queue ──────────────────────────────────────
+
+  /** GET /discovered-fields?status=pending — list discovered registry rows. */
+  static async listDiscoveredFields(req, res) {
+    try {
+      const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
+      const result = await db.query(
+        `SELECT id, field_path, type, label, status,
+                discovered_from_exam, discovered_label, discovered_page_url,
+                reviewed_by, reviewed_at, created_at, updated_at
+           FROM profile_field_registry
+          WHERE status = $1
+          ORDER BY created_at DESC`,
+        [status]
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error('Error listing discovered fields:', err);
+      res.status(500).json({ success: false, message: 'Failed to list discovered fields' });
+    }
+  }
+
+  /** PATCH /discovered-fields/:id — body { action: 'approve' | 'reject' }. */
+  static async reviewDiscoveredField(req, res) {
+    try {
+      const { id } = req.params;
+      const { action } = req.body || {};
+      if (action !== 'approve' && action !== 'reject') {
+        return res.status(400).json({ success: false, message: 'action must be "approve" or "reject"' });
+      }
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      const result = await db.query(
+        `UPDATE profile_field_registry
+            SET status = $1,
+                reviewed_by = $2,
+                reviewed_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $3
+        RETURNING *`,
+        [status, req.admin?.email || null, id]
+      );
+      if (!result.rows[0]) {
+        return res.status(404).json({ success: false, message: `Discovered field '${id}' not found` });
+      }
+      // Refresh the whitelist cache so the change takes effect immediately.
+      await refreshRegistryCache();
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error('Error reviewing discovered field:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to review discovered field' });
     }
   }
 }

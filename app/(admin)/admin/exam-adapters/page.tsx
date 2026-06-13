@@ -11,7 +11,7 @@ import {
   setExamAdapterStatus,
   ExamAdapter
 } from '@/api/admin/examAdapters';
-import { FiPlus, FiSearch, FiCheckCircle, FiClock, FiCpu, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiCheckCircle, FiClock, FiCpu, FiX, FiInbox } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
@@ -205,13 +205,22 @@ export default function ExamAdaptersPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg"
-            >
-              <FiPlus className="h-4 w-4" />
-              Register New Exam
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push('/admin/exam-adapters/discovered-fields')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white text-slate-700 border border-slate-300 hover:bg-[#F6F8FA] rounded-lg"
+              >
+                <FiInbox className="h-4 w-4" />
+                Discovered Fields
+              </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg"
+              >
+                <FiPlus className="h-4 w-4" />
+                Register New Exam
+              </button>
+            </div>
           </div>
 
           <div className="mb-3 text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">

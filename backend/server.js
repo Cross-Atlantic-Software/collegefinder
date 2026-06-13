@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./src/config/database');
 const { initJobs } = require('./src/jobs/index');
+const { seedCoreProfileFields } = require('./src/database/seeds/profileFieldRegistrySeed');
+const { refreshRegistryCache } = require('./src/services/adapterBuilderService/profileSchema');
 
 const app = express();
 
@@ -88,7 +90,9 @@ const PORT = process.env.PORT || 5001;
 
 // Initialize database and start server
 db.init()
-  .then(() => {
+  .then(async () => {
+    await seedCoreProfileFields();   // upsert core profile paths as approved registry rows
+    await refreshRegistryCache();    // warm the whitelist cache before any adapter scan
     initJobs();
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

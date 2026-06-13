@@ -146,11 +146,48 @@ class FillProfileController {
         }
       };
 
+      // Overlay pass: merge per-student values for discovered (non-core) fields.
+      // Values come ONLY from profile_field_values — never arbitrary columns by
+      // path. Core (hardcoded above) wins any collision. Non-fatal: a missing
+      // table or query error must never break the proven fill path.
+      try {
+        const overlay = await db.query(
+          `SELECT field_path, value FROM profile_field_values WHERE user_id = $1`,
+          [userId]
+        );
+        for (const row of overlay.rows) {
+          setByPath(profile, row.field_path, row.value);
+        }
+      } catch (overlayErr) {
+        console.warn(`⚠️  fill-profile overlay merge skipped (non-fatal): ${overlayErr.message}`);
+      }
+
       res.json({ success: true, data: profile });
     } catch (error) {
       console.error('Error building fill profile:', error);
       res.status(500).json({ success: false, message: 'Failed to build fill profile' });
     }
+  }
+}
+
+// Sets a dotted path (e.g. "discovered.parent_mobile_no" or "guardian.mobile")
+// on the nested profile object, creating intermediate objects as needed. Core
+// wins: only fills a leaf that is currently undefined or empty (never clobbers
+// a hardcoded value). Skips paths that would collide with an existing nested object.
+function setByPath(obj, dottedPath, value) {
+  if (!dottedPath || typeof dottedPath !== 'string') return;
+  const parts = dottedPath.split('.').filter(Boolean);
+  if (parts.length === 0) return;
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i];
+    if (cur[key] == null) cur[key] = {};
+    if (typeof cur[key] !== 'object') return; // path conflicts with a scalar — leave core alone
+    cur = cur[key];
+  }
+  const leaf = parts[parts.length - 1];
+  if (cur[leaf] === undefined || cur[leaf] === null || cur[leaf] === '') {
+    cur[leaf] = value == null ? '' : value;
   }
 }
 

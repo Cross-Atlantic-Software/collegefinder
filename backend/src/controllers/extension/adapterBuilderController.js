@@ -83,6 +83,36 @@ class AdapterBuilderController {
         page
       });
 
+      // Capture unmappable fields (DROP B) as pending registry rows for admin
+      // approval, then strip the collector so it is never persisted/returned.
+      const discovered = Array.isArray(section._discovered) ? section._discovered : [];
+      delete section._discovered;
+      if (discovered.length) {
+        try {
+          for (const d of discovered) {
+            const slug = snakeLabel(d.label);
+            if (!slug) continue;
+            await db.query(
+              `INSERT INTO profile_field_registry
+                 (field_path, type, label, status, discovered_from_exam, discovered_label, discovered_page_url)
+               VALUES ($1, $2, $3, 'pending', $4, $5, $6)
+               ON CONFLICT (field_path) DO NOTHING`,
+              [
+                `discovered.${slug}`,
+                d.type || 'text',
+                d.label.slice(0, 200),
+                examRow.exam_name || null,
+                d.label.slice(0, 300),
+                (page.url || '').slice(0, 500) || null
+              ]
+            );
+          }
+        } catch (capErr) {
+          // Non-fatal: a capture failure must never fail the scan.
+          console.warn(`⚠️  Discovered-field capture failed (non-fatal): ${capErr.message}`);
+        }
+      }
+
       if (!section.fields || section.fields.length === 0) {
         return res.status(422).json({
           success: false,
@@ -129,6 +159,23 @@ class AdapterBuilderController {
       });
     }
   }
+}
+
+// Derives a snake_case slug from a human form label for the `discovered.<slug>`
+// field path (e.g. "Parent Mobile No." -> "parent_mobile_no"). Returns '' if empty.
+// The slug is capped at 100 chars so `discovered.` + slug stays well under the
+// profile_field_registry.field_path VARCHAR(150) limit (avoids silent Postgres
+// truncation, which produced mid-word paths and ON CONFLICT collisions between
+// distinct long labels). The cap is applied before the final trailing-underscore
+// trim so the slice can never leave a path ending in `_`.
+function snakeLabel(label) {
+  if (typeof label !== 'string') return '';
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+/, '')
+    .slice(0, 100)
+    .replace(/_+$/, '');
 }
 
 function normaliseConfig(adapter_config) {

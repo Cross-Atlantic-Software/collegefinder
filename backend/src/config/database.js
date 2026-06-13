@@ -184,7 +184,8 @@ const runMigrations = async () => {
     'add_institute_cityname.sql',
     'add_beginner_exam_difficulty_level.sql',
     'exam_eligibility_attempt_limit_to_text.sql',
-    'scholarships_stream_ids_multiselect.sql'
+    'scholarships_stream_ids_multiselect.sql',
+    'add_profile_field_registry.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

@@ -104,27 +104,74 @@ const PROFILE_PATHS = [
 
 const PROFILE_PATH_SET = new Set(PROFILE_PATHS.map((p) => p.path));
 
+// ── Approved-registry overlay cache ───────────────────────────────────────
+// The whitelist is `core ∪ approved registry rows`. Core (above) is hardcoded
+// and can never break. Approved *discovered* fields are loaded from
+// profile_field_registry into this in-memory cache. The accessors below stay
+// SYNC (the prompt builder calls getPromptSchema() synchronously), so the cache
+// is refreshed explicitly: once at boot and once after every admin approve/reject
+// (see refreshRegistryCache callers). On query failure the cache is left intact,
+// so the effective whitelist degrades safely to the hardcoded core paths.
+let approvedExtra = [];                 // [{ path, type, label }] with path ∉ core
+let approvedExtraSet = new Set();
+
 /**
- * Returns true if `source` is a known profile path the resolver can fill.
+ * Reloads approved non-core registry paths into the in-memory cache.
+ * Safe to call repeatedly. On error, keeps the existing cache and logs.
+ */
+async function refreshRegistryCache() {
+  try {
+    // Lazy require to avoid a load-order cycle with the DB pool.
+    const { pool } = require('../../config/database');
+    const { rows } = await pool.query(
+      `SELECT field_path, type, label
+         FROM profile_field_registry
+        WHERE status = 'approved'`
+    );
+    const next = [];
+    const nextSet = new Set();
+    for (const r of rows) {
+      // Core wins: never duplicate a hardcoded path into the overlay.
+      if (!r.field_path || PROFILE_PATH_SET.has(r.field_path)) continue;
+      next.push({ path: r.field_path, type: r.type || 'text', label: r.label || r.field_path });
+      nextSet.add(r.field_path);
+    }
+    approvedExtra = next;
+    approvedExtraSet = nextSet;
+  } catch (err) {
+    console.warn(`⚠️  refreshRegistryCache failed (keeping ${approvedExtra.length} cached, core still valid): ${err.message}`);
+  }
+}
+
+/**
+ * Returns true if `source` is a known profile path the resolver can fill
+ * (core path or an approved discovered path).
  */
 function isValidSource(source) {
   if (!source || typeof source !== 'string') return false;
-  return PROFILE_PATH_SET.has(source.trim());
+  const s = source.trim();
+  return PROFILE_PATH_SET.has(s) || approvedExtraSet.has(s);
 }
 
 /**
  * Returns the schema entry for a given path, or null.
  */
 function getProfilePath(source) {
-  if (!isValidSource(source)) return null;
-  return PROFILE_PATHS.find((p) => p.path === source) || null;
+  if (!source || typeof source !== 'string') return null;
+  const s = source.trim();
+  return (
+    PROFILE_PATHS.find((p) => p.path === s) ||
+    approvedExtra.find((p) => p.path === s) ||
+    null
+  );
 }
 
 /**
  * Compact list passed to the Gemini prompt. Cheap to send (~3KB).
+ * Core entries first, then approved discovered fields (already core-deduped).
  */
 function getPromptSchema() {
-  return PROFILE_PATHS.map(({ path, type, label }) => ({ path, type, label }));
+  return [...PROFILE_PATHS, ...approvedExtra].map(({ path, type, label }) => ({ path, type, label }));
 }
 
 module.exports = {
@@ -132,5 +179,6 @@ module.exports = {
   PROFILE_PATH_SET,
   isValidSource,
   getProfilePath,
-  getPromptSchema
+  getPromptSchema,
+  refreshRegistryCache
 };
