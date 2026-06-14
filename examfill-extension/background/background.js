@@ -143,11 +143,17 @@ async function handleMessage(message, sender) {
     case 'GET_PROFILE':
       return getProfile();
 
+    case 'SYNC_PROFILE':
+      return syncProfile(message.payload);
+
     case 'DETECT_EXAM':
       return detectCurrentExam(message.payload);
 
     case 'GET_ADAPTER':
-      return getAdapter(message.payload.exam_id);
+      return getAdapter(message.payload.exam_id, message.payload.force === true);
+
+    case 'DELETE_SECTION':
+      return deleteSection(message.payload);
 
     case 'GET_REGISTERED_EXAMS':
       return getRegisteredExamsForSidebar(message.payload);
@@ -290,6 +296,31 @@ async function getProfile() {
   return { success: true, data: cachedProfile };
 }
 
+// ─── Profile sync-back (Phase 2) ───
+async function syncProfile(payload) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  const res = await fetch(`${API_BASE}/extension/profile`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ changes: (payload && payload.changes) || {} })
+  });
+
+  if (res.status === 401) {
+    await chrome.storage.local.remove('examfill_token');
+    return { success: false, error: 'Token expired — please log in again' };
+  }
+
+  const data = await res.json().catch(() => ({}));
+  // Invalidate the cached profile so the next sidebar open shows the saved edits.
+  cachedProfile = null;
+  return (data && typeof data === 'object') ? data : { success: false, error: 'Bad response' };
+}
+
 // ─── Exam Detection ───
 
 async function detectCurrentExam(payload) {
@@ -319,7 +350,8 @@ async function getRegisteredExamsForSidebar() {
 
 // ─── Adapter ───
 
-async function getAdapter(examId) {
+async function getAdapter(examId, force = false) {
+  if (force) delete cachedAdapters[examId];
   if (cachedAdapters[examId]) {
     return { success: true, data: cachedAdapters[examId] };
   }
@@ -346,6 +378,31 @@ async function getAdapter(examId) {
   } catch (err) {
     return { success: false, error: `Network error: ${err.message}` };
   }
+}
+
+// ─── Delete a section from an adapter (admin) ───
+async function deleteSection(payload) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  const examId = payload && payload.exam_id;
+  const sectionId = payload && payload.section_id;
+  if (!examId || !sectionId) return { success: false, error: 'Missing exam_id or section_id' };
+
+  const res = await fetch(
+    `${API_BASE}/extension/adapters/${encodeURIComponent(examId)}/sections/${encodeURIComponent(sectionId)}`,
+    { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+  );
+
+  if (res.status === 401) {
+    await chrome.storage.local.remove('examfill_token');
+    return { success: false, error: 'Token expired — please log in again' };
+  }
+
+  const data = await res.json().catch(() => ({}));
+  // Invalidate the cached adapter so a reopen reflects the deletion.
+  if (cachedAdapters && examId) delete cachedAdapters[examId];
+  return (data && typeof data === 'object') ? data : { success: false, error: 'Bad response' };
 }
 
 // ─── Fill Orchestration ───
@@ -391,6 +448,9 @@ async function buildAdapterSection({ exam_id, page }) {
   const token = await getToken();
   if (!token) return { success: false, error: 'Not authenticated' };
 
+  // The backend's AI ladder can run long; cap below the sidebar's 160s guard.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 150000);
   try {
     const res = await fetch(`${API_BASE}/extension/adapters/build`, {
       method: 'POST',
@@ -398,7 +458,8 @@ async function buildAdapterSection({ exam_id, page }) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ exam_id, page })
+      body: JSON.stringify({ exam_id, page }),
+      signal: controller.signal
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -408,7 +469,14 @@ async function buildAdapterSection({ exam_id, page }) {
     delete cachedAdapters[exam_id];
     return { success: true, data: data.data };
   } catch (err) {
-    return { success: false, error: `Network error: ${err.message}` };
+    return {
+      success: false,
+      error: err.name === 'AbortError'
+        ? 'Build timed out after 150s — the AI may be overloaded. Try again.'
+        : `Network error: ${err.message}`
+    };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

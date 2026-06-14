@@ -47,6 +47,7 @@
     ready:       $('stateReady'),
     filling:     $('stateFilling'),
     complete:    $('stateComplete'),
+    review:      $('stateReview'),
     error:       $('stateError'),
     noAdapter:   $('stateNoAdapter'),
     builder:     $('stateBuilder')
@@ -358,9 +359,120 @@
         <button class="btn-fill ${state.status || ''}">${btnLabel}</button>
       `;
 
-      card.querySelector('.btn-fill').addEventListener('click', () => fillSection(section, idx));
+      card.querySelector('.btn-fill').addEventListener('click', () => showReviewState(section, idx));
+
+      if (isAdmin) {
+        const del = document.createElement('button');
+        del.className = 'btn-del-section';
+        del.title = 'Delete this section';
+        del.textContent = '🗑';
+        del.addEventListener('click', (e) => { e.stopPropagation(); deleteSection(section); });
+        card.appendChild(del);
+      }
+
       container.appendChild(card);
     });
+  }
+
+  // Admin-only: remove a section from the adapter.
+  async function deleteSection(section) {
+    if (!confirm(`Delete section "${section.section_name}"? This removes it from the adapter for all students.`)) return;
+
+    const res = await msg('DELETE_SECTION', { exam_id: examId, section_id: section.section_id });
+    if (!res || res.success === false) {
+      showError((res && res.error) || 'Failed to delete section');
+      return;
+    }
+
+    // Drop it locally and re-render so the list updates immediately.
+    adapter.sections = (adapter.sections || []).filter(s => s.section_id !== section.section_id);
+    delete sectionStates[section.section_id];
+    renderSections();
+  }
+
+  // ════════════ Phase 2: pre-fill review / edit ════════════
+
+  let reviewCtx = null;   // { section, idx, rows: [{ path, label, original, current }] }
+
+  function resolvePath(obj, path) {
+    return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+  }
+  function setPath(obj, path, val) {
+    const parts = path.split('.');
+    let o = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (o[parts[i]] == null || typeof o[parts[i]] !== 'object') o[parts[i]] = {};
+      o = o[parts[i]];
+    }
+    o[parts[parts.length - 1]] = val;
+  }
+  function humanize(path) {
+    return path.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function showReviewState(section, idx) {
+    showView('review');
+    $('reviewSectionName').textContent = section.section_name;
+
+    // One editable row per DISTINCT source. Sources shared by multiple form
+    // fields (e.g. student.email feeding two inputs) appear once and edit once.
+    const seen = new Set();
+    const rows = [];
+    (section.fields || []).forEach(f => {
+      const src = f.source;
+      if (!src || seen.has(src)) return;
+      seen.add(src);
+      const val = resolvePath(profile, src);
+      if (val !== null && typeof val === 'object') return;   // skip arrays/objects (subjects, etc.)
+      rows.push({
+        path: src,
+        label: f.label || humanize(src),
+        original: val == null ? '' : String(val),
+        current:  val == null ? '' : String(val)
+      });
+    });
+
+    reviewCtx = { section, idx, rows };
+    renderReviewRows(rows);
+  }
+
+  function renderReviewRows(rows) {
+    const c = $('reviewList');
+    c.innerHTML = '';
+    if (!rows.length) {
+      c.innerHTML = '<div class="review-empty">No pre-fillable fields detected for this section.</div>';
+      return;
+    }
+    rows.forEach((row, i) => {
+      const el = document.createElement('div');
+      el.className = 'review-row';
+      el.innerHTML =
+        '<label class="review-label" for="rv_' + i + '">' + escHtml(row.label) + '</label>' +
+        '<input class="review-input" id="rv_' + i + '" type="text" value="' + escAttr(row.original) + '" />';
+      el.querySelector('input').addEventListener('input', e => { row.current = e.target.value; });
+      c.appendChild(el);
+    });
+  }
+
+  async function confirmReviewAndFill() {
+    if (!reviewCtx) return;
+    const { section, idx, rows } = reviewCtx;
+
+    // Diff: only the paths the student actually changed.
+    const changes = {};
+    rows.forEach(r => { if (r.current !== r.original) changes[r.path] = r.current; });
+
+    // Apply edits to the in-memory profile so the filler uses the reviewed values.
+    Object.entries(changes).forEach(([path, val]) => setPath(profile, path, val));
+
+    // Persist to the UniTracko profile. Non-blocking: a sync hiccup must never
+    // stop the student from completing their form.
+    if (Object.keys(changes).length > 0) {
+      try { await msg('SYNC_PROFILE', { changes }); } catch (_) { /* form-only fallback */ }
+    }
+
+    // Hand off to the existing fill pipeline, unchanged.
+    fillSection(section, idx);
   }
 
   // ─── Fill: single section ───
@@ -1026,6 +1138,8 @@
 
     // Back to sections
     $('backToSections').addEventListener('click', () => showReadyState());
+    $('confirmReviewBtn').addEventListener('click', () => confirmReviewAndFill());
+    $('backFromReviewBtn').addEventListener('click', () => showReadyState());
 
     // Fill next section
     $('fillNextBtn').addEventListener('click', () => {

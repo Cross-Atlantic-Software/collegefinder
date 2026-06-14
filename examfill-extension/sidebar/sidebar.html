@@ -172,6 +172,23 @@
       <div id="sectionsList" class="sections-list"></div>
     </section>
 
+    <!-- ─── State: Pre-fill review / edit (Phase 2) ─── -->
+    <section id="stateReview" class="view" style="display:none;">
+      <div class="review-header">
+        <div class="review-title">Review before filling</div>
+        <div class="review-sub" id="reviewSectionName"></div>
+      </div>
+      <p class="review-hint">
+        Check the values below. Edit anything that's wrong — your changes are saved to
+        your UniTracko profile and used to fill the form.
+      </p>
+      <div id="reviewList" class="review-list"></div>
+      <div class="view-actions">
+        <button class="btn-ghost" id="backFromReviewBtn">← Back</button>
+        <button class="btn-primary" id="confirmReviewBtn">Confirm &amp; Fill →</button>
+      </div>
+    </section>
+
     <!-- ─── State: No adapter yet (admin sees AI builder, students see message) ─── -->
     <section id="stateNoAdapter" class="view" style="display:none;">
       <div class="view-hero compact">
