@@ -300,6 +300,9 @@
     if (fieldConfig.format === 'TITLECASE')   return Formatter.titleCase(value);
     if (fieldConfig.format === 'PHONE')       return Formatter.cleanPhone(value);
     if (fieldConfig.format === 'digits_only') return String(value).replace(/\D/g, '');
+    if (fieldConfig.format === 'EMAIL_LOCAL')     return Formatter.emailLocal(value);
+    if (fieldConfig.format === 'EMAIL_DOMAIN')    return Formatter.emailDomain(value);
+    if (fieldConfig.format === 'EMAIL_DOMAIN_AT') return Formatter.emailDomainAt(value);
 
     return value;
   }

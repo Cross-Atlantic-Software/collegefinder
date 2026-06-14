@@ -83,9 +83,46 @@ const Formatter = {
     if (cleaned.startsWith('+91')) cleaned = cleaned.slice(3);
     if (cleaned.startsWith('91') && cleaned.length > 10) cleaned = cleaned.slice(2);
     return cleaned;
+  },
+
+  /**
+   * Pure, null-safe split: return the Nth piece of value split on delimiter.
+   * Returns '' if value is not a string or the part index is out of range.
+   */
+  splitValue(value, delimiter, part) {
+    if (typeof value !== 'string') return '';
+    const pieces = value.split(delimiter);
+    return part < pieces.length ? pieces[part] : '';
+  },
+
+  /**
+   * Local part of an email (before '@'). "x@gmail.com" -> "x"
+   */
+  emailLocal(value) {
+    return Formatter.splitValue(value, '@', 0);
+  },
+
+  /**
+   * Domain part of an email (after '@'). "x@gmail.com" -> "gmail.com"
+   */
+  emailDomain(value) {
+    return Formatter.splitValue(value, '@', 1);
+  },
+
+  /**
+   * Domain part prefixed with '@'. "x@gmail.com" -> "@gmail.com".
+   * Returns '' (not a bare '@') when there is no domain part.
+   */
+  emailDomainAt(value) {
+    const domain = Formatter.splitValue(value, '@', 1);
+    return domain ? '@' + domain : '';
   }
 };
 
 if (typeof window !== 'undefined') {
   window.ExamFillFormatter = Formatter;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Formatter;
 }

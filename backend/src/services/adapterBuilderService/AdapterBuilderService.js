@@ -20,7 +20,8 @@ const ALLOWED_FIELD_TYPES = new Set([
 ]);
 
 const ALLOWED_FORMATS = new Set([
-  'UPPERCASE', 'TITLECASE', 'PHONE', 'digits_only'
+  'UPPERCASE', 'TITLECASE', 'PHONE', 'digits_only',
+  'EMAIL_LOCAL', 'EMAIL_DOMAIN', 'EMAIL_DOMAIN_AT'
 ]);
 
 class AdapterBuilderService {
