@@ -270,8 +270,10 @@ function sanitizeSection(parsed, page) {
     if (!source) {
       // No source means the AI couldn't map it — capture it as a pending
       // discovered field so an admin can approve it, then skip (unmapped until then).
+      // Skip fields that are never profile data (consent boxes, CAPTCHA, country code).
       const label = typeof f.label === 'string' ? f.label.trim() : '';
-      if (label) discovered.push({ label, type: ALLOWED_FIELD_TYPES.has(f.type) ? f.type : 'text' });
+      const type = ALLOWED_FIELD_TYPES.has(f.type) ? f.type : 'text';
+      if (label && !isNonProfileField(label, type)) discovered.push({ label, type });
       continue;
     }
 
@@ -322,6 +324,18 @@ function sanitizeSection(parsed, page) {
     fields,
     _discovered: discovered
   };
+}
+
+// Unmapped fields that are never profile data and should NOT be captured into the
+// registry approval queue (DROP B): consent/authorization checkboxes, CAPTCHA inputs,
+// and country-code selectors. Pure + null-safe; takes the field's label and type.
+// Select fields are intentionally NOT filtered here — they flow to admin review by design.
+function isNonProfileField(label, type) {
+  if (type === 'checkbox') return true;
+  const text = typeof label === 'string' ? label : '';
+  if (/captcha/i.test(text)) return true;
+  if (/country.?code/i.test(text)) return true;
+  return false;
 }
 
 function sanitizeId(value) {
