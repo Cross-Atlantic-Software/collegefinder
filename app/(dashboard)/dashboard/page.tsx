@@ -128,6 +128,7 @@ function DashboardPageContent() {
     "applications",
     "exam-prep",
     "test-module",
+    "counselling",
     "know-your-strengths",
     "admission-help",
     "referral",

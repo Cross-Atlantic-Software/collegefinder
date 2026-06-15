@@ -205,9 +205,8 @@ export default function CareerGoalsTab() {
                     </p>
                 )}
 
-                {/* What excites you */}
-                <div className="mt-4 space-y-3">
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                <div className="mt-4">
+                    <div className="flex flex-wrap gap-3">
                         {interestOptions.map((opt) => {
                             const active = selectedInterests.includes(opt.id);
                             return (
@@ -216,31 +215,30 @@ export default function CareerGoalsTab() {
                                     type="button"
                                     onClick={() => toggleInterest(opt.id)}
                                     className={[
-                                        "flex flex-col items-center justify-center rounded-md p-5 text-center transition duration-500",
-                                        "border group",
+                                        "flex items-center gap-3 rounded-full border px-4 py-2 transition duration-300 group",
                                         active
-                                            ? "bg-[#FAD53C] text-black border-[#FAD53C]"
-                                            : "bg-white border-black/10 hover:bg-[#eaf4ff]",
+                                            ? "bg-[#FAD53C] text-black border-[#FAD53C] shadow-sm"
+                                            : "bg-white border-black/10 hover:border-black/20 hover:bg-slate-50",
                                     ].join(" ")}
                                 >
                                     {opt.logo ? (
                                         <Image
                                             src={opt.logo}
                                             alt={opt.label}
-                                            width={60}
-                                            height={60}
-                                            className="mb-2 h-14 w-14 object-contain sm:h-16 sm:w-16"
+                                            width={24}
+                                            height={24}
+                                            className="h-6 w-6 object-contain shrink-0"
                                             priority
                                             unoptimized
                                         />
                                     ) : (
-                                        <div className="mb-2 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 flex items-center justify-center">
-                                            <span className="text-lg font-bold text-black/50">{opt.label.charAt(0)}</span>
+                                        <div className="h-6 w-6 shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
+                                            <span className="text-xs font-bold text-black/50">{opt.label.charAt(0)}</span>
                                         </div>
                                     )}
                                     <span
-                                        className={`text-md font-semibold transition duration-500 ${
-                                            active ? "text-black" : "text-black/80 group-hover:text-black"
+                                        className={`text-sm font-semibold transition duration-300 ${
+                                            active ? "text-black" : "text-slate-700 group-hover:text-black"
                                         }`}
                                     >
                                         {opt.label}
