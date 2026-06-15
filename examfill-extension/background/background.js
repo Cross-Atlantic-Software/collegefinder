@@ -352,7 +352,7 @@ async function detectCurrentExam(payload) {
   if (!match) return { success: true, detected: false };
 
   // Refresh admin flag in parallel — needed for the Builder UI gate
-  refreshAuthMeta();
+  const authMeta = await refreshAuthMeta();
 
   return {
     success: true,
@@ -361,7 +361,7 @@ async function detectCurrentExam(payload) {
     exam_name: match.exam_name,
     has_published_adapter: match.has_published_adapter,
     status: match.status,
-    is_admin: cachedAuthMeta?.is_admin === true
+    is_admin: authMeta?.is_admin === true
   };
 }
 
