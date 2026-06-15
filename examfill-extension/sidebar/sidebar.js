@@ -459,8 +459,14 @@
     const { section, idx, rows } = reviewCtx;
 
     // Diff: only the paths the student actually changed.
-    const changes = {};
-    rows.forEach(r => { if (r.current !== r.original) changes[r.path] = r.current; });
+    const changes = {};       // path -> new value     (for SYNC_PROFILE)
+    const auditChanges = {};   // path -> { from, to }  (for the audit report)
+    rows.forEach(r => {
+      if (r.current !== r.original) {
+        changes[r.path] = r.current;
+        auditChanges[r.path] = { from: r.original, to: r.current };
+      }
+    });
 
     // Apply edits to the in-memory profile so the filler uses the reviewed values.
     Object.entries(changes).forEach(([path, val]) => setPath(profile, path, val));
@@ -471,13 +477,18 @@
       try { await msg('SYNC_PROFILE', { changes }); } catch (_) { /* form-only fallback */ }
     }
 
-    // Hand off to the existing fill pipeline, unchanged.
-    fillSection(section, idx);
+    // Hand off to the existing fill pipeline. confirmed_at is set whenever the
+    // student confirms — even with no edits, confirming is the acknowledgement
+    // the audit spec asks for.
+    fillSection(section, idx, {
+      changes: Object.keys(auditChanges).length ? auditChanges : null,
+      confirmed_at: new Date().toISOString()
+    });
   }
 
   // ─── Fill: single section ───
 
-  async function fillSection(section, idx = 0) {
+  async function fillSection(section, idx = 0, reviewMeta = null) {
     nextSectionIdx = idx + 1;
 
     showView('filling');
@@ -522,16 +533,18 @@
 
       sectionStates[section.section_id] = { status: sectionStatus, report };
 
-      // Fire-and-forget analytics
+      // Fire-and-forget analytics + audit trail
       msg('SEND_FILL_REPORT', {
         exam_id: examId,
         section: section.section_id,
         adapter_version: adapter.version || 1,
-        results: report.results
+        results: report.results,
+        student_changes: reviewMeta?.changes || null,
+        confirmed_at:    reviewMeta?.confirmed_at || null
       }).catch(() => {});
 
       await sleep(400);
-      showCompleteState(section, report);
+      showCompleteState(section, report, reviewMeta);
 
     } catch (err) {
       showError(err.message);
@@ -560,7 +573,7 @@
 
   // ─── Complete state ───
 
-  function showCompleteState(section, report) {
+  function showCompleteState(section, report, reviewMeta = null) {
     showView('complete');
 
     const s = report.summary;
@@ -587,6 +600,19 @@
     // Per-field report
     const container = $('fillReport');
     container.innerHTML = '';
+
+    // Audit strip — only for student-reviewed/confirmed fills (the spec's
+    // "Changes made by the student" + "User confirmations", surfaced in context).
+    if (reviewMeta) {
+      const n = reviewMeta.changes ? Object.keys(reviewMeta.changes).length : 0;
+      const t = reviewMeta.confirmed_at ? new Date(reviewMeta.confirmed_at).toLocaleTimeString() : '';
+      const audit = document.createElement('div');
+      audit.className = 'audit-strip';
+      audit.textContent = n > 0
+        ? `You changed ${n} value${n === 1 ? '' : 's'} · confirmed at ${t}`
+        : `Reviewed & confirmed at ${t}`;
+      container.appendChild(audit);
+    }
 
     for (const r of report.results) {
       const iconMap = { filled: '✅', check: '⚠️', failed: '❌', not_found: '❌' };

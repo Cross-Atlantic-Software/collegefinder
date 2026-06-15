@@ -167,6 +167,7 @@ const runMigrations = async () => {
     'add_lecture_taxonomies_thumbnail_filename.sql',
     'add_landing_page_content.sql',
     'add_exam_adapters_and_fill_reports.sql',
+    'add_audit_fields_to_fill_reports.sql',
     'add_exam_adapter_drafts.sql',
     'add_colleges_linked_exam_count.sql',
     'add_institute_branches_number_student_strength.sql',

@@ -582,6 +582,17 @@ body {
 
 .fill-report { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
 
+.audit-strip {
+  padding: 6px 9px;
+  margin-bottom: 4px;
+  background: var(--bg, #f1f5f9);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink3);
+}
+
 .report-row {
   display: flex; align-items: flex-start; gap: 7px;
   padding: 7px 9px;

@@ -92,5 +92,6 @@ router.get('/adapters/:examId', authenticate, AdaptersController.getAdapter);
 // Fill report endpoints
 router.post('/fill-report', authenticate, FillReportController.submitReport);
 router.get('/fill-reports', authenticate, FillReportController.getReports);
+router.get('/fill-reports/:id', authenticate, FillReportController.getReportDetail);
 
 module.exports = router;
