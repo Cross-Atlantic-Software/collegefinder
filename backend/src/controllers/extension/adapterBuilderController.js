@@ -120,12 +120,19 @@ class AdapterBuilderController {
         });
       }
 
-      // Merge into adapter_config.sections (replace same section_id, else append)
+      // Merge into adapter_config.sections. Re-scans of the same page must
+      // REPLACE in place rather than append. section_id is AI-generated and
+      // unstable, so we match on the stable page URL (with a step-number guard),
+      // and preserve the existing section_id on replace.
       const cfg = normaliseConfig(examRow.adapter_config);
       const sections = Array.isArray(cfg.sections) ? cfg.sections : [];
-      const existingIdx = sections.findIndex((s) => s && s.section_id === section.section_id);
-      if (existingIdx >= 0) sections[existingIdx] = section;
-      else sections.push(section);
+      const matchIdx = findMatchingSectionIndex(sections, section);
+      if (matchIdx >= 0) {
+        section.section_id = sections[matchIdx].section_id; // keep stable identity
+        sections[matchIdx] = section;
+      } else {
+        sections.push(section);
+      }
 
       cfg.sections = sections;
 
@@ -176,6 +183,27 @@ function snakeLabel(label) {
     .replace(/^_+/, '')
     .slice(0, 100)
     .replace(/_+$/, '');
+}
+
+// Match an incoming scan to an existing section.
+//  1) exact section_id — backward compatible with adapters built before this change
+//  2) same normalized page URL, with a step-number guard so single-URL multi-step
+//     wizards (page_indicator.type === 'step_number') only match the same step.
+function findMatchingSectionIndex(sections, incoming) {
+  const byId = sections.findIndex((s) => s && s.section_id === incoming.section_id);
+  if (byId >= 0) return byId;
+
+  const url = incoming.page_url;
+  if (!url) return -1;
+
+  return sections.findIndex((s) => {
+    if (!s || s.page_url !== url) return false;
+    const a = s.page_indicator, b = incoming.page_indicator;
+    const aStep = a && a.type === 'step_number' ? a.value : null;
+    const bStep = b && b.type === 'step_number' ? b.value : null;
+    if (aStep != null || bStep != null) return aStep === bStep;
+    return true; // same URL, no step distinction → same section
+  });
 }
 
 function normaliseConfig(adapter_config) {

@@ -322,6 +322,7 @@ function sanitizeSection(parsed, page) {
     section_id,
     section_name,
     page_indicator,
+    page_url: normalizeUrl(page?.url),
     fields,
     _discovered: discovered
   };
@@ -367,6 +368,17 @@ function extractUrlSegment(url) {
     return seg || u.hostname;
   } catch (_) {
     return url || '';
+  }
+}
+
+// Stable identity for a scanned page: drop query/hash + trailing slash, lowercase.
+// Same page with different query params still matches.
+function normalizeUrl(url) {
+  try {
+    const u = new URL(url);
+    return (u.origin + u.pathname).toLowerCase().replace(/\/+$/, '');
+  } catch {
+    return String(url || '').toLowerCase().replace(/[?#].*$/, '').replace(/\/+$/, '');
   }
 }
 
