@@ -1381,6 +1381,21 @@ router.post('/lectures/upload-image', authenticateAdmin, requireModuleAccess('le
  */
 const AutomationApplicationsController = require('../../controllers/admin/automationApplicationsController');
 const AutomationExamController = require('../../controllers/admin/automationExamController');
+const FillReportController = require('../../controllers/extension/fillReportController');
+
+/**
+ * @route   GET /api/admin/fill-reports
+ * @desc    List submissions (ExamFill audit trail) across all students
+ * @access  Private (Admin — applications module)
+ */
+router.get('/fill-reports', authenticateAdmin, requireModuleAccess('applications'), FillReportController.adminGetReports);
+
+/**
+ * @route   GET /api/admin/fill-reports/:id
+ * @desc    Full submission detail for any student
+ * @access  Private (Admin — applications module)
+ */
+router.get('/fill-reports/:id', authenticateAdmin, requireModuleAccess('applications'), FillReportController.adminGetReportDetail);
 
 /**
  * @route   GET /api/admin/automation-applications

@@ -146,6 +146,76 @@ class FillReportController {
       res.status(500).json({ success: false, message: 'Failed to fetch report' });
     }
   }
+
+  /**
+   * GET /api/admin/fill-reports
+   * List submissions across ALL students (admin). Optional ?exam_id=&user_id=&limit=&offset=
+   */
+  static async adminGetReports(req, res) {
+    try {
+      const { exam_id, user_id, limit = 50, offset = 0 } = req.query;
+
+      const where = [];
+      const values = [];
+      if (exam_id) { values.push(exam_id); where.push(`fr.exam_id = $${values.length}`); }
+      if (user_id) { values.push(parseInt(user_id, 10)); where.push(`fr.user_id = $${values.length}`); }
+      const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+      values.push(parseInt(limit, 10));
+      const limIdx = values.length;
+      values.push(parseInt(offset, 10));
+      const offIdx = values.length;
+
+      const result = await db.query(
+        `SELECT fr.id, fr.user_id, fr.exam_id, fr.section_name, fr.total_fields,
+                fr.filled_count, fr.check_count, fr.failed_count, fr.adapter_version,
+                fr.confirmed_at, fr.created_at,
+                (fr.student_changes IS NOT NULL) AS has_changes,
+                u.name  AS user_name,
+                u.email AS user_email
+           FROM fill_reports fr
+           LEFT JOIN users u ON u.id = fr.user_id
+           ${whereClause}
+          ORDER BY fr.created_at DESC
+          LIMIT $${limIdx} OFFSET $${offIdx}`,
+        values
+      );
+
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      console.error('Error fetching admin fill reports:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch submissions' });
+    }
+  }
+
+  /**
+   * GET /api/admin/fill-reports/:id
+   * Full submission detail for any student (admin).
+   */
+  static async adminGetReportDetail(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await db.query(
+        `SELECT fr.id, fr.user_id, fr.exam_id, fr.section_name, fr.total_fields,
+                fr.filled_count, fr.check_count, fr.failed_count, fr.field_results,
+                fr.student_changes, fr.confirmed_at, fr.adapter_version, fr.created_at,
+                u.name AS user_name, u.email AS user_email, u.phone_number AS user_phone
+           FROM fill_reports fr
+           LEFT JOIN users u ON u.id = fr.user_id
+          WHERE fr.id = $1`,
+        [id]
+      );
+
+      if (!result.rows[0]) {
+        return res.status(404).json({ success: false, message: 'Report not found' });
+      }
+
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      console.error('Error fetching admin fill report detail:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch submission' });
+    }
+  }
 }
 
 module.exports = FillReportController;
