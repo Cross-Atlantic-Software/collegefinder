@@ -1,19 +1,21 @@
 "use client";
 import type { JSX } from "react";
 import { useState } from "react";
-import { LuUser, LuBookOpen, LuTarget, LuInfo } from "react-icons/lu";
+import { LuUser, LuBookOpen, LuTarget, LuInfo, LuFileText } from "react-icons/lu";
 import BasicInfoForm from "../dashboard/ProfileTabs/BasicInfoForm";
 import AcademicsProfile from "../dashboard/ProfileTabs/AcademicsProfile";
 import CareerGoalsTab from "../dashboard/ProfileTabs/CareerGoals";
 import OtherInfoTab from "../dashboard/ProfileTabs/OtherInfoTab";
+import SubmissionsTab from "../dashboard/ProfileTabs/SubmissionsTab";
 
-type TabId = "basic" | "academics" | "goals" | "other";
+type TabId = "basic" | "academics" | "goals" | "other" | "submissions";
 
 const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
     { id: "basic", label: "Personal Details", icon: <LuUser /> },
     { id: "academics", label: "Academics", icon: <LuBookOpen /> },
     { id: "goals", label: "Interests", icon: <LuTarget /> },
     { id: "other", label: "Other Info", icon: <LuInfo /> },
+    { id: "submissions", label: "Submissions", icon: <LuFileText /> },
 ];
 
 export default function ProfileTabs() {
@@ -29,6 +31,8 @@ export default function ProfileTabs() {
                 return <CareerGoalsTab />;
             case "other":
                 return <OtherInfoTab />;
+            case "submissions":
+                return <SubmissionsTab />;
             default:
                 return null;
         }
