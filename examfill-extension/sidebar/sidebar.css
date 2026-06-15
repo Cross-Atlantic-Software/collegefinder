@@ -446,6 +446,12 @@ body {
 
 .sections-list { display: flex; flex-direction: column; gap: 6px; }
 
+.sections-progress {
+  font-size: 10px; font-weight: 600;
+  color: var(--ink3);
+  margin-bottom: 2px;
+}
+
 .section-card {
   display: flex; align-items: center;
   padding: 10px 12px;

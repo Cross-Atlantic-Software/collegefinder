@@ -23,6 +23,7 @@
   let examName = null;
   let currentTabUrl = '';
   let sectionStates = {};   // section_id → { status, report }
+  let progressLoaded = false;   // have we hydrated persisted progress for this exam?
   let nextSectionIdx = 0;   // for "Fill Next" button
   let isAdmin = false;      // populated from background after login
   let hasPublishedAdapter = false; // false → admin sees Builder by default
@@ -303,6 +304,7 @@
 
     // Sections
     renderSections();
+    hydrateProgress();   // restore saved progress (async; re-renders when it returns)
   }
 
   /**
@@ -330,6 +332,19 @@
     const container = $('sectionsList');
     container.innerHTML = '';
     if (!adapter?.sections) return;
+
+    // Save & continue: show how many sections the student has completed so far
+    // (counts both freshly filled this session and progress restored on load).
+    const total = adapter.sections.length;
+    const completed = adapter.sections.filter(
+      (sec) => sectionStates[sec.section_id]?.status === 'done'
+    ).length;
+    if (completed > 0) {
+      const summary = document.createElement('div');
+      summary.className = 'sections-progress';
+      summary.textContent = `${completed} of ${total} sections completed`;
+      container.appendChild(summary);
+    }
 
     adapter.sections.forEach((section, idx) => {
       const state = sectionStates[section.section_id] || {};
@@ -372,6 +387,29 @@
 
       container.appendChild(card);
     });
+  }
+
+  // Save & continue: pull the student's prior per-section progress for this exam
+  // and merge it into sectionStates (without overwriting anything filled THIS
+  // session), so re-opening the sidebar restores ✅ on completed sections.
+  async function hydrateProgress() {
+    if (progressLoaded || !examId) return;
+    progressLoaded = true;
+    try {
+      const res = await msg('GET_FILL_PROGRESS', { exam_id: examId });
+      if (res && res.success && Array.isArray(res.data)) {
+        res.data.forEach((row) => {
+          if (!sectionStates[row.section_id]) {
+            sectionStates[row.section_id] = {
+              status: row.status,
+              report: { summary: row.summary },
+              persisted: true
+            };
+          }
+        });
+        renderSections();
+      }
+    } catch (_) { /* non-blocking — progress is a nicety, never block the UI */ }
   }
 
   // Admin-only: remove a section from the adapter.
@@ -1157,7 +1195,7 @@
     // Logout
     $('logoutBtn').addEventListener('click', async () => {
       await msg('LOGOUT');
-      profile = null; adapter = null; sectionStates = {};
+      profile = null; adapter = null; sectionStates = {}; progressLoaded = false;
       showExamBadgeHide();
       await detectAndLoad();
     });

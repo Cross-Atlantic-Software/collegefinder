@@ -146,6 +146,9 @@ async function handleMessage(message, sender) {
     case 'SYNC_PROFILE':
       return syncProfile(message.payload);
 
+    case 'GET_FILL_PROGRESS':
+      return getFillProgress(message.payload);
+
     case 'DETECT_EXAM':
       return detectCurrentExam(message.payload);
 
@@ -318,6 +321,25 @@ async function syncProfile(payload) {
   const data = await res.json().catch(() => ({}));
   // Invalidate the cached profile so the next sidebar open shows the saved edits.
   cachedProfile = null;
+  return (data && typeof data === 'object') ? data : { success: false, error: 'Bad response' };
+}
+
+// ─── Save & continue: per-section progress ───
+async function getFillProgress(payload) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  const examId = payload && payload.exam_id;
+  if (!examId) return { success: false, error: 'Missing exam_id' };
+
+  const res = await fetch(`${API_BASE}/extension/fill-progress?exam_id=${encodeURIComponent(examId)}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (res.status === 401) {
+    await chrome.storage.local.remove('examfill_token');
+    return { success: false, error: 'Token expired — please log in again' };
+  }
+  const data = await res.json().catch(() => ({}));
   return (data && typeof data === 'object') ? data : { success: false, error: 'Bad response' };
 }
 

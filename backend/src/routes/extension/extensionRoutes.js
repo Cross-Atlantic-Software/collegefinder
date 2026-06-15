@@ -94,4 +94,7 @@ router.post('/fill-report', authenticate, FillReportController.submitReport);
 router.get('/fill-reports', authenticate, FillReportController.getReports);
 router.get('/fill-reports/:id', authenticate, FillReportController.getReportDetail);
 
+// Save & continue: per-section progress for one exam (latest report per section)
+router.get('/fill-progress', authenticate, FillReportController.getFillProgress);
+
 module.exports = router;

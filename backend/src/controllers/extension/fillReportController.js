@@ -216,6 +216,60 @@ class FillReportController {
       res.status(500).json({ success: false, message: 'Failed to fetch submission' });
     }
   }
+
+  /**
+   * GET /api/extension/fill-progress?exam_id=
+   * Per-section status for the current user on one exam (latest report per
+   * section). Powers "save & continue later": the sidebar hydrates its
+   * sectionStates from this so completed sections survive across sessions.
+   * Reuses the fill_reports audit trail — no new table.
+   */
+  static async getFillProgress(req, res) {
+    try {
+      const userId = req.user.id;
+      const { exam_id } = req.query;
+      if (!exam_id) {
+        return res.status(400).json({ success: false, message: 'exam_id is required' });
+      }
+
+      // Latest report per section (DISTINCT ON keeps the newest by created_at).
+      const result = await db.query(
+        `SELECT DISTINCT ON (section_name)
+                section_name, total_fields, filled_count, check_count, failed_count,
+                confirmed_at, created_at
+           FROM fill_reports
+          WHERE user_id = $1 AND exam_id = $2
+          ORDER BY section_name, created_at DESC`,
+        [userId, exam_id]
+      );
+
+      // Mirror the sidebar's own status derivation so persisted state matches
+      // in-session state. (failed_count already includes not_found.)
+      const data = result.rows.map((r) => {
+        let status = 'done';
+        if (r.failed_count > 0) status = 'failed';
+        else if (r.check_count > 0) status = 'check';
+        return {
+          section_id: r.section_name,
+          status,
+          confirmed: !!r.confirmed_at,
+          summary: {
+            filled: r.filled_count,
+            check: r.check_count,
+            failed: r.failed_count,
+            not_found: 0, // folded into failed already — keep 0 to avoid double count
+            total: r.total_fields,
+          },
+          last_filled_at: r.created_at,
+        };
+      });
+
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Error fetching fill progress:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch progress' });
+    }
+  }
 }
 
 module.exports = FillReportController;
