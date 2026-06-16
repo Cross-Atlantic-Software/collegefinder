@@ -69,6 +69,10 @@ export interface ExamAdapter {
   created_at?: string;
   updated_at?: string;
   section_count?: number;
+  /** Credits charged to auto-fill this exam (defaults to 1 server-side). */
+  credit_cost?: number | null;
+  /** Application fee paid directly to the exam (₹); null when not set. */
+  exam_fee?: number | null;
 }
 
 export interface ExamAdapterDetail extends ExamAdapter {
@@ -131,6 +135,8 @@ export async function updateExamAdapter(
     exam_name: string;
     portal_url_pattern: string;
     adapter_config: AdapterConfig;
+    credit_cost: number | null;
+    exam_fee: number | null;
   }>
 ): Promise<ApiResponse<ExamAdapterDetail>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}`, {

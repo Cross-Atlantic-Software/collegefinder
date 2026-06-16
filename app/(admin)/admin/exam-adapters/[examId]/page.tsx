@@ -98,7 +98,9 @@ export default function ExamAdapterEditorPage() {
       const res = await updateExamAdapter(examId, {
         exam_name: adapter.exam_name,
         portal_url_pattern: adapter.portal_url_pattern,
-        adapter_config: adapter.adapter_config
+        adapter_config: adapter.adapter_config,
+        credit_cost: adapter.credit_cost ?? null,
+        exam_fee: adapter.exam_fee ?? null
       });
       if (res.success && res.data) {
         showSuccess(`Saved. Version v${res.data.version}.`);
@@ -331,6 +333,43 @@ export default function ExamAdapterEditorPage() {
                 value={adapter.portal_url_pattern}
                 onChange={(e) => setAdapter({ ...adapter, portal_url_pattern: e.target.value })}
                 className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1">
+                Credit Cost (credits to auto-fill)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={adapter.credit_cost ?? ''}
+                onChange={(e) =>
+                  setAdapter({
+                    ...adapter,
+                    credit_cost: e.target.value === '' ? null : parseInt(e.target.value, 10)
+                  })
+                }
+                placeholder="1"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1">
+                Exam Fee (₹, paid to the exam)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={adapter.exam_fee ?? ''}
+                onChange={(e) =>
+                  setAdapter({
+                    ...adapter,
+                    exam_fee: e.target.value === '' ? null : Number(e.target.value)
+                  })
+                }
+                placeholder="e.g. 2000"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
               />
             </div>
           </div>

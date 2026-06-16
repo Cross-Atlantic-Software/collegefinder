@@ -192,6 +192,9 @@ const navItems: NavItem[] = [
   { label: 'Active referral codes', href: '/admin/referral-codes', icon: <FiMail className="h-4 w-4" />, moduleCode: 'referral_codes' },
   { label: 'Applications', href: '/admin/applications', icon: <FiPlay className="h-4 w-4" />, moduleCode: 'applications' },
   { label: 'Submissions', href: '/admin/submissions', icon: <FiFileText className="h-4 w-4" />, moduleCode: 'applications' },
+  { label: 'Credit Packs', href: '/admin/credit-packs', icon: <FiPackage className="h-4 w-4" />, moduleCode: 'applications' },
+  { label: 'Payment Settings', href: '/admin/payment-settings', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'applications' },
+  { label: 'Payments Ledger', href: '/admin/payments-ledger', icon: <FiList className="h-4 w-4" />, moduleCode: 'applications' },
   { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
   { label: 'Add Experts', href: '/admin/experts', icon: <FiUserPlus className="h-4 w-4" /> },
 ];
