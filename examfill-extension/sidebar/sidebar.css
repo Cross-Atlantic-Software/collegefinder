@@ -452,6 +452,24 @@ body {
   margin-bottom: 2px;
 }
 
+/* ─── Credits & fees ─── */
+.credit-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.credit-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.credit-label { font-size: 12px; color: var(--ink3); }
+.credit-label small { font-size: 10px; color: var(--ink3); }
+.credit-value { font-size: 13px; font-weight: 700; color: var(--ink); }
+
+.credit-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.buy-block-sub { font-size: 13px; color: var(--ink2); margin: 4px 0 14px; }
+
 .section-card {
   display: flex; align-items: center;
   padding: 10px 12px;

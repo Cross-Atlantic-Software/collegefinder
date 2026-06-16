@@ -24,6 +24,7 @@
   let currentTabUrl = '';
   let sectionStates = {};   // section_id → { status, report }
   let progressLoaded = false;   // have we hydrated persisted progress for this exam?
+  let creditStatus = null;  // { balance, credit_cost, exam_fee, sufficient, has_active_charge }
   let nextSectionIdx = 0;   // for "Fill Next" button
   let isAdmin = false;      // populated from background after login
   let hasPublishedAdapter = false; // false → admin sees Builder by default
@@ -52,7 +53,8 @@
     error:       $('stateError'),
     noAdapter:   $('stateNoAdapter'),
     builder:     $('stateBuilder'),
-    examPicker:  $('stateExamPicker')
+    examPicker:  $('stateExamPicker'),
+    buyBlock:    $('stateBuyBlock')
   };
 
   let examCatalog = null;      // cached list from GET_EXAM_CATALOG
@@ -446,6 +448,130 @@
     // Sections
     renderSections();
     hydrateProgress();   // restore saved progress (async; re-renders when it returns)
+    hydrateCreditStatus(); // balance + fee/cost + lifecycle actions (async)
+  }
+
+  // ─── Credits: fee/cost display + application lifecycle ───
+
+  // Refresh the credit card and the "mark submitted" / "cancel & refund" actions.
+  // Re-run on every showReadyState so the balance stays current after a charge/refund.
+  async function hydrateCreditStatus() {
+    if (!examId) return;
+    try {
+      const res = await msg('GET_CREDIT_STATUS', { exam_id: examId });
+      if (!res || !res.success || !res.data) return;
+      creditStatus = res.data;
+    } catch (_) {
+      return; // non-blocking — the fee card is a nicety, never block filling
+    }
+    renderCreditCard();
+  }
+
+  function renderCreditCard() {
+    if (!creditStatus) return;
+    const card = $('creditCard');
+    if (card) card.style.display = 'flex';
+
+    $('creditBalance').textContent =
+      `${creditStatus.balance} credit${creditStatus.balance === 1 ? '' : 's'}`;
+    $('creditCost').textContent =
+      `${creditStatus.credit_cost} credit${creditStatus.credit_cost === 1 ? '' : 's'}`;
+
+    if (creditStatus.exam_fee != null) {
+      $('examFeeRow').style.display = 'flex';
+      $('examFee').textContent = `₹${Number(creditStatus.exam_fee).toLocaleString('en-IN')}`;
+    } else {
+      $('examFeeRow').style.display = 'none';
+    }
+
+    // Lifecycle actions
+    const actions = $('creditActions');
+    const markBtn = $('markSubmittedBtn');
+    const cancelBtn = $('cancelRefundBtn');
+
+    const total = adapter?.sections?.length || 0;
+    const completed = (adapter?.sections || []).filter(
+      (sec) => sectionStates[sec.section_id]?.status === 'done'
+    ).length;
+    const allDone = total > 0 && completed === total;
+    const hasActive = !!creditStatus.has_active_charge;
+
+    // "Mark as submitted" — only meaningful once everything is filled AND a charge is open.
+    markBtn.style.display = allDone && hasActive ? 'block' : 'none';
+    // "Cancel & refund" — available whenever an active charge exists (not yet submitted).
+    cancelBtn.style.display = hasActive ? 'block' : 'none';
+    actions.style.display = (markBtn.style.display !== 'none' || cancelBtn.style.display !== 'none')
+      ? 'flex' : 'none';
+  }
+
+  // Pre-fill gate: ensure a fill charge exists before letting the student fill a
+  // section. Idempotent server-side, so calling before each section / on a
+  // save-and-continue reopen returns the active charge without re-debiting.
+  // Returns true when filling may proceed; false when blocked (buy-block shown).
+  async function ensureCharged() {
+    const res = await msg('FILL_CHARGE', { exam_id: examId });
+    if (res && res.success) {
+      // Refresh local view of the wallet/charge so the card + actions update.
+      if (res.data && typeof res.data.balance === 'number') {
+        creditStatus = {
+          ...(creditStatus || {}),
+          balance: res.data.balance,
+          has_active_charge: true,
+          sufficient: true
+        };
+        renderCreditCard();
+      }
+      return true;
+    }
+    if (res && res.code === 'INSUFFICIENT_CREDITS') {
+      showBuyBlock(res.shortfall, res.wallet_url);
+      return false;
+    }
+    showError((res && res.error) || 'Could not start the fill. Please try again.');
+    return false;
+  }
+
+  // Gate then route into the existing pre-fill review flow.
+  async function startFill(section, idx) {
+    const ok = await ensureCharged();
+    if (ok) showReviewState(section, idx);
+  }
+
+  function showBuyBlock(shortfall, walletUrl) {
+    showView('buyBlock');
+    const n = Number(shortfall) || 0;
+    $('buyBlockSub').textContent = n > 0
+      ? `You need ${n} more credit${n === 1 ? '' : 's'} to auto-fill this form.`
+      : 'You need more credits to auto-fill this form.';
+    const buyBtn = $('buyCreditsBtn');
+    buyBtn.onclick = () => {
+      if (walletUrl) chrome.tabs.create({ url: walletUrl });
+    };
+  }
+
+  async function markApplicationSubmitted() {
+    const btn = $('markSubmittedBtn');
+    btn.disabled = true;
+    const res = await msg('FILL_CHARGE_COMPLETE', { exam_id: examId });
+    btn.disabled = false;
+    if (!res || !res.success) {
+      showError((res && res.error) || 'Could not mark the application as submitted.');
+      return;
+    }
+    await hydrateCreditStatus();
+  }
+
+  async function cancelAndRefund() {
+    if (!confirm('Cancel this application and refund the credits to your wallet?')) return;
+    const btn = $('cancelRefundBtn');
+    btn.disabled = true;
+    const res = await msg('FILL_CHARGE_REFUND', { exam_id: examId });
+    btn.disabled = false;
+    if (!res || !res.success) {
+      showError((res && res.error) || 'Could not refund the credits.');
+      return;
+    }
+    await hydrateCreditStatus();
   }
 
   /**
@@ -515,7 +641,7 @@
         <button class="btn-fill ${state.status || ''}">${btnLabel}</button>
       `;
 
-      card.querySelector('.btn-fill').addEventListener('click', () => showReviewState(section, idx));
+      card.querySelector('.btn-fill').addEventListener('click', () => startFill(section, idx));
 
       if (isAdmin) {
         const del = document.createElement('button');
@@ -1389,6 +1515,11 @@
         fillSection(adapter.sections[nextSectionIdx], nextSectionIdx);
       }
     });
+
+    // Credits: lifecycle actions + buy-block navigation
+    $('markSubmittedBtn').addEventListener('click', () => markApplicationSubmitted());
+    $('cancelRefundBtn').addEventListener('click', () => cancelAndRefund());
+    $('buyBlockBackBtn').addEventListener('click', () => showReadyState());
 
     // Retry
     $('retryBtn').addEventListener('click', () => detectAndLoad());

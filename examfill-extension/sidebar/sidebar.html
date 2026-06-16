@@ -201,12 +201,45 @@
         <button class="btn-secondary" id="openBuilderBtn">Open Builder →</button>
       </div>
 
+      <!-- Credits & fees -->
+      <div id="creditCard" class="credit-card" style="display:none;">
+        <div class="credit-row">
+          <span class="credit-label">Your balance</span>
+          <span class="credit-value" id="creditBalance">—</span>
+        </div>
+        <div class="credit-row">
+          <span class="credit-label">Auto-fill cost</span>
+          <span class="credit-value" id="creditCost">—</span>
+        </div>
+        <div class="credit-row" id="examFeeRow" style="display:none;">
+          <span class="credit-label">Application fee <small>(paid to the exam)</small></span>
+          <span class="credit-value" id="examFee">—</span>
+        </div>
+      </div>
+
       <!-- Sections -->
       <div class="section-label">
         Sections
         <button class="picker-inline-link" id="readyPickerBtn" title="Switch exam">Switch exam</button>
       </div>
       <div id="sectionsList" class="sections-list"></div>
+
+      <!-- Application lifecycle actions -->
+      <div id="creditActions" class="credit-actions" style="display:none;">
+        <button class="btn-primary full" id="markSubmittedBtn" style="display:none;">Mark application as submitted</button>
+        <button class="btn-ghost full" id="cancelRefundBtn" style="display:none;">Cancel application &amp; refund credits</button>
+      </div>
+    </section>
+
+    <!-- ─── State: Insufficient credits (buy-block) ─── -->
+    <section id="stateBuyBlock" class="view" style="display:none;">
+      <div class="view-hero compact">
+        <div class="hero-icon small">💳</div>
+        <h2 id="buyBlockHeading">Not enough credits</h2>
+        <p id="buyBlockSub" class="buy-block-sub"></p>
+      </div>
+      <button class="btn-primary full" id="buyCreditsBtn">Buy credits →</button>
+      <button class="btn-ghost full picker-link" id="buyBlockBackBtn">← Back</button>
     </section>
 
     <!-- ─── State: Pre-fill review / edit (Phase 2) ─── -->

@@ -223,6 +223,18 @@ async function handleMessage(message, sender) {
     case 'SEND_FILL_REPORT':
       return sendFillReport(message.payload);
 
+    case 'GET_CREDIT_STATUS':
+      return getCreditStatus(message.payload);
+
+    case 'FILL_CHARGE':
+      return createFillCharge(message.payload);
+
+    case 'FILL_CHARGE_COMPLETE':
+      return completeFillCharge(message.payload);
+
+    case 'FILL_CHARGE_REFUND':
+      return refundFillCharge(message.payload);
+
     case 'GET_SUPPORTED_EXAMS':
       return { success: true, exams: registeredExams };
 
@@ -850,6 +862,117 @@ async function sendFillReport(payload) {
     return { success: data.success };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+}
+
+// ─── Credits & fill charges ───
+
+// GET /extension/credit-status?exam_id=  -> { balance, credit_cost, exam_fee, sufficient, has_active_charge }
+async function getCreditStatus(payload) {
+  const examId = payload?.exam_id;
+  if (!examId) return { success: false, error: 'exam_id is required' };
+
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(
+      `${await apiBase()}/extension/credit-status?exam_id=${encodeURIComponent(examId)}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (res.status === 401) {
+      await chrome.storage.local.remove('examfill_token');
+      return { success: false, error: 'Token expired — please log in again' };
+    }
+    const data = await res.json();
+    if (!data.success) return { success: false, error: data.message || 'Failed to load credit status' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// POST /extension/fill-charge  { exam_id }
+// Idempotent: an existing active charge is returned without re-debiting.
+// On HTTP 402 we surface the INSUFFICIENT_CREDITS body so the sidebar can show the buy-block.
+async function createFillCharge(payload) {
+  const examId = payload?.exam_id;
+  if (!examId) return { success: false, error: 'exam_id is required' };
+
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${await apiBase()}/extension/fill-charge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ exam_id: examId })
+    });
+    if (res.status === 401) {
+      await chrome.storage.local.remove('examfill_token');
+      return { success: false, error: 'Token expired — please log in again' };
+    }
+    const data = await res.json();
+
+    // Not enough credits — pass the structured 402 body through, do NOT swallow it.
+    if (res.status === 402 || data.code === 'INSUFFICIENT_CREDITS') {
+      return {
+        success: false,
+        code: 'INSUFFICIENT_CREDITS',
+        status: 402,
+        shortfall: data.shortfall,
+        wallet_url: data.wallet_url,
+        error: data.message || 'You do not have enough credits'
+      };
+    }
+    if (!data.success) return { success: false, error: data.message || 'Failed to start fill charge' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// POST /extension/fill-charge/complete  { exam_id }
+async function completeFillCharge(payload) {
+  const examId = payload?.exam_id;
+  if (!examId) return { success: false, error: 'exam_id is required' };
+
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${await apiBase()}/extension/fill-charge/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ exam_id: examId })
+    });
+    const data = await res.json();
+    if (!data.success) return { success: false, error: data.message || 'Failed to mark as submitted' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// POST /extension/fill-charge/refund  { exam_id }
+async function refundFillCharge(payload) {
+  const examId = payload?.exam_id;
+  if (!examId) return { success: false, error: 'exam_id is required' };
+
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${await apiBase()}/extension/fill-charge/refund`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ exam_id: examId })
+    });
+    const data = await res.json();
+    if (!data.success) return { success: false, error: data.message || 'Failed to refund credits' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
   }
 }
 
