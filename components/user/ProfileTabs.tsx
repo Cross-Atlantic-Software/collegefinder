@@ -1,14 +1,15 @@
 "use client";
 import type { JSX } from "react";
-import { useState } from "react";
-import { LuUser, LuBookOpen, LuTarget, LuInfo, LuFileText } from "react-icons/lu";
+import { useEffect, useState } from "react";
+import { LuUser, LuBookOpen, LuTarget, LuInfo, LuFileText, LuCoins } from "react-icons/lu";
 import BasicInfoForm from "../dashboard/ProfileTabs/BasicInfoForm";
 import AcademicsProfile from "../dashboard/ProfileTabs/AcademicsProfile";
 import CareerGoalsTab from "../dashboard/ProfileTabs/CareerGoals";
 import OtherInfoTab from "../dashboard/ProfileTabs/OtherInfoTab";
 import SubmissionsTab from "../dashboard/ProfileTabs/SubmissionsTab";
+import CreditsTab from "../dashboard/ProfileTabs/CreditsTab";
 
-type TabId = "basic" | "academics" | "goals" | "other" | "submissions";
+type TabId = "basic" | "academics" | "goals" | "other" | "submissions" | "credits";
 
 const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
     { id: "basic", label: "Personal Details", icon: <LuUser /> },
@@ -16,10 +17,22 @@ const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
     { id: "goals", label: "Interests", icon: <LuTarget /> },
     { id: "other", label: "Other Info", icon: <LuInfo /> },
     { id: "submissions", label: "Submissions", icon: <LuFileText /> },
+    { id: "credits", label: "Credits", icon: <LuCoins /> },
 ];
+
+const TAB_IDS = TABS.map((t) => t.id);
 
 export default function ProfileTabs() {
     const [activeTab, setActiveTab] = useState<TabId>("basic");
+
+    // Deep-link support: the ExamFill extension opens /user-profile?tab=credits.
+    // Read from window on mount to avoid a Suspense boundary for useSearchParams.
+    useEffect(() => {
+        const param = new URLSearchParams(window.location.search).get("tab");
+        if (param && (TAB_IDS as string[]).includes(param)) {
+            setActiveTab(param as TabId);
+        }
+    }, []);
 
     const renderContent = () => {
         switch (activeTab) {
@@ -33,6 +46,8 @@ export default function ProfileTabs() {
                 return <OtherInfoTab />;
             case "submissions":
                 return <SubmissionsTab />;
+            case "credits":
+                return <CreditsTab />;
             default:
                 return null;
         }
