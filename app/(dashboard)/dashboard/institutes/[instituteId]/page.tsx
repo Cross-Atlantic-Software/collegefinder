@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
@@ -20,19 +20,6 @@ import {
 import { useInstituteDetailQuery } from "@/lib/instituteDetailQueries";
 import { useUpdateShortlistedInstituteMutation } from "@/lib/dashboardInstituteQueries";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "dashboard-coaching-online": [
@@ -63,7 +50,7 @@ function DetailShell({
   onSectionChange,
 }: {
   children: React.ReactNode;
-  onSectionChange: (section: SectionId) => void;
+  onSectionChange: (section: DashboardSectionId) => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -121,7 +108,7 @@ export default function InstituteDetailPage() {
   ];
   const examLinkFrom = instituteViewFrom(from);
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
