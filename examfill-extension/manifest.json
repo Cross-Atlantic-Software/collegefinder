@@ -9,7 +9,8 @@
     "activeTab",
     "scripting",
     "sidePanel",
-    "tabs"
+    "tabs",
+    "cookies"
   ],
 
   "host_permissions": [
@@ -24,7 +25,13 @@
     "https://*.eduquity.com/*",
     "https://*.upes.ac.in/*",
     "https://*.bennett.edu.in/*",
-    "https://*.pearlacademy.com/*"
+    "https://*.pearlacademy.com/*",
+    "https://*.ssc.gov.in/*",
+    "https://ssc.gov.in/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "http://localhost:5001/*",
+    "http://127.0.0.1:5001/*"
   ],
 
   "background": {
@@ -48,7 +55,9 @@
         "https://*.eduquity.com/*",
         "https://*.upes.ac.in/*",
         "https://*.bennett.edu.in/*",
-        "https://*.pearlacademy.com/*"
+        "https://*.pearlacademy.com/*",
+        "https://*.ssc.gov.in/*",
+        "https://ssc.gov.in/*"
       ],
       "js": [
         "utils/resolver.js",
@@ -60,6 +69,18 @@
         "content/highlighter.js",
         "content/pageScanner.js",
         "content/content_script.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://unitracko.com/*",
+        "https://*.unitracko.com/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": [
+        "content/authSync.js"
       ],
       "run_at": "document_idle"
     }

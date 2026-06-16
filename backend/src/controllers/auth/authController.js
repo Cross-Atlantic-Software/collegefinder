@@ -670,6 +670,14 @@ class AuthController {
         onboardingCompleted = actualOnboardingStatus;
       }
 
+      // Admin flag (matches the user's email against active admin_users). Used by the
+      // ExamFill extension to gate the Builder when authenticating via session SSO.
+      let isAdmin = false;
+      try {
+        const { computeIsAdmin } = require('../../middleware/extensionAdmin');
+        isAdmin = await computeIsAdmin(updatedUser.email);
+      } catch (_) { /* non-fatal — default to non-admin */ }
+
       // Debug logging
       console.log('🔍 getMe - User ID:', updatedUser.id);
       console.log('🔍 getMe - onboarding_completed (raw):', updatedUser.onboarding_completed, 'Type:', typeof updatedUser.onboarding_completed);
@@ -689,7 +697,7 @@ class AuthController {
             createdAt: updatedUser.created_at,
             lastLogin: updatedUser.last_login,
             has_password: Boolean(updatedUser.password_hash),
-            is_admin: await computeIsAdmin(updatedUser.email)
+            is_admin: isAdmin
           }
         }
       });

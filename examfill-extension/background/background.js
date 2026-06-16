@@ -12,7 +12,28 @@
  * - Drive the admin-only "Build Adapter" flow that calls Gemini server-side.
  */
 
-const API_BASE = 'https://unitracko.com/api';
+// API base. Defaults to production. Override for local/staging testing via:
+//   chrome.storage.local.set({ examfill_api_base: 'http://127.0.0.1:5001/api' })
+const DEFAULT_API_BASE = 'https://unitracko.com/api';
+let _apiBaseCache = null;
+
+async function apiBase() {
+  if (_apiBaseCache) return _apiBaseCache;
+  try {
+    const { examfill_api_base } = await chrome.storage.local.get('examfill_api_base');
+    _apiBaseCache = (examfill_api_base && /^https?:\/\//.test(examfill_api_base))
+      ? examfill_api_base.replace(/\/+$/, '')
+      : DEFAULT_API_BASE;
+  } catch (_) {
+    _apiBaseCache = DEFAULT_API_BASE;
+  }
+  return _apiBaseCache;
+}
+
+// Invalidate the cache when the override changes.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.examfill_api_base) _apiBaseCache = null;
+});
 
 // ─── Hardcoded fallback exam list ────────────────────────────────
 // These are always detected even when the backend is offline.
@@ -27,6 +48,20 @@ const FALLBACK_EXAMS = [
   { exam_id: 'bitsat',        exam_name: 'BITSAT 2026',           portal_url_pattern: 'bitsadmission.com',             has_published_adapter: false, status: 'draft'     },
   { exam_id: 'viteee',        exam_name: 'VITEEE 2026',           portal_url_pattern: 'viteee.vit.ac.in',              has_published_adapter: false, status: 'draft'     },
   { exam_id: 'kiitee_2026',   exam_name: 'KIITEE 2026',           portal_url_pattern: 'kiitee.eduquity.com',           has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'ssc_cgl',       exam_name: 'SSC CGL',               portal_url_pattern: 'ssc.gov.in',                    has_published_adapter: false, status: 'draft'     },
+];
+
+// Content scripts to inject on-demand, in dependency order (mirrors manifest.json).
+const CONTENT_SCRIPT_FILES = [
+  'utils/resolver.js',
+  'utils/formatter.js',
+  'utils/waiter.js',
+  'content/detector.js',
+  'content/filler.js',
+  'content/verifier.js',
+  'content/highlighter.js',
+  'content/pageScanner.js',
+  'content/content_script.js'
 ];
 
 // ─── In-memory cache (never persisted to disk for privacy) ───
@@ -58,7 +93,7 @@ async function ensureRegisteredExamsFresh(force = false) {
     const token = await getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/extension/adapters/registered`, { headers });
+    const res = await fetch(`${await apiBase()}/extension/adapters/registered`, { headers });
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -128,6 +163,12 @@ async function handleMessage(message, sender) {
     case 'GET_AUTH_STATUS':
       return getAuthStatus();
 
+    case 'WEB_SESSION_TOKEN':
+      return receiveWebSessionToken(message.payload, sender);
+
+    case 'TRY_WEB_SSO':
+      return tryWebSso();
+
     case 'SEND_OTP':
       return sendOtp(message.payload);
 
@@ -141,7 +182,7 @@ async function handleMessage(message, sender) {
       return logout();
 
     case 'GET_PROFILE':
-      return getProfile();
+      return getProfile(message.payload);
 
     case 'SYNC_PROFILE':
       return syncProfile(message.payload);
@@ -160,6 +201,12 @@ async function handleMessage(message, sender) {
 
     case 'GET_REGISTERED_EXAMS':
       return getRegisteredExamsForSidebar(message.payload);
+
+    case 'GET_EXAM_CATALOG':
+      return getExamCatalog();
+
+    case 'ENSURE_INJECTED':
+      return ensureInjected(message.payload);
 
     case 'FILL_SECTION':
       return fillSection(message.payload);
@@ -191,12 +238,17 @@ async function handleMessage(message, sender) {
 
 async function getAuthStatus() {
   const { examfill_token } = await chrome.storage.local.get('examfill_token');
-  return { success: true, authenticated: !!examfill_token, is_admin: cachedAuthMeta?.is_admin === true };
+  if (!examfill_token) return { success: true, authenticated: false, is_admin: false };
+  // The admin flag lives in an in-memory cache that's wiped whenever the service
+  // worker restarts (which is constant). Refresh it from the server so the Builder
+  // is correctly shown for admins regardless of how/when they authenticated.
+  await refreshAuthMeta();
+  return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
 }
 
 async function sendOtp({ email }) {
   try {
-    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+    const res = await fetch(`${await apiBase()}/auth/send-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -212,7 +264,7 @@ async function sendOtp({ email }) {
 
 async function verifyOtp({ email, code }) {
   try {
-    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+    const res = await fetch(`${await apiBase()}/auth/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, code })
@@ -239,6 +291,195 @@ async function verifyOtp({ email, code }) {
 
 async function login(payload) { return sendOtp(payload); }
 
+// ─── Web/CMS session SSO ─────────────────────────────────────────
+// The CollegeFinder website + CMS store their JWT in localStorage. A content
+// script (authSync.js) pushes it here; we also pull it on demand. If the token
+// validates, we adopt it as the ExamFill token so the student skips OTP login.
+
+const WEB_TAB_PATTERNS = [
+  'https://unitracko.com/*',
+  'https://*.unitracko.com/*',
+  'http://localhost:3000/*',
+  'http://127.0.0.1:3000/*'
+];
+
+/**
+ * Validate a candidate JWT against /auth/me and, if valid, store it as the
+ * ExamFill token. Returns { ok, is_admin }.
+ */
+/**
+ * Map a session's origin to the API base it was issued by, so we always
+ * validate/serve against the SAME backend that minted the token. This prevents
+ * the classic "logged in locally but extension hits prod" mismatch.
+ */
+function apiBaseForOrigin(origin) {
+  if (/localhost:3000|127\.0\.0\.1:3000/i.test(origin || '')) return 'http://127.0.0.1:5001/api';
+  return DEFAULT_API_BASE; // unitracko.com / unknown -> production
+}
+
+/**
+ * Validate a candidate token and, if valid, store it as the ExamFill token.
+ * @param {string} token
+ * @param {string} [sourceOrigin]  Where the token came from; pins the API base.
+ */
+async function adoptToken(token, sourceOrigin) {
+  if (!token) return { ok: false };
+  // If we know where the session came from, validate against THAT backend and
+  // pin the API base to it (so all later calls match the token's issuer).
+  const base = sourceOrigin ? apiBaseForOrigin(sourceOrigin) : await apiBase();
+  try {
+    const res = await fetch(`${base}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return { ok: false };       // expired / wrong token type / wrong backend
+    const data = await res.json();
+    if (data && data.success === false) return { ok: false };
+
+    const toStore = { examfill_token: token };
+    if (sourceOrigin) toStore.examfill_api_base = base; // pin to the session's backend
+    await chrome.storage.local.set(toStore);
+    if (sourceOrigin) _apiBaseCache = base;
+
+    cachedProfile = null;
+    cachedProfileTimestamp = 0;
+    const isAdmin = !!(data.data?.user?.is_admin || data.data?.is_admin);
+    cachedAuthMeta = { is_admin: isAdmin, fetchedAt: Date.now() };
+    await ensureRegisteredExamsFresh(true);
+    return { ok: true, is_admin: isAdmin };
+  } catch (_) {
+    return { ok: false };
+  }
+}
+
+/** Push from the website content script (authSync.js). Adopt only if we don't already have a token. */
+async function receiveWebSessionToken(payload = {}, sender) {
+  const token = payload.token;
+  if (!token) return { success: false };
+  const existing = await getToken();
+  if (existing) return { success: true, alreadyAuthenticated: true };
+  const origin = sender?.origin || sender?.tab?.url || '';
+  const adopted = await adoptToken(token, origin);
+  return { success: adopted.ok, is_admin: adopted.is_admin === true };
+}
+
+// Candidate origins where the website drops the readable `auth_token` cookie.
+const WEB_COOKIE_URLS = [
+  'https://unitracko.com',
+  'https://www.unitracko.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+/**
+ * Read the auth token from the website's cookie store. Works even with NO
+ * website tab open. Returns { token, origin } or null.
+ */
+async function readTokenFromCookies() {
+  for (const url of WEB_COOKIE_URLS) {
+    try {
+      const cookie = await chrome.cookies.get({ url, name: 'auth_token' });
+      const val = cookie?.value;
+      if (val && val !== 'null' && val !== 'undefined') {
+        const decoded = decodeURIComponent(val).trim();
+        if (decoded) return { token: decoded, origin: url };
+      }
+    } catch (_) { /* no cookies permission for this url / not found */ }
+  }
+  return null;
+}
+
+/** Best available source of the web session token: cookie first, then open tabs. */
+async function readWebToken() {
+  return (await readTokenFromCookies()) || (await readTokenFromWebTabs());
+}
+
+/** Read the web token from any open CollegeFinder/CMS tab via scripting. Returns { token, origin } or null. */
+async function readTokenFromWebTabs() {
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ url: WEB_TAB_PATTERNS });
+  } catch (_) { /* query may throw if patterns unsupported */ }
+
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          try {
+            const u = localStorage.getItem('auth_token');
+            if (u && u !== 'null' && u !== 'undefined' && u.trim()) return u.trim();
+            const a = localStorage.getItem('admin_token');
+            if (a && a !== 'null' && a !== 'undefined' && a.trim()) return a.trim();
+          } catch (_) { /* blocked */ }
+          return null;
+        }
+      });
+      const token = results?.[0]?.result;
+      if (token) {
+        let origin = '';
+        try { origin = new URL(tab.url).origin; } catch (_) {}
+        return { token, origin };
+      }
+    } catch (_) { /* no host permission / restricted page — try next tab */ }
+  }
+  return null;
+}
+
+/**
+ * Attempt single-sign-on from the website/CMS session.
+ * Returns { success, authenticated, is_admin }.
+ */
+async function tryWebSso() {
+  const existing = await getToken();
+  if (existing) {
+    await refreshAuthMeta();
+    return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
+  }
+
+  const web = await readWebToken();
+  if (!web?.token) return { success: true, authenticated: false };
+
+  const adopted = await adoptToken(web.token, web.origin);
+  return { success: true, authenticated: adopted.ok, is_admin: adopted.is_admin === true };
+}
+
+function isWebOrigin(url) {
+  if (!url) return false;
+  return /^https?:\/\/([^/]+\.)?unitracko\.com\//i.test(url) ||
+         /^https?:\/\/(localhost|127\.0\.0\.1):3000\//i.test(url);
+}
+
+/** Best-effort: adopt the website session if we don't already have a token. */
+async function autoAdoptFromWeb() {
+  try {
+    const existing = await getToken();
+    if (existing) return;
+    const web = await readWebToken();
+    if (web?.token) await adoptToken(web.token, web.origin);
+  } catch (_) { /* non-fatal */ }
+}
+
+// Capture the session as soon as the worker wakes or a CollegeFinder tab loads —
+// so the user is already connected by the time they open the panel.
+chrome.runtime.onStartup.addListener(autoAdoptFromWeb);
+chrome.runtime.onInstalled.addListener(autoAdoptFromWeb);
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && isWebOrigin(tab?.url)) autoAdoptFromWeb();
+});
+
+// Adopt the instant the user logs in on the website (auth_token cookie appears) —
+// no tab focus, no panel open, no refresh needed.
+if (chrome.cookies && chrome.cookies.onChanged) {
+  chrome.cookies.onChanged.addListener(({ cookie, removed }) => {
+    if (removed || cookie?.name !== 'auth_token') return;
+    const domain = (cookie.domain || '').replace(/^\./, '');
+    if (domain.endsWith('unitracko.com') || domain === 'localhost' || domain === '127.0.0.1') {
+      autoAdoptFromWeb();
+    }
+  });
+}
+
 async function logout() {
   await chrome.storage.local.remove('examfill_token');
   cachedProfile = null;
@@ -258,7 +499,7 @@ async function refreshAuthMeta() {
   if (!token) { cachedAuthMeta = null; return null; }
   if (cachedAuthMeta && (Date.now() - cachedAuthMeta.fetchedAt) < AUTH_META_TTL) return cachedAuthMeta;
   try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
+    const res = await fetch(`${await apiBase()}/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) return cachedAuthMeta;
@@ -271,16 +512,17 @@ async function refreshAuthMeta() {
 
 // ─── Profile ───
 
-async function getProfile() {
+async function getProfile(payload) {
   const now = Date.now();
-  if (cachedProfile && (now - cachedProfileTimestamp) < PROFILE_CACHE_TTL) {
+  const force = payload?.force === true;
+  if (!force && cachedProfile && (now - cachedProfileTimestamp) < PROFILE_CACHE_TTL) {
     return { success: true, data: cachedProfile };
   }
 
   const token = await getToken();
   if (!token) return { success: false, error: 'Not authenticated' };
 
-  const res = await fetch(`${API_BASE}/extension/fill-profile`, {
+  const res = await fetch(`${await apiBase()}/extension/fill-profile`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
 
@@ -370,6 +612,59 @@ async function getRegisteredExamsForSidebar() {
   return { success: true, data: registeredExams };
 }
 
+// ─── Exam catalog (for manual picker dropdown) ───
+
+async function getExamCatalog() {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${await apiBase()}/extension/exams`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.status === 401) {
+      await chrome.storage.local.remove('examfill_token');
+      return { success: false, error: 'Token expired — please log in again' };
+    }
+    if (!res.ok) return { success: false, error: `Catalog fetch failed (${res.status})` };
+    const data = await res.json();
+    if (!data.success) return { success: false, error: data.message || 'Failed to load exam catalog' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// ─── On-demand content-script injection ───
+// Used when the user manually selects an exam whose portal isn't in the
+// static content_scripts list. Pings first to avoid double-injection on
+// portals already covered by the manifest.
+
+async function ensureInjected({ tabId } = {}) {
+  let targetTabId = tabId;
+  if (!targetTabId) {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    targetTabId = activeTab?.id;
+  }
+  if (!targetTabId) return { success: false, error: 'No active tab' };
+
+  // Already injected? (statically-matched portals, or a previous manual inject)
+  try {
+    const pong = await chrome.tabs.sendMessage(targetTabId, { type: 'PING' });
+    if (pong?.alive) return { success: true, alreadyInjected: true };
+  } catch (_) { /* not injected yet — fall through */ }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: targetTabId },
+      files: CONTENT_SCRIPT_FILES
+    });
+    return { success: true, injected: true };
+  } catch (err) {
+    return { success: false, error: `Injection failed: ${err.message}. The page may block extensions, or permission was not granted.` };
+  }
+}
+
 // ─── Adapter ───
 
 async function getAdapter(examId, force = false) {
@@ -382,7 +677,7 @@ async function getAdapter(examId, force = false) {
   if (!token) return { success: false, error: 'Not authenticated' };
 
   try {
-    const res = await fetch(`${API_BASE}/extension/adapters/${examId}`, {
+    const res = await fetch(`${await apiBase()}/extension/adapters/${examId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -439,6 +734,9 @@ async function fillSection(payload) {
   }
   if (!targetTabId) return { success: false, error: 'No active tab found' };
 
+  // Ensure the content script is present (manually-injected portals lose it on navigation).
+  await ensureInjected({ tabId: targetTabId });
+
   try {
     const response = await chrome.tabs.sendMessage(targetTabId, {
       type: 'FILL_SECTION',
@@ -456,6 +754,9 @@ async function scanPage() {
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!activeTab?.id) return { success: false, error: 'No active tab' };
 
+  // Ensure the page scanner is present (manually-injected portals lose it on navigation).
+  await ensureInjected({ tabId: activeTab.id });
+
   try {
     const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'SCAN_PAGE' });
     return response;
@@ -466,7 +767,7 @@ async function scanPage() {
 
 // ─── Build adapter section (admin-only, calls Gemini via backend) ───
 
-async function buildAdapterSection({ exam_id, page }) {
+async function buildAdapterSection({ exam_id, page, exam_name, portal_url_pattern }) {
   const token = await getToken();
   if (!token) return { success: false, error: 'Not authenticated' };
 
@@ -474,13 +775,13 @@ async function buildAdapterSection({ exam_id, page }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 150000);
   try {
-    const res = await fetch(`${API_BASE}/extension/adapters/build`, {
+    const res = await fetch(`${await apiBase()}/extension/adapters/build`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ exam_id, page }),
+      body: JSON.stringify({ exam_id, page, exam_name, portal_url_pattern }),
       signal: controller.signal
     });
     const data = await res.json();
@@ -509,7 +810,7 @@ async function publishAdapter({ exam_id, status }) {
   if (!token) return { success: false, error: 'Not authenticated' };
 
   try {
-    const res = await fetch(`${API_BASE}/extension/adapters/${exam_id}/status`, {
+    const res = await fetch(`${await apiBase()}/extension/adapters/${exam_id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -536,7 +837,7 @@ async function sendFillReport(payload) {
   if (!token) return { success: false, error: 'Not authenticated' };
 
   try {
-    const res = await fetch(`${API_BASE}/extension/fill-report`, {
+    const res = await fetch(`${await apiBase()}/extension/fill-report`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, getCurrentUser } from '@/api';
-import { getAuthToken, setAuthToken, setUser, removeAuthToken, getUser as getStoredUser } from '@/lib/auth';
+import { getAuthToken, setAuthToken, setUser, removeAuthToken, getUser as getStoredUser, syncAuthCookie } from '@/lib/auth';
 import LogoutLoader from '@/components/shared/LogoutLoader';
 
 interface AuthContextType {
@@ -32,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       const token = getAuthToken();
       const storedUser = getStoredUser();
+
+      // Backfill the auth cookie for sessions created before cookie mirroring
+      // existed (token only in localStorage) so the ExamFill extension can detect them.
+      syncAuthCookie();
 
       if (token && storedUser) {
         setUserState(storedUser);

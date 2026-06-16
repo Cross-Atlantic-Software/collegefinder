@@ -47,6 +47,50 @@ class AdaptersController {
   }
 
   /**
+   * GET /api/extension/exams
+   * Full exam catalog for the extension's manual exam-picker dropdown.
+   * Each row carries a derived `slug` (the adapter exam_id convention) and,
+   * via LEFT JOIN onto exam_adapters, whether a published adapter exists.
+   *
+   * slug = btrim(regexp_replace(lower(coalesce(code, name)), '[^a-z0-9]+', '_'), '_')
+   */
+  static async listCatalog(req, res) {
+    try {
+      const result = await db.query(
+        `WITH catalog AS (
+           SELECT t.id,
+                  t.name,
+                  t.code,
+                  t.abbreviation,
+                  t.conducting_authority,
+                  COALESCE(NULLIF(t.registration_link, ''), NULLIF(t.website, '')) AS portal_link,
+                  t.exam_popularity_rank,
+                  btrim(regexp_replace(lower(COALESCE(NULLIF(t.code, ''), t.name)), '[^a-z0-9]+', '_', 'g'), '_') AS slug
+             FROM exams_taxonomies t
+         )
+         SELECT c.id,
+                c.name,
+                c.code,
+                c.abbreviation,
+                c.conducting_authority,
+                c.portal_link,
+                c.slug,
+                a.exam_id            AS adapter_exam_id,
+                a.portal_url_pattern,
+                a.status,
+                CASE WHEN a.status = 'published' AND a.is_active = TRUE THEN TRUE ELSE FALSE END AS has_published_adapter
+           FROM catalog c
+           LEFT JOIN exam_adapters a ON a.exam_id = c.slug
+          ORDER BY c.exam_popularity_rank ASC NULLS LAST, c.name ASC`
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      console.error('Error listing exam catalog:', error);
+      res.status(500).json({ success: false, message: 'Failed to list exam catalog' });
+    }
+  }
+
+  /**
    * GET /api/extension/adapters/detect?url=...
    * Detects which exam an open URL belongs to.
    */

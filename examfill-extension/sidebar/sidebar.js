@@ -51,8 +51,12 @@
     review:      $('stateReview'),
     error:       $('stateError'),
     noAdapter:   $('stateNoAdapter'),
-    builder:     $('stateBuilder')
+    builder:     $('stateBuilder'),
+    examPicker:  $('stateExamPicker')
   };
+
+  let examCatalog = null;      // cached list from GET_EXAM_CATALOG
+  let manualExamSelected = false; // true once user picks from the dropdown (suppresses auto-detect override)
 
   // ─── Init ───
 
@@ -64,10 +68,20 @@
   async function boot() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTabUrl = tab?.url || '';
+    // Proactively adopt any existing CollegeFinder/CMS session so a signed-in
+    // user never sees a login screen — no page refresh, no button click needed.
+    await msg('TRY_WEB_SSO');
+    // Bust any stale profile cache on panel open so freshly-edited profile data
+    // (new fields, updated marks) is picked up immediately.
+    await msg('GET_PROFILE', { force: true }).catch(() => {});
     await detectAndLoad();
   }
 
   async function detectAndLoad() {
+    // A manual selection takes precedence over URL auto-detection until the
+    // user explicitly goes back to the picker or logs out.
+    if (manualExamSelected) return;
+
     showView('loading');
 
     const detection = await msg('DETECT_EXAM', { url: currentTabUrl });
@@ -84,14 +98,28 @@
     hasPublishedAdapter = detection.has_published_adapter === true;
     showExamBadge(examName);
 
-    // Is this a portal's own auth/login page?
-    const isPortalLoginPage = isLoginPage(currentTabUrl);
+    await loadProfileAndRoute({ checkPortalLogin: true });
+  }
 
-    // Check ExamFill auth
-    const auth = await msg('GET_AUTH_STATUS');
+  /**
+   * Shared tail used by both auto-detection and manual selection:
+   * verify auth → load profile + adapter → route to the right view.
+   * @param {object} opts { checkPortalLogin } — manual picks skip the portal
+   *   login-page detour since the user has explicitly chosen the exam.
+   */
+  async function loadProfileAndRoute({ checkPortalLogin = true } = {}) {
+    const isPortalLoginPage = checkPortalLogin && isLoginPage(currentTabUrl);
+
+    let auth = await msg('GET_AUTH_STATUS');
     if (!auth.authenticated) {
-      showView('login');
-      return;
+      // Try to adopt an existing website / CMS session before asking for OTP.
+      const sso = await msg('TRY_WEB_SSO');
+      if (sso?.authenticated) {
+        auth = { authenticated: true, is_admin: sso.is_admin };
+      } else {
+        showView('login');
+        return;
+      }
     }
     if (auth.is_admin === true) isAdmin = true;
 
@@ -179,7 +207,7 @@
   // ─── State: No portal ───
 
   function renderSupportedExams() {
-    const exams = ['JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA', 'SRMJEEE'];
+    const exams = ['SSC CGL', 'JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA', 'SRMJEEE'];
     const container = $('supportedExamsList');
     container.innerHTML = '';
     exams.forEach(name => {
@@ -188,6 +216,119 @@
       tag.textContent = name;
       container.appendChild(tag);
     });
+  }
+
+  // ─── State: Manual exam picker ───
+
+  const MAX_PICKER_ROWS = 80; // cap rendered rows; search narrows the rest
+
+  async function openExamPicker() {
+    showView('examPicker');
+    $('pickerSearch').value = '';
+    $('pickerList').innerHTML = '<div class="picker-more-note">Loading exams…</div>';
+    $('pickerEmpty').style.display = 'none';
+
+    if (!examCatalog) {
+      const res = await msg('GET_EXAM_CATALOG');
+      if (!res?.success) {
+        if ((res?.error || '').includes('Token expired')) { showView('login'); return; }
+        $('pickerList').innerHTML = '';
+        $('pickerEmpty').textContent = res?.error || 'Could not load the exam list.';
+        $('pickerEmpty').style.display = 'block';
+        return;
+      }
+      examCatalog = Array.isArray(res.data) ? res.data : [];
+    }
+
+    renderExamCatalog('');
+    setTimeout(() => $('pickerSearch').focus(), 50);
+  }
+
+  function renderExamCatalog(filter) {
+    const list = $('pickerList');
+    const empty = $('pickerEmpty');
+    const q = (filter || '').trim().toLowerCase();
+
+    const matches = examCatalog.filter(e => {
+      if (!q) return true;
+      return (e.name || '').toLowerCase().includes(q) ||
+             (e.code || '').toLowerCase().includes(q) ||
+             (e.abbreviation || '').toLowerCase().includes(q) ||
+             (e.conducting_authority || '').toLowerCase().includes(q);
+    });
+
+    list.innerHTML = '';
+    if (matches.length === 0) {
+      empty.textContent = 'No exams match your search.';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const shown = matches.slice(0, MAX_PICKER_ROWS);
+    for (const exam of shown) {
+      const ready = !!exam.has_published_adapter;
+      const initials = (exam.abbreviation || exam.name || '?').trim().charAt(0).toUpperCase();
+      const meta = exam.conducting_authority || (ready ? 'Ready to fill' : 'Adapter coming soon');
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'picker-row';
+      row.innerHTML = `
+        <div class="picker-row-logo">${escHtml(initials)}</div>
+        <div class="picker-row-body">
+          <div class="picker-row-name">${escHtml(exam.name || exam.code || 'Untitled exam')}</div>
+          <div class="picker-row-meta">${escHtml(meta)}</div>
+        </div>
+        <span class="picker-badge ${ready ? 'ready' : 'soon'}">${ready ? 'Ready' : 'Soon'}</span>
+      `;
+      row.addEventListener('click', () => selectExamManually(exam));
+      list.appendChild(row);
+    }
+
+    if (matches.length > shown.length) {
+      const note = document.createElement('div');
+      note.className = 'picker-more-note';
+      note.textContent = `Showing ${shown.length} of ${matches.length}. Refine your search to see more.`;
+      list.appendChild(note);
+    }
+  }
+
+  /**
+   * User picked an exam from the catalog. Flow:
+   *  1. Ask the background to inject the content scripts into the active tab.
+   *     Injection relies on the manifest's static host_permissions (for the
+   *     listed portals incl. ssc.gov.in) or the `activeTab` grant the user gives
+   *     by opening ExamFill on this tab — no broad host permission is requested.
+   *  2. Set the active exam and run the standard profile + adapter routing.
+   */
+  async function selectExamManually(exam) {
+    // Only http(s) pages can host the fill engine.
+    if (!/^https?:\/\//i.test(currentTabUrl)) {
+      showError('Open the exam\'s registration page in this tab first, then pick the exam.');
+      return;
+    }
+
+    showView('loading');
+
+    examId   = exam.adapter_exam_id || exam.slug;
+    examName = exam.name || examId;
+    hasPublishedAdapter = !!exam.has_published_adapter;
+    manualExamSelected = true;
+    showExamBadge(examName);
+
+    // (1) Inject content scripts into the active tab (no-op if already present).
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) { showError('No active tab found.'); return; }
+
+    const inject = await msg('ENSURE_INJECTED', { tabId: tab.id });
+    if (!inject?.success) {
+      showError(inject?.error || 'Could not activate ExamFill on this page. Open the registration page in this tab and try again.');
+      return;
+    }
+
+    // (2) Standard routing. Skip portal-login detour — the user chose explicitly.
+    await loadProfileAndRoute({ checkPortalLogin: false });
   }
 
   // ─── State: Portal login guide ───
@@ -726,7 +867,7 @@
 
     setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Building with AI…');
 
-    const build = await msgSafe('BUILD_ADAPTER_SECTION', { exam_id: examId, page: scan.page }, 160000);
+    const build = await msgSafe('BUILD_ADAPTER_SECTION', { exam_id: examId, exam_name: examName, page: scan.page }, 160000);
     setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
 
     if (!build?.success) {
@@ -763,8 +904,9 @@
         builderState.fillReports = {};
         for (const r of result.report?.results || []) {
           builderState.fillReports[r.field_id] =
-            r.status === 'filled' ? 'filled' :
-            r.status === 'check'  ? 'check'  : 'failed';
+            r.status === 'filled'    ? 'filled' :
+            r.status === 'check'     ? 'check'  :
+            r.status === 'not_found' ? 'nodata' : 'failed';
         }
         renderBuilderSection(builderState.section);
         const s = result.report?.summary || {};
@@ -860,7 +1002,8 @@
         .map((t) => `<option value="${t}"${t === f.type ? ' selected' : ''}>${t}</option>`).join('');
 
       const status = builderState.fillReports[f.field_id];
-      const statusBadge = status ? `<span class="row-status ${status}">${status}</span>` : '';
+      const statusLabels = { filled: 'filled', check: 'check', failed: 'failed', nodata: 'no data' };
+      const statusBadge = status ? `<span class="row-status ${status}">${statusLabels[status] || status}</span>` : '';
 
       row.innerHTML = `
         <div class="row-top">
@@ -910,9 +1053,9 @@
     builderState.fillReports = {};
     for (const r of result.report?.results || []) {
       builderState.fillReports[r.field_id] =
-        r.status === 'filled' ? 'filled' :
-        r.status === 'check'  ? 'check'  :
-        r.status === 'not_found' ? 'failed' : 'failed';
+        r.status === 'filled'    ? 'filled' :
+        r.status === 'check'     ? 'check'  :
+        r.status === 'not_found' ? 'nodata' : 'failed';
     }
     renderBuilderSection(builderState.section);
     const s = result.report?.summary || {};
@@ -929,6 +1072,7 @@
 
     const result = await msgSafe('BUILD_ADAPTER_SECTION', {
       exam_id: examId,
+      exam_name: examName,
       // Re-scan so the backend's selectors match what's actually on the page now.
       // Using the AI build endpoint here ALSO lets us merge by section_id.
       page: await reuseLastScannedPage(section)
@@ -1099,6 +1243,24 @@
       await detectAndLoad();
     });
 
+    // Connect via existing website / CMS session (SSO)
+    $('ssoConnectBtn').addEventListener('click', async () => {
+      setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', true, 'Connecting…');
+      $('ssoError').style.display = 'none';
+
+      const sso = await msg('TRY_WEB_SSO');
+
+      setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', false, 'Connect with my CollegeFinder login');
+
+      if (sso?.authenticated) {
+        if (manualExamSelected) await loadProfileAndRoute({ checkPortalLogin: false });
+        else await detectAndLoad();
+        return;
+      }
+      $('ssoError').textContent = 'No active CollegeFinder session found. Open and sign in to CollegeFinder in another tab, then try again — or use OTP above.';
+      $('ssoError').style.display = 'flex';
+    });
+
     // Go back to email step
     $('changeEmailBtn').addEventListener('click', () => {
       clearOtpTimer();
@@ -1196,9 +1358,25 @@
     $('logoutBtn').addEventListener('click', async () => {
       await msg('LOGOUT');
       profile = null; adapter = null; sectionStates = {}; progressLoaded = false;
+      manualExamSelected = false; examCatalog = null;
       showExamBadgeHide();
       await detectAndLoad();
     });
+
+    // Manual exam picker entry points
+    $('manualSelectBtn').addEventListener('click', () => openExamPicker());
+    $('noAdapterPickerBtn').addEventListener('click', () => openExamPicker());
+    $('readyPickerBtn').addEventListener('click', () => openExamPicker());
+
+    // Picker: back returns to URL auto-detection
+    $('pickerBackBtn').addEventListener('click', () => {
+      manualExamSelected = false;
+      showExamBadgeHide();
+      detectAndLoad();
+    });
+
+    // Picker: live search filter
+    $('pickerSearch').addEventListener('input', (e) => renderExamCatalog(e.target.value));
 
     // Back to sections
     $('backToSections').addEventListener('click', () => showReadyState());
@@ -1234,6 +1412,35 @@
         currentTabUrl = tab.url || currentTabUrl;
         detectAndLoad();
       }
+    });
+
+    // Re-detect when the user SWITCHES tabs (the side panel is shared across tabs,
+    // so switching to the exam portal must re-run detection). onUpdated only fires
+    // on navigation, not on tab activation — this fills that gap.
+    chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        const newUrl = tab?.url || '';
+        if (newUrl === currentTabUrl) return;     // same page — nothing to do
+        currentTabUrl = newUrl;
+        manualExamSelected = false;               // new tab context → fresh detection
+        showExamBadgeHide();
+        detectAndLoad();
+      } catch (_) { /* tab gone */ }
+    });
+
+    // Re-detect when switching browser windows.
+    chrome.windows.onFocusChanged.addListener(async (windowId) => {
+      if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, windowId });
+        const newUrl = tab?.url || '';
+        if (!newUrl || newUrl === currentTabUrl) return;
+        currentTabUrl = newUrl;
+        manualExamSelected = false;
+        showExamBadgeHide();
+        detectAndLoad();
+      } catch (_) { /* ignore */ }
     });
   }
 
