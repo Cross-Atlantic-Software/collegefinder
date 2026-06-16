@@ -287,9 +287,6 @@ async function verifyOtp({ email, code }) {
       return { success: false, error: data.message || 'Invalid OTP' };
     }
     await chrome.storage.local.set({ examfill_token: token });
-    // Explicit OTP login clears the "signed out" intent so normal auto-SSO
-    // resumes afterward (a deliberate logout otherwise stays sticky).
-    await chrome.storage.local.remove('examfill_signed_out');
     cachedProfile = null;
     cachedProfileTimestamp = 0;
     cachedAuthMeta = {
@@ -370,8 +367,6 @@ async function adoptToken(token, sourceOrigin) {
 async function receiveWebSessionToken(payload = {}, sender) {
   const token = payload.token;
   if (!token) return { success: false };
-  // Respect an explicit logout: don't silently re-adopt the live web session.
-  if (await isSignedOut()) return { success: true, signedOut: true };
   const existing = await getToken();
   if (existing) return { success: true, alreadyAuthenticated: true };
   const origin = sender?.origin || sender?.tab?.url || '';
@@ -453,8 +448,6 @@ async function tryWebSso() {
     await refreshAuthMeta();
     return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
   }
-  // Respect an explicit logout: stay signed out instead of re-adopting the web session.
-  if (await isSignedOut()) return { success: true, authenticated: false };
 
   const web = await readWebToken();
   if (!web?.token) return { success: true, authenticated: false };
@@ -472,8 +465,6 @@ function isWebOrigin(url) {
 /** Best-effort: adopt the website session if we don't already have a token. */
 async function autoAdoptFromWeb() {
   try {
-    // Respect an explicit logout: covers onStartup/onInstalled/tabs.onUpdated/cookies.onChanged.
-    if (await isSignedOut()) return;
     const existing = await getToken();
     if (existing) return;
     const web = await readWebToken();
@@ -503,9 +494,6 @@ if (chrome.cookies && chrome.cookies.onChanged) {
 
 async function logout() {
   await chrome.storage.local.remove('examfill_token');
-  // Persist a "signed out" intent so the silent SSO paths don't immediately
-  // re-adopt a still-live web session. Cleared on the next explicit OTP login.
-  await chrome.storage.local.set({ examfill_signed_out: true });
   cachedProfile = null;
   cachedProfileTimestamp = 0;
   cachedAuthMeta = null;
@@ -516,12 +504,6 @@ async function logout() {
 async function getToken() {
   const { examfill_token } = await chrome.storage.local.get('examfill_token');
   return examfill_token || null;
-}
-
-/** True when the user explicitly logged out and hasn't deliberately logged back in. */
-async function isSignedOut() {
-  const { examfill_signed_out } = await chrome.storage.local.get('examfill_signed_out');
-  return examfill_signed_out === true;
 }
 
 async function refreshAuthMeta() {
