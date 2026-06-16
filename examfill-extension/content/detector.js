@@ -82,6 +82,88 @@ const Detector = {
       }
     }
 
+    // Strategy 6: label-TEXT proximity.
+    // For forms with NO <label for> / id / name (e.g. Angular apps like the SSC
+    // OTR portal), find the visible question text, then the control that follows
+    // it. Also resolves custom <div> dropdown triggers. Returned as-is (the
+    // proximity search already vetted it).
+    const proximityLabels = selectors.by_text || selectors.by_label;
+    if (proximityLabels) {
+      // by_index here = which OCCURRENCE of a repeated label to use
+      // (e.g. permanent vs present "Address" both labelled the same).
+      const occurrence = (typeof selectors.by_index === 'number') ? selectors.by_index : 0;
+      for (const labelText of proximityLabels) {
+        el = this._findNearText(labelText, fieldConfig.type, occurrence);
+        if (el) return el;
+      }
+    }
+
+    return null;
+  },
+
+  /**
+   * Normalise a question label for matching: drop leading numbering
+   * ("6.", "1.1.", "a.", "b."), trailing "*", collapse whitespace, lowercase.
+   */
+  _normLabel(s) {
+    return String(s || '')
+      .replace(/ /g, ' ')
+      .toLowerCase()
+      .replace(/^\s*(\d+(\.\d+)*|[a-z])[.)]\s+/, '')
+      .replace(/\s*\*\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  },
+
+  /** CSS selector for the control type, used by proximity search. */
+  _ctrlSelector(fieldType) {
+    if (fieldType === 'select' || fieldType === 'select_or_text' || fieldType === 'text_or_select') {
+      return 'select, [role="combobox"], .select-type, .ng-select, mat-select, input:not([type="radio"]):not([type="checkbox"]):not([type="search"]):not([type="hidden"]), textarea';
+    }
+    if (fieldType === 'date') {
+      return 'input.mat-datepicker-input, input:not([type="radio"]):not([type="checkbox"]):not([type="search"]):not([type="hidden"])';
+    }
+    if (fieldType === 'radio') return 'input[type="radio"]';
+    if (fieldType === 'checkbox') return 'input[type="checkbox"]';
+    // Text/default: real inputs only — NEVER custom dropdown divs (avoids
+    // running input-only methods on a <div> → "Illegal invocation").
+    return 'input:not([type="radio"]):not([type="checkbox"]):not([type="search"]):not([type="hidden"]):not([type="file"]), textarea, select';
+  },
+
+  /**
+   * Find a control by the visible question text near it.
+   * 1. Locate the smallest element whose normalised text === the label.
+   * 2. Return the first matching, enabled control that follows it in DOM order.
+   */
+  _findNearText(text, fieldType, occurrence = 0) {
+    const target = this._normLabel(text);
+    if (!target || target.length < 2) return null;
+
+    // 1. Find ALL label elements whose normalised text === target (leaf nodes),
+    //    then pick the requested occurrence (0 = first).
+    const textEls = document.querySelectorAll(
+      'label, span, div, p, strong, b, h3, h4, h5, h6, td, th, .form-label, .control-label, .field-label'
+    );
+    const labelEls = [];
+    for (const el of textEls) {
+      // The label element must not itself wrap a form control (that's a container).
+      if (el.querySelector('input, select, textarea, .select-type')) continue;
+      if (this._normLabel(el.textContent) === target) labelEls.push(el);
+    }
+    const labelEl = labelEls[occurrence] || labelEls[0];
+    if (!labelEl) return null;
+
+    // 2. First control of the right type that FOLLOWS the label in document order.
+    //    We do NOT skip disabled controls here — returning the correct (even if
+    //    disabled) field is better than bleeding into the next field's input.
+    const candidates = document.querySelectorAll(this._ctrlSelector(fieldType));
+    for (const c of candidates) {
+      const pos = labelEl.compareDocumentPosition(c);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+        if (!c.classList.contains('select-type') && !this._isVisible(c)) continue;
+        return c;
+      }
+    }
     return null;
   },
 

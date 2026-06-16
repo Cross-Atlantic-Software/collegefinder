@@ -42,6 +42,16 @@ const Verifier = {
       return { status: 'filled', note: fillResult.note, actualValue: fillResult.note.replace('Custom dropdown: ', '') };
     }
 
+    // Masked fields (e.g. SSC's Aadhaar UID shows "****" once typed) can't be
+    // read back. Trust the fill and DON'T clear it — just flag for a manual check.
+    if (fieldConfig.masked || fieldConfig.skip_verify) {
+      return {
+        status: 'check',
+        note: 'Entered — the portal masks this value, so please confirm it was filled correctly',
+        actualValue: null
+      };
+    }
+
     const type = fieldConfig.type || 'text';
     const tag  = (el instanceof Element) ? (el.tagName || '').toLowerCase() : '';
     let actual;
@@ -155,11 +165,38 @@ const Verifier = {
     } else if (elOrRadios.name) {
       radios = document.querySelectorAll(`input[type="radio"][name="${elOrRadios.name}"]`);
     } else {
-      return elOrRadios.checked ? elOrRadios.value : '';
+      radios = [elOrRadios];
     }
 
     for (const r of radios) {
-      if (r.checked) return r.value;
+      if (r.checked) {
+        // Prefer the visible label ("Yes"/"No") over the raw value attribute,
+        // which is often the generic default "on".
+        const label = this._radioLabel(r);
+        const val = (r.value || '').trim();
+        if (label) return label;
+        if (val && val.toLowerCase() !== 'on') return val;
+        return val || '';
+      }
+    }
+    return '';
+  },
+
+  /** Visible label for a radio: wrapping label, label[for], or adjacent text. */
+  _radioLabel(radio) {
+    const wrap = radio.closest('label');
+    if (wrap && wrap.textContent.trim()) return wrap.textContent.trim();
+    if (radio.id) {
+      try {
+        const l = document.querySelector(`label[for="${CSS.escape(radio.id)}"]`);
+        if (l && l.textContent.trim()) return l.textContent.trim();
+      } catch (_) { /* invalid id */ }
+    }
+    let sib = radio.nextSibling;
+    while (sib) {
+      if (sib.nodeType === 3 && sib.textContent.trim()) return sib.textContent.trim();
+      if (sib.nodeType === 1) { const t = sib.textContent.trim(); if (t) return t; }
+      sib = sib.nextSibling;
     }
     return '';
   },
@@ -180,7 +217,10 @@ const Verifier = {
   },
 
   _fuzzyMatch(a, b) {
-    const normalize = s => s.toLowerCase().replace(/[\s\-_.]/g, '').replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+    // Strip ALL non-alphanumerics + lowercase, so values transformed by the
+    // portal (uppercased, commas/punctuation removed) still count as a match.
+    // e.g. "123, Sample Lane" === "123 SAMPLE LANE".
+    const normalize = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
     return normalize(a) === normalize(b);
   }
 };

@@ -58,6 +58,14 @@ const Filler = {
   _fillText(el, value, fieldConfig) {
     const strVal = String(value ?? '');
 
+    // Safety: native value setters only work on real form controls. If a wrong
+    // element type slipped through detection, fail cleanly instead of throwing
+    // "Illegal invocation".
+    const tag = el && el.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      return { status: 'failed', note: `Not a text field (got <${(tag || 'unknown').toLowerCase()}>)` };
+    }
+
     if (fieldConfig.format === 'MASKED' || this._hasMask(el)) {
       return this._fillMasked(el, strVal, fieldConfig);
     }
@@ -220,6 +228,16 @@ const Filler = {
     const tag = el.tagName.toLowerCase();
 
     if (tag !== 'select') {
+      // Custom dropdown trigger (e.g. SSC's <div class="select-type">) — open it
+      // and click the matching option. Not a real <select>, so handle directly.
+      const isTrigger = (el.classList && el.classList.contains('select-type'))
+        || el.getAttribute('role') === 'combobox'
+        || (el.querySelector && el.querySelector('.select-type'));
+      if (isTrigger) {
+        const strVal = String(value ?? '').trim();
+        const allVariants = this._getValueVariants(strVal, fieldConfig.value_map || {});
+        return await this._fillTriggerDropdown(el, allVariants, strVal);
+      }
       this._fillText(el, value, fieldConfig);
       return { status: 'filled', note: null };
     }
@@ -375,6 +393,85 @@ const Filler = {
     return { status: 'failed', note: `No custom dropdown trigger found for "${strVal}"` };
   },
 
+  /**
+   * Fill a custom dropdown driven by a clickable trigger element (no underlying
+   * <select>), e.g. SSC's <div class="select-type"> which opens a separate
+   * <div class="ng-dropdown"> options panel. Clicks the trigger, then clicks the
+   * option whose text matches one of the value variants.
+   */
+  async _fillTriggerDropdown(trigger, allVariants, strVal) {
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+
+    try { trigger.scrollIntoView({ block: 'center' }); } catch (_) {}
+    trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    trigger.click();
+    await delay(450);
+
+    // Options are usually rendered into a panel that appears after the click.
+    const OPTION_SELS = [
+      '.ng-dropdown li', '.ng-dropdown .option', '.ng-dropdown [class*="option"]',
+      '.ng-dropdown a', '.ng-dropdown div', '#dropsection li', '#dropsection div',
+      '[class*="dropdown"] li', '[role="option"]', '[role="listbox"] li', 'li.option', 'li'
+    ];
+
+    const tokenize = (s) => String(s).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    const variantTokenSets = allVariants
+      .map((v) => tokenize(v))
+      .filter((a) => a.length > 0);
+
+    const matchOption = () => {
+      for (const sel of OPTION_SELS) {
+        const opts = Array.from(document.querySelectorAll(sel)).filter(o => {
+          if (!o || !o.textContent) return false;
+          const s = window.getComputedStyle(o);
+          if (s.display === 'none' || s.visibility === 'hidden' || o.offsetParent === null) return false;
+          const txt = o.textContent.trim();
+          return txt && txt.length < 100 && !o.querySelector('input, select, textarea'); // leaf option, not a container
+        });
+        if (!opts.length) continue;
+
+        // Pass 1: exact text match (fastest, most reliable)
+        for (const opt of opts) {
+          const ot = opt.textContent.trim().toLowerCase().replace(/\s+/g, ' ');
+          for (const v of allVariants) {
+            if (ot === String(v).toLowerCase().trim()) return opt;
+          }
+        }
+
+        // Pass 2: token-subset match in EITHER direction.
+        // "cbse" ⊆ tokens of "Central Board of Secondary Education (CBSE)" → match.
+        // "male" is NOT a token of "female" → correctly no match.
+        for (const opt of opts) {
+          const oTok = tokenize(opt.textContent);
+          if (!oTok.length) continue;
+          const oSet = new Set(oTok);
+          for (const vTok of variantTokenSets) {
+            const vSet = new Set(vTok);
+            const variantInOption = vTok.every((t) => oSet.has(t));
+            const optionInVariant = oTok.every((t) => vSet.has(t));
+            if (variantInOption || optionInVariant) return opt;
+          }
+        }
+      }
+      return null;
+    };
+
+    let opt = matchOption();
+    if (!opt) { await delay(350); opt = matchOption(); } // options may load late
+
+    if (opt) {
+      const label = opt.textContent.trim();
+      opt.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      opt.click();
+      await delay(150);
+      document.body.click(); // close panel
+      return { status: 'filled', note: `Custom dropdown: "${label}"` };
+    }
+
+    document.body.click();
+    return { status: 'failed', note: `Dropdown opened but no option matched "${strVal}"` };
+  },
+
   // ─── Radio ───
 
   _fillRadio(radiosOrEl, value, fieldConfig) {
@@ -390,33 +487,63 @@ const Filler = {
     const valueMap = fieldConfig.value_map || {};
     const allVariants = this._getValueVariants(strVal, valueMap);
 
-    // Try matching by value attribute
+    // Resolve the visible text label for a radio. Many forms (e.g. Angular SSC OTR)
+    // put the "Yes"/"No" text as an adjacent text node, NOT a <label for>.
+    const labelTextFor = (radio) => {
+      const wrap = radio.closest('label');
+      if (wrap && wrap.textContent.trim()) return wrap.textContent.trim();
+      if (radio.id) {
+        try {
+          const l = document.querySelector(`label[for="${CSS.escape(radio.id)}"]`);
+          if (l && l.textContent.trim()) return l.textContent.trim();
+        } catch (_) { /* invalid id */ }
+      }
+      // Adjacent following text node / element (e.g. "<input> Yes")
+      let sib = radio.nextSibling;
+      while (sib) {
+        if (sib.nodeType === 3 && sib.textContent.trim()) return sib.textContent.trim();
+        if (sib.nodeType === 1) { const t = sib.textContent.trim(); if (t) return t; }
+        sib = sib.nextSibling;
+      }
+      // Parent's own text as a last resort
+      const p = radio.parentElement;
+      return p ? (p.textContent || '').trim() : '';
+    };
+
+    const selectRadio = (radio) => {
+      try { radio.checked = true; } catch (_) {}
+      try { radio.click(); } catch (_) {} // real click — Angular (change) handlers need it
+      radio.dispatchEvent(new Event('input', { bubbles: true }));
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+      return { status: 'filled', note: null };
+    };
+
+    // Pass 1: match by the radio's value attribute
     for (const radio of radios) {
-      const radioVal = radio.value.trim().toLowerCase();
+      const rv = (radio.value || '').trim().toLowerCase();
+      if (!rv) continue;
       for (const v of allVariants) {
-        if (radioVal === v.toLowerCase()) {
-          radio.checked = true;
-          radio.dispatchEvent(new Event('click', { bubbles: true }));
-          radio.dispatchEvent(new Event('change', { bubbles: true }));
-          return { status: 'filled', note: null };
-        }
+        if (rv === String(v).toLowerCase().trim()) return selectRadio(radio);
       }
     }
 
-    // Try matching by label text of each radio
+    // Pass 2: exact label-text match
     for (const radio of radios) {
-      const label = radio.closest('label') ||
-                    document.querySelector(`label[for="${radio.id}"]`);
-      if (label) {
-        const labelText = label.textContent.trim().toLowerCase();
-        for (const v of allVariants) {
-          if (labelText.includes(v.toLowerCase())) {
-            radio.checked = true;
-            radio.dispatchEvent(new Event('click', { bubbles: true }));
-            radio.dispatchEvent(new Event('change', { bubbles: true }));
-            return { status: 'filled', note: null };
-          }
-        }
+      const lt = labelTextFor(radio).toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!lt) continue;
+      for (const v of allVariants) {
+        if (lt === String(v).toLowerCase().trim()) return selectRadio(radio);
+      }
+    }
+
+    // Pass 3: variant appears as a whole token in the label ("yes"/"no" inside text)
+    for (const radio of radios) {
+      const lt = labelTextFor(radio).toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!lt) continue;
+      const tokens = new Set(lt.split(/[^a-z0-9]+/).filter(Boolean));
+      for (const v of allVariants) {
+        const vv = String(v).toLowerCase().trim();
+        if (vv && tokens.has(vv)) return selectRadio(radio);
       }
     }
 

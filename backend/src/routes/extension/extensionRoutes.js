@@ -38,6 +38,7 @@ router.get('/fill-profile', authenticate, FillProfileController.getFillProfile);
 
 // Adapter endpoints
 router.get('/adapters', authenticate, AdaptersController.listAdapters);
+router.get('/exams', authenticate, AdaptersController.listCatalog); // full catalog for the manual exam-picker dropdown
 router.get('/adapters/registered', AdapterBuilderController.listRegistered); // public — only returns url patterns, no secrets
 router.get('/adapters/detect', authenticate, AdaptersController.detectExam);
 router.post('/adapters/build', authenticate, requireExtensionAdmin, AdapterBuilderController.buildSection);
