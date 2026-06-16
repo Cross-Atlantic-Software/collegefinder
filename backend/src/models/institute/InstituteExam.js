@@ -49,14 +49,14 @@ class InstituteExam {
     const ids = instituteIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
     if (!ids.length) return [];
     const result = await db.query(
-      `SELECT DISTINCT ON (institute_id, exam_id) institute_id, exam_id, exam_name, exam_code
+      `SELECT DISTINCT ON (institute_id, exam_id) institute_id, exam_id, exam_name, exam_code, exam_abbreviation
        FROM (
-         SELECT ie.institute_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+         SELECT ie.institute_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code, e.abbreviation AS exam_abbreviation
          FROM institute_exams ie
          INNER JOIN exams_taxonomies e ON e.id = ie.exam_id
          WHERE ie.institute_id = ANY($1::int[])
          UNION
-         SELECT ies.institute_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+         SELECT ies.institute_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code, e.abbreviation AS exam_abbreviation
          FROM institute_exam_specialization ies
          INNER JOIN exams_taxonomies e ON e.id = ies.exam_id
          WHERE ies.institute_id = ANY($1::int[])

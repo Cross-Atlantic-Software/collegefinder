@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { DashboardLinkedExam } from "@/api/auth/profile";
-import { examDetailHref } from "@/lib/examDisplay";
+import { examDetailHref, linkedExamChipLabel } from "@/lib/examDisplay";
 
 type DetailRecommendedExamsCTAProps = {
   linkedExams?: DashboardLinkedExam[];
@@ -21,11 +21,8 @@ export function DetailRecommendedExamsCTA({
     () =>
       linkedExams.map((ex) => ({
         id: ex.id,
-        exam: ex.code?.trim() || ex.name,
-        track:
-          ex.code?.trim() && ex.name?.trim() && ex.code.trim() !== ex.name.trim()
-            ? ex.name
-            : "Linked exam",
+        exam: linkedExamChipLabel(ex),
+        track: ex.name?.trim() || "Linked exam",
         reason: "Recommended or required for this coaching institute.",
         href: examDetailHref(ex.id, linkFrom),
       })),

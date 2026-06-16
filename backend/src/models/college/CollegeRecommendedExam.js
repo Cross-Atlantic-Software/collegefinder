@@ -62,14 +62,14 @@ class CollegeRecommendedExam {
     const ids = collegeIds.map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
     if (ids.length === 0) return [];
     const result = await db.query(
-      `SELECT DISTINCT ON (college_id, exam_id) college_id, exam_id, exam_name, exam_code
+      `SELECT DISTINCT ON (college_id, exam_id) college_id, exam_id, exam_name, exam_code, exam_abbreviation
        FROM (
-         SELECT cre.college_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+         SELECT cre.college_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code, e.abbreviation AS exam_abbreviation
          FROM college_recommended_exams cre
          INNER JOIN exams_taxonomies e ON e.id = cre.exam_id
          WHERE cre.college_id = ANY($1::int[])
          UNION
-         SELECT cp.college_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+         SELECT cp.college_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code, e.abbreviation AS exam_abbreviation
          FROM college_programs cp
          CROSS JOIN LATERAL unnest(string_to_array(cp.recommended_exam_ids, ',')) AS tok(raw)
          INNER JOIN exams_taxonomies e ON e.id = btrim(tok.raw)::int
@@ -111,13 +111,13 @@ class CollegeRecommendedExam {
            AND btrim(tok.raw)::int = ANY($1::int[])
        ),
        ranked AS (
-         SELECT m.exam_id, m.college_id, c.college_name,
+         SELECT m.exam_id, m.college_id, c.college_name, c.abbreviation,
            ROW_NUMBER() OVER (PARTITION BY m.exam_id ORDER BY c.college_name ASC) AS rn
          FROM matched m
          INNER JOIN colleges c ON c.id = m.college_id
          WHERE c.college_name IS NOT NULL AND btrim(c.college_name) <> ''
        )
-       SELECT exam_id, college_id, college_name
+       SELECT exam_id, college_id, college_name, abbreviation
        FROM ranked
        WHERE rn <= $2
        ORDER BY exam_id, rn`,
@@ -129,9 +129,13 @@ class CollegeRecommendedExam {
       const k = Number(row.exam_id);
       const collegeId = Number(row.college_id);
       const name = String(row.college_name).trim();
+      const abbreviation =
+        row.abbreviation != null && String(row.abbreviation).trim()
+          ? String(row.abbreviation).trim()
+          : null;
       if (!Number.isInteger(k) || !Number.isInteger(collegeId) || !name) continue;
       if (!map.has(k)) map.set(k, []);
-      map.get(k).push({ id: collegeId, name });
+      map.get(k).push({ id: collegeId, name, abbreviation });
     }
     return map;
   }

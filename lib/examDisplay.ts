@@ -140,7 +140,34 @@ export function examCardNegativeMarking(exam: Exam): string | null {
   return displayScalar(exam.examPattern?.negative_marking);
 }
 
-export type ExamLinkedCollegePreview = { id: number; name: string };
+export type ExamLinkedCollegePreview = {
+  id: number;
+  name: string;
+  abbreviation?: string | null;
+};
+
+/** Chip label for linked colleges on exam cards (abbreviation preferred). */
+export function linkedCollegeChipLabel(college: {
+  abbreviation?: string | null;
+  name: string;
+}): string {
+  const abbr = college.abbreviation?.trim();
+  if (abbr) return abbr;
+  return college.name;
+}
+
+/** Chip label for linked exams on college/coaching cards (abbreviation preferred). */
+export function linkedExamChipLabel(exam: {
+  abbreviation?: string | null;
+  code?: string | null;
+  name: string;
+}): string {
+  const abbr = exam.abbreviation?.trim();
+  if (abbr) return abbr;
+  const code = exam.code?.trim();
+  if (code) return code;
+  return exam.name;
+}
 
 /** Up to 3 linked colleges for exam cards. */
 export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
@@ -148,6 +175,10 @@ export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
     .map((c) => ({
       id: Number(c.id),
       name: String(c.name ?? "").trim(),
+      abbreviation:
+        c.abbreviation != null && String(c.abbreviation).trim()
+          ? String(c.abbreviation).trim()
+          : null,
     }))
     .filter((c) => Number.isInteger(c.id) && c.id > 0 && c.name);
   if (fromRows.length) return fromRows.slice(0, 3);
@@ -156,12 +187,12 @@ export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
     .map((n) => String(n).trim())
     .filter(Boolean)
     .slice(0, 3)
-    .map((name, index) => ({ id: -(index + 1), name }));
+    .map((name, index) => ({ id: -(index + 1), name, abbreviation: null }));
 }
 
-/** Up to 3 linked college names for exam cards. */
+/** Up to 3 linked college chip labels for exam cards. */
 export function examCardLinkedCollegeNames(exam: Exam): string[] {
-  return examCardLinkedColleges(exam).map((c) => c.name);
+  return examCardLinkedColleges(exam).map((c) => linkedCollegeChipLabel(c));
 }
 
 /** Total linked colleges (preview list may show fewer). */

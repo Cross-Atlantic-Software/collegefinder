@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Exam } from "@/api/exams";
 import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { collegeDetailHref } from "@/lib/collegeSlug";
-import { examCardLinkedColleges, examCardLinkedCollegeOverflowCount } from "@/lib/examDisplay";
+import { examCardLinkedColleges, examCardLinkedCollegeOverflowCount, linkedCollegeChipLabel } from "@/lib/examDisplay";
 
 type ExamCardLinkedCollegesProps = {
   exam: Exam;
@@ -25,16 +25,18 @@ function collegeChipClassName(): string {
 }
 
 function CollegeNameChip({
-  name,
+  college,
   href,
   embedInLink,
 }: {
-  name: string;
+  college: { id: number; name: string; abbreviation?: string | null };
   href: string;
   embedInLink: boolean;
 }) {
   const router = useRouter();
   const className = collegeChipClassName();
+  const label = linkedCollegeChipLabel(college);
+  const fullName = college.name;
 
   if (embedInLink) {
     return (
@@ -42,7 +44,7 @@ function CollegeNameChip({
         role="link"
         tabIndex={0}
         className={className}
-        title={name}
+        title={fullName}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -56,7 +58,7 @@ function CollegeNameChip({
           }
         }}
       >
-        {name}
+        {label}
       </span>
     );
   }
@@ -65,10 +67,10 @@ function CollegeNameChip({
     <Link
       href={href}
       className={className}
-      title={name}
+      title={fullName}
       onClick={(e) => e.stopPropagation()}
     >
-      {name}
+      {label}
     </Link>
   );
 }
@@ -87,7 +89,7 @@ export function ExamCardLinkedColleges({
   const pills = colleges.map((college) => (
     <CollegeNameChip
       key={`${college.id}-${college.name}`}
-      name={college.name}
+      college={college}
       href={collegeDetailHref(college.name, linkFrom)}
       embedInLink={embedInLink}
     />

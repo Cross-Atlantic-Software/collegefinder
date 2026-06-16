@@ -73,6 +73,8 @@ async function rowsToLectureDtos(rows, { limit } = {}) {
     lectures.push({
       id: row.id,
       youtubeId,
+      iframeCode: iframe.trim() || null,
+      videoFile: file.trim() || null,
       title: (row.youtube_title && String(row.youtube_title).trim()) || 'Untitled lecture',
       channel: (row.youtube_channel_name && String(row.youtube_channel_name).trim()) || 'YouTube',
       hookSummary:
