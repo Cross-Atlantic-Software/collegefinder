@@ -49,7 +49,7 @@ class ScholarshipExam {
     const ids = scholarshipIds.map((id) => parseInt(id, 10)).filter((n) => Number.isInteger(n) && n > 0);
     if (!ids.length) return [];
     const result = await db.query(
-      `SELECT se.scholarship_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code
+      `SELECT se.scholarship_id, e.id AS exam_id, e.name AS exam_name, e.code AS exam_code, e.abbreviation AS exam_abbreviation
        FROM scholarship_exams se
        INNER JOIN exams_taxonomies e ON e.id = se.exam_id
        WHERE se.scholarship_id = ANY($1::int[])

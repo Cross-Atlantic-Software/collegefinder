@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FiTrendingUp } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { CollegeDetailRecommendedExams } from "@/components/dashboard/CollegeDetailRecommendedExams";
@@ -17,19 +17,6 @@ import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
 import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
 import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "dashboard-college-shortlist-recommended": [
@@ -92,7 +79,7 @@ function CollegeDetailShell({
   onSectionChange,
 }: {
   children: React.ReactNode;
-  onSectionChange: (section: SectionId) => void;
+  onSectionChange: (section: DashboardSectionId) => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -160,7 +147,7 @@ export default function CollegeDetailPage() {
     { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
   ];
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 

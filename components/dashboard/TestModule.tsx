@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from "react";
 import { Button } from "@/components/shared";
-import { getAllExams } from "@/api";
+import { getDashboardMockTestExams } from "@/api/exams";
 import type { Exam } from "@/api/exams";
 import { getExamFormats, getTestRules, getUserAnalyticsSummary, getNextMockNumber, ExamFormat, FormatRules } from "@/api/tests";
 import TestInterface from "./TestInterface";
@@ -62,6 +62,7 @@ export default function TestModule() {
   const [formatLoading, setFormatLoading] = useState(false);
   const [rulesLoading, setRulesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
   const [examAttemptStats, setExamAttemptStats] = useState<Map<number, { lastAttemptedAt: string | null; totalMocks: number }>>(new Map());
   const [nextMockByExam, setNextMockByExam] = useState<Map<number, number>>(new Map());
   const [selectedMockNumber, setSelectedMockNumber] = useState(1);
@@ -122,9 +123,14 @@ export default function TestModule() {
   const fetchExams = async () => {
     try {
       setLoading(true);
-      const response = await getAllExams();
+      setEmptyMessage(null);
+      const response = await getDashboardMockTestExams();
       if (response.success && response.data) {
         setExams(response.data.exams);
+        setEmptyMessage(response.data.message ?? null);
+        if (response.data.exams.length === 0 && response.data.message) {
+          setError(null);
+        }
       } else {
         setError(response.message || 'Failed to fetch exams');
       }
@@ -454,8 +460,11 @@ export default function TestModule() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {exams.length === 0 ? (
                     <div className="col-span-full rounded-xl bg-white py-8 text-center shadow-sm dark:bg-slate-900">
-                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No exams available</p>
-                      <p className="text-sm text-slate-400 dark:text-slate-500">Please check back later or contact support.</p>
+                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No mock tests available yet</p>
+                      <p className="mx-auto max-w-md text-sm text-slate-400 dark:text-slate-500">
+                        {emptyMessage ||
+                          'Mark exams as form-filled, shortlist exams, or add interests in your profile to see mock tests here.'}
+                      </p>
                     </div>
                   ) : (
                     exams.map((exam) => {
@@ -526,8 +535,11 @@ export default function TestModule() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {exams.length === 0 ? (
                     <div className="col-span-full rounded-xl bg-white py-8 text-center shadow-sm dark:bg-slate-900">
-                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No exams available</p>
-                      <p className="text-sm text-slate-400 dark:text-slate-500">Please check back later or contact support.</p>
+                      <p className="mb-2 text-lg font-medium text-slate-500 dark:text-slate-300">No mock tests available yet</p>
+                      <p className="mx-auto max-w-md text-sm text-slate-400 dark:text-slate-500">
+                        {emptyMessage ||
+                          'Mark exams as form-filled, shortlist exams, or add interests in your profile to see mock tests here.'}
+                      </p>
                     </div>
                   ) : (
                     [...exams]

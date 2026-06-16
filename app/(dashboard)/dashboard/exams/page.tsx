@@ -6,23 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { MdSchool } from "react-icons/md";
 import { getAllExams, type Exam } from "@/api/exams";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { ExamCardBody } from "@/components/dashboard/ExamCardBody";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_LABEL: Record<string, string> = {
   "profile-recommended": "Profile Recommended Exams",
@@ -76,7 +63,7 @@ export default function ExamDirectoryPage() {
     );
   }, [exams, query]);
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 

@@ -43,6 +43,7 @@ async function enrichScholarshipRows(scholarships) {
       id: row.exam_id,
       name: row.exam_name,
       code: row.exam_code,
+      abbreviation: row.exam_abbreviation ?? null,
     });
   }
 

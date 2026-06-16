@@ -114,7 +114,7 @@ export interface Exam {
   linkedCareerGoals?: ExamCareerGoalLink[];
   linkedPrograms?: ExamProgramLink[];
   /** Up to 3 linked colleges for dashboard exam cards. */
-  linkedColleges?: { id: number; name: string }[];
+  linkedColleges?: { id: number; name: string; abbreviation?: string | null }[];
   /** Total linked colleges (may exceed linkedColleges preview length). */
   linkedCollegeCount?: number;
   /** @deprecated Prefer linkedColleges — names only. */
@@ -402,6 +402,25 @@ export async function getDashboardExamsMeta(): Promise<ApiResponse<{
     }>;
     message?: string;
   }>('/auth/profile/dashboard-exams/meta', { method: 'GET' });
+}
+
+/** Mock Test picker: form-filled → shortlisted → recommended (auth required). */
+export async function getDashboardMockTestExams(): Promise<ApiResponse<{
+  streamId: number | null;
+  exams: Exam[];
+  alreadyFilledFormExamIds: number[];
+  shortlistedExamIds: number[];
+  recommendedExamIds: number[];
+  message?: string;
+}>> {
+  return apiRequest<{
+    streamId: number | null;
+    exams: Exam[];
+    alreadyFilledFormExamIds: number[];
+    shortlistedExamIds: number[];
+    recommendedExamIds: number[];
+    message?: string;
+  }>('/auth/profile/dashboard-exams/mock-test', { method: 'GET' });
 }
 
 /** Single tab page; server enriches only rows for this page. */

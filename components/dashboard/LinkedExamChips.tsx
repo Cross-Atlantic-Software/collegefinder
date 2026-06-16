@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
-import { examDetailHref } from "@/lib/examDisplay";
+import { examDetailHref, linkedExamChipLabel } from "@/lib/examDisplay";
 
 export type LinkedExamChipExam = {
   id: number;
   name: string;
   code?: string | null;
+  abbreviation?: string | null;
 };
 
 export type LinkedExamChipsFrom =
@@ -45,7 +46,7 @@ export function LinkedExamChips({
   return (
     <div className="flex flex-wrap gap-1">
       {visible.map((ex) => {
-        const label = ex.code?.trim() || ex.name;
+        const label = linkedExamChipLabel(ex);
         return (
           <Link
             key={ex.id}

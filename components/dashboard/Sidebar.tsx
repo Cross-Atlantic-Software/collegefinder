@@ -43,29 +43,15 @@ import {
   useDashboardScholarshipsQuery,
   useProfileCompletionQuery,
 } from "@/lib/dashboardSidebarQueries";
-
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "counselling"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
+import type { DashboardSectionId } from "./DashboardPageShell";
 
 type SidebarProps = {
   sidebarOpen: boolean;
   onToggle: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  activeSection: SectionId;
-  onSectionChange: (id: SectionId) => void;
+  activeSection: DashboardSectionId;
+  onSectionChange: (id: DashboardSectionId) => void;
   activeSubSection?: string;
   onSubSectionChange?: (id: string) => void;
   /** When false, skips college/institute/scholarship meta APIs (detail routes). */
@@ -73,7 +59,7 @@ type SidebarProps = {
 };
 
 const baseNavItems: {
-  id: SectionId;
+  id: DashboardSectionId;
   label: string;
   sub: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -251,7 +237,7 @@ export default function Sidebar({
 
   const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
 
-  const handleSectionClick = (id: SectionId) => {
+  const handleSectionClick = (id: DashboardSectionId) => {
     onSectionChange(id);
 
     // Auto-close only on mobile drawer layouts.

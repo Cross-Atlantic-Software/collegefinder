@@ -15,6 +15,7 @@ const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedE
 const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
 const {
   sortExamsByPopularityRank,
+  sortExamsUserStreamBeforeDefault,
   computeDashboardRecommendedExamOrder,
   buildExamTagsFromStreamInterestMappings,
   mergeExamTagMaps,
@@ -265,6 +266,8 @@ async function loadDashboardExamShortlistContext(userId) {
 
   return {
     streamId: streamNum,
+    defaultStreamId,
+    eligibilityStreamsByExamId,
     streamExams,
     recommendedExamIds,
     shortlistedExamIds,
@@ -345,7 +348,12 @@ async function loadJourneyExamPhaseDates(ctx) {
 function buildOrderedExamsForTab(tab, ctx) {
   const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
   if (tab === 'all') {
-    return sortExamsByPopularityRank(ctx.streamExams);
+    return sortExamsUserStreamBeforeDefault(
+      ctx.streamExams,
+      ctx.streamId,
+      ctx.defaultStreamId,
+      ctx.eligibilityStreamsByExamId
+    );
   }
   if (tab === 'recommended') {
     return ctx.recommendedExamIds.map((id) => examById.get(Number(id))).filter(Boolean);
@@ -355,6 +363,62 @@ function buildOrderedExamsForTab(tab, ctx) {
     return sortExamsByPopularityRank(rows);
   }
   return [];
+}
+
+/**
+ * Mock Test picker: union of filled → shortlisted → recommended (stream pool only).
+ * 1) already_filled_form (Applications / form-filled)
+ * 2) shortlisted (excluding tier 1)
+ * 3) recommended (excluding tiers 1–2), preserving recommendation order
+ */
+function buildOrderedExamsForMockTest(ctx) {
+  const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
+  const filledIds = (ctx.alreadyFilledFormExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const shortlistedIds = (ctx.shortlistedExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const recommendedIds = (ctx.recommendedExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  const filledSet = new Set(filledIds);
+  const seen = new Set();
+  const ordered = [];
+
+  const appendRows = (rows) => {
+    for (const row of rows) {
+      const id = Number(row.id);
+      if (!Number.isInteger(id) || seen.has(id)) continue;
+      seen.add(id);
+      ordered.push(row);
+    }
+  };
+
+  appendRows(
+    sortExamsByPopularityRank(
+      filledIds.map((id) => examById.get(id)).filter(Boolean)
+    )
+  );
+
+  appendRows(
+    sortExamsByPopularityRank(
+      shortlistedIds
+        .filter((id) => !filledSet.has(id))
+        .map((id) => examById.get(id))
+        .filter(Boolean)
+    )
+  );
+
+  appendRows(
+    recommendedIds
+      .filter((id) => !seen.has(id))
+      .map((id) => examById.get(id))
+      .filter(Boolean)
+  );
+
+  return ordered;
 }
 
 async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
@@ -1506,7 +1570,12 @@ class ExamsTaxonomyController {
         });
       }
 
-      const examsForAllTab = sortExamsByPopularityRank(ctx.streamExams);
+      const examsForAllTab = sortExamsUserStreamBeforeDefault(
+        ctx.streamExams,
+        ctx.streamId,
+        ctx.defaultStreamId,
+        ctx.eligibilityStreamsByExamId
+      );
       const allExams = await ExamsTaxonomyController.enrichExamRows(examsForAllTab);
 
       return res.json({
@@ -1599,6 +1668,56 @@ class ExamsTaxonomyController {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch dashboard exams meta',
+      });
+    }
+  }
+
+  /**
+   * Mock Test exam picker: filled → shortlisted → recommended (stream pool, enriched).
+   * GET /api/auth/profile/dashboard-exams/mock-test
+   */
+  static async getDashboardMockTestExams(req, res) {
+    try {
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      if (ctx.streamId == null) {
+        return res.json({
+          success: true,
+          data: {
+            streamId: null,
+            exams: [],
+            alreadyFilledFormExamIds: [],
+            shortlistedExamIds: [],
+            recommendedExamIds: [],
+            message: ctx.message || 'Select your stream in profile to view mock tests.',
+          },
+        });
+      }
+
+      const ordered = buildOrderedExamsForMockTest(ctx);
+      const exams = await ExamsTaxonomyController.enrichExamRows(ordered);
+
+      let message;
+      if (exams.length === 0) {
+        message =
+          'Shortlist exams, mark forms as filled, or add interests in your profile to see mock tests here.';
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          streamId: ctx.streamId,
+          exams,
+          alreadyFilledFormExamIds: ctx.alreadyFilledFormExamIds || [],
+          shortlistedExamIds: ctx.shortlistedExamIds || [],
+          recommendedExamIds: ctx.recommendedExamIds || [],
+          message,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard mock test exams:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch mock test exams',
       });
     }
   }

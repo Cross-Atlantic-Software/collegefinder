@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
@@ -28,19 +28,6 @@ import {
   useUpdateAlreadyFilledFormMutation,
 } from "@/lib/dashboardExamShortlistQueries";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "profile-recommended": [
@@ -106,7 +93,7 @@ function ExamDetailShell({
   setSidebarOpen: (v: boolean | ((p: boolean) => boolean)) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (v: boolean | ((p: boolean) => boolean)) => void;
-  onSectionChange: (section: SectionId) => void;
+  onSectionChange: (section: DashboardSectionId) => void;
 }) {
   return (
     <div className="flex h-screen bg-[#F6F8FA] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
@@ -183,7 +170,7 @@ export default function ExamDetailPage() {
     { label: "Exam Directory", href: "/dashboard/exams" },
   ];
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 

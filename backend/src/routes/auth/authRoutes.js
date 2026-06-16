@@ -338,6 +338,13 @@ router.get('/profile/dashboard-exams/meta', authenticate, ExamsController.getDas
 router.get('/profile/dashboard-exams/tab', authenticate, ExamsController.getDashboardExamsTab);
 
 /**
+ * @route   GET /api/auth/profile/dashboard-exams/mock-test
+ * @desc    Mock Test picker: form-filled, then shortlisted, then recommended exams
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/mock-test', authenticate, ExamsController.getDashboardMockTestExams);
+
+/**
  * @route   GET /api/auth/profile/dashboard-exams/exam/:examId
  * @desc    Single enriched exam for dashboard detail (same enrichment as tab cards)
  * @access  Private

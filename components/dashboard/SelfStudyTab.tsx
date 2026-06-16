@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { FiExternalLink, FiPlayCircle } from "react-icons/fi";
+import { FiPlayCircle } from "react-icons/fi";
 import type { ExamPrepLectureDto } from "@/api/auth/profile";
+import VideoModal from "@/components/dashboard/VideoModal";
 import { formatDurationFromSeconds } from "@/lib/formatDuration";
 import {
   useExamPrepLecturesBySubjectQuery,
@@ -204,12 +205,30 @@ function LectureGridSkeleton() {
   );
 }
 
+function buildYoutubeEmbedIframe(youtubeId: string): string {
+  return `<iframe src="https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+}
+
+function examPrepToModalLecture(lec: ExamPrepLectureDto) {
+  const iframeCode = lec.iframeCode?.trim();
+  const videoFile = lec.videoFile?.trim();
+  return {
+    id: lec.id,
+    name: `${lec.topicName} • ${lec.title}`,
+    iframe_code: iframeCode || (lec.youtubeId ? buildYoutubeEmbedIframe(lec.youtubeId) : null),
+    video_file: videoFile || null,
+    description: lec.hookSummary,
+  };
+}
+
 function RecommendedSubjectVideoCard({
   lecture,
   cardIndex,
+  onWatch,
 }: {
   lecture: ExamPrepLectureDto;
   cardIndex: number;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
 }) {
   const video = prepLectureToVideoItem(lecture);
 
@@ -220,19 +239,18 @@ function RecommendedSubjectVideoCard({
           {lecture.subjectName}
         </p>
       </div>
-      <a
-        href={video.youtubeUrl}
-        target="_blank"
-        rel="noreferrer"
-        title={video.hookSummary || undefined}
-        className="group flex min-h-0 flex-1 flex-col"
+      <button
+        type="button"
+        title={video.hookSummary || video.title}
+        onClick={() => onWatch(lecture)}
+        className="group flex min-h-0 flex-1 flex-col text-left"
       >
         <div className="relative aspect-video overflow-hidden bg-black">
           <iframe
             src={toEmbedUrl(video.youtubeId, 8 + (cardIndex % 6), 16 + (cardIndex % 6))}
             title={video.title}
             loading="lazy"
-            className="h-full w-full"
+            className="pointer-events-none h-full w-full"
             allow="autoplay; encrypted-media; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
           />
@@ -256,10 +274,10 @@ function RecommendedSubjectVideoCard({
             {video.channel} • {video.views}
           </p>
           <span className="mt-auto inline-flex w-fit items-center gap-1 rounded-full bg-black px-3 py-1.5 text-[11px] font-semibold text-[#FAD53C]">
-            View <FiExternalLink className="text-[10px]" />
+            Watch <FiPlayCircle className="text-[10px]" />
           </span>
         </div>
-      </a>
+      </button>
     </article>
   );
 }
@@ -307,6 +325,11 @@ export default function SelfStudyTab({
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(filteredSubjects[0]?.id ?? null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [visibleByTopicId, setVisibleByTopicId] = useState<Record<string, number>>({});
+  const [videoModalLecture, setVideoModalLecture] = useState<ReturnType<typeof examPrepToModalLecture> | null>(null);
+
+  const openVideoModal = (lecture: ExamPrepLectureDto) => {
+    setVideoModalLecture(examPrepToModalLecture(lecture));
+  };
 
   useEffect(() => {
     setActiveSubjectId((current) => {
@@ -463,7 +486,12 @@ export default function SelfStudyTab({
           ) : recommendedLectures.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {recommendedLectures.map((lecture, index) => (
-                <RecommendedSubjectVideoCard key={lecture.subjectId} lecture={lecture} cardIndex={index} />
+                <RecommendedSubjectVideoCard
+                  key={lecture.subjectId}
+                  lecture={lecture}
+                  cardIndex={index}
+                  onWatch={openVideoModal}
+                />
               ))}
             </div>
           ) : (
@@ -622,21 +650,24 @@ export default function SelfStudyTab({
 
                   <div className="w-full min-w-0 pb-1">
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                      {visibleTopicVideos.map((video, index) => (
+                      {visibleTopicVideos.map((video, index) => {
+                        const lecture = activeTopic?.lectures.find(
+                          (lec) => `lec-${lec.id}-${lec.youtubeId}` === video.id
+                        );
+                        return (
                         <div key={video.id} className="group relative min-w-0">
-                          <a
-                            href={video.youtubeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={video.hookSummary || undefined}
-                            className="block min-w-0 overflow-hidden rounded-xl bg-slate-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/70"
+                          <button
+                            type="button"
+                            title={video.hookSummary || video.title}
+                            onClick={() => lecture && openVideoModal(lecture)}
+                            className="block min-w-0 w-full overflow-hidden rounded-xl bg-slate-50 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/70"
                           >
                             <div className="relative aspect-video overflow-hidden bg-black">
                               <iframe
                                 src={toEmbedUrl(video.youtubeId, 8 + (index % 6), 14 + (index % 6))}
                                 title={video.title}
                                 loading="lazy"
-                                className="h-full w-full"
+                                className="pointer-events-none h-full w-full"
                                 allow="autoplay; encrypted-media; picture-in-picture"
                                 referrerPolicy="strict-origin-when-cross-origin"
                               />
@@ -652,17 +683,18 @@ export default function SelfStudyTab({
                               <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{video.channel}</p>
                               <p className="text-[11px] text-slate-500 dark:text-slate-400">{video.views}</p>
                               <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-[#FAD53C]">
-                                View <FiExternalLink className="text-[10px]" />
+                                Watch <FiPlayCircle className="text-[10px]" />
                               </span>
                             </div>
-                          </a>
+                          </button>
                           {video.hookSummary ? (
                             <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 hidden w-[min(100%,280px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-700 shadow-xl group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                               {video.hookSummary}
                             </div>
                           ) : null}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {hasMoreTopicVideos ? (
@@ -692,6 +724,13 @@ export default function SelfStudyTab({
           </div>
         )}
       </section>
+      {videoModalLecture ? (
+        <VideoModal
+          lecture={videoModalLecture}
+          isOpen={!!videoModalLecture}
+          onClose={() => setVideoModalLecture(null)}
+        />
+      ) : null}
     </div>
   );
 }
