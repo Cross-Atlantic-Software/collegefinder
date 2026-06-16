@@ -26,6 +26,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Razorpay webhook needs the RAW request body for HMAC signature verification, so it must
+// be registered BEFORE the JSON body parser consumes the stream.
+app.post(
+  '/api/credits/webhook',
+  express.raw({ type: '*/*' }),
+  require('./src/controllers/credits/creditController').webhook
+);
+
 // Body parsing middleware - but skip for multipart/form-data (handled by multer)
 app.use((req, res, next) => {
   if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
@@ -62,6 +70,7 @@ app.use('/api/mock-tests', require('./src/routes/test/mockTestRoutes'));
 app.use('/api/referral', require('./src/routes/referral/referralRoutes'));
 app.use('/api/site', require('./src/routes/site/siteRoutes'));
 app.use('/api/extension', require('./src/routes/extension/extensionRoutes'));
+app.use('/api/credits', require('./src/routes/user/creditRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

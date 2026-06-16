@@ -1397,6 +1397,27 @@ router.get('/fill-reports', authenticateAdmin, requireModuleAccess('applications
  */
 router.get('/fill-reports/:id', authenticateAdmin, requireModuleAccess('applications'), FillReportController.adminGetReportDetail);
 
+// ---- Fees & Credits admin (gated under the 'applications' module) ----
+const AdminCreditController = require('../../controllers/admin/adminCreditController');
+
+// Credit packs CRUD
+router.get('/credit-packs', authenticateAdmin, requireModuleAccess('applications'), AdminCreditController.listPacks);
+router.post('/credit-packs', authenticateAdmin, requireModuleAccess('applications'), requireCanEdit, AdminCreditController.createPack);
+router.put('/credit-packs/:id', authenticateAdmin, requireModuleAccess('applications'), requireCanEdit, AdminCreditController.updatePack);
+router.delete('/credit-packs/:id', authenticateAdmin, requireModuleAccess('applications'), requireCanDelete, AdminCreditController.deletePack);
+
+// Global payment settings (GST toggle)
+router.get('/payment-settings', authenticateAdmin, requireModuleAccess('applications'), AdminCreditController.getSettings);
+router.put('/payment-settings', authenticateAdmin, requireModuleAccess('applications'), requireCanEdit, AdminCreditController.updateSettings);
+
+// Reconciliation / ledger views
+router.get('/credit-orders', authenticateAdmin, requireModuleAccess('applications'), AdminCreditController.listOrders);
+router.get('/credit-transactions', authenticateAdmin, requireModuleAccess('applications'), AdminCreditController.listTransactions);
+
+// Manual wallet adjustment (super-admin only) + admin-initiated fill-charge refund
+router.post('/credit-wallets/:userId/adjust', authenticateAdmin, requireSuperAdmin, AdminCreditController.adjustWallet);
+router.post('/fill-charges/:id/refund', authenticateAdmin, requireModuleAccess('applications'), requireCanEdit, AdminCreditController.refundFillCharge);
+
 /**
  * @route   GET /api/admin/automation-applications
  * @desc    Get all automation applications

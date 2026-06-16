@@ -7,6 +7,7 @@ const AdaptersController = require('../../controllers/extension/adaptersControll
 const AdapterBuilderController = require('../../controllers/extension/adapterBuilderController');
 const FillReportController = require('../../controllers/extension/fillReportController');
 const ProfileSyncController = require('../../controllers/extension/profileSyncController');
+const FillChargeController = require('../../controllers/extension/fillChargeController');
 const db = require('../../config/database');
 
 async function publishAdapterStatus(req, res) {
@@ -97,5 +98,11 @@ router.get('/fill-reports/:id', authenticate, FillReportController.getReportDeta
 
 // Save & continue: per-section progress for one exam (latest report per section)
 router.get('/fill-progress', authenticate, FillReportController.getFillProgress);
+
+// Fees & Credits fill-gate: charge once per application, free across sections.
+router.get('/credit-status', authenticate, FillChargeController.getCreditStatus);
+router.post('/fill-charge', authenticate, FillChargeController.createFillCharge);
+router.post('/fill-charge/complete', authenticate, FillChargeController.completeFillCharge);
+router.post('/fill-charge/refund', authenticate, FillChargeController.refundFillCharge);
 
 module.exports = router;

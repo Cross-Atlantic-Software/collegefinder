@@ -45,6 +45,7 @@ class ExamAdapterController {
       const result = await db.query(
         `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version,
                 status, is_active, is_ai_generated, last_verified_at,
+                credit_cost, exam_fee,
                 created_by, updated_by, created_at, updated_at
            FROM exam_adapters
           WHERE exam_id = $1`,
@@ -111,7 +112,7 @@ class ExamAdapterController {
   static async update(req, res) {
     try {
       const { examId } = req.params;
-      const { exam_name, portal_url_pattern, adapter_config } = req.body || {};
+      const { exam_name, portal_url_pattern, adapter_config, credit_cost, exam_fee } = req.body || {};
 
       const existing = await db.query(
         'SELECT exam_id, version FROM exam_adapters WHERE exam_id = $1',
@@ -137,6 +138,14 @@ class ExamAdapterController {
       if (cleanedConfig) {
         sets.push(`adapter_config = $${i++}::jsonb`); params.push(JSON.stringify(cleanedConfig));
         sets.push(`version = $${i++}`); params.push(newVersion);
+      }
+      if (credit_cost !== undefined && credit_cost !== null && credit_cost !== '') {
+        sets.push(`credit_cost = $${i++}`); params.push(parseInt(credit_cost, 10));
+      }
+      if (exam_fee !== undefined) {
+        // Allow clearing the fee back to NULL with an empty value.
+        sets.push(`exam_fee = $${i++}`);
+        params.push(exam_fee === null || exam_fee === '' ? null : Number(exam_fee));
       }
       sets.push(`updated_by = $${i++}`); params.push(req.admin?.email || null);
       sets.push(`updated_at = CURRENT_TIMESTAMP`);

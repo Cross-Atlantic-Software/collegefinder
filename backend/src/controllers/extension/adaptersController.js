@@ -10,7 +10,8 @@ class AdaptersController {
       const { examId } = req.params;
 
       const result = await db.query(
-        `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version, is_active, last_verified_at
+        `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version, is_active, last_verified_at,
+                credit_cost, exam_fee
          FROM exam_adapters
          WHERE exam_id = $1 AND is_active = TRUE`,
         [examId]
@@ -37,7 +38,10 @@ class AdaptersController {
           version: row.version,
           is_active: row.is_active,
           last_verified_at: row.last_verified_at,
-          ...adapterConfig
+          ...adapterConfig,
+          // DB columns win over any same-named keys inside adapter_config.
+          credit_cost: row.credit_cost == null ? 1 : row.credit_cost,
+          exam_fee: row.exam_fee == null ? null : Number(row.exam_fee)
         }
       });
     } catch (error) {

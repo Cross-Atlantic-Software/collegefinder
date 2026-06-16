@@ -188,7 +188,8 @@ const runMigrations = async () => {
     'scholarships_stream_ids_multiselect.sql',
     'add_profile_field_registry.sql',
     'add_stream_interest_recommendation_mappings_2026.sql',
-    'add_ssc_cgl_and_extension_catalog.sql'
+    'add_ssc_cgl_and_extension_catalog.sql',
+    'add_credits_and_payments.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');
