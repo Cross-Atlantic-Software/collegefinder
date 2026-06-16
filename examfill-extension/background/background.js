@@ -167,7 +167,7 @@ async function handleMessage(message, sender) {
       return receiveWebSessionToken(message.payload, sender);
 
     case 'TRY_WEB_SSO':
-      return tryWebSso();
+      return tryWebSso(message.payload);
 
     case 'SEND_OTP':
       return sendOtp(message.payload);
@@ -287,6 +287,9 @@ async function verifyOtp({ email, code }) {
       return { success: false, error: data.message || 'Invalid OTP' };
     }
     await chrome.storage.local.set({ examfill_token: token });
+    // Explicit OTP login is a deliberate re-entry — clear the signed-out intent
+    // so passive auto-SSO works again afterward.
+    await chrome.storage.local.remove('examfill_signed_out');
     cachedProfile = null;
     cachedProfileTimestamp = 0;
     cachedAuthMeta = {
@@ -367,6 +370,8 @@ async function adoptToken(token, sourceOrigin) {
 async function receiveWebSessionToken(payload = {}, sender) {
   const token = payload.token;
   if (!token) return { success: false };
+  // Passive push from the website — respect an explicit logout (don't silently re-adopt).
+  if (await isSignedOut()) return { success: true, signedOut: true };
   const existing = await getToken();
   if (existing) return { success: true, alreadyAuthenticated: true };
   const origin = sender?.origin || sender?.tab?.url || '';
@@ -442,11 +447,19 @@ async function readTokenFromWebTabs() {
  * Attempt single-sign-on from the website/CMS session.
  * Returns { success, authenticated, is_admin }.
  */
-async function tryWebSso() {
+async function tryWebSso(payload = {}) {
   const existing = await getToken();
   if (existing) {
     await refreshAuthMeta();
     return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
+  }
+
+  if (payload?.userInitiated === true) {
+    // Deliberate "Connect with CollegeFinder" click — clear the signed-out intent and adopt.
+    await chrome.storage.local.remove('examfill_signed_out');
+  } else if (await isSignedOut()) {
+    // Passive auto-SSO (panel open / unauthenticated route) must respect a deliberate logout.
+    return { success: true, authenticated: false };
   }
 
   const web = await readWebToken();
@@ -465,6 +478,8 @@ function isWebOrigin(url) {
 /** Best-effort: adopt the website session if we don't already have a token. */
 async function autoAdoptFromWeb() {
   try {
+    // Respect an explicit logout: covers onStartup/onInstalled/tabs.onUpdated/cookies.onChanged.
+    if (await isSignedOut()) return;
     const existing = await getToken();
     if (existing) return;
     const web = await readWebToken();
@@ -494,6 +509,9 @@ if (chrome.cookies && chrome.cookies.onChanged) {
 
 async function logout() {
   await chrome.storage.local.remove('examfill_token');
+  // Persist a "signed out" intent so passive SSO paths don't immediately re-adopt a
+  // still-live web session. Cleared on a deliberate reconnect (Connect button / OTP login).
+  await chrome.storage.local.set({ examfill_signed_out: true });
   cachedProfile = null;
   cachedProfileTimestamp = 0;
   cachedAuthMeta = null;
@@ -504,6 +522,15 @@ async function logout() {
 async function getToken() {
   const { examfill_token } = await chrome.storage.local.get('examfill_token');
   return examfill_token || null;
+}
+
+/**
+ * True when the user explicitly logged out and hasn't deliberately reconnected.
+ * Guards only the PASSIVE adoption paths — never getToken/getAuthStatus/the fill path.
+ */
+async function isSignedOut() {
+  const { examfill_signed_out } = await chrome.storage.local.get('examfill_signed_out');
+  return examfill_signed_out === true;
 }
 
 async function refreshAuthMeta() {

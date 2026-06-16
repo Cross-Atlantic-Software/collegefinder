@@ -1374,7 +1374,7 @@
       setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', true, 'Connecting…');
       $('ssoError').style.display = 'none';
 
-      const sso = await msg('TRY_WEB_SSO');
+      const sso = await msg('TRY_WEB_SSO', { userInitiated: true });
 
       setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', false, 'Connect with my CollegeFinder login');
 
