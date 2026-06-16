@@ -32,6 +32,32 @@
       </div>
       <div class="section-label">Supported Exams</div>
       <div id="supportedExamsList" class="tag-grid"></div>
+
+      <button class="btn-secondary full manual-pick-cta" id="manualSelectBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        Choose an exam manually
+      </button>
+    </section>
+
+    <!-- ─── State: Manual exam picker ─── -->
+    <section id="stateExamPicker" class="view" style="display:none;">
+      <div class="picker-header">
+        <button class="btn-ghost picker-back" id="pickerBackBtn" title="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div>
+          <div class="picker-title">Select an exam</div>
+          <div class="picker-sub">Open the exam's registration page, then pick it below.</div>
+        </div>
+      </div>
+
+      <div class="picker-search-wrap">
+        <svg class="picker-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        <input type="text" id="pickerSearch" class="picker-search" placeholder="Search exams…" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div id="pickerList" class="picker-list"></div>
+      <div id="pickerEmpty" class="picker-empty" style="display:none;">No exams match your search.</div>
     </section>
 
     <!-- ─── State: ExamFill login ─── -->
@@ -55,6 +81,14 @@
             <div id="sendOtpSpinner" class="btn-spinner" style="display:none;"></div>
           </button>
         </form>
+
+        <div class="sso-divider"><span>or</span></div>
+        <button type="button" class="btn-secondary full" id="ssoConnectBtn">
+          <span id="ssoConnectText">Connect with my CollegeFinder login</span>
+          <div id="ssoConnectSpinner" class="btn-spinner" style="display:none;"></div>
+        </button>
+        <p class="sso-hint">Already signed in on the CollegeFinder website or CMS? We'll connect you automatically.</p>
+        <div id="ssoError" class="alert alert-error" style="display:none;"></div>
       </div>
 
       <!-- Step B: Enter OTP -->
@@ -159,7 +193,10 @@
       </div>
 
       <!-- Sections -->
-      <div class="section-label">Sections</div>
+      <div class="section-label">
+        Sections
+        <button class="picker-inline-link" id="readyPickerBtn" title="Switch exam">Switch exam</button>
+      </div>
       <div id="sectionsList" class="sections-list"></div>
     </section>
 
@@ -178,6 +215,7 @@
           <span>Our team is still building this. Please try again later.</span>
         </div>
       </div>
+      <button class="btn-ghost full picker-link" id="noAdapterPickerBtn">Choose a different exam</button>
     </section>
 
     <!-- ─── State: Builder (admin only) ─── -->

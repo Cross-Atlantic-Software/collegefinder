@@ -47,7 +47,7 @@ class AdapterBuilderController {
    */
   static async buildSection(req, res) {
     try {
-      const { exam_id, page } = req.body || {};
+      const { exam_id, page, exam_name, portal_url_pattern } = req.body || {};
       if (!exam_id || typeof exam_id !== 'string') {
         return res.status(400).json({ success: false, message: 'exam_id is required' });
       }
@@ -55,18 +55,34 @@ class AdapterBuilderController {
         return res.status(400).json({ success: false, message: 'page.fields[] is required and must be non-empty' });
       }
 
-      // Load existing adapter row (must already be registered via CMS).
-      const existing = await db.query(
+      // Load existing adapter row. If the admin is building a brand-new exam picked
+      // from the catalog dropdown, the row may not exist yet — auto-create a DRAFT
+      // stub so the Builder flow works in one step (still admin-gated). The stub
+      // stays unpublished (is_active=FALSE) until an admin explicitly publishes.
+      let existing = await db.query(
         `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version
            FROM exam_adapters
           WHERE exam_id = $1`,
         [exam_id]
       );
       if (!existing.rows[0]) {
-        return res.status(404).json({
-          success: false,
-          message: `Exam '${exam_id}' is not registered. Register it from the Form Adapters CMS first.`
-        });
+        const derivedName = (exam_name && String(exam_name).trim()) || exam_id;
+        const derivedPattern = derivePortalPattern(portal_url_pattern, page.url);
+        if (!derivedPattern) {
+          return res.status(400).json({
+            success: false,
+            message: `Exam '${exam_id}' is not registered and no portal URL could be determined. Provide portal_url_pattern.`
+          });
+        }
+        const createdBy = req.adminFromExtension?.email || req.user?.email || null;
+        existing = await db.query(
+          `INSERT INTO exam_adapters
+              (exam_id, exam_name, portal_url_pattern, adapter_config, version, is_active, status, is_ai_generated, created_by)
+           VALUES ($1, $2, $3, '{"sections": []}'::jsonb, 1, FALSE, 'draft', TRUE, $4)
+           ON CONFLICT (exam_id) DO UPDATE SET exam_id = EXCLUDED.exam_id
+           RETURNING exam_id, exam_name, portal_url_pattern, adapter_config, version`,
+          [exam_id, derivedName, derivedPattern, createdBy]
+        );
       }
 
       const examRow = existing.rows[0];
@@ -128,6 +144,22 @@ class AdapterBuilderController {
         message: error.message || 'Failed to build adapter section'
       });
     }
+  }
+}
+
+/**
+ * Resolve a portal_url_pattern for a new adapter stub. Prefers an explicit
+ * pattern from the client; otherwise derives the hostname from the scanned
+ * page URL (e.g. "https://ssc.gov.in/register" -> "ssc.gov.in").
+ */
+function derivePortalPattern(explicit, pageUrl) {
+  const e = explicit != null ? String(explicit).trim() : '';
+  if (e) return e.slice(0, 200);
+  if (!pageUrl) return null;
+  try {
+    return new URL(pageUrl).hostname.slice(0, 200);
+  } catch {
+    return null;
   }
 }
 
