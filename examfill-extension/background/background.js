@@ -196,6 +196,9 @@ async function handleMessage(message, sender) {
     case 'GET_ADAPTER':
       return getAdapter(message.payload.exam_id, message.payload.force === true);
 
+    case 'GET_ADAPTER_ADMIN':
+      return getAdapterAdmin(message.payload.exam_id);
+
     case 'DELETE_SECTION':
       return deleteSection(message.payload);
 
@@ -241,9 +244,38 @@ async function handleMessage(message, sender) {
     case 'FETCH_FILE_AS_BASE64':
       return fetchFileAsBase64(message.payload);
 
+    case 'ADMIN_VALIDATE_REQUEST':
+      return startAdminValidate(message.payload);
+
     default:
       return { success: false, error: `Unknown message type: ${message.type}` };
   }
+}
+
+// ─── Admin validation handoff ───
+
+/**
+ * Admin Apply: the CMS posted an ADMIN_VALIDATE_REQUEST (relayed by authSync.js).
+ * Stash the target exam so the sidebar enters admin-validation mode when it boots
+ * on the portal tab, then open the portal URL in a new tab and reveal the panel.
+ */
+async function startAdminValidate(payload) {
+  const examId = payload && payload.exam_id ? String(payload.exam_id).trim() : '';
+  const portalUrl = payload && payload.portal_url ? String(payload.portal_url).trim() : '';
+  // Re-validate at the trust boundary (authSync already checked, defence in depth):
+  // exam_id is a slug, portal_url must be http(s).
+  if (!/^[a-z0-9_]+$/.test(examId) || !/^https?:\/\//i.test(portalUrl)) {
+    return { success: false, error: 'A valid exam_id (slug) and http(s) portal_url are required' };
+  }
+  await chrome.storage.local.set({
+    examfill_admin_validate: { exam_id: examId, portal_url: portalUrl }
+  });
+  const tab = await chrome.tabs.create({ url: portalUrl });
+  try {
+    await chrome.sidePanel.setOptions({ tabId: tab.id, path: 'sidebar/sidebar.html', enabled: true });
+    await chrome.sidePanel.open({ tabId: tab.id });
+  } catch (_) { /* side panel API may be unavailable; user can open it manually */ }
+  return { success: true, tab_id: tab.id };
 }
 
 // ─── Auth ───
@@ -730,6 +762,32 @@ async function getAdapter(examId, force = false) {
       return { success: true, data: data.data };
     }
 
+    return { success: false, error: data.message || 'Adapter not found' };
+  } catch (err) {
+    return { success: false, error: `Network error: ${err.message}` };
+  }
+}
+
+// Admin draft-load (validation mode): serves the adapter regardless of
+// approval_status/is_active. Deliberately NOT cached — a draft must never leak
+// into cachedAdapters where a later student GET_ADAPTER could read it.
+async function getAdapterAdmin(examId) {
+  const token = await getToken();
+  if (!token) return { success: false, error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${await apiBase()}/extension/adapters/${examId}/admin`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      return { success: false, error: `Adapter fetch failed (${res.status})` };
+    }
+
+    const data = await res.json();
+    if (data.success && data.data) {
+      return { success: true, data: data.data };
+    }
     return { success: false, error: data.message || 'Adapter not found' };
   } catch (err) {
     return { success: false, error: `Network error: ${err.message}` };
