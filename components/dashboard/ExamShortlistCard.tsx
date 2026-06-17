@@ -35,6 +35,9 @@ export function ExamShortlistCard({
   const applyHref = registrationUrl
     ? (registrationUrl.startsWith("http") ? registrationUrl : `https://${registrationUrl}`)
     : undefined;
+  // Apply is gated on an admin-approved ExamFill adapter. Until then the extension
+  // has no validated mapping to run, so we surface "Waiting for Admin Approval".
+  const isApplyReady = exam.is_apply_ready === true;
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
@@ -64,21 +67,34 @@ export function ExamShortlistCard({
             >
               View
             </Button>
-            <Button
-              variant="themeButton"
-              size="sm"
-              type="button"
-              onClick={() => {
-                if (applyHref) {
-                  window.open(applyHref, "_blank", "noopener,noreferrer");
-                  return;
-                }
-                (onApplyMissingLink ?? onApply)?.();
-              }}
-              className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
-            >
-              Apply
-            </Button>
+            {isApplyReady ? (
+              <Button
+                variant="themeButton"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  if (applyHref) {
+                    window.open(applyHref, "_blank", "noopener,noreferrer");
+                    return;
+                  }
+                  (onApplyMissingLink ?? onApply)?.();
+                }}
+                className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
+              >
+                Apply
+              </Button>
+            ) : (
+              <Button
+                variant="themeButton"
+                size="sm"
+                type="button"
+                disabled
+                title="This exam's form filling is awaiting admin approval."
+                className="w-full cursor-not-allowed justify-center !rounded-full !border-slate-200 !bg-slate-100 !text-slate-400 shadow-none dark:!border-slate-700 dark:!bg-slate-800 dark:!text-slate-500"
+              >
+                Waiting for Admin Approval
+              </Button>
+            )}
           </div>
         </div>
       </div>

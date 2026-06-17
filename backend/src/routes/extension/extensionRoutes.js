@@ -89,6 +89,9 @@ router.get('/adapters/detect', authenticate, AdaptersController.detectExam);
 router.post('/adapters/build', authenticate, requireExtensionAdmin, AdapterBuilderController.buildSection);
 router.patch('/adapters/:examId/status', authenticate, requireExtensionAdmin, publishAdapterStatus);
 router.delete('/adapters/:examId/sections/:sectionId', authenticate, requireExtensionAdmin, deleteAdapterSection);
+// Admin draft-load — serves any status so admins validate before approving.
+// MUST precede the bare /adapters/:examId so it isn't captured by it.
+router.get('/adapters/:examId/admin', authenticate, requireExtensionAdmin, AdaptersController.getAdapterForAdmin);
 router.get('/adapters/:examId', authenticate, AdaptersController.getAdapter);
 
 // Fill report endpoints

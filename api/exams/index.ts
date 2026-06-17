@@ -88,6 +88,8 @@ export interface Exam {
   number_of_papers?: number;
   website?: string | null;
   registration_link?: string | null;
+  /** True when an ExamFill adapter for this exam is admin-approved (dashboard Apply gate). */
+  is_apply_ready?: boolean;
   abbreviation?: string | null;
   category?: string | null;
   exam_frequency?: string | null;

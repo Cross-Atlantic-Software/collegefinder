@@ -32,7 +32,8 @@ class FillReportController {
         adapter_version,
         results,
         student_changes, // optional
-        confirmed_at     // optional (ISO string)
+        confirmed_at,    // optional (ISO string)
+        validation_run   // optional — TRUE when filled in admin-validation mode
       } = req.body;
 
       if (!exam_id || !section || !results) {
@@ -60,8 +61,9 @@ class FillReportController {
       const inserted = await db.query(
         `INSERT INTO fill_reports
          (user_id, exam_id, section_name, total_fields, filled_count, check_count,
-          failed_count, field_results, adapter_version, student_changes, confirmed_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $11)
+          failed_count, field_results, adapter_version, student_changes, confirmed_at,
+          validation_run)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $11, $12)
          RETURNING id, created_at`,
         [
           userId,
@@ -75,7 +77,8 @@ class FillReportController {
           adapter_version || 1,
           // store the diff only when present; null otherwise
           student_changes ? JSON.stringify(student_changes) : null,
-          confirmed_at || null
+          confirmed_at || null,
+          validation_run === true
         ]
       );
 

@@ -189,7 +189,8 @@ const runMigrations = async () => {
     'add_profile_field_registry.sql',
     'add_stream_interest_recommendation_mappings_2026.sql',
     'add_ssc_cgl_and_extension_catalog.sql',
-    'add_credits_and_payments.sql'
+    'add_credits_and_payments.sql',
+    'add_adapter_approval_and_validation.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

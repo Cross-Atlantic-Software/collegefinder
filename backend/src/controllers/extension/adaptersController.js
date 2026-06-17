@@ -9,11 +9,14 @@ class AdaptersController {
     try {
       const { examId } = req.params;
 
+      // Student-facing load: an adapter must be admin-APPROVED (which also
+      // publishes it). is_active is kept too — approve sets both, so approved ⇒
+      // loadable, and a later unpublish (is_active=FALSE) still 404s.
       const result = await db.query(
         `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version, is_active, last_verified_at,
                 credit_cost, exam_fee
          FROM exam_adapters
-         WHERE exam_id = $1 AND is_active = TRUE`,
+         WHERE exam_id = $1 AND is_active = TRUE AND approval_status = 'approved'`,
         [examId]
       );
 
@@ -24,30 +27,63 @@ class AdaptersController {
         });
       }
 
-      const row = result.rows[0];
-      const adapterConfig = typeof row.adapter_config === 'string'
-        ? JSON.parse(row.adapter_config)
-        : row.adapter_config;
-
-      res.json({
-        success: true,
-        data: {
-          exam_id: row.exam_id,
-          exam_name: row.exam_name,
-          portal_url_pattern: row.portal_url_pattern,
-          version: row.version,
-          is_active: row.is_active,
-          last_verified_at: row.last_verified_at,
-          ...adapterConfig,
-          // DB columns win over any same-named keys inside adapter_config.
-          credit_cost: row.credit_cost == null ? 1 : row.credit_cost,
-          exam_fee: row.exam_fee == null ? null : Number(row.exam_fee)
-        }
-      });
+      return AdaptersController._sendAdapterRow(res, result.rows[0]);
     } catch (error) {
       console.error('Error fetching adapter:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch adapter' });
     }
+  }
+
+  /**
+   * GET /api/extension/adapters/:examId/admin  (admin-gated)
+   * Serves the adapter REGARDLESS of approval_status / is_active so an admin can
+   * validate the real draft before approving (publish-first is no longer
+   * required). Same projection/response shape as getAdapter.
+   */
+  static async getAdapterForAdmin(req, res) {
+    try {
+      const { examId } = req.params;
+      const result = await db.query(
+        `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version, is_active, last_verified_at,
+                credit_cost, exam_fee
+         FROM exam_adapters
+         WHERE exam_id = $1`,
+        [examId]
+      );
+      if (!result.rows[0]) {
+        return res.status(404).json({
+          success: false,
+          message: `Adapter not found for exam: ${examId}`
+        });
+      }
+      return AdaptersController._sendAdapterRow(res, result.rows[0]);
+    } catch (error) {
+      console.error('Error fetching adapter (admin):', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch adapter' });
+    }
+  }
+
+  /** Shared response builder for getAdapter / getAdapterForAdmin. */
+  static _sendAdapterRow(res, row) {
+    const adapterConfig = typeof row.adapter_config === 'string'
+      ? JSON.parse(row.adapter_config)
+      : row.adapter_config;
+
+    res.json({
+      success: true,
+      data: {
+        exam_id: row.exam_id,
+        exam_name: row.exam_name,
+        portal_url_pattern: row.portal_url_pattern,
+        version: row.version,
+        is_active: row.is_active,
+        last_verified_at: row.last_verified_at,
+        ...adapterConfig,
+        // DB columns win over any same-named keys inside adapter_config.
+        credit_cost: row.credit_cost == null ? 1 : row.credit_cost,
+        exam_fee: row.exam_fee == null ? null : Number(row.exam_fee)
+      }
+    });
   }
 
   /**
@@ -82,7 +118,7 @@ class AdaptersController {
                 a.exam_id            AS adapter_exam_id,
                 a.portal_url_pattern,
                 a.status,
-                CASE WHEN a.status = 'published' AND a.is_active = TRUE THEN TRUE ELSE FALSE END AS has_published_adapter
+                CASE WHEN a.status = 'published' AND a.is_active = TRUE AND a.approval_status = 'approved' THEN TRUE ELSE FALSE END AS has_published_adapter
            FROM catalog c
            LEFT JOIN exam_adapters a ON a.exam_id = c.slug
           ORDER BY c.exam_popularity_rank ASC NULLS LAST, c.name ASC`
@@ -108,7 +144,8 @@ class AdaptersController {
       const result = await db.query(
         `SELECT exam_id, exam_name, version, is_active
          FROM exam_adapters
-         WHERE is_active = TRUE AND $1 LIKE '%' || portal_url_pattern || '%'`,
+         WHERE is_active = TRUE AND approval_status = 'approved'
+           AND $1 LIKE '%' || portal_url_pattern || '%'`,
         [url]
       );
 

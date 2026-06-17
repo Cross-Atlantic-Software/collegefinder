@@ -24,6 +24,29 @@ class Exam {
   }
 
   /**
+   * For the given exam ids, which ones have an APPROVED ExamFill adapter.
+   * The join derives the adapter slug from exams_taxonomies in SQL so it matches
+   * the convention used by adaptersController.listCatalog exactly (no JS/SQL
+   * regexp drift). Returns Map<examId:number, is_apply_ready:boolean>.
+   */
+  static async findApplyReadyMap(ids) {
+    const cleanIds = (ids || []).map((n) => parseInt(n, 10)).filter(Number.isInteger);
+    if (cleanIds.length === 0) return new Map();
+    const result = await db.query(
+      `SELECT t.id,
+              (a.exam_id IS NOT NULL) AS is_apply_ready
+         FROM exams_taxonomies t
+         LEFT JOIN exam_adapters a
+           ON a.exam_id = btrim(regexp_replace(lower(COALESCE(NULLIF(t.code, ''), t.name)), '[^a-z0-9]+', '_', 'g'), '_')
+          AND a.approval_status = 'approved'
+          AND a.is_active = TRUE
+        WHERE t.id = ANY($1::int[])`,
+      [cleanIds]
+    );
+    return new Map(result.rows.map((r) => [Number(r.id), r.is_apply_ready === true]));
+  }
+
+  /**
    * Exams whose eligibility stream_ids contains the given stream ID.
    */
   static async findAllByStreamId(streamId) {

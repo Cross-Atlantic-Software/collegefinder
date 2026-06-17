@@ -42,6 +42,14 @@ router.get(
   ExamAdapterController.listDiscoveredFields
 );
 
+router.post(
+  '/discovered-fields',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanEdit,
+  ExamAdapterController.createDiscoveredField
+);
+
 router.patch(
   '/discovered-fields/:id',
   authenticateAdmin,
@@ -74,6 +82,32 @@ router.patch(
   requireModuleAccess(MODULE_CODE),
   requireCanEdit,
   ExamAdapterController.patchSection
+);
+
+// Admin validation feed — latest validation-run fill report per section
+router.get(
+  '/:examId/validation',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  ExamAdapterController.getValidationFeed
+);
+
+// Mark a validation run as started (approval_status -> in_review)
+router.post(
+  '/:examId/submit-review',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanEdit,
+  ExamAdapterController.submitReview
+);
+
+// Approve — sets approval_status=approved AND publishes the adapter for students
+router.post(
+  '/:examId/approve',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanEdit,
+  ExamAdapterController.approve
 );
 
 // Publish / unpublish

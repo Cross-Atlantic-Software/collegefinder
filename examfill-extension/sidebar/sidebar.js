@@ -25,6 +25,7 @@
   let sectionStates = {};   // section_id → { status, report }
   let progressLoaded = false;   // have we hydrated persisted progress for this exam?
   let creditStatus = null;  // { balance, credit_cost, exam_fee, sufficient, has_active_charge }
+  let adminValidateMode = false; // admin "Admin Apply" run — credit-free, reports tagged validation_run
   let nextSectionIdx = 0;   // for "Fill Next" button
   let isAdmin = false;      // populated from background after login
   let hasPublishedAdapter = false; // false → admin sees Builder by default
@@ -70,6 +71,11 @@
   async function boot() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTabUrl = tab?.url || '';
+    // Admin Apply handoff: if the CMS launched this tab for validation, enter
+    // admin-validation mode (credit-free, reports tagged validation_run). Consume
+    // the key immediately so a later student run on this tab is never mistaken
+    // for a validation run.
+    await consumeAdminValidate();
     // Proactively adopt any existing CollegeFinder/CMS session so a signed-in
     // user never sees a login screen — no page refresh, no button click needed.
     await msg('TRY_WEB_SSO');
@@ -79,12 +85,40 @@
     await detectAndLoad();
   }
 
+  // One-shot read of the Admin Apply handoff. Deletes the key so it can never
+  // re-trigger on a subsequent (student) run in the same tab.
+  let adminValidateExamId = null;
+  async function consumeAdminValidate() {
+    try {
+      const { examfill_admin_validate } = await chrome.storage.local.get('examfill_admin_validate');
+      if (examfill_admin_validate && examfill_admin_validate.exam_id) {
+        adminValidateMode = true;
+        adminValidateExamId = String(examfill_admin_validate.exam_id);
+        await chrome.storage.local.remove('examfill_admin_validate');
+      }
+    } catch (_) { /* storage unavailable — proceed as a normal run */ }
+  }
+
   async function detectAndLoad() {
     // A manual selection takes precedence over URL auto-detection until the
     // user explicitly goes back to the picker or logs out.
     if (manualExamSelected) return;
 
     showView('loading');
+
+    // Admin-validation mode: the exam is fixed by the CMS handoff. Skip DETECT_EXAM
+    // entirely — student detection now requires approval, so it would not match the
+    // (possibly unapproved) draft we are here to validate. The adapter is loaded via
+    // the admin draft-load path (GET_ADAPTER_ADMIN) in loadProfileAndRoute.
+    if (adminValidateMode && adminValidateExamId) {
+      examId   = adminValidateExamId;
+      examName = adminValidateExamId;
+      isAdmin  = true;
+      hasPublishedAdapter = true;
+      showExamBadge(examName);
+      await loadProfileAndRoute({ checkPortalLogin: false });
+      return;
+    }
 
     const detection = await msg('DETECT_EXAM', { url: currentTabUrl });
 
@@ -125,10 +159,12 @@
     }
     if (auth.is_admin === true) isAdmin = true;
 
-    // Fetch profile (always) + adapter (might 404 for new exams)
+    // Fetch profile (always) + adapter (might 404 for new exams). In admin-
+    // validation mode load via the admin draft path so an unapproved/unpublished
+    // adapter still loads for validation (the student path now requires approval).
     const [profileRes, adapterRes] = await Promise.all([
       msg('GET_PROFILE'),
-      msg('GET_ADAPTER', { exam_id: examId })
+      msg(adminValidateMode ? 'GET_ADAPTER_ADMIN' : 'GET_ADAPTER', { exam_id: examId })
     ]);
 
     if (!profileRes.success) {
@@ -533,6 +569,12 @@
 
   // Gate then route into the existing pre-fill review flow.
   async function startFill(section, idx) {
+    // Admin validation runs are credit-free: never enter the charge path (no
+    // fill_charge created, no 402), so the wallet is untouched.
+    if (adminValidateMode) {
+      showReviewState(section, idx);
+      return;
+    }
     const ok = await ensureCharged();
     if (ok) showReviewState(section, idx);
   }
@@ -845,7 +887,8 @@
         adapter_version: adapter.version || 1,
         results: report.results,
         student_changes: reviewMeta?.changes || null,
-        confirmed_at:    reviewMeta?.confirmed_at || null
+        confirmed_at:    reviewMeta?.confirmed_at || null,
+        validation_run:  adminValidateMode
       }).catch(() => {});
 
       await sleep(400);

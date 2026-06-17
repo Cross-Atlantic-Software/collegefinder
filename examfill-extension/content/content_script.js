@@ -185,6 +185,19 @@
     const fieldId = fieldConfig.field_id;
     const label = fieldConfig.label || fieldId;
 
+    // 0. Admin "Leave Blank" (Captcha/OTP/manual fields): short-circuit BEFORE any
+    // selector work so the field never attempts a fill and never counts as
+    // failed/not_found — it reports 'skipped', which never blocks approval.
+    if (fieldConfig.leave_blank === true) {
+      return {
+        field_id: fieldId,
+        label,
+        status: 'skipped',
+        note: 'Configured to leave blank',
+        value: null
+      };
+    }
+
     // 1. Resolve value from user profile
     let rawValue = Resolver.resolve(fieldConfig.source, userData);
 

@@ -9,11 +9,16 @@ import {
   getProfileSchema,
   updateExamAdapter,
   setExamAdapterStatus,
+  getValidationFeed,
+  submitExamAdapterReview,
+  approveExamAdapter,
+  createDiscoveredField,
   ExamAdapterDetail,
   ProfilePathEntry,
   AdapterSection,
   AdapterField,
-  FieldType
+  FieldType,
+  ValidationFieldResult
 } from '@/api/admin/examAdapters';
 import {
   FiArrowLeft,
@@ -24,13 +29,39 @@ import {
   FiSave,
   FiCheckCircle,
   FiClock,
-  FiCpu
+  FiCpu,
+  FiExternalLink,
+  FiThumbsUp
 } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
 
 const FIELD_TYPES: FieldType[] = ['text', 'select', 'date', 'radio', 'checkbox', 'file', 'select_or_text'];
 const FORMATS = ['', 'UPPERCASE', 'TITLECASE', 'PHONE', 'digits_only'] as const;
 const PAGE_INDICATOR_TYPES = ['url_contains', 'page_text_contains', 'step_number'] as const;
+
+// Per-field validation result keyed [section_id][field_id].
+type ValidationMap = Record<string, Record<string, ValidationFieldResult>>;
+
+const STATUS_CHIP: Record<string, string> = {
+  filled: 'bg-emerald-100 text-emerald-700',
+  check: 'bg-amber-100 text-amber-700',
+  skipped: 'bg-slate-200 text-slate-600',
+  failed: 'bg-red-100 text-red-700',
+  not_found: 'bg-red-100 text-red-700'
+};
+
+function normalizePortalUrl(raw?: string | null): string | null {
+  const url = (raw || '').trim();
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+// Mirror the catalog's portal-link rule (adaptersController.listCatalog):
+// COALESCE(NULLIF(registration_link,''), NULLIF(website,'')).
+function resolvePortalUrl(adapter: ExamAdapterDetail | null): string | null {
+  if (!adapter) return null;
+  return normalizePortalUrl(adapter.registration_link) || normalizePortalUrl(adapter.website);
+}
 
 export default function ExamAdapterEditorPage() {
   const params = useParams();
@@ -44,6 +75,9 @@ export default function ExamAdapterEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [validation, setValidation] = useState<ValidationMap>({});
+  const [isApplying, setIsApplying] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -70,11 +104,34 @@ export default function ExamAdapterEditorPage() {
         setError(adapterRes.message || 'Failed to load adapter');
       }
       if (schemaRes.success && schemaRes.data) setProfileSchema(schemaRes.data);
+      await loadValidation();
     } catch (err) {
       setError('Failed to load adapter');
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Pull the latest validation-run fill report per section and index it by
+  // [section_id][field_id] so each field editor can show its last fill status.
+  // (fill_reports.section_name stores the section_id the extension filled.)
+  const loadValidation = async () => {
+    try {
+      const res = await getValidationFeed(examId);
+      if (res.success && res.data) {
+        const map: ValidationMap = {};
+        for (const row of res.data) {
+          const byField: Record<string, ValidationFieldResult> = {};
+          for (const fr of row.field_results || []) {
+            if (fr && fr.field_id) byField[fr.field_id] = fr;
+          }
+          map[row.section_name] = byField;
+        }
+        setValidation(map);
+      }
+    } catch (err) {
+      console.error('Failed to load validation feed', err);
     }
   };
 
@@ -125,6 +182,79 @@ export default function ExamAdapterEditorPage() {
       setAdapter({ ...adapter, ...res.data });
     } else {
       showError(res.message || 'Failed to change status');
+    }
+  };
+
+  // Admin Apply: open the real portal in the extension in admin-validation mode.
+  // Hands off via window.postMessage, which authSync.js (injected on this CMS
+  // origin) forwards to the extension background worker. The run is credit-free
+  // and its fill reports come back tagged validation_run for the review screen.
+  const handleAdminApply = async () => {
+    if (!adapter) return;
+    const portalUrl = resolvePortalUrl(adapter);
+    if (!portalUrl) {
+      showError('Add the exam’s application link (or website) in the Exams catalog first.');
+      return;
+    }
+    try {
+      setIsApplying(true);
+      const res = await submitExamAdapterReview(examId);
+      if (res.success && res.data) setAdapter((prev) => (prev ? { ...prev, ...res.data } : prev));
+      window.postMessage(
+        {
+          source: 'unitracko-cms',
+          type: 'ADMIN_VALIDATE_REQUEST',
+          payload: { exam_id: examId, portal_url: portalUrl }
+        },
+        window.location.origin
+      );
+      showSuccess('Opening the portal in ExamFill… fill each page, then refresh results here.');
+    } catch (err) {
+      showError('Could not start the validation run.');
+      console.error(err);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!adapter) return;
+    if (!confirm('Approve this adapter? It will be published and become usable by students.')) return;
+    try {
+      setIsApproving(true);
+      const res = await approveExamAdapter(examId);
+      if (res.success && res.data) {
+        showSuccess('Approved & published.');
+        setAdapter((prev) => (prev ? { ...prev, ...res.data } : prev));
+      } else {
+        showError(res.message || 'Failed to approve');
+      }
+    } catch (err) {
+      showError('Failed to approve');
+      console.error(err);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  // "Add New Field" from the review screen → a pending profile_field_registry row.
+  // It then appears in the discovered-fields queue; approving it there adds it to
+  // the source dropdown whitelist.
+  const handleAddDiscoveredField = async (label: string) => {
+    const clean = label.trim();
+    if (!clean) {
+      showError('Enter a field label first.');
+      return;
+    }
+    const res = await createDiscoveredField({
+      label: clean,
+      discovered_from_exam: adapter?.exam_name || examId,
+      discovered_page_url: resolvePortalUrl(adapter) || undefined
+    });
+    if (res.success) {
+      showSuccess('Added to the discovered-fields queue — approve it there to use as a source.');
+    } else {
+      showError(res.message || 'Failed to add field');
     }
   };
 
@@ -284,7 +414,49 @@ export default function ExamAdapterEditorPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Approval lifecycle badge (distinct from the Builder publish toggle) */}
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                  adapter.approval_status === 'approved'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : adapter.approval_status === 'in_review'
+                    ? 'bg-sky-100 text-sky-700'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+                title="Admin validation status"
+              >
+                {adapter.approval_status === 'approved'
+                  ? 'Approved'
+                  : adapter.approval_status === 'in_review'
+                  ? 'In review'
+                  : 'Not submitted'}
+              </span>
+
+              {/* Admin Apply — second path alongside the Builder. Enabled only when
+                  the exam has an application link in the catalog. */}
+              <button
+                onClick={handleAdminApply}
+                disabled={isApplying || !resolvePortalUrl(adapter)}
+                title={
+                  resolvePortalUrl(adapter)
+                    ? 'Open the portal in ExamFill and run a credit-free validation fill'
+                    : 'Add the application link (or website) in the Exams catalog to enable this'
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiExternalLink className="h-4 w-4" />
+                {isApplying ? 'Starting…' : 'Admin Apply'}
+              </button>
+
+              <button
+                onClick={loadValidation}
+                title="Refresh the latest validation fill results"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Refresh results
+              </button>
+
               <button
                 onClick={handleTogglePublish}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
@@ -307,6 +479,15 @@ export default function ExamAdapterEditorPage() {
               >
                 <FiSave className="h-4 w-4" />
                 {isSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={isApproving || adapter.approval_status === 'approved'}
+                title="Mark validated — approves and publishes for students"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiThumbsUp className="h-4 w-4" />
+                {adapter.approval_status === 'approved' ? 'Approved' : isApproving ? 'Approving…' : 'Approved'}
               </button>
             </div>
           </div>
@@ -395,6 +576,8 @@ export default function ExamAdapterEditorPage() {
                 onAddField={() => addField(section.section_id)}
                 onUpdateField={(idx, patch) => updateField(section.section_id, idx, patch)}
                 onRemoveField={(idx) => removeField(section.section_id, idx)}
+                onAddDiscoveredField={handleAddDiscoveredField}
+                validation={validation[section.section_id] || {}}
                 profileSchema={profileSchema}
               />
             ))}
@@ -426,6 +609,8 @@ interface SectionEditorProps {
   onAddField: () => void;
   onUpdateField: (idx: number, patch: Partial<AdapterField>) => void;
   onRemoveField: (idx: number) => void;
+  onAddDiscoveredField: (label: string) => void;
+  validation: Record<string, ValidationFieldResult>;
   profileSchema: ProfilePathEntry[];
 }
 
@@ -440,8 +625,11 @@ function SectionEditor({
   onAddField,
   onUpdateField,
   onRemoveField,
+  onAddDiscoveredField,
+  validation,
   profileSchema
 }: SectionEditorProps) {
+  const [newFieldLabel, setNewFieldLabel] = useState('');
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
@@ -541,6 +729,7 @@ function SectionEditor({
                 field={field}
                 onChange={(patch) => onUpdateField(idx, patch)}
                 onRemove={() => onRemoveField(idx)}
+                validationResult={validation[field.field_id]}
                 profileSchema={profileSchema}
               />
             ))}
@@ -551,6 +740,28 @@ function SectionEditor({
               <FiPlus className="h-3.5 w-3.5" />
               Add Field
             </button>
+
+            {/* Add New Field to the profile registry (review-screen control B):
+                for a portal field with no matching profile path. */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={newFieldLabel}
+                onChange={(e) => setNewFieldLabel(e.target.value)}
+                placeholder="New profile field label (e.g. Parent's PAN)"
+                className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+              />
+              <button
+                onClick={() => {
+                  onAddDiscoveredField(newFieldLabel);
+                  setNewFieldLabel('');
+                }}
+                disabled={!newFieldLabel.trim()}
+                className="px-2.5 py-1 text-xs text-[#341050] border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                + Add New Field
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -564,10 +775,11 @@ interface FieldEditorProps {
   field: AdapterField;
   onChange: (patch: Partial<AdapterField>) => void;
   onRemove: () => void;
+  validationResult?: ValidationFieldResult;
   profileSchema: ProfilePathEntry[];
 }
 
-function FieldEditor({ field, onChange, onRemove, profileSchema }: FieldEditorProps) {
+function FieldEditor({ field, onChange, onRemove, validationResult, profileSchema }: FieldEditorProps) {
   const [expanded, setExpanded] = useState(false);
 
   const sourceLabel = useMemo(() => {
@@ -636,6 +848,31 @@ function FieldEditor({ field, onChange, onRemove, profileSchema }: FieldEditorPr
           />
           required
         </label>
+
+        {/* Leave Blank (review-screen control C): Captcha/OTP/manual fields. The
+            filler short-circuits these to 'skipped' so they never block approval. */}
+        <label
+          className="text-[11px] text-slate-600 inline-flex items-center gap-1 cursor-pointer"
+          title="Skip this field during fill (Captcha/OTP/manual)"
+        >
+          <input
+            type="checkbox"
+            checked={field.leave_blank === true}
+            onChange={(e) => onChange({ leave_blank: e.target.checked ? true : undefined })}
+          />
+          leave blank
+        </label>
+
+        {validationResult && (
+          <span
+            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+              STATUS_CHIP[validationResult.status] || 'bg-slate-200 text-slate-600'
+            }`}
+            title={validationResult.note || validationResult.value || validationResult.status}
+          >
+            {validationResult.status}
+          </span>
+        )}
 
         <button onClick={onRemove} className="text-red-600 hover:bg-red-50 p-1 rounded" title="Delete field">
           <FiTrash2 className="h-3.5 w-3.5" />

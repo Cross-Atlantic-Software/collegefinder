@@ -57,4 +57,47 @@
       return false;
     }
   });
+
+  // 4) Admin Apply handoff — the CMS adapter editor posts an ADMIN_VALIDATE_REQUEST
+  //    on this same origin; forward it to the background worker, which opens the
+  //    portal tab in admin-validation mode.
+  //
+  //    Trust boundary: the `source:'unitracko-cms'` tag is only a discriminator,
+  //    NOT proof of origin. We additionally require the message to come from this
+  //    exact window (event.source === window), from an allow-listed origin, and
+  //    to be shape-valid (slug exam_id + http(s) portal_url) before forwarding.
+  function isAllowedOrigin(origin) {
+    try {
+      const { protocol, hostname } = new URL(origin);
+      if (hostname === 'unitracko.com' || hostname.endsWith('.unitracko.com')) {
+        return protocol === 'https:';
+      }
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return protocol === 'http:' || protocol === 'https:';
+      }
+    } catch (_) { /* opaque/invalid origin */ }
+    return false;
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return;
+    if (!isAllowedOrigin(event.origin)) return;
+
+    const data = event.data;
+    if (!data || data.source !== 'unitracko-cms' || data.type !== 'ADMIN_VALIDATE_REQUEST') return;
+
+    const payload = data.payload || {};
+    const examId = typeof payload.exam_id === 'string' ? payload.exam_id.trim() : '';
+    const portalUrl = typeof payload.portal_url === 'string' ? payload.portal_url.trim() : '';
+    // exam_id is a slug (lowercase alphanumerics + underscores); portal_url must be http(s).
+    if (!/^[a-z0-9_]+$/.test(examId)) return;
+    if (!/^https?:\/\//i.test(portalUrl)) return;
+
+    try {
+      chrome.runtime.sendMessage(
+        { type: 'ADMIN_VALIDATE_REQUEST', payload: { exam_id: examId, portal_url: portalUrl } },
+        () => { void chrome.runtime.lastError; }
+      );
+    } catch (_) { /* extension context invalidated */ }
+  });
 })();

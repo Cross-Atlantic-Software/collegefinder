@@ -461,6 +461,7 @@ class ExamsTaxonomyController {
       programRows,
       collegePreviewsByExam,
       collegeCountsByExam,
+      applyReadyMap,
     ] = await Promise.all([
       ExamDates.findByExamIds(ids),
       ExamPattern.findByExamIds(ids),
@@ -470,6 +471,7 @@ class ExamsTaxonomyController {
       ExamProgram.findProgramsForExamIds(ids),
       CollegeRecommendedExam.getCollegePreviewsByExamIds(ids, 3),
       CollegeRecommendedExam.getCollegeCountsByExamIds(ids),
+      Exam.findApplyReadyMap(ids),
     ]);
 
     const dateMap = new Map();
@@ -550,6 +552,7 @@ class ExamsTaxonomyController {
 
       return {
         ...ex,
+        is_apply_ready: eid != null ? applyReadyMap.get(eid) === true : false,
         examDates: eid != null ? dateMap.get(eid) || null : null,
         eligibilityCriteria,
         examPattern: eid != null ? pMap.get(eid) || null : null,

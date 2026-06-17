@@ -20,8 +20,8 @@ class ExamAdapterController {
     try {
       const result = await db.query(
         `SELECT exam_id, exam_name, portal_url_pattern, status, version, is_active,
-                is_ai_generated, last_verified_at, created_by, updated_by,
-                created_at, updated_at,
+                is_ai_generated, last_verified_at, approval_status, approved_at,
+                created_by, updated_by, created_at, updated_at,
                 CASE WHEN adapter_config ? 'sections'
                      THEN jsonb_array_length(adapter_config->'sections')
                      ELSE 0 END AS section_count
@@ -43,12 +43,21 @@ class ExamAdapterController {
     try {
       const { examId } = req.params;
       const result = await db.query(
-        `SELECT exam_id, exam_name, portal_url_pattern, adapter_config, version,
-                status, is_active, is_ai_generated, last_verified_at,
-                credit_cost, exam_fee,
-                created_by, updated_by, created_at, updated_at
-           FROM exam_adapters
-          WHERE exam_id = $1`,
+        `SELECT a.exam_id, a.exam_name, a.portal_url_pattern, a.adapter_config, a.version,
+                a.status, a.is_active, a.is_ai_generated, a.last_verified_at,
+                a.approval_status, a.approved_at, a.approved_by,
+                a.credit_cost, a.exam_fee,
+                a.created_by, a.updated_by, a.created_at, a.updated_at,
+                -- The application URL the admin "adds" lives on the catalog row,
+                -- joined via the derived slug exactly as listCatalog computes it.
+                -- Both columns are surfaced so the editor can mirror the catalog's
+                -- COALESCE(registration_link, website) portal-link rule.
+                t.registration_link,
+                t.website
+           FROM exam_adapters a
+           LEFT JOIN exams_taxonomies t
+             ON a.exam_id = btrim(regexp_replace(lower(COALESCE(NULLIF(t.code, ''), t.name)), '[^a-z0-9]+', '_', 'g'), '_')
+          WHERE a.exam_id = $1`,
         [examId]
       );
       if (!result.rows[0]) {
@@ -259,6 +268,97 @@ class ExamAdapterController {
     }
   }
 
+  // ─── Admin validation & approval ─────────────────────────────────────────
+
+  /**
+   * GET /:examId/validation — the per-section feed for the review screen.
+   *
+   * Returns the LATEST validation-run fill report per section. These reports are
+   * written by the extension running in admin-validation mode (validation_run =
+   * TRUE), so this read is admin-gated and intentionally NOT owner-scoped (the
+   * admin CMS identity differs from the extension user who ran the fill).
+   */
+  static async getValidationFeed(req, res) {
+    try {
+      const { examId } = req.params;
+      const result = await db.query(
+        `SELECT DISTINCT ON (section_name)
+                section_name, field_results, adapter_version, created_at
+           FROM fill_reports
+          WHERE exam_id = $1 AND validation_run = TRUE
+          ORDER BY section_name, created_at DESC`,
+        [examId]
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error('Error fetching validation feed:', err);
+      res.status(500).json({ success: false, message: 'Failed to fetch validation feed' });
+    }
+  }
+
+  /** POST /:examId/submit-review — mark a validation run as started. */
+  static async submitReview(req, res) {
+    try {
+      const { examId } = req.params;
+      const result = await db.query(
+        `UPDATE exam_adapters
+            SET approval_status = 'in_review',
+                updated_by = $1,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE exam_id = $2
+            AND approval_status <> 'approved'
+        RETURNING *`,
+        [req.admin?.email || null, examId]
+      );
+      // Re-runnable: an already-approved adapter stays approved (no row returned),
+      // which is the locked behaviour — never revert approval on a re-run.
+      if (!result.rows[0]) {
+        const existing = await db.query('SELECT * FROM exam_adapters WHERE exam_id = $1', [examId]);
+        if (!existing.rows[0]) {
+          return res.status(404).json({ success: false, message: `Adapter '${examId}' not found` });
+        }
+        return res.json({ success: true, data: existing.rows[0] });
+      }
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to submit review' });
+    }
+  }
+
+  /**
+   * POST /:examId/approve — the "Approved" button.
+   * Sets the approval lifecycle to approved AND publishes the adapter so the
+   * extension can load it for students (getAdapter filters on is_active).
+   */
+  static async approve(req, res) {
+    try {
+      const { examId } = req.params;
+      const result = await db.query(
+        `UPDATE exam_adapters
+            SET approval_status = 'approved',
+                approved_at = CURRENT_TIMESTAMP,
+                approved_by = $1,
+                status = 'published',
+                is_active = TRUE,
+                last_verified_at = CURRENT_TIMESTAMP,
+                last_verified_by = $1,
+                updated_by = $1,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE exam_id = $2
+        RETURNING *`,
+        [req.admin?.email || null, examId]
+      );
+      if (!result.rows[0]) {
+        return res.status(404).json({ success: false, message: `Adapter '${examId}' not found` });
+      }
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error('Error approving adapter:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to approve adapter' });
+    }
+  }
+
   // ─── Discovered-field approval queue ──────────────────────────────────────
 
   /** GET /discovered-fields?status=pending — list discovered registry rows. */
@@ -278,6 +378,61 @@ class ExamAdapterController {
     } catch (err) {
       console.error('Error listing discovered fields:', err);
       res.status(500).json({ success: false, message: 'Failed to list discovered fields' });
+    }
+  }
+
+  /**
+   * POST /discovered-fields — admin adds a profile field from the review screen.
+   * Inserts a PENDING profile_field_registry row (mirrors the extension's auto-
+   * capture). It then appears in the existing discovered-fields queue; approving
+   * it there runs refreshRegistryCache() and adds it to the source whitelist.
+   * Body: { label, type?, discovered_from_exam?, discovered_page_url? }.
+   */
+  static async createDiscoveredField(req, res) {
+    try {
+      const { label, type, discovered_from_exam, discovered_page_url } = req.body || {};
+      const cleanLabel = typeof label === 'string' ? label.trim() : '';
+      if (!cleanLabel) {
+        return res.status(400).json({ success: false, message: 'label is required' });
+      }
+      const slug = snake(cleanLabel);
+      if (!slug) {
+        return res.status(400).json({ success: false, message: 'label must contain alphanumerics' });
+      }
+      const fieldPath = `discovered.${slug}`;
+      const REGISTRY_TYPES = new Set(['text', 'select', 'date', 'radio', 'checkbox', 'file']);
+      const cleanType = REGISTRY_TYPES.has(type) ? type : 'text';
+
+      const inserted = await db.query(
+        `INSERT INTO profile_field_registry
+           (field_path, type, label, status, discovered_from_exam, discovered_label, discovered_page_url)
+         VALUES ($1, $2, $3, 'pending', $4, $5, $6)
+         ON CONFLICT (field_path) DO NOTHING
+         RETURNING *`,
+        [
+          fieldPath,
+          cleanType,
+          cleanLabel.slice(0, 200),
+          typeof discovered_from_exam === 'string' ? discovered_from_exam.slice(0, 100) : null,
+          cleanLabel.slice(0, 300),
+          typeof discovered_page_url === 'string' ? discovered_page_url.slice(0, 500) : null
+        ]
+      );
+      if (!inserted.rows[0]) {
+        const existing = await db.query(
+          'SELECT * FROM profile_field_registry WHERE field_path = $1',
+          [fieldPath]
+        );
+        return res.json({
+          success: true,
+          data: existing.rows[0],
+          message: 'A field with this path is already in the queue'
+        });
+      }
+      res.status(201).json({ success: true, data: inserted.rows[0] });
+    } catch (err) {
+      console.error('Error creating discovered field:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to add field' });
     }
   }
 
@@ -393,6 +548,9 @@ function sanitizeField(f) {
   if (typeof f.cascade_wait_ms === 'number' && Number.isFinite(f.cascade_wait_ms)) {
     out.cascade_wait_ms = Math.max(0, Math.min(10000, Math.floor(f.cascade_wait_ms)));
   }
+  // Admin "Leave Blank" (Captcha/OTP/etc.): the filler short-circuits these to
+  // 'skipped' so they never attempt a selector and never block approval.
+  if (f.leave_blank === true) out.leave_blank = true;
   return out;
 }
 

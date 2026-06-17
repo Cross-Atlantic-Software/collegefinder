@@ -6,6 +6,8 @@ import { ApiResponse } from '../types';
 
 export type AdapterStatus = 'draft' | 'published';
 
+export type ApprovalStatus = 'not_submitted' | 'in_review' | 'approved';
+
 export type FieldType =
   | 'text'
   | 'select'
@@ -41,6 +43,8 @@ export interface AdapterField {
   accepted_types?: string[];
   cascade_dependency?: string;
   cascade_wait_ms?: number;
+  /** Admin "Leave Blank" (Captcha/OTP/manual): the filler skips these. */
+  leave_blank?: boolean;
 }
 
 export interface AdapterSection {
@@ -73,10 +77,35 @@ export interface ExamAdapter {
   credit_cost?: number | null;
   /** Application fee paid directly to the exam (₹); null when not set. */
   exam_fee?: number | null;
+  /** Admin validation lifecycle (distinct from the Builder publish toggle). */
+  approval_status?: ApprovalStatus;
+  approved_at?: string | null;
+  approved_by?: string | null;
 }
 
 export interface ExamAdapterDetail extends ExamAdapter {
   adapter_config: AdapterConfig;
+  /** Catalog application URL (exams_taxonomies.registration_link), joined by slug. */
+  registration_link?: string | null;
+  /** Catalog fallback URL; portal link = registration_link || website (matches listCatalog). */
+  website?: string | null;
+}
+
+/** One field's result inside a validation-run fill report. */
+export interface ValidationFieldResult {
+  field_id: string;
+  label?: string;
+  status: 'filled' | 'check' | 'failed' | 'not_found' | 'skipped';
+  value?: string | null;
+  note?: string | null;
+}
+
+/** Latest validation-run fill report for one section. */
+export interface ValidationSectionFeed {
+  section_name: string;
+  field_results: ValidationFieldResult[];
+  adapter_version: number | null;
+  created_at: string;
 }
 
 export interface ProfilePathEntry {
@@ -181,6 +210,18 @@ export async function listDiscoveredFields(
   );
 }
 
+export async function createDiscoveredField(payload: {
+  label: string;
+  type?: string;
+  discovered_from_exam?: string;
+  discovered_page_url?: string;
+}): Promise<ApiResponse<DiscoveredField>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/discovered-fields`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function reviewDiscoveredField(
   id: number,
   action: 'approve' | 'reject'
@@ -189,4 +230,36 @@ export async function reviewDiscoveredField(
     method: 'PATCH',
     body: JSON.stringify({ action })
   });
+}
+
+// ─── Admin validation & approval ──────────────────────────────────────
+
+/** Latest validation-run fill report per section (the review-screen feed). */
+export async function getValidationFeed(
+  examId: string
+): Promise<ApiResponse<ValidationSectionFeed[]>> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}/validation`,
+    { method: 'GET' }
+  );
+}
+
+/** Mark a validation run as started (approval_status -> in_review). */
+export async function submitExamAdapterReview(
+  examId: string
+): Promise<ApiResponse<ExamAdapter>> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}/submit-review`,
+    { method: 'POST' }
+  );
+}
+
+/** Approve the adapter — sets approval_status=approved AND publishes it. */
+export async function approveExamAdapter(
+  examId: string
+): Promise<ApiResponse<ExamAdapter>> {
+  return apiRequest(
+    `${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}/approve`,
+    { method: 'POST' }
+  );
 }
