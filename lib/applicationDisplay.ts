@@ -60,14 +60,19 @@ export function getApplicationMissingFields(
     "application_start_date" | "application_close_date" | "application_fees" | "ut_service_fee" | "exam_url" | "missing_fields"
   >
 ): string[] {
-  if (app.missing_fields?.length) return app.missing_fields;
-  const missing: string[] = [];
-  if (!app.application_start_date) missing.push("Application start date");
-  if (!app.application_close_date) missing.push("Application end date");
-  if (app.application_fees == null) missing.push("Form fee");
-  if (app.ut_service_fee == null) missing.push("UT service fee");
-  if (!app.exam_url?.trim()) missing.push("Registration link");
-  return missing;
+  const feeLabels = new Set(["Form fee", "UT service fee"]);
+  const raw = app.missing_fields?.length
+    ? [...app.missing_fields]
+    : (() => {
+        const missing: string[] = [];
+        if (!app.application_start_date) missing.push("Application start date");
+        if (!app.application_close_date) missing.push("Application end date");
+        if (app.application_fees == null) missing.push("Form fee");
+        if (app.ut_service_fee == null) missing.push("UT service fee");
+        if (!app.exam_url?.trim()) missing.push("Registration link");
+        return missing;
+      })();
+  return raw.filter((label) => !feeLabels.has(label));
 }
 
 export function normalizeRegistrationUrl(url: string | null | undefined): string | null {
