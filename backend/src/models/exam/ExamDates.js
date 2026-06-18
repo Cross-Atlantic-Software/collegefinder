@@ -37,13 +37,18 @@ class ExamDates {
       exam_date,
       result_date,
       counselling_date,
+      counselling_start_date,
+      counselling_end_date,
       application_fees,
+      ut_service_fee,
     } = data;
+    const counsellingStart = counselling_start_date ?? counselling_date ?? null;
     const result = await db.query(
       `INSERT INTO exam_dates (
         exam_id, application_start_date, application_close_date, admit_card_date,
-        exam_date, result_date, counselling_date, application_fees
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        exam_date, result_date, counselling_date, counselling_start_date, counselling_end_date,
+        application_fees, ut_service_fee
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         exam_id,
         application_start_date || null,
@@ -51,8 +56,11 @@ class ExamDates {
         admit_card_date || null,
         exam_date || null,
         result_date || null,
-        counselling_date || null,
+        counsellingStart,
+        counsellingStart,
+        counselling_end_date || null,
         application_fees != null && application_fees !== '' ? parseFloat(String(application_fees)) : null,
+        ut_service_fee != null && ut_service_fee !== '' ? parseFloat(String(ut_service_fee)) : null,
       ]
     );
     return result.rows[0];
@@ -66,7 +74,10 @@ class ExamDates {
       exam_date,
       result_date,
       counselling_date,
+      counselling_start_date,
+      counselling_end_date,
       application_fees,
+      ut_service_fee,
     } = data;
 
     const updates = [];
@@ -93,13 +104,29 @@ class ExamDates {
       updates.push(`result_date = $${paramCount++}`);
       values.push(result_date);
     }
-    if (counselling_date !== undefined) {
+    if (counselling_start_date !== undefined) {
+      updates.push(`counselling_start_date = $${paramCount++}`);
+      values.push(counselling_start_date);
+      updates.push(`counselling_date = $${paramCount++}`);
+      values.push(counselling_start_date);
+    } else if (counselling_date !== undefined) {
       updates.push(`counselling_date = $${paramCount++}`);
       values.push(counselling_date);
+      updates.push(`counselling_start_date = $${paramCount++}`);
+      values.push(counselling_date);
+    }
+    if (counselling_end_date !== undefined) {
+      updates.push(`counselling_end_date = $${paramCount++}`);
+      values.push(counselling_end_date);
     }
     if (application_fees !== undefined) {
       const v = application_fees == null || application_fees === '' ? null : parseFloat(String(application_fees));
       updates.push(`application_fees = $${paramCount++}`);
+      values.push(v != null && !Number.isNaN(v) ? v : null);
+    }
+    if (ut_service_fee !== undefined) {
+      const v = ut_service_fee == null || ut_service_fee === '' ? null : parseFloat(String(ut_service_fee));
+      updates.push(`ut_service_fee = $${paramCount++}`);
       values.push(v != null && !Number.isNaN(v) ? v : null);
     }
 
@@ -130,7 +157,10 @@ class ExamDates {
       exam_date,
       result_date,
       counselling_date,
+      counselling_start_date,
+      counselling_end_date,
       application_fees,
+      ut_service_fee,
     } = data;
     const existing = await this.findByExamId(exam_id);
 
@@ -142,7 +172,10 @@ class ExamDates {
         exam_date,
         result_date,
         counselling_date,
+        counselling_start_date,
+        counselling_end_date,
         application_fees,
+        ut_service_fee,
       });
     }
     return await this.create({
@@ -153,7 +186,10 @@ class ExamDates {
       exam_date,
       result_date,
       counselling_date,
+      counselling_start_date,
+      counselling_end_date,
       application_fees,
+      ut_service_fee,
     });
   }
 

@@ -186,7 +186,10 @@ const runMigrations = async () => {
     'exam_eligibility_attempt_limit_to_text.sql',
     'scholarships_stream_ids_multiselect.sql',
     'add_stream_interest_recommendation_mappings_2026.sql',
-    'add_ssc_cgl_and_extension_catalog.sql'
+    'add_ssc_cgl_and_extension_catalog.sql',
+    'fix_ssc_cgl_portal_url_patterns.sql',
+    'add_automation_exam_taxonomy_sync_fields.sql',
+    'backfill_automation_exam_taxonomy_links.sql'
   ];
 
   console.log('\n🔄 Running database migrations...\n');

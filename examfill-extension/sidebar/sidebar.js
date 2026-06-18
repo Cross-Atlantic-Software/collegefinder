@@ -122,7 +122,7 @@
     // Fetch profile (always) + adapter (might 404 for new exams)
     const [profileRes, adapterRes] = await Promise.all([
       msg('GET_PROFILE'),
-      msg('GET_ADAPTER', { exam_id: examId })
+      msg('GET_ADAPTER', { exam_id: examId, forceRefresh: true })
     ]);
 
     if (!profileRes.success) {

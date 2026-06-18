@@ -289,9 +289,7 @@ export default function ShortlistExams({
                         isShortlisted={isShortlisted(row.examId)}
                         shortlistSaving={savingId === row.examId}
                         onShortlist={() => toggleShortlist(row.examId)}
-                        onApplyMissingLink={() =>
-                          showError(`Registration link is not available for ${row.name}`)
-                        }
+                        onApplyError={(message) => showError(message)}
                         onPrefetchDetail={() => prefetchExamDetail(String(row.examId))}
                       />
                     ))}

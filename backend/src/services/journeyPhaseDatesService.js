@@ -146,9 +146,28 @@ async function loadPhase6ResultDatesForUser(userId) {
   return loadApplicationExamDateItems(userId, 'result_date', 'resultDate');
 }
 
-/** Phase 7 — counselling_date from automation_applications exams. */
+/** Phase 7 — counselling_start_date from automation_applications exams (legacy counselling_date fallback). */
 async function loadPhase7CounsellingDatesForUser(userId) {
-  return loadApplicationExamDateItems(userId, 'counselling_date', 'counsellingDate');
+  const taxonomyById = await loadApplicationExamTaxonomyMap(userId);
+  if (taxonomyById.size === 0) return [];
+
+  const datesRows = await ExamDates.findByExamIds([...taxonomyById.keys()]);
+  const dateMap = new Map(datesRows.map((d) => [Number(d.exam_id), d]));
+
+  const items = [];
+  for (const [examId, examName] of taxonomyById.entries()) {
+    const row = dateMap.get(examId);
+    const normalized = normalizeExamDateIso(row?.counselling_start_date ?? row?.counselling_date);
+    if (!normalized) continue;
+    items.push({
+      examId,
+      examName,
+      counsellingDate: normalized,
+    });
+  }
+
+  items.sort((a, b) => a.counsellingDate.localeCompare(b.counsellingDate));
+  return items;
 }
 
 module.exports = {

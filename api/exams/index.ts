@@ -12,7 +12,10 @@ export interface ExamDatesPublic {
   exam_date: string | null;
   result_date: string | null;
   counselling_date: string | null;
+  counselling_start_date: string | null;
+  counselling_end_date: string | null;
   application_fees: number | null;
+  ut_service_fee: number | null;
   created_at?: string;
   updated_at?: string;
 }

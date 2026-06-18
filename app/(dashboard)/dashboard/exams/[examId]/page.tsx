@@ -18,7 +18,10 @@ import {
   buildExamDetailSections,
   examCardSubtitle,
   examLevelBadge,
+  getExamApplicationWindowStatus,
+  isExamApplicationButtonEnabled,
 } from "@/lib/examDisplay";
+import { addExamToApplications, APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
 import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
 import { useExamLinkedInstitutesQuery } from "@/lib/examLinkedInstitutesQueries";
@@ -127,6 +130,8 @@ export default function ExamDetailPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [startApplicationSaving, setStartApplicationSaving] = useState(false);
+  const [startApplicationError, setStartApplicationError] = useState<string | null>(null);
 
   const { data: pageData, isLoading, isError, error } = useExamDetailQuery(examId);
   const exam = pageData?.exam;
@@ -188,6 +193,28 @@ export default function ExamDetailPage() {
       examId: examNumericId,
       filled: !isAlreadyFilled,
     });
+  };
+
+  const canStartApplication =
+    exam != null && isExamApplicationButtonEnabled(getExamApplicationWindowStatus(exam));
+
+  const handleStartApplication = async () => {
+    if (examNumericId == null || !canStartApplication || startApplicationSaving) return;
+    setStartApplicationSaving(true);
+    setStartApplicationError(null);
+    try {
+      const result = await addExamToApplications(examNumericId);
+      if (!result.ok) {
+        setStartApplicationError(result.message);
+        return;
+      }
+      sessionStorage.setItem(APPLICATIONS_NOTICE_KEY, result.message);
+      router.push("/dashboard?section=applications");
+    } catch {
+      setStartApplicationError("Could not add this exam to My Applications.");
+    } finally {
+      setStartApplicationSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -353,10 +380,15 @@ export default function ExamDetailPage() {
                   variant="themeButton"
                   size="sm"
                   className="w-full justify-center !rounded-full"
-                  href="/dashboard?section=applications"
+                  disabled={examNumericId == null || !canStartApplication || startApplicationSaving}
+                  onClick={() => void handleStartApplication()}
                 >
-                  <MdSchool className="h-4 w-4" /> Start Application
+                  <MdSchool className="h-4 w-4" />{" "}
+                  {startApplicationSaving ? "Adding..." : "Start Application"}
                 </Button>
+                {startApplicationError ? (
+                  <p className="text-center text-xs text-red-600 dark:text-red-400">{startApplicationError}</p>
+                ) : null}
                 <Button
                   variant="themeButtonOutline"
                   size="sm"

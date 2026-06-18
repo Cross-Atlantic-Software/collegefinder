@@ -70,7 +70,7 @@ let cachedProfile = null;
 let cachedProfileTimestamp = 0;
 const PROFILE_CACHE_TTL = 10 * 60 * 1000; // 10 min
 
-let cachedAdapters = {};   // keyed by exam_id
+let cachedAdapters = {};   // keyed by exam_id → { version, data }
 // Start with fallback list; backend fetch merges/overrides below
 let registeredExams = [...FALLBACK_EXAMS];
 let registeredExamsFetchedAt = 0;
@@ -188,7 +188,9 @@ async function handleMessage(message, sender) {
       return detectCurrentExam(message.payload);
 
     case 'GET_ADAPTER':
-      return getAdapter(message.payload.exam_id);
+      return getAdapter(message.payload.exam_id, {
+        forceRefresh: message.payload.forceRefresh === true
+      });
 
     case 'GET_REGISTERED_EXAMS':
       return getRegisteredExamsForSidebar(message.payload);
@@ -614,10 +616,9 @@ async function ensureInjected({ tabId } = {}) {
 
 // ─── Adapter ───
 
-async function getAdapter(examId) {
-  if (cachedAdapters[examId]) {
-    return { success: true, data: cachedAdapters[examId] };
-  }
+async function getAdapter(examId, options = {}) {
+  const forceRefresh = options.forceRefresh === true;
+  const cached = cachedAdapters[examId];
 
   const token = await getToken();
   if (!token) return { success: false, error: 'Not authenticated' };
@@ -632,12 +633,22 @@ async function getAdapter(examId) {
     }
 
     const data = await res.json();
-    if (data.success && data.data) {
-      cachedAdapters[examId] = data.data;
-      return { success: true, data: data.data };
+    if (!data.success || !data.data) {
+      return { success: false, error: data.message || 'Adapter not found' };
     }
 
-    return { success: false, error: data.message || 'Adapter not found' };
+    const incomingVersion = data.data.version ?? null;
+    if (
+      !forceRefresh &&
+      cached &&
+      cached.version === incomingVersion &&
+      cached.data
+    ) {
+      return { success: true, data: cached.data };
+    }
+
+    cachedAdapters[examId] = { version: incomingVersion, data: data.data };
+    return { success: true, data: data.data };
   } catch (err) {
     return { success: false, error: `Network error: ${err.message}` };
   }

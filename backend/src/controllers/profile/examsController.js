@@ -1994,8 +1994,11 @@ class ExamsTaxonomyController {
         'admit_card_date',
         'exam_date',
         'result_date',
+        'counselling_start_date',
+        'counselling_end_date',
         'counselling_date',
         'application_fees',
+        'ut_service_fee',
         'mode',
         'domicile',
         'streams',
@@ -2170,7 +2173,7 @@ class ExamsTaxonomyController {
 
       const headers = [
         'name', 'code', 'description', 'exam_type', 'difficulty_level', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
-        'application_start_date', 'application_close_date', 'admit_card_date', 'exam_date', 'result_date', 'counselling_date', 'application_fees', 'mode', 'domicile',
+        'application_start_date', 'application_close_date', 'admit_card_date', 'exam_date', 'result_date', 'counselling_start_date', 'counselling_end_date', 'counselling_date', 'application_fees', 'ut_service_fee', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
@@ -2218,8 +2221,11 @@ class ExamsTaxonomyController {
           (dates && dates.admit_card_date) ? String(dates.admit_card_date).slice(0, 10) : '',
           (dates && dates.exam_date) ? String(dates.exam_date).slice(0, 10) : '',
           (dates && dates.result_date) ? String(dates.result_date).slice(0, 10) : '',
+          (dates && (dates.counselling_start_date || dates.counselling_date)) ? String(dates.counselling_start_date || dates.counselling_date).slice(0, 10) : '',
+          (dates && dates.counselling_end_date) ? String(dates.counselling_end_date).slice(0, 10) : '',
           (dates && dates.counselling_date) ? String(dates.counselling_date).slice(0, 10) : '',
           appFees,
+          (dates && dates.ut_service_fee != null && dates.ut_service_fee !== '') ? String(dates.ut_service_fee) : '',
           (pattern && pattern.mode) ? pattern.mode : '',
           domicileStr,
           streamNames,
@@ -2645,10 +2651,19 @@ class ExamsTaxonomyController {
           const admitCardDate = parseDate(row.admit_card_date ?? row.Admit_Card_Date);
           const examDate = parseDate(row.exam_date ?? row.Exam_Date);
           const resultDate = parseDate(row.result_date ?? row.Result_Date);
-          const counsellingDate = parseDate(row.counselling_date ?? row.Counselling_Date);
+          const counsellingStart = parseDate(
+            row.counselling_start_date ?? row.Counselling_Start_Date ?? row.counselling_date ?? row.Counselling_Date
+          );
+          const counsellingEnd = parseDate(row.counselling_end_date ?? row.Counselling_End_Date);
           const feesRaw = row.application_fees ?? row.Application_Fees;
           const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw)) : null;
-          if (appStart || appClose || admitCardDate || examDate || resultDate || counsellingDate || (application_fees != null && !Number.isNaN(application_fees))) {
+          const utFeeRaw = row.ut_service_fee ?? row.UT_Service_Fee;
+          const ut_service_fee = utFeeRaw != null && String(utFeeRaw).trim() !== '' ? parseFloat(String(utFeeRaw)) : null;
+          if (
+            appStart || appClose || admitCardDate || examDate || resultDate || counsellingStart || counsellingEnd
+            || (application_fees != null && !Number.isNaN(application_fees))
+            || (ut_service_fee != null && !Number.isNaN(ut_service_fee))
+          ) {
             await ExamDates.create({
               exam_id: examId,
               application_start_date: appStart,
@@ -2656,8 +2671,11 @@ class ExamsTaxonomyController {
               admit_card_date: admitCardDate,
               exam_date: examDate,
               result_date: resultDate,
-              counselling_date: counsellingDate,
-              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null
+              counselling_start_date: counsellingStart,
+              counselling_end_date: counsellingEnd,
+              counselling_date: counsellingStart,
+              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null,
+              ut_service_fee: ut_service_fee != null && !Number.isNaN(ut_service_fee) ? ut_service_fee : null,
             });
           }
         } catch (e) {
