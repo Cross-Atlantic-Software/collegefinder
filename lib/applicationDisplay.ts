@@ -45,7 +45,9 @@ export function formatUtServiceFee(value: number | null | undefined): string {
   return `${Number(value)} credits`;
 }
 
-export function getApplicationDisplayStatus(app: Pick<StudentApplication, "status" | "source">): ApplicationDisplayStatus {
+export function getApplicationDisplayStatus(
+  app: Pick<StudentApplication, "status" | "source" | "display_status">
+): ApplicationDisplayStatus {
   if (app.display_status) return app.display_status;
   if (app.status === "failed") return "Failed";
   if (app.status === "completed") {

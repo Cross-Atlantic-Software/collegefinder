@@ -15,7 +15,7 @@ import {
   CreateAutomationExamData,
   TaxonomyExamOption,
 } from '@/api/admin/automation-exams';
-import { getAllExamsAdmin } from '@/api/admin/exams';
+import { getAllExamsAdmin, type Exam, type ExamDates } from '@/api/admin/exams';
 import { getApiBaseUrl, getBrowserAdminToken } from '@/api/client';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiLink, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
@@ -261,7 +261,7 @@ export default function AutomationFormsPage() {
       const fallback = await getAllExamsAdmin();
       if (fallback.success && fallback.data?.exams?.length) {
         setTaxonomyExams(
-          fallback.data.exams.map((exam) => ({
+          fallback.data.exams.map((exam: Exam & { examDates?: ExamDates | null }) => ({
             id: exam.id,
             name: exam.name,
             code: exam.code,
