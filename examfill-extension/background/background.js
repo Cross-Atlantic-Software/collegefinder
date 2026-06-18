@@ -271,11 +271,18 @@ async function startAdminValidate(payload) {
     examfill_admin_validate: { exam_id: examId, portal_url: portalUrl }
   });
   const tab = await chrome.tabs.create({ url: portalUrl });
+  let panelOpened = false;
   try {
     await chrome.sidePanel.setOptions({ tabId: tab.id, path: 'sidebar/sidebar.html', enabled: true });
     await chrome.sidePanel.open({ tabId: tab.id });
-  } catch (_) { /* side panel API may be unavailable; user can open it manually */ }
-  return { success: true, tab_id: tab.id };
+    panelOpened = true;
+  } catch (e) {
+    // sidePanel.open() needs a live user gesture; after the tab-create await it's gone,
+    // so Chrome rejects it. Log instead of swallowing, and signal the UI to prompt a
+    // manual open (click the ExamFill toolbar icon on the portal tab).
+    console.warn('[ExamFill] sidePanel.open failed (user gesture lost after tab create); manual open required', e);
+  }
+  return { success: true, tab_id: tab.id, panel_opened: panelOpened };
 }
 
 // ─── Auth ───
