@@ -208,7 +208,7 @@ export default function ExamAdapterEditorPage() {
         },
         window.location.origin
       );
-      showSuccess('Opening the portal in ExamFill… fill each page, then refresh results here.');
+      showSuccess('Opening the portal in ExamFill… if the side panel doesn’t appear, click the ExamFill icon in your Chrome toolbar. Then fill each page and refresh results here.');
     } catch (err) {
       showError('Could not start the validation run.');
       console.error(err);
@@ -729,6 +729,7 @@ function SectionEditor({
                 field={field}
                 onChange={(patch) => onUpdateField(idx, patch)}
                 onRemove={() => onRemoveField(idx)}
+                onAddDiscoveredField={onAddDiscoveredField}
                 validationResult={validation[field.field_id]}
                 profileSchema={profileSchema}
               />
@@ -775,11 +776,12 @@ interface FieldEditorProps {
   field: AdapterField;
   onChange: (patch: Partial<AdapterField>) => void;
   onRemove: () => void;
+  onAddDiscoveredField: (label: string) => void;
   validationResult?: ValidationFieldResult;
   profileSchema: ProfilePathEntry[];
 }
 
-function FieldEditor({ field, onChange, onRemove, validationResult, profileSchema }: FieldEditorProps) {
+function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validationResult, profileSchema }: FieldEditorProps) {
   const [expanded, setExpanded] = useState(false);
 
   const sourceLabel = useMemo(() => {
@@ -811,7 +813,7 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
           value={field.label}
           onChange={(e) => onChange({ label: e.target.value })}
           placeholder="Label"
-          className="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+          className="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-300 rounded bg-white text-slate-800"
         />
 
         <select
@@ -863,6 +865,18 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
           leave blank
         </label>
 
+        {!field.source && (
+          <button
+            type="button"
+            onClick={() => onAddDiscoveredField(field.label)}
+            disabled={!field.label.trim()}
+            title="Add this unmapped field to the profile registry (discovered-fields queue)"
+            className="px-1.5 py-0.5 text-[10px] font-semibold text-[#341050] border border-[#341050]/30 rounded hover:bg-[#341050]/5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            + Add to profile
+          </button>
+        )}
+
         {validationResult && (
           <span
             className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -883,16 +897,16 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
         <div className="px-3 pb-3 pt-1 space-y-2 border-t border-slate-200 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">Field ID</label>
+              <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">Field ID</label>
               <input
                 type="text"
                 value={field.field_id}
                 onChange={(e) => onChange({ field_id: e.target.value })}
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono text-slate-800"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">Format</label>
+              <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">Format</label>
               <select
                 value={field.format || ''}
                 onChange={(e) => onChange({ format: (e.target.value || undefined) as AdapterField['format'] })}
@@ -929,7 +943,7 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
               onChange={(v) => updateSelector('by_label', v)}
             />
             <div>
-              <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">by_index</label>
+              <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">by_index</label>
               <input
                 type="number"
                 min={0}
@@ -958,7 +972,7 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
           {field.type === 'date' && (
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">date_config.variant</label>
+                <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">date_config.variant</label>
                 <select
                   value={field.date_config?.variant || 'text'}
                   onChange={(e) =>
@@ -976,7 +990,7 @@ function FieldEditor({ field, onChange, onRemove, validationResult, profileSchem
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">date_config.format</label>
+                <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">date_config.format</label>
                 <input
                   type="text"
                   value={field.date_config?.format || ''}
@@ -1011,14 +1025,14 @@ function SelectorRow({
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-0.5">
-        {label} <span className="font-normal lowercase text-slate-400">(comma-separated)</span>
+      <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-0.5">
+        {label} <span className="font-normal lowercase text-slate-600">(comma-separated)</span>
       </label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+        className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono text-slate-800"
       />
     </div>
   );
@@ -1061,8 +1075,8 @@ function ValueMapEditor({
 
   return (
     <div>
-      <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1">
-        value_map <span className="font-normal lowercase text-slate-400">(canonical → portal labels)</span>
+      <label className="block text-[10px] font-semibold uppercase text-slate-700 mb-1">
+        value_map <span className="font-normal lowercase text-slate-600">(canonical → portal labels)</span>
       </label>
       <div className="space-y-1">
         {entries.map(([k, variants]) => (

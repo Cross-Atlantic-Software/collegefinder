@@ -240,7 +240,7 @@ export async function getValidationFeed(
 ): Promise<ApiResponse<ValidationSectionFeed[]>> {
   return apiRequest(
     `${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/${encodeURIComponent(examId)}/validation`,
-    { method: 'GET' }
+    { method: 'GET', cache: 'no-store' }
   );
 }
 

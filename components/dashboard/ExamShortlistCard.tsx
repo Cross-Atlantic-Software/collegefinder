@@ -90,9 +90,9 @@ export function ExamShortlistCard({
                 type="button"
                 disabled
                 title="This exam's form filling is awaiting admin approval."
-                className="w-full cursor-not-allowed justify-center !rounded-full !border-slate-200 !bg-slate-100 !text-slate-400 shadow-none dark:!border-slate-700 dark:!bg-slate-800 dark:!text-slate-500"
+                className="w-full cursor-not-allowed justify-center truncate !rounded-full !border-slate-200 !bg-slate-100 !text-slate-400 shadow-none dark:!border-slate-700 dark:!bg-slate-800 dark:!text-slate-500"
               >
-                Waiting for Admin Approval
+                Awaiting approval
               </Button>
             )}
           </div>
