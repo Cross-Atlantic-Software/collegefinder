@@ -9,13 +9,6 @@ const { authenticate } = require('../../middleware/auth');
 const automationController = require('../../controllers/user/automationController');
 
 /**
- * @route   GET /api/user/automation-exams
- * @desc    Get available automation exams (active only)
- * @access  Private (authenticated user)
- */
-router.get('/automation-exams', authenticate, automationController.getAvailableExams);
-
-/**
  * @route   GET /api/user/automation-applications
  * @desc    Get user's automation applications
  * @access  Private (authenticated user)

@@ -26,7 +26,9 @@ class AutomationApplicationsController {
 
             const values = [];
 
-            if (status && status !== 'all') {
+            if (status === 'in_process') {
+                query += ` WHERE aa.status IN ('approved', 'running', 'pending')`;
+            } else if (status && status !== 'all') {
                 query += ` WHERE aa.status = $1`;
                 values.push(status);
             }
@@ -80,38 +82,68 @@ class AutomationApplicationsController {
      */
     static async createApplication(req, res) {
         try {
-            const { user_id, exam_id, admin_notes } = req.body;
+            const { user_id, exam_id, taxonomy_exam_id, admin_notes } = req.body;
 
-            // Validate user exists
+            if (!user_id) {
+                return res.status(400).json({ success: false, message: 'user_id is required' });
+            }
+
+            if ((exam_id == null || exam_id === '') && (taxonomy_exam_id == null || taxonomy_exam_id === '')) {
+                return res.status(400).json({ success: false, message: 'exam_id or taxonomy_exam_id is required' });
+            }
+
             const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
             if (userCheck.rows.length === 0) {
                 return res.status(400).json({ success: false, message: 'User not found' });
             }
 
-            // Validate exam exists
-            const examCheck = await pool.query('SELECT id FROM automation_exams WHERE id = $1', [exam_id]);
+            let resolvedExamId = exam_id != null && exam_id !== '' ? Number(exam_id) : null;
+            let resolvedTaxonomyId =
+                taxonomy_exam_id != null && taxonomy_exam_id !== '' ? Number(taxonomy_exam_id) : null;
+
+            if (resolvedTaxonomyId != null) {
+                const { resolveAutomationExamForStudentApply } = require('../../services/alreadyFilledFormService');
+                resolvedExamId = await resolveAutomationExamForStudentApply(resolvedTaxonomyId);
+            }
+
+            if (!resolvedExamId || !Number.isInteger(resolvedExamId) || resolvedExamId <= 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Exam not found or not available for automation',
+                });
+            }
+
+            const examCheck = await pool.query(
+                'SELECT id, taxonomy_exam_id FROM automation_exams WHERE id = $1',
+                [resolvedExamId]
+            );
             if (examCheck.rows.length === 0) {
                 return res.status(400).json({ success: false, message: 'Automation exam not found' });
             }
 
-            // Check for duplicate active application
+            if (resolvedTaxonomyId == null && examCheck.rows[0].taxonomy_exam_id != null) {
+                resolvedTaxonomyId = Number(examCheck.rows[0].taxonomy_exam_id);
+            }
+
             const duplicateCheck = await pool.query(`
         SELECT id FROM automation_applications 
-        WHERE user_id = $1 AND exam_id = $2 AND status IN ('pending', 'approved', 'running')
-      `, [user_id, exam_id]);
+        WHERE user_id = $1 AND exam_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [user_id, resolvedExamId]);
 
             if (duplicateCheck.rows.length > 0) {
                 return res.status(400).json({
                     success: false,
-                    message: 'An active application already exists for this user and exam'
+                    message: 'An application already exists for this user and exam',
                 });
             }
 
             const result = await pool.query(`
-        INSERT INTO automation_applications (user_id, exam_id, status, admin_notes)
-        VALUES ($1, $2, 'pending', $3)
+        INSERT INTO automation_applications (user_id, exam_id, taxonomy_exam_id, status, admin_notes)
+        VALUES ($1, $2, $3, 'approved', $4)
         RETURNING *
-      `, [user_id, exam_id, admin_notes || null]);
+      `, [user_id, resolvedExamId, resolvedTaxonomyId, admin_notes || null]);
 
             res.status(201).json({ success: true, data: result.rows[0] });
         } catch (error) {

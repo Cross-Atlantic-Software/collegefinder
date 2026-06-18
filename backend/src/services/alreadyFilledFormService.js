@@ -92,13 +92,73 @@ async function ensureAutomationExamForTaxonomy(taxonomyExamId) {
 
   const result = await pool.query(
     `INSERT INTO automation_exams (
-       name, slug, url, is_active, field_mappings, agent_config
-     ) VALUES ($1, $2, $3, FALSE, '{}'::jsonb, $4::jsonb)
+       name, slug, url, is_active, taxonomy_exam_id, field_mappings, agent_config
+     ) VALUES ($1, $2, $3, TRUE, $4, '{}'::jsonb, $5::jsonb)
      RETURNING id`,
-    [exam.name, slug, url, JSON.stringify(defaultAgentConfig)]
+    [exam.name, slug, url, taxonomyExamId, JSON.stringify(defaultAgentConfig)]
   );
 
   return result.rows[0]?.id ?? null;
+}
+
+/**
+ * Resolve (or create) an automation_exams row for a student Apply action.
+ * Ensures taxonomy link + active row so applications persist after refresh.
+ */
+async function resolveAutomationExamForStudentApply(taxonomyExamId) {
+  const tid = Number(taxonomyExamId);
+  if (!Number.isInteger(tid) || tid <= 0) return null;
+
+  const exam = await Exam.findById(tid);
+  if (!exam) return null;
+
+  const byLink = await pool.query(
+    'SELECT id FROM automation_exams WHERE taxonomy_exam_id = $1 ORDER BY is_active DESC, id ASC LIMIT 1',
+    [tid]
+  );
+  if (byLink.rows[0]?.id) {
+    const automationId = Number(byLink.rows[0].id);
+    await pool.query(
+      `UPDATE automation_exams
+       SET is_active = TRUE,
+           taxonomy_exam_id = $1,
+           name = COALESCE(NULLIF(TRIM(name), ''), $2),
+           url = COALESCE(NULLIF(TRIM(url), ''), $3)
+       WHERE id = $4`,
+      [
+        tid,
+        exam.name,
+        typeof exam.website === 'string' && exam.website.trim() ? exam.website.trim() : null,
+        automationId,
+      ]
+    );
+    return automationId;
+  }
+
+  const matched = await findAutomationExamIdForTaxonomy(tid);
+  if (matched) {
+    await pool.query(
+      `UPDATE automation_exams
+       SET is_active = TRUE,
+           taxonomy_exam_id = $1,
+           name = COALESCE(NULLIF(TRIM(name), ''), $2),
+           url = COALESCE(NULLIF(TRIM(url), ''), $3)
+       WHERE id = $4`,
+      [
+        tid,
+        exam.name,
+        typeof exam.registration_link === 'string' && exam.registration_link.trim()
+          ? exam.registration_link.trim()
+          : typeof exam.website === 'string' && exam.website.trim()
+            ? exam.website.trim()
+            : null,
+        matched,
+      ]
+    );
+    return matched;
+  }
+
+  return ensureAutomationExamForTaxonomy(tid);
 }
 
 async function ensureAutomationApplicationCompleted(userId, taxonomyExamId) {
@@ -210,5 +270,7 @@ module.exports = {
   ensureAutomationApplicationCompleted,
   syncAlreadyFilledAutomationApplications,
   mapApplicationSource,
+  findAutomationExamIdForTaxonomy,
+  resolveAutomationExamForStudentApply,
   ALREADY_FILLED_ADMIN_NOTE,
 };

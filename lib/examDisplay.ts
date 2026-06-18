@@ -47,6 +47,61 @@ export function formatApplicationDateRange(exam: Exam): string | null {
   return a || b;
 }
 
+export type ExamApplicationWindowStatus = "upcoming" | "open" | "closed" | "unknown";
+
+function normalizeDateIsoForCompare(raw: string | null | undefined): string | null {
+  if (!hasDisplayValue(raw)) return null;
+  const text = String(raw).trim();
+  const isoPrefix = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoPrefix) return isoPrefix[1];
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayIsoDateLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Application window from exam_dates — drives Apply button on exam cards. */
+export function getExamApplicationWindowStatus(
+  exam: Pick<Exam, "examDates">
+): ExamApplicationWindowStatus {
+  const start = normalizeDateIsoForCompare(exam.examDates?.application_start_date);
+  const end = normalizeDateIsoForCompare(exam.examDates?.application_close_date);
+  const today = todayIsoDateLocal();
+
+  if (!start && !end) return "unknown";
+  if (start && today < start) return "upcoming";
+  if (end && today > end) return "closed";
+  return "open";
+}
+
+export function examApplicationButtonLabel(status: ExamApplicationWindowStatus): string {
+  switch (status) {
+    case "upcoming":
+      return "Apply Soon";
+    case "unknown":
+      return "Apply Soon";
+    case "closed":
+      return "Application Closed";
+    case "open":
+    default:
+      return "Apply";
+  }
+}
+
+export function isExamApplicationButtonEnabled(status: ExamApplicationWindowStatus): boolean {
+  return status === "open";
+}
+
 /** Exam card: application start month only (e.g. "Jan"). */
 export function examCardApplicationStartMonth(exam: Exam): string | null {
   const iso = exam.examDates?.application_start_date;
@@ -321,8 +376,10 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     push(dates, field("Admit card date", formatExamDate(ed.admit_card_date)));
     push(dates, field("Exam date", formatExamDate(ed.exam_date)));
     push(dates, field("Result date", formatExamDate(ed.result_date)));
-    push(dates, field("Counselling date", formatExamDate(ed.counselling_date)));
+    push(dates, field("Counselling start", formatExamDate(ed.counselling_start_date ?? ed.counselling_date)));
+    push(dates, field("Counselling end", formatExamDate(ed.counselling_end_date)));
     push(dates, field("Application fee", formatInrFee(ed.application_fees)));
+    push(dates, field("UT service fee", ed.ut_service_fee != null ? `${ed.ut_service_fee} credits` : "—"));
   }
   if (dates.length) {
     sections.push({ id: "dates", title: "Important dates", fields: dates });

@@ -123,7 +123,7 @@ const SECTION = {
 const ADDITIONAL_DETAILS = {
   section_id: 'additional_details',
   section_name: 'Additional Details',
-  page_indicator: { type: 'page_text_contains', value: 'Additional Details' },
+  page_indicator: { type: 'url_contains', value: 'additional-details' },
   fields: [
     selectField('category', 'Category', 'student.category', CATEGORY_MAP),
     selectField('category_verify', 'Verify Category', 'student.category', CATEGORY_MAP),
@@ -181,6 +181,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`✅ SSC CGL adapter loaded & published. version=${res.rows[0].version}, status=${res.rows[0].status}, is_active=${res.rows[0].is_active}, sections=2 (Personal Details: ${SECTION.fields.length}, Additional Details: ${ADDITIONAL_DETAILS.fields.length})`);
+  console.log('   → Reload the ExamFill extension in chrome://extensions, then reopen the sidebar.');
 }
 
 main().then(() => process.exit(0)).catch((e) => { console.error('❌', e); process.exit(1); });

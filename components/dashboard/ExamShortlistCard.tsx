@@ -1,10 +1,18 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Exam } from "@/api/exams";
 import { Button } from "@/components/shared";
 import { CardShortlistHeart } from "@/components/dashboard/CardShortlistHeart";
 import { ExamCardFields } from "@/components/dashboard/ExamCardFields";
 import { ExamCardHeader } from "@/components/dashboard/ExamCardHeader";
+import {
+  examApplicationButtonLabel,
+  getExamApplicationWindowStatus,
+  isExamApplicationButtonEnabled,
+} from "@/lib/examDisplay";
+import { addExamToApplications, APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
 
 export type ExamShortlistCardProps = {
   exam: Exam;
@@ -16,7 +24,7 @@ export type ExamShortlistCardProps = {
   onShortlist: () => void;
   onApply?: () => void;
   onPrefetchDetail?: () => void;
-  onApplyMissingLink?: () => void;
+  onApplyError?: (message: string) => void;
 };
 
 export function ExamShortlistCard({
@@ -29,12 +37,37 @@ export function ExamShortlistCard({
   onShortlist,
   onApply,
   onPrefetchDetail,
-  onApplyMissingLink,
+  onApplyError,
 }: ExamShortlistCardProps) {
-  const registrationUrl = exam.registration_link?.trim();
-  const applyHref = registrationUrl
-    ? (registrationUrl.startsWith("http") ? registrationUrl : `https://${registrationUrl}`)
-    : undefined;
+  const router = useRouter();
+  const [applySaving, setApplySaving] = useState(false);
+  const applicationStatus = getExamApplicationWindowStatus(exam);
+  const applyLabel = applySaving ? "Adding..." : examApplicationButtonLabel(applicationStatus);
+  const applyEnabled = isExamApplicationButtonEnabled(applicationStatus) && !applySaving;
+
+  const handleApply = async () => {
+    if (!applyEnabled) return;
+
+    if (onApply) {
+      onApply();
+      return;
+    }
+
+    setApplySaving(true);
+    try {
+      const result = await addExamToApplications(Number(exam.id));
+      if (!result.ok) {
+        onApplyError?.(result.message);
+        return;
+      }
+      sessionStorage.setItem(APPLICATIONS_NOTICE_KEY, result.message);
+      router.push("/dashboard?section=applications");
+    } catch {
+      onApplyError?.("Could not add this exam to My Applications.");
+    } finally {
+      setApplySaving(false);
+    }
+  };
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
@@ -68,16 +101,15 @@ export function ExamShortlistCard({
               variant="themeButton"
               size="sm"
               type="button"
-              onClick={() => {
-                if (applyHref) {
-                  window.open(applyHref, "_blank", "noopener,noreferrer");
-                  return;
-                }
-                (onApplyMissingLink ?? onApply)?.();
-              }}
-              className="w-full justify-center !rounded-full !border-black !bg-black !text-[#FAD53C] shadow-sm transition-all duration-200 hover:!bg-black/90 active:scale-95"
+              disabled={!applyEnabled}
+              onClick={() => void handleApply()}
+              className={`w-full justify-center !rounded-full px-2 text-[11px] shadow-sm transition-all duration-200 sm:text-xs ${
+                applyEnabled
+                  ? "!border-black !bg-black !text-[#FAD53C] hover:!bg-black/90 active:scale-95"
+                  : "!cursor-not-allowed !border-slate-200 !bg-slate-100 !text-slate-500 hover:!bg-slate-100 dark:!border-slate-700 dark:!bg-slate-800 dark:!text-slate-400"
+              }`}
             >
-              Apply
+              {applyLabel}
             </Button>
           </div>
         </div>
