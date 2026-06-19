@@ -467,10 +467,11 @@ export default function Sidebar({
         <button
           type="button"
           title="Settings"
-          className={`group relative flex w-full items-center rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
+          onClick={() => handleSectionClick("settings" as any)}
+          className={`group relative flex w-full items-center rounded-xl transition-colors ${activeSection === "settings" ? "bg-highlight-100 text-brand-ink dark:text-slate-100" : "text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50"} ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
         >
-          <FiSettings className="h-[18px] w-[18px]" />
-          {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
+          <FiSettings className={`h-[18px] w-[18px] ${activeSection === "settings" ? "text-brand-ink dark:text-highlight-300" : "text-slate-500 dark:text-slate-400"}`} />
+          {!isCollapsed && <span className={`text-sm font-medium ${activeSection === "settings" ? "text-brand-ink dark:text-slate-100 font-semibold" : ""}`}>Settings</span>}
           {isCollapsed && (
             <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-40 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
               Settings

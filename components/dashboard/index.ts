@@ -24,3 +24,4 @@ export { ExamApplicationModal } from "./ExamApplicationModal";
 export { StudentExamCreateModal } from "./StudentExamCreateModal";
 export { StudentWorkflowModal } from "./StudentWorkflowModal";
 export { ReferralCard } from "./ReferralCard";
+export { default as Settings } from "./Settings";

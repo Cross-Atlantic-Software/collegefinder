@@ -307,13 +307,13 @@ export default function ProfileTabs() {
           style={{ animation: "fade-in 220ms ease-out" }}
           className="space-y-4"
         >
-          <div className="mx-auto flex w-full max-w-7xl flex-col xl:flex-row gap-5 xl:items-start">
-            <div className="min-w-0 w-full xl:flex-1 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
+          <div className="mx-auto grid w-full max-w-7xl gap-5 xl:grid-cols-[2.15fr,1fr] xl:items-start">
+            <div className="min-w-0 w-full rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               {renderTabContent(activeTab)}
             </div>
 
-            <aside className="w-full shrink-0 xl:sticky xl:top-6 xl:w-[320px]">
-              <div className="flex flex-col gap-4">
+            <aside className="w-full shrink-0 xl:sticky xl:top-6 xl:h-[calc(100vh-2rem)]">
+              <div className="flex flex-col gap-4 h-full">
 
                 {/* ── Recommended Exams ── sliding carousel */}
                 <article className="min-w-0 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
@@ -396,7 +396,7 @@ export default function ProfileTabs() {
                   </div>
                 </article>
 
-                <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
+                <article className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
                   <div className="flex shrink-0 items-center justify-between">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Document Vault</h3>
@@ -415,7 +415,7 @@ export default function ProfileTabs() {
                     </button>
                   </div>
 
-                  <div className="mt-4 flex-1">
+                  <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
                     {documentVaultLoading ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div className="shimmer-skeleton h-28 rounded-xl" />
