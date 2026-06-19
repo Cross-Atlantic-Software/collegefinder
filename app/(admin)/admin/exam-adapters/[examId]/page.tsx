@@ -819,7 +819,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
         <select
           value={field.source || ''}
           onChange={(e) => onChange({ source: e.target.value || null })}
-          className="px-2 py-1 text-xs border border-slate-300 rounded bg-white max-w-[200px]"
+          className="px-2 py-1 text-xs border border-slate-300 rounded bg-white max-w-[200px] text-slate-800"
           title={sourceLabel || 'Pick a profile path'}
         >
           <option value="">— skip —</option>
@@ -833,7 +833,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
         <select
           value={field.type}
           onChange={(e) => onChange({ type: e.target.value as FieldType })}
-          className="px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+          className="px-2 py-1 text-xs border border-slate-300 rounded bg-white text-slate-800"
         >
           {FIELD_TYPES.map((t) => (
             <option key={t} value={t}>
