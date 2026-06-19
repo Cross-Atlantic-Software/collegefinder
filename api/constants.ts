@@ -136,6 +136,7 @@ export const API_ENDPOINTS = {
     COACHING_EXAMS_MAPPINGS: '/admin/coaching-exams-mappings',
     SCHOLARSHIP_EXAMS_COLLEGES_MAPPINGS: '/admin/scholarship-exams-colleges-mappings',
     EXAM_ADAPTERS: '/admin/exam-adapters',
+    CREDITS_LEDGER: '/admin/credits/ledger',
   },
 
   // Strength endpoints (user-facing)
@@ -153,6 +154,15 @@ export const API_ENDPOINTS = {
     GENERATE_MY_CODE: '/referral/generate-my-code',
     SEND_INVITE: '/referral/send-invite',
     MY_USES: '/referral/my-uses',
+  },
+
+  // UT Credits wallet (user-facing)
+  CREDITS: {
+    BALANCE: '/user/credits/balance',
+    TRANSACTIONS: '/user/credits/transactions',
+    PURCHASE: '/user/credits/purchase',
+    DEDUCT_FOR_REGISTRATION: '/user/credits/deduct-for-registration',
+    REFUND_FOR_REGISTRATION: '/user/credits/refund-for-registration',
   },
 
   // Public experts endpoint

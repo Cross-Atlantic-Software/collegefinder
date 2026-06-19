@@ -36,6 +36,8 @@ import { FiPlus, FiSearch, FiX, FiImage, FiVideo, FiUpload, FiDownload, FiTrash2
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast, Select, SelectOption, MultiSelect } from '@/components/shared';
+
+type TopicSelectOption = SelectOption & { sub_id?: number | null };
 import RichTextEditor from '@/components/shared/RichTextEditor';
 
 export default function LecturesPage() {
@@ -59,7 +61,7 @@ export default function LecturesPage() {
     key_topics_to_be_covered: '',
   });
   const [articleContent, setArticleContent] = useState('');
-  const [availableTopics, setAvailableTopics] = useState<SelectOption[]>([]);
+  const [availableTopics, setAvailableTopics] = useState<TopicSelectOption[]>([]);
   const [availableSubtopics, setAvailableSubtopics] = useState<SelectOption[]>([]);
   const [allSubtopics, setAllSubtopics] = useState<Array<{ id: number; topic_id: number; name: string }>>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -270,6 +272,7 @@ export default function LecturesPage() {
           response.data.topics.map((t) => ({
             value: String(t.id),
             label: t.name,
+            sub_id: t.sub_id ?? null,
           }))
         );
       }
@@ -1205,7 +1208,17 @@ export default function LecturesPage() {
                   <Select
                     options={availableTopics}
                     value={formData.topic_id}
-                    onChange={(value) => setFormData({ ...formData, topic_id: value || '', subtopic_id: '' })}
+                    onChange={(value) => {
+                      const topic = availableTopics.find((t) => t.value === value);
+                      const parentSubjectId =
+                        topic?.sub_id != null && topic.sub_id > 0 ? String(topic.sub_id) : null;
+                      setFormData({ ...formData, topic_id: value || '', subtopic_id: '' });
+                      if (parentSubjectId) {
+                        setSelectedSubjectIds((prev) =>
+                          prev.includes(parentSubjectId) ? prev : [...prev, parentSubjectId]
+                        );
+                      }
+                    }}
                     placeholder="Select topic first"
                     isSearchable
                     isClearable={false}

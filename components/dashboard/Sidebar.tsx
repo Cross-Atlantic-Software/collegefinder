@@ -5,18 +5,7 @@ import { BiChevronDown, BiChevronLeft, BiChevronRight, BiMenu } from "react-icon
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  FiActivity,
-  FiBookOpen,
-  FiChevronDown,
-  FiClipboard,
-  FiFileText,
-  FiHome,
-  FiLogOut,
-  FiSettings,
-  FiShare2,
-  FiUser,
-} from "react-icons/fi";
+import { FiActivity, FiBookOpen, FiChevronDown, FiClipboard, FiCreditCard, FiFileText, FiHome, FiLogOut, FiSettings, FiShare2, FiUser } from "react-icons/fi";
 import {
   FaBookOpen,
   FaClipboardList,
@@ -117,6 +106,14 @@ const baseNavItems: {
     icon: FiFileText,
     activeIcon: FaFileAlt,
     getValue: () => "3",
+  },
+  {
+    id: "ut-credits",
+    label: "UT Credits",
+    sub: "Wallet balance",
+    icon: FiCreditCard,
+    activeIcon: FiCreditCard,
+    getValue: () => "",
   },
   {
     id: "exam-prep",

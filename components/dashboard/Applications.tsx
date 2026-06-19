@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { MdAdd, MdRefresh, MdWarning } from "react-icons/md";
-import { FiPlay, FiRefreshCw } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { MdAdd, MdRefresh, MdWarning, MdClose } from "react-icons/md";
+import { FiPlay, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
 import { Button } from "@/components/shared";
 import { StudentExamCreateModal } from "./StudentExamCreateModal";
 import { getApiBaseUrl } from "@/api/client";
@@ -18,6 +19,10 @@ import {
   type StudentApplication,
 } from "@/lib/applicationDisplay";
 import { APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
+import {
+  deductCreditsForRegistration,
+  refundCreditsForRegistration,
+} from "@/api/credits";
 
 function getDisplayStatusStyles(displayStatus: ReturnType<typeof getApplicationDisplayStatus>) {
   switch (displayStatus) {
@@ -37,9 +42,11 @@ function getDisplayStatusStyles(displayStatus: ReturnType<typeof getApplicationD
 function ApplicationTableRow({
   app,
   onStartProcessing,
+  processingAppId,
 }: {
   app: StudentApplication;
   onStartProcessing: (app: StudentApplication) => void;
+  processingAppId: number | null;
 }) {
   const detailHref = `/dashboard/exams/${app.taxonomy_exam_id ?? app.exam_slug ?? app.exam_id}?from=dashboard-applications`;
   const displayStatus = getApplicationDisplayStatus(app);
@@ -99,9 +106,10 @@ function ApplicationTableRow({
             size="sm"
             className="flex items-center gap-1.5 rounded-full !border-black !bg-black !px-3 !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
             onClick={() => onStartProcessing(app)}
+            disabled={processingAppId === app.id}
           >
             <FiPlay className="h-3 w-3" />
-            Start Processing
+            {processingAppId === app.id ? "Processing…" : "Start Processing"}
           </Button>
         ) : (
           <span className="text-[11px] text-slate-400 dark:text-slate-500">—</span>
@@ -111,12 +119,98 @@ function ApplicationTableRow({
   );
 }
 
+function InsufficientCreditsModal({
+  isOpen,
+  message,
+  examName,
+  onClose,
+  onPurchaseCredits,
+}: {
+  isOpen: boolean;
+  message: string;
+  examName?: string;
+  onClose: () => void;
+  onPurchaseCredits: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="insufficient-credits-title"
+      >
+        <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+            <h2 id="insufficient-credits-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Insufficient UT Credits
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            aria-label="Close"
+          >
+            <MdClose className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3 px-4 py-4">
+          {examName ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Exam: <span className="font-medium text-slate-700 dark:text-slate-300">{examName}</span>
+            </p>
+          ) : null}
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{message}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Purchase more credits from the UT Credits wallet to continue registration.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <Button
+            variant="themeButtonOutline"
+            size="sm"
+            className="rounded-full"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          <Button
+            variant="themeButton"
+            size="sm"
+            className="rounded-full !border-black !bg-black !text-[#FAD53C] hover:!bg-black/90"
+            onClick={onPurchaseCredits}
+          >
+            Go to UT Credits
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ApplicationsPage() {
+  const router = useRouter();
   const [applications, setApplications] = useState<StudentApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [applyNotice, setApplyNotice] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [processingAppId, setProcessingAppId] = useState<number | null>(null);
+  const [creditErrorModal, setCreditErrorModal] = useState<{
+    message: string;
+    examName?: string;
+  } | null>(null);
 
   const fetchApplications = useCallback(async () => {
     setIsLoading(true);
@@ -160,11 +254,51 @@ export default function ApplicationsPage() {
     return () => window.clearTimeout(timer);
   }, [applyNotice]);
 
-  const handleStartProcessing = (app: StudentApplication) => {
-    const opened = openRegistrationUrl(app.exam_url);
-    if (!opened) {
-      setError("Registration link is not available for this exam yet.");
+  const handleStartProcessing = async (app: StudentApplication) => {
+    setError(null);
+    setCreditErrorModal(null);
+    setProcessingAppId(app.id);
+
+    try {
+      const fee = app.ut_service_fee != null ? Number(app.ut_service_fee) : 0;
+      if (fee > 0) {
+        const deductRes = await deductCreditsForRegistration(app.id);
+        if (!deductRes.success) {
+          const message = deductRes.message || "Failed to deduct UT Credits";
+          if (message.toLowerCase().includes("insufficient")) {
+            setCreditErrorModal({ message, examName: app.exam_name });
+          } else {
+            setError(message);
+          }
+          return;
+        }
+      }
+
+      const opened = openRegistrationUrl(app.exam_url);
+      if (!opened) {
+        if (fee > 0) {
+          await refundCreditsForRegistration(app.id, "Registration link unavailable");
+        }
+        setError("Registration link is not available for this exam yet.");
+        return;
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start processing. Please try again.";
+      if (message.toLowerCase().includes("insufficient")) {
+        setCreditErrorModal({ message, examName: app.exam_name });
+      } else {
+        console.error("Start processing error:", err);
+        setError(message);
+      }
+    } finally {
+      setProcessingAppId(null);
     }
+  };
+
+  const handleGoToUtCredits = () => {
+    setCreditErrorModal(null);
+    router.push("/dashboard?section=ut-credits");
   };
 
   const handleApplicationAdded = (message: string) => {
@@ -263,6 +397,7 @@ export default function ApplicationsPage() {
                           key={app.id}
                           app={app}
                           onStartProcessing={handleStartProcessing}
+                          processingAppId={processingAppId}
                         />
                       ))}
                     </tbody>
@@ -275,6 +410,14 @@ export default function ApplicationsPage() {
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
               onApplicationAdded={handleApplicationAdded}
+            />
+
+            <InsufficientCreditsModal
+              isOpen={creditErrorModal != null}
+              message={creditErrorModal?.message ?? ""}
+              examName={creditErrorModal?.examName}
+              onClose={() => setCreditErrorModal(null)}
+              onPurchaseCredits={handleGoToUtCredits}
             />
           </main>
         </div>

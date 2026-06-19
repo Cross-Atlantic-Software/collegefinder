@@ -12,6 +12,7 @@ export type DashboardSectionId =
   | "coaching-institutes"
   | "scholarships"
   | "applications"
+  | "ut-credits"
   | "exam-prep"
   | "test-module"
   | "counselling"
