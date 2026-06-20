@@ -670,8 +670,8 @@ export default function UpcomingDeadlinesCard({
           100% { transform: translateX(100%); }
         }
       `}} />
-      <article className="rounded-2xl bg-white p-3 dark:bg-slate-900">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+      <article className="flex xl:h-full xl:min-h-0 flex-col xl:overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
+      <div className="shrink-0 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Track your mapped phases and milestone progress timeline over the months.</p>
@@ -731,10 +731,10 @@ export default function UpcomingDeadlinesCard({
       </div>
 
       {viewMode === "timeline" ? (
-        <div className="mt-2 rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700/60 dark:bg-slate-900">
+        <div className="mt-2 flex xl:min-h-0 flex-1 flex-col xl:overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700/60 dark:bg-slate-900">
           {/* Tip / zoom banner — sits ABOVE the grid so it doesn't shift alignment */}
           {focusedMonth ? (
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="shrink-0 mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                 Expanded view: <span className="text-slate-700 dark:text-slate-200">{focusedMonthLabel}</span>
               </p>
@@ -747,12 +747,12 @@ export default function UpcomingDeadlinesCard({
               </button>
             </div>
           ) : (
-            <p className="mb-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+            <p className="shrink-0 mb-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
               Tip: click a month label to expand crowded dates.
             </p>
           )}
 
-          <div className="grid grid-cols-[136px_1fr] gap-0 sm:grid-cols-[160px_1fr]">
+          <div className="grid xl:min-h-0 flex-1 xl:overflow-y-auto overflow-x-hidden grid-cols-[136px_1fr] gap-0 sm:grid-cols-[160px_1fr] xl:pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
             {/* ── Phase list sidebar ── */}
             <div className="border-r border-slate-200 pr-2 dark:border-slate-700">
               {/* Header spacer — matches month header row exactly */}
@@ -1076,7 +1076,7 @@ export default function UpcomingDeadlinesCard({
           </div>
         </div>
       ) : (
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 xl:min-h-0 flex-1 xl:overflow-y-auto grid gap-3 md:grid-cols-2 xl:grid-cols-4 xl:pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
           {(Object.keys(phaseBuckets) as PhaseStatus[]).map((status) => {
             const dotColor: Record<PhaseStatus,string> = {
               done:     "bg-[#FAD53C]/60",

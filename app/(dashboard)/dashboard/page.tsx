@@ -14,6 +14,7 @@ import {
   ShortlistColleges,
   ShortlistInstitutes,
   ShortlistScholarships,
+  Settings,
 } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
@@ -37,7 +38,8 @@ type SectionId =
   | "counselling"
   | "know-your-strengths"
   | "admission-help"
-  | "referral";
+  | "referral"
+  | "settings";
 
 const VALID_SECTIONS: SectionId[] = [
   "dashboard",
@@ -54,6 +56,7 @@ const VALID_SECTIONS: SectionId[] = [
   "know-your-strengths",
   "admission-help",
   "referral",
+  "settings",
 ];
 
 function parseSectionFromSearchParams(searchParams: URLSearchParams): SectionId {
@@ -136,6 +139,7 @@ function DashboardPageContent() {
     "know-your-strengths",
     "admission-help",
     "referral",
+    "settings",
   ];
 
   return (
@@ -188,8 +192,8 @@ function DashboardPageContent() {
             <div className="flex flex-1 flex-col overflow-hidden">
               <DashboardHeader />
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
-                <main className="min-w-0">
+              <div className="flex-1 flex flex-col min-h-0 px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
+                <main className="min-w-0 flex-1 min-h-0 flex flex-col">
                   <MiddleContent />
                 </main>
               </div>
@@ -251,6 +255,8 @@ function DashboardPageContent() {
                 )}
 
                 {activeSection === "referral" && <ReferralCard />}
+
+                {activeSection === "settings" && <Settings />}
               </main>
             </div>
           )}

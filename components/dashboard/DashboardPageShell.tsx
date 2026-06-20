@@ -18,7 +18,8 @@ export type DashboardSectionId =
   | "counselling"
   | "know-your-strengths"
   | "admission-help"
-  | "referral";
+  | "referral"
+  | "settings";
 
 type DashboardPageShellProps = {
   activeSection: DashboardSectionId;
