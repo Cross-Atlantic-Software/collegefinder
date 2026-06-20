@@ -42,6 +42,7 @@ export default function ExamPreparationServer({
   const router = useRouter();
   const [mode, setMode] = useState<PrepMode>("self");
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
 
   return (
     <div className="w-full space-y-5">
@@ -146,8 +147,8 @@ export default function ExamPreparationServer({
             subjects={initialSubjects}
             query={query}
             onQueryChange={setQuery}
-            sortBy="latest"
-            onToggleSort={() => {}}
+            sortBy={sortBy}
+            onToggleSort={() => setSortBy((s) => (s === "latest" ? "popular" : "latest"))}
           />
         ) : (
           <CoachingCentersTab />

@@ -272,6 +272,8 @@ exports.updateApplication = async (req, res, next) => {
             });
         }
 
+        const previousStatus = appCheck.rows[0].status;
+
         // Build update query dynamically
         const updates = [];
         const values = [];
@@ -303,6 +305,19 @@ exports.updateApplication = async (req, res, next) => {
             WHERE id = $${paramCount}
             RETURNING *
         `, values);
+
+        if (status === 'failed' && previousStatus !== 'failed') {
+            try {
+                const creditService = require('../../services/credit/creditService');
+                await creditService.refundCreditsForRegistration(
+                    userId,
+                    Number(id),
+                    'Application marked as failed'
+                );
+            } catch (refundError) {
+                console.error('Failed to auto-refund credits for failed application:', refundError);
+            }
+        }
 
         res.json({
             success: true,

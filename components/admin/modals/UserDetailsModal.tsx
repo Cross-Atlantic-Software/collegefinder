@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin, Info, FileText, Eye, Download } from 'lucide-react';
+import { X, User, BookOpen, Target, Loader2, GraduationCap, IdCard, MapPin, Info, FileText, Eye, Download, CreditCard } from 'lucide-react';
 import { FaUserCircle } from 'react-icons/fa';
 import { getUserDetails } from '@/api/admin/users';
 import type { SiteUser } from '@/api/types';
@@ -158,6 +158,20 @@ interface UserDetails {
     created_at: string;
     updated_at: string;
   } | null;
+  utCredits?: {
+    user_id: number;
+    balance: number;
+    updated_at: string | null;
+    transactions: Array<{
+      id: number;
+      user_id: number;
+      type: 'purchase' | 'deduction' | 'refund';
+      amount: number;
+      balance_after: number;
+      description: string | null;
+      created_at: string;
+    }>;
+  };
 }
 
 export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetailsModalProps) {
@@ -414,6 +428,96 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                       <span className="text-xs font-medium text-slate-600">Guardian Name:</span>
                       <p className="text-sm text-slate-900 font-medium">{details.user.guardian_name}</p>
                     </div>
+                  )}
+                </div>
+              </section>
+
+              {/* UT Credits */}
+              <section className="bg-[#FFF9E6] rounded-lg p-4 border border-[#FAD53C]/40">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-[#b88900]" />
+                  UT Credits Wallet
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">User ID:</span>
+                      <p className="text-sm text-slate-900 font-medium">
+                        {details.utCredits?.user_id ?? details.user.id ?? userId ?? "—"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Balance:</span>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {details.utCredits != null
+                          ? `${Number(details.utCredits.balance).toLocaleString("en-IN")} credits`
+                          : "0 credits"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white rounded-md px-2 py-1.5 border border-slate-200">
+                      <span className="text-xs font-medium text-slate-600">Last Updated:</span>
+                      <p className="text-sm text-slate-900 font-medium">
+                        {details.utCredits?.updated_at
+                          ? new Date(details.utCredits.updated_at).toLocaleString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {details.utCredits?.transactions && details.utCredits.transactions.length > 0 ? (
+                    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
+                      <table className="min-w-[720px] w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            <th className="px-3 py-2">User ID</th>
+                            <th className="px-3 py-2">Date</th>
+                            <th className="px-3 py-2">Type</th>
+                            <th className="px-3 py-2">Amount</th>
+                            <th className="px-3 py-2">Balance After</th>
+                            <th className="px-3 py-2">Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {details.utCredits.transactions.map((tx) => (
+                            <tr key={tx.id} className="border-b border-slate-100">
+                              <td className="px-3 py-2 font-medium text-slate-700">{tx.user_id}</td>
+                              <td className="px-3 py-2 text-slate-600">
+                                {new Date(tx.created_at).toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
+                                    tx.type === "deduction"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-emerald-100 text-emerald-800"
+                                  }`}
+                                >
+                                  {tx.type}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-medium text-slate-800">
+                                {tx.type === "deduction" ? "−" : "+"}
+                                {Number(tx.amount).toLocaleString("en-IN")} credits
+                              </td>
+                              <td className="px-3 py-2 text-slate-700">
+                                {Number(tx.balance_after).toLocaleString("en-IN")} credits
+                              </td>
+                              <td className="px-3 py-2 text-slate-600">{tx.description || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic bg-white rounded-md p-3 border border-slate-200">
+                      No credit transactions yet.
+                    </p>
                   )}
                 </div>
               </section>
