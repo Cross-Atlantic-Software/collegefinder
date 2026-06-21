@@ -480,6 +480,7 @@ function TopicVideosBlock({
   sortBy,
   visibleLimit,
   onLoadMore,
+  onShowLess,
   onWatch,
   headingClassName = "text-base font-bold text-black/85",
   showSubtopicLabel = false,
@@ -488,6 +489,7 @@ function TopicVideosBlock({
   sortBy: "latest" | "popular";
   visibleLimit: number;
   onLoadMore: () => void;
+  onShowLess?: () => void;
   onWatch: (lecture: ExamPrepLectureDto) => void;
   headingClassName?: string;
   showSubtopicLabel?: boolean;
@@ -499,6 +501,10 @@ function TopicVideosBlock({
   const limit = Math.min(videos.length, visibleLimit);
   const visibleVideos = videos.slice(0, limit);
   const hasMore = videos.length > limit;
+  const canShowLess = visibleLimit > VIDEOS_PER_TOPIC && !!onShowLess;
+  const remaining = videos.length - limit;
+  const moreLabel =
+    remaining > 99 ? `+ more (${formatCompact(remaining)}+)` : `+ more (${remaining} more)`;
 
   return (
     <div className="space-y-3">
@@ -519,15 +525,27 @@ function TopicVideosBlock({
           );
         })}
       </div>
-      {hasMore ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onLoadMore}
-            className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
-          >
-            + more ({videos.length - limit} more)
-          </button>
+      {hasMore || canShowLess ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {hasMore ? (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
+            >
+              {moreLabel}
+            </button>
+          ) : null}
+          {canShowLess ? (
+            <button
+              type="button"
+              onClick={onShowLess}
+              className={`inline-flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold transition ${SITE.cta}`}
+            >
+              <FiChevronUp className="text-sm" />
+              Show less
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -539,6 +557,7 @@ function ExpandedTopicsPanel({
   sortBy,
   visibleByTopicId,
   onLoadMoreVideos,
+  onShowLessVideos,
   onCollapse,
   onWatch,
 }: {
@@ -546,6 +565,7 @@ function ExpandedTopicsPanel({
   sortBy: "latest" | "popular";
   visibleByTopicId: Record<string, number>;
   onLoadMoreVideos: (topicId: string, total: number) => void;
+  onShowLessVideos: (topicId: string) => void;
   onCollapse: () => void;
   onWatch: (lecture: ExamPrepLectureDto) => void;
 }) {
@@ -583,6 +603,7 @@ function ExpandedTopicsPanel({
                   sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy).length
                 )
               }
+              onShowLess={() => onShowLessVideos(topic.id)}
               onWatch={onWatch}
               headingClassName="mb-3 text-base font-bold text-black/90"
               showSubtopicLabel
@@ -699,6 +720,12 @@ function SubjectStudySection({
               [topicId]: Math.min(total, (prev[topicId] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC),
             }))
           }
+          onShowLessVideos={(topicId) =>
+            setVisibleByTopicId((prev) => ({
+              ...prev,
+              [topicId]: VIDEOS_PER_TOPIC,
+            }))
+          }
           onCollapse={() => setTopicsExpanded(false)}
           onWatch={onWatch}
         />
@@ -724,6 +751,12 @@ function SubjectStudySection({
                       activeTopicVideos.length,
                       (prev[activeTopic.id] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC
                     ),
+                  }))
+                }
+                onShowLess={() =>
+                  setVisibleByTopicId((prev) => ({
+                    ...prev,
+                    [activeTopic.id]: VIDEOS_PER_TOPIC,
                   }))
                 }
                 onWatch={onWatch}
