@@ -247,6 +247,20 @@ export async function getUserDetails(userId: number): Promise<ApiResponse<{
     created_at: string;
     updated_at: string;
   } | null;
+  utCredits: {
+    user_id: number;
+    balance: number;
+    updated_at: string | null;
+    transactions: Array<{
+      id: number;
+      user_id: number;
+      type: 'purchase' | 'deduction' | 'refund';
+      amount: number;
+      balance_after: number;
+      description: string | null;
+      created_at: string;
+    }>;
+  };
 }>> {
   return apiRequest(`${API_ENDPOINTS.ADMIN.USERS}/${userId}`, {
     method: 'GET',

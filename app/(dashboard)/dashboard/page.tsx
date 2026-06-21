@@ -22,6 +22,7 @@ import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
 import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 import Counselling from "@/components/dashboard/Counselling";
+import UtCreditsWallet from "@/components/dashboard/UtCredits/UtCreditsWallet";
 
 type SectionId =
   | "dashboard"
@@ -31,6 +32,7 @@ type SectionId =
   | "coaching-institutes"
   | "scholarships"
   | "applications"
+  | "ut-credits"
   | "exam-prep"
   | "test-module"
   | "counselling"
@@ -47,6 +49,7 @@ const VALID_SECTIONS: SectionId[] = [
   "coaching-institutes",
   "scholarships",
   "applications",
+  "ut-credits",
   "exam-prep",
   "test-module",
   "counselling",
@@ -129,6 +132,7 @@ function DashboardPageContent() {
     "coaching-institutes",
     "scholarships",
     "applications",
+    "ut-credits",
     "exam-prep",
     "test-module",
     "counselling",
@@ -227,6 +231,8 @@ function DashboardPageContent() {
                 )}
 
                 {activeSection === "applications" && <ApplicationsPage />}
+
+                {activeSection === "ut-credits" && <UtCreditsWallet />}
 
                 {activeSection === "exam-prep" && (
                   <ExamPreparation initialMode={examPrepMode} />

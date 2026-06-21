@@ -266,6 +266,10 @@ export type { ActiveReferralCode } from './referral-codes';
 export { getAllUserQueriesAdmin, resolveUserQueryAdmin } from './queries';
 export type { AdminUserQuery } from './queries';
 
+// UT Credits ledger (admin)
+export { getAdminCreditLedger } from './credits';
+export type { AdminCreditLedgerTransaction } from './credits';
+
 // Stream + interest → programs / exams (admin mapping)
 export {
   getAllRecommendedMappings,

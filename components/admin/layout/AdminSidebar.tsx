@@ -38,6 +38,7 @@ import {
   FiLink2,
   FiMessageCircle,
   FiSettings,
+  FiCreditCard,
 } from 'react-icons/fi';
 const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 
@@ -85,6 +86,7 @@ const navGroups: NavGroup[] = [
     superAdminOnly: true,
     children: [
       { label: 'Site Users', href: '/admin/site-users', icon: <FiUser className="h-4 w-4" /> },
+      { label: 'UT Credits Ledger', href: '/admin/ledger', icon: <FiCreditCard className="h-4 w-4" /> },
       { label: 'Admin Users', href: '/admin/admin-users', icon: <FiShield className="h-4 w-4" /> },
       { label: 'Modules', href: '/admin/modules', icon: <FiLayers className="h-4 w-4" /> },
     ],
