@@ -91,6 +91,11 @@ async function rowsToLectureDtos(rows, { limit } = {}) {
       subjectName: row.subject_name || 'Subject',
       topicId: row.topic_id,
       topicName: row.topic_name || 'Topic',
+      subtopicId: row.subtopic_id != null ? Number(row.subtopic_id) : null,
+      subtopicName:
+        row.subtopic_name != null && String(row.subtopic_name).trim() !== ''
+          ? String(row.subtopic_name).trim()
+          : null,
       durationSeconds:
         durationSeconds != null && Number.isFinite(durationSeconds) ? durationSeconds : null,
     });
@@ -109,6 +114,7 @@ function matchesSearch(row, searchRaw) {
     row.youtube_channel_name,
     row.subject_name,
     row.topic_name,
+    row.subtopic_name,
     row.hook_summary,
   ]
     .filter(Boolean)

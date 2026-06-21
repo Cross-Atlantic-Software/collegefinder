@@ -220,6 +220,8 @@ export type ExamPrepLectureDto = {
   subjectName: string;
   topicId: number;
   topicName: string;
+  subtopicId?: number | null;
+  subtopicName?: string | null;
   /** Full video length in seconds (YouTube Data API); null if unavailable. */
   durationSeconds?: number | null;
 };

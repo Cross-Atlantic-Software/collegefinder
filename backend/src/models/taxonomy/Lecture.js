@@ -376,6 +376,8 @@ class Lecture {
          l.updated_at,
          t.id AS topic_id,
          t.name AS topic_name,
+         st.id AS subtopic_id,
+         st.name AS subtopic_name,
          subj.id AS subject_id,
          subj.name AS subject_name,
          COALESCE(
@@ -389,6 +391,7 @@ class Lecture {
        FROM lectures l
        INNER JOIN topics t ON l.topic_id = t.id
        INNER JOIN subjects subj ON t.sub_id = subj.id
+       LEFT JOIN subtopics st ON l.subtopic_id = st.id
        LEFT JOIN lecture_exams leex ON leex.lecture_id = l.id
        WHERE l.status = TRUE
          AND l.content_type = 'VIDEO'
@@ -434,6 +437,8 @@ class Lecture {
          l.updated_at,
          t.id,
          t.name,
+         st.id,
+         st.name,
          subj.id,
          subj.name
        ORDER BY subj.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,
