@@ -121,7 +121,7 @@ export default function ExamDirectoryPage() {
           </section>
 
           <div className="px-4 py-4 md:px-6">
-            <div className="mx-auto w-full max-w-6xl space-y-5">
+            <div className="mx-auto w-full space-y-5">
 
             {loading ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
@@ -145,7 +145,7 @@ export default function ExamDirectoryPage() {
                           {exam.name}
                         </p>
                       </div>
-                      <ExamLogo exam={exam} className="h-14 w-14 p-1" />
+                      <ExamLogo exam={exam} className="h-16 w-16 shrink-0 rounded-xl" />
                     </div>
                     <div className="mt-1.5">
                       <ExamCardBody

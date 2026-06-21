@@ -20,7 +20,7 @@ export function InstituteLogo({
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800 ${className}`}
+      className={`flex shrink-0 items-center justify-center overflow-hidden ${className}`}
     >
       <img
         src={src}

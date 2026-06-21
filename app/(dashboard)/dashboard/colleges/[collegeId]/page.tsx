@@ -154,7 +154,7 @@ export default function CollegeDetailPage() {
   if (isLoading) {
     return (
       <CollegeDetailShell onSectionChange={handleSectionChange}>
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             Loading college details...
           </div>
@@ -166,7 +166,7 @@ export default function CollegeDetailPage() {
   if (isError || !college) {
     return (
       <CollegeDetailShell onSectionChange={handleSectionChange}>
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-center dark:bg-slate-900">
             <p className="text-sm text-red-600 dark:text-red-400">
               {error instanceof Error ? error.message : "College not found."}
@@ -244,7 +244,7 @@ export default function CollegeDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
           </div>

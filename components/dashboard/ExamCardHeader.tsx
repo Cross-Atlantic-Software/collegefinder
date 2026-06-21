@@ -42,7 +42,7 @@ export function ExamCardHeader({
           </div>
         ) : null}
       </div>
-      <ExamLogo exam={exam} className="h-11 w-11 shrink-0 p-1" />
+      <ExamLogo exam={exam} className="h-[60px] w-[60px] shrink-0 rounded-xl" />
     </div>
   );
 }

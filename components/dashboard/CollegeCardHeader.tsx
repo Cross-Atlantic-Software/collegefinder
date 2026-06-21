@@ -32,35 +32,11 @@ export function CollegeCardHeader({
 
   const logoSide = compact ? (
     <div className="flex shrink-0 flex-col items-center gap-0.5">
-      {typeBadgeLabel && collegeType ? (
-        <span className="group/field relative z-10 max-w-[4.75rem]">
-          <span
-            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
-            tabIndex={0}
-            aria-label={`College type: ${collegeType}`}
-          >
-            {typeBadgeLabel}
-          </span>
-          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
-        </span>
-      ) : null}
-      <CollegeLogo college={college} className="h-11 w-11 shrink-0 p-1" />
+      <CollegeLogo college={college} className="h-[60px] w-[60px] shrink-0 rounded-xl" />
     </div>
   ) : (
     <div className="relative shrink-0 overflow-visible pt-1.5">
-      {typeBadgeLabel && collegeType ? (
-        <span className="group/field absolute left-1/2 top-0 z-10 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 pb-2">
-          <span
-            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
-            tabIndex={0}
-            aria-label={`College type: ${collegeType}`}
-          >
-            {typeBadgeLabel}
-          </span>
-          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
-        </span>
-      ) : null}
-      <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
+      <CollegeLogo college={college} className="h-20 w-20 shrink-0 rounded-xl" />
     </div>
   );
 
@@ -81,6 +57,20 @@ export function CollegeCardHeader({
           >
             {subtitleParts.join(" · ")}
           </p>
+        ) : null}
+        {typeBadgeLabel && collegeType ? (
+          <div className="pt-0.5">
+            <span className="group/field relative z-10 inline-block max-w-full">
+              <span
+                className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 px-2 py-0.5 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
+                tabIndex={0}
+                aria-label={`College type: ${collegeType}`}
+              >
+                {typeBadgeLabel}
+              </span>
+              <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
+            </span>
+          </div>
         ) : null}
       </div>
       {logoSide}

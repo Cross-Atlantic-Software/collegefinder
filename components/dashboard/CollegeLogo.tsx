@@ -26,12 +26,12 @@ export function CollegeLogo({ college, className = "", imageClassName = "" }: Co
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800 ${className}`}
+      className={`flex shrink-0 items-center justify-center overflow-hidden ${className}`}
     >
       <img
         src={src}
         alt={`${college.college_name} logo`}
-        className={`max-h-full max-w-full object-contain object-center ${imageClassName}`}
+        className={`h-full w-full object-cover object-center ${imageClassName}`}
         loading="lazy"
       />
     </div>

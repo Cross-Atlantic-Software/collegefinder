@@ -54,7 +54,7 @@ export function CoachingShortlistCard({
             </p>
           ) : null}
         </div>
-        <InstituteLogo institute={institute} className="h-16 w-16 shrink-0 p-1.5" />
+        <InstituteLogo institute={institute} className="h-20 w-20 shrink-0 rounded-xl" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
