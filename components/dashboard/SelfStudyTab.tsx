@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiChevronLeft, FiChevronRight, FiPlayCircle } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiChevronUp, FiPlayCircle } from "react-icons/fi";
 import type { ExamPrepLectureDto } from "@/api/auth/profile";
 import VideoModal from "@/components/dashboard/VideoModal";
 import { formatDurationFromSeconds } from "@/lib/formatDuration";
@@ -185,12 +185,16 @@ function CompactLectureVideoCard({
   video,
   cardIndex,
   onWatch,
+  showSubtopicLabel = false,
 }: {
   lecture: ExamPrepLectureDto;
   video: VideoItem;
   cardIndex: number;
   onWatch: (lecture: ExamPrepLectureDto) => void;
+  showSubtopicLabel?: boolean;
 }) {
+  const subtopicLabel = lecture.subtopicName?.trim();
+
   return (
     <div className="group relative min-w-0">
       <button
@@ -214,6 +218,9 @@ function CompactLectureVideoCard({
         </div>
 
         <div className="space-y-0.5 p-2">
+          {showSubtopicLabel && subtopicLabel ? (
+            <p className="truncate text-[10px] font-semibold text-black/55">{subtopicLabel}</p>
+          ) : null}
           <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-black/85">
             {video.title}
           </p>
@@ -412,21 +419,19 @@ function TopicPillTabs({
   topicGroups,
   activeTopicId,
   onChange,
-  expanded,
   onExpand,
 }: {
   topicGroups: TopicGroup[];
   activeTopicId: string | null;
   onChange: (id: string) => void;
-  expanded: boolean;
   onExpand: () => void;
 }) {
-  const visible = expanded ? topicGroups : topicGroups.slice(0, MAX_VISIBLE_TOPICS);
-  const hasMore = topicGroups.length > MAX_VISIBLE_TOPICS && !expanded;
+  const visible = topicGroups.slice(0, MAX_VISIBLE_TOPICS);
+  const hasMore = topicGroups.length > MAX_VISIBLE_TOPICS;
   const alternateColors = topicGroups.length > 1;
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {visible.map((topic, index) => {
         const isActive = topic.id === activeTopicId;
         const inactiveClass =
@@ -466,6 +471,125 @@ function TopicPillTabs({
           + more
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function TopicVideosBlock({
+  topic,
+  sortBy,
+  visibleLimit,
+  onLoadMore,
+  onWatch,
+  headingClassName = "text-base font-bold text-black/85",
+  showSubtopicLabel = false,
+}: {
+  topic: TopicGroup;
+  sortBy: "latest" | "popular";
+  visibleLimit: number;
+  onLoadMore: () => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+  headingClassName?: string;
+  showSubtopicLabel?: boolean;
+}) {
+  const videos = useMemo(
+    () => sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy),
+    [topic.lectures, sortBy]
+  );
+  const limit = Math.min(videos.length, visibleLimit);
+  const visibleVideos = videos.slice(0, limit);
+  const hasMore = videos.length > limit;
+
+  return (
+    <div className="space-y-3">
+      <h4 className={headingClassName}>{topic.name}</h4>
+      <div className={VIDEO_GRID_CLASS}>
+        {visibleVideos.map((video, index) => {
+          const lecture = topic.lectures.find((lec) => `lec-${lec.id}-${lec.youtubeId}` === video.id);
+          if (!lecture) return null;
+          return (
+            <CompactLectureVideoCard
+              key={video.id}
+              lecture={lecture}
+              video={video}
+              cardIndex={index}
+              onWatch={onWatch}
+              showSubtopicLabel={showSubtopicLabel}
+            />
+          );
+        })}
+      </div>
+      {hasMore ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onLoadMore}
+            className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
+          >
+            + more ({videos.length - limit} more)
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ExpandedTopicsPanel({
+  topicGroups,
+  sortBy,
+  visibleByTopicId,
+  onLoadMoreVideos,
+  onCollapse,
+  onWatch,
+}: {
+  topicGroups: TopicGroup[];
+  sortBy: "latest" | "popular";
+  visibleByTopicId: Record<string, number>;
+  onLoadMoreVideos: (topicId: string, total: number) => void;
+  onCollapse: () => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+}) {
+  const alternateColors = topicGroups.length > 1;
+
+  return (
+    <div className="space-y-1">
+      <div className="mb-3 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onCollapse}
+          className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${SITE.cta}`}
+        >
+          <FiChevronUp className="text-sm" />
+          Show less
+        </button>
+      </div>
+
+      <div className={`divide-y divide-[#dceeff] rounded-xl border ${SITE.border} ${SITE.surface} p-3 md:p-4`}>
+        {topicGroups.map((topic, index) => (
+          <div
+            key={topic.id}
+            className={[
+              "py-5 first:pt-0 last:pb-0",
+              alternateColors && index % 2 === 1 ? "bg-[#FAD53C]/5" : "",
+            ].join(" ")}
+          >
+            <TopicVideosBlock
+              topic={topic}
+              sortBy={sortBy}
+              visibleLimit={visibleByTopicId[topic.id] ?? VIDEOS_PER_TOPIC}
+              onLoadMore={() =>
+                onLoadMoreVideos(
+                  topic.id,
+                  sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy).length
+                )
+              }
+              onWatch={onWatch}
+              headingClassName="mb-3 text-base font-bold text-black/90"
+              showSubtopicLabel
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -534,11 +658,14 @@ function SubjectStudySection({
   const activeLimit = activeTopic
     ? Math.min(activeTopicVideos.length, visibleByTopicId[activeTopic.id] ?? VIDEOS_PER_TOPIC)
     : 0;
-  const visibleTopicVideos = activeTopicVideos.slice(0, activeLimit);
-  const hasMoreVideos = activeTopic ? activeTopicVideos.length > activeLimit : false;
 
   return (
-    <section className="space-y-4 border-t border-[#dceeff] pt-6 first:border-t-0 first:pt-0">
+    <section
+      className={[
+        "space-y-4 border-t border-[#dceeff] pt-6 first:border-t-0 first:pt-0 transition-all duration-300",
+        topicsExpanded ? "rounded-xl border border-[#dceeff] bg-[#f8fbff] p-4 -mx-1 sm:mx-0" : "",
+      ].join(" ")}
+    >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xl font-bold text-black/90">{subject.name}</h3>
         {subjectQuery.isFetching && subjectQuery.data ? (
@@ -561,52 +688,46 @@ function SubjectStudySection({
         <LectureGridSkeleton />
       ) : topicGroups.length === 0 ? (
         <p className="text-sm text-black/55">No videos available for this subject yet.</p>
+      ) : topicsExpanded ? (
+        <ExpandedTopicsPanel
+          topicGroups={topicGroups}
+          sortBy={sortBy}
+          visibleByTopicId={visibleByTopicId}
+          onLoadMoreVideos={(topicId, total) =>
+            setVisibleByTopicId((prev) => ({
+              ...prev,
+              [topicId]: Math.min(total, (prev[topicId] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC),
+            }))
+          }
+          onCollapse={() => setTopicsExpanded(false)}
+          onWatch={onWatch}
+        />
       ) : (
         <>
           <TopicPillTabs
             topicGroups={topicGroups}
             activeTopicId={activeTopicId}
             onChange={setActiveTopicId}
-            expanded={topicsExpanded}
             onExpand={() => setTopicsExpanded(true)}
           />
 
           <div className="w-full min-w-0">
-            <div className={VIDEO_GRID_CLASS}>
-              {visibleTopicVideos.map((video, index) => {
-                const lecture = activeTopic?.lectures.find((lec) => `lec-${lec.id}-${lec.youtubeId}` === video.id);
-                if (!lecture) return null;
-                return (
-                  <CompactLectureVideoCard
-                    key={video.id}
-                    lecture={lecture}
-                    video={video}
-                    cardIndex={index}
-                    onWatch={onWatch}
-                  />
-                );
-              })}
-            </div>
-
-            {hasMoreVideos ? (
-              <div className="mt-3 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() =>
-                    activeTopic &&
-                    setVisibleByTopicId((prev) => ({
-                      ...prev,
-                      [activeTopic.id]: Math.min(
-                        activeTopicVideos.length,
-                        (prev[activeTopic.id] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC
-                      ),
-                    }))
-                  }
-                  className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
-                >
-                  + more ({activeTopicVideos.length - activeLimit} more)
-                </button>
-              </div>
+            {activeTopic ? (
+              <TopicVideosBlock
+                topic={activeTopic}
+                sortBy={sortBy}
+                visibleLimit={activeLimit}
+                onLoadMore={() =>
+                  setVisibleByTopicId((prev) => ({
+                    ...prev,
+                    [activeTopic.id]: Math.min(
+                      activeTopicVideos.length,
+                      (prev[activeTopic.id] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC
+                    ),
+                  }))
+                }
+                onWatch={onWatch}
+              />
             ) : null}
           </div>
         </>
