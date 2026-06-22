@@ -5,18 +5,7 @@ import { BiChevronDown, BiChevronLeft, BiChevronRight, BiMenu } from "react-icon
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  FiActivity,
-  FiBookOpen,
-  FiChevronDown,
-  FiClipboard,
-  FiFileText,
-  FiHome,
-  FiLogOut,
-  FiSettings,
-  FiShare2,
-  FiUser,
-} from "react-icons/fi";
+import { FiActivity, FiBookOpen, FiChevronDown, FiClipboard, FiCreditCard, FiFileText, FiHome, FiLogOut, FiSettings, FiShare2, FiUser } from "react-icons/fi";
 import {
   FaBookOpen,
   FaClipboardList,
@@ -43,29 +32,15 @@ import {
   useDashboardScholarshipsQuery,
   useProfileCompletionQuery,
 } from "@/lib/dashboardSidebarQueries";
-
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "counselling"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
+import type { DashboardSectionId } from "./DashboardPageShell";
 
 type SidebarProps = {
   sidebarOpen: boolean;
   onToggle: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  activeSection: SectionId;
-  onSectionChange: (id: SectionId) => void;
+  activeSection: DashboardSectionId;
+  onSectionChange: (id: DashboardSectionId) => void;
   activeSubSection?: string;
   onSubSectionChange?: (id: string) => void;
   /** When false, skips college/institute/scholarship meta APIs (detail routes). */
@@ -73,7 +48,7 @@ type SidebarProps = {
 };
 
 const baseNavItems: {
-  id: SectionId;
+  id: DashboardSectionId;
   label: string;
   sub: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -131,6 +106,14 @@ const baseNavItems: {
     icon: FiFileText,
     activeIcon: FaFileAlt,
     getValue: () => "3",
+  },
+  {
+    id: "ut-credits",
+    label: "UT Credits",
+    sub: "Wallet balance",
+    icon: FiCreditCard,
+    activeIcon: FiCreditCard,
+    getValue: () => "",
   },
   {
     id: "exam-prep",
@@ -251,7 +234,7 @@ export default function Sidebar({
 
   const activePrepMode = searchParams.get("mode") === "coaching" ? "coaching" : "self";
 
-  const handleSectionClick = (id: SectionId) => {
+  const handleSectionClick = (id: DashboardSectionId) => {
     onSectionChange(id);
 
     // Auto-close only on mobile drawer layouts.
@@ -481,10 +464,11 @@ export default function Sidebar({
         <button
           type="button"
           title="Settings"
-          className={`group relative flex w-full items-center rounded-xl text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
+          onClick={() => handleSectionClick("settings" as any)}
+          className={`group relative flex w-full items-center rounded-xl transition-colors ${activeSection === "settings" ? "bg-highlight-100 text-brand-ink dark:text-slate-100" : "text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50"} ${isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-2.5 py-2.5"}`}
         >
-          <FiSettings className="h-[18px] w-[18px]" />
-          {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
+          <FiSettings className={`h-[18px] w-[18px] ${activeSection === "settings" ? "text-brand-ink dark:text-highlight-300" : "text-slate-500 dark:text-slate-400"}`} />
+          {!isCollapsed && <span className={`text-sm font-medium ${activeSection === "settings" ? "text-brand-ink dark:text-slate-100 font-semibold" : ""}`}>Settings</span>}
           {isCollapsed && (
             <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-40 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 opacity-0 shadow-md transition-all duration-150 group-hover:opacity-100 md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
               Settings

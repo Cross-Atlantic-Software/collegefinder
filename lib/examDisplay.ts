@@ -47,6 +47,61 @@ export function formatApplicationDateRange(exam: Exam): string | null {
   return a || b;
 }
 
+export type ExamApplicationWindowStatus = "upcoming" | "open" | "closed" | "unknown";
+
+function normalizeDateIsoForCompare(raw: string | null | undefined): string | null {
+  if (!hasDisplayValue(raw)) return null;
+  const text = String(raw).trim();
+  const isoPrefix = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoPrefix) return isoPrefix[1];
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayIsoDateLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Application window from exam_dates — drives Apply button on exam cards. */
+export function getExamApplicationWindowStatus(
+  exam: Pick<Exam, "examDates">
+): ExamApplicationWindowStatus {
+  const start = normalizeDateIsoForCompare(exam.examDates?.application_start_date);
+  const end = normalizeDateIsoForCompare(exam.examDates?.application_close_date);
+  const today = todayIsoDateLocal();
+
+  if (!start && !end) return "unknown";
+  if (start && today < start) return "upcoming";
+  if (end && today > end) return "closed";
+  return "open";
+}
+
+export function examApplicationButtonLabel(status: ExamApplicationWindowStatus): string {
+  switch (status) {
+    case "upcoming":
+      return "Apply Soon";
+    case "unknown":
+      return "Apply Soon";
+    case "closed":
+      return "Application Closed";
+    case "open":
+    default:
+      return "Apply";
+  }
+}
+
+export function isExamApplicationButtonEnabled(status: ExamApplicationWindowStatus): boolean {
+  return status === "open";
+}
+
 /** Exam card: application start month only (e.g. "Jan"). */
 export function examCardApplicationStartMonth(exam: Exam): string | null {
   const iso = exam.examDates?.application_start_date;
@@ -140,7 +195,34 @@ export function examCardNegativeMarking(exam: Exam): string | null {
   return displayScalar(exam.examPattern?.negative_marking);
 }
 
-export type ExamLinkedCollegePreview = { id: number; name: string };
+export type ExamLinkedCollegePreview = {
+  id: number;
+  name: string;
+  abbreviation?: string | null;
+};
+
+/** Chip label for linked colleges on exam cards (abbreviation preferred). */
+export function linkedCollegeChipLabel(college: {
+  abbreviation?: string | null;
+  name: string;
+}): string {
+  const abbr = college.abbreviation?.trim();
+  if (abbr) return abbr;
+  return college.name;
+}
+
+/** Chip label for linked exams on college/coaching cards (abbreviation preferred). */
+export function linkedExamChipLabel(exam: {
+  abbreviation?: string | null;
+  code?: string | null;
+  name: string;
+}): string {
+  const abbr = exam.abbreviation?.trim();
+  if (abbr) return abbr;
+  const code = exam.code?.trim();
+  if (code) return code;
+  return exam.name;
+}
 
 /** Up to 3 linked colleges for exam cards. */
 export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
@@ -148,6 +230,10 @@ export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
     .map((c) => ({
       id: Number(c.id),
       name: String(c.name ?? "").trim(),
+      abbreviation:
+        c.abbreviation != null && String(c.abbreviation).trim()
+          ? String(c.abbreviation).trim()
+          : null,
     }))
     .filter((c) => Number.isInteger(c.id) && c.id > 0 && c.name);
   if (fromRows.length) return fromRows.slice(0, 3);
@@ -156,12 +242,12 @@ export function examCardLinkedColleges(exam: Exam): ExamLinkedCollegePreview[] {
     .map((n) => String(n).trim())
     .filter(Boolean)
     .slice(0, 3)
-    .map((name, index) => ({ id: -(index + 1), name }));
+    .map((name, index) => ({ id: -(index + 1), name, abbreviation: null }));
 }
 
-/** Up to 3 linked college names for exam cards. */
+/** Up to 3 linked college chip labels for exam cards. */
 export function examCardLinkedCollegeNames(exam: Exam): string[] {
-  return examCardLinkedColleges(exam).map((c) => c.name);
+  return examCardLinkedColleges(exam).map((c) => linkedCollegeChipLabel(c));
 }
 
 /** Total linked colleges (preview list may show fewer). */
@@ -290,8 +376,10 @@ export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
     push(dates, field("Admit card date", formatExamDate(ed.admit_card_date)));
     push(dates, field("Exam date", formatExamDate(ed.exam_date)));
     push(dates, field("Result date", formatExamDate(ed.result_date)));
-    push(dates, field("Counselling date", formatExamDate(ed.counselling_date)));
+    push(dates, field("Counselling start", formatExamDate(ed.counselling_start_date ?? ed.counselling_date)));
+    push(dates, field("Counselling end", formatExamDate(ed.counselling_end_date)));
     push(dates, field("Application fee", formatInrFee(ed.application_fees)));
+    push(dates, field("UT service fee", ed.ut_service_fee != null ? `${ed.ut_service_fee} credits` : "—"));
   }
   if (dates.length) {
     sections.push({ id: "dates", title: "Important dates", fields: dates });

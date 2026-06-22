@@ -1,5 +1,5 @@
 /**
- * Counselling Ready — completed automation_applications with active counselling_date.
+ * Counselling Ready — completed automation_applications with active counselling window.
  */
 const ExamDates = require('../models/exam/ExamDates');
 const { normalizeExamDateIso, todayIsoDate } = require('../utils/examDateUtils');
@@ -29,11 +29,12 @@ async function loadCounsellingReadyProgress(userId) {
   let activeCount = 0;
 
   for (const examId of taxonomyIds) {
-    const counsellingDate = normalizeExamDateIso(dateMap.get(examId)?.counselling_date);
-    if (!counsellingDate) continue;
+    const row = dateMap.get(examId);
+    const counsellingStart = normalizeExamDateIso(row?.counselling_start_date ?? row?.counselling_date);
+    if (!counsellingStart) continue;
 
     totalCount += 1;
-    if (counsellingDate <= today) {
+    if (counsellingStart <= today) {
       activeCount += 1;
     }
   }

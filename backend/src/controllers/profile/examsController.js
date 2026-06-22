@@ -15,6 +15,7 @@ const CollegeRecommendedExam = require('../../models/college/CollegeRecommendedE
 const StreamInterestRecommendation = require('../../models/mapping/StreamInterestRecommendation');
 const {
   sortExamsByPopularityRank,
+  sortExamsUserStreamBeforeDefault,
   computeDashboardRecommendedExamOrder,
   buildExamTagsFromStreamInterestMappings,
   mergeExamTagMaps,
@@ -265,6 +266,8 @@ async function loadDashboardExamShortlistContext(userId) {
 
   return {
     streamId: streamNum,
+    defaultStreamId,
+    eligibilityStreamsByExamId,
     streamExams,
     recommendedExamIds,
     shortlistedExamIds,
@@ -345,7 +348,12 @@ async function loadJourneyExamPhaseDates(ctx) {
 function buildOrderedExamsForTab(tab, ctx) {
   const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
   if (tab === 'all') {
-    return sortExamsByPopularityRank(ctx.streamExams);
+    return sortExamsUserStreamBeforeDefault(
+      ctx.streamExams,
+      ctx.streamId,
+      ctx.defaultStreamId,
+      ctx.eligibilityStreamsByExamId
+    );
   }
   if (tab === 'recommended') {
     return ctx.recommendedExamIds.map((id) => examById.get(Number(id))).filter(Boolean);
@@ -355,6 +363,62 @@ function buildOrderedExamsForTab(tab, ctx) {
     return sortExamsByPopularityRank(rows);
   }
   return [];
+}
+
+/**
+ * Mock Test picker: union of filled → shortlisted → recommended (stream pool only).
+ * 1) already_filled_form (Applications / form-filled)
+ * 2) shortlisted (excluding tier 1)
+ * 3) recommended (excluding tiers 1–2), preserving recommendation order
+ */
+function buildOrderedExamsForMockTest(ctx) {
+  const examById = new Map(ctx.streamExams.map((e) => [Number(e.id), e]));
+  const filledIds = (ctx.alreadyFilledFormExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const shortlistedIds = (ctx.shortlistedExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const recommendedIds = (ctx.recommendedExamIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  const filledSet = new Set(filledIds);
+  const seen = new Set();
+  const ordered = [];
+
+  const appendRows = (rows) => {
+    for (const row of rows) {
+      const id = Number(row.id);
+      if (!Number.isInteger(id) || seen.has(id)) continue;
+      seen.add(id);
+      ordered.push(row);
+    }
+  };
+
+  appendRows(
+    sortExamsByPopularityRank(
+      filledIds.map((id) => examById.get(id)).filter(Boolean)
+    )
+  );
+
+  appendRows(
+    sortExamsByPopularityRank(
+      shortlistedIds
+        .filter((id) => !filledSet.has(id))
+        .map((id) => examById.get(id))
+        .filter(Boolean)
+    )
+  );
+
+  appendRows(
+    recommendedIds
+      .filter((id) => !seen.has(id))
+      .map((id) => examById.get(id))
+      .filter(Boolean)
+  );
+
+  return ordered;
 }
 
 async function filterOrderedExamsBySearch(orderedExams, searchRaw) {
@@ -1509,7 +1573,12 @@ class ExamsTaxonomyController {
         });
       }
 
-      const examsForAllTab = sortExamsByPopularityRank(ctx.streamExams);
+      const examsForAllTab = sortExamsUserStreamBeforeDefault(
+        ctx.streamExams,
+        ctx.streamId,
+        ctx.defaultStreamId,
+        ctx.eligibilityStreamsByExamId
+      );
       const allExams = await ExamsTaxonomyController.enrichExamRows(examsForAllTab);
 
       return res.json({
@@ -1602,6 +1671,56 @@ class ExamsTaxonomyController {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch dashboard exams meta',
+      });
+    }
+  }
+
+  /**
+   * Mock Test exam picker: filled → shortlisted → recommended (stream pool, enriched).
+   * GET /api/auth/profile/dashboard-exams/mock-test
+   */
+  static async getDashboardMockTestExams(req, res) {
+    try {
+      const ctx = await loadDashboardExamShortlistContext(req.user.id);
+      if (ctx.streamId == null) {
+        return res.json({
+          success: true,
+          data: {
+            streamId: null,
+            exams: [],
+            alreadyFilledFormExamIds: [],
+            shortlistedExamIds: [],
+            recommendedExamIds: [],
+            message: ctx.message || 'Select your stream in profile to view mock tests.',
+          },
+        });
+      }
+
+      const ordered = buildOrderedExamsForMockTest(ctx);
+      const exams = await ExamsTaxonomyController.enrichExamRows(ordered);
+
+      let message;
+      if (exams.length === 0) {
+        message =
+          'Shortlist exams, mark forms as filled, or add interests in your profile to see mock tests here.';
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          streamId: ctx.streamId,
+          exams,
+          alreadyFilledFormExamIds: ctx.alreadyFilledFormExamIds || [],
+          shortlistedExamIds: ctx.shortlistedExamIds || [],
+          recommendedExamIds: ctx.recommendedExamIds || [],
+          message,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard mock test exams:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch mock test exams',
       });
     }
   }
@@ -1878,8 +1997,11 @@ class ExamsTaxonomyController {
         'admit_card_date',
         'exam_date',
         'result_date',
+        'counselling_start_date',
+        'counselling_end_date',
         'counselling_date',
         'application_fees',
+        'ut_service_fee',
         'mode',
         'domicile',
         'streams',
@@ -2054,7 +2176,7 @@ class ExamsTaxonomyController {
 
       const headers = [
         'name', 'code', 'description', 'exam_type', 'difficulty_level', 'conducting_authority', 'documents_required', 'counselling', 'number_of_papers', 'logo_filename', 'exam_logo',
-        'application_start_date', 'application_close_date', 'admit_card_date', 'exam_date', 'result_date', 'counselling_date', 'application_fees', 'mode', 'domicile',
+        'application_start_date', 'application_close_date', 'admit_card_date', 'exam_date', 'result_date', 'counselling_start_date', 'counselling_end_date', 'counselling_date', 'application_fees', 'ut_service_fee', 'mode', 'domicile',
         'Streams', 'Subjects', 'age_limit', 'attempt_limit',
         'number_of_questions', 'total_marks', 'negative_marking', 'weightage_of_subjects', 'duration_hours',
         'ranks_percentiles', 'cutoff_general', 'cutoff_obc', 'cutoff_sc', 'cutoff_st', 'target_rank_range',
@@ -2102,8 +2224,11 @@ class ExamsTaxonomyController {
           (dates && dates.admit_card_date) ? String(dates.admit_card_date).slice(0, 10) : '',
           (dates && dates.exam_date) ? String(dates.exam_date).slice(0, 10) : '',
           (dates && dates.result_date) ? String(dates.result_date).slice(0, 10) : '',
+          (dates && (dates.counselling_start_date || dates.counselling_date)) ? String(dates.counselling_start_date || dates.counselling_date).slice(0, 10) : '',
+          (dates && dates.counselling_end_date) ? String(dates.counselling_end_date).slice(0, 10) : '',
           (dates && dates.counselling_date) ? String(dates.counselling_date).slice(0, 10) : '',
           appFees,
+          (dates && dates.ut_service_fee != null && dates.ut_service_fee !== '') ? String(dates.ut_service_fee) : '',
           (pattern && pattern.mode) ? pattern.mode : '',
           domicileStr,
           streamNames,
@@ -2529,10 +2654,19 @@ class ExamsTaxonomyController {
           const admitCardDate = parseDate(row.admit_card_date ?? row.Admit_Card_Date);
           const examDate = parseDate(row.exam_date ?? row.Exam_Date);
           const resultDate = parseDate(row.result_date ?? row.Result_Date);
-          const counsellingDate = parseDate(row.counselling_date ?? row.Counselling_Date);
+          const counsellingStart = parseDate(
+            row.counselling_start_date ?? row.Counselling_Start_Date ?? row.counselling_date ?? row.Counselling_Date
+          );
+          const counsellingEnd = parseDate(row.counselling_end_date ?? row.Counselling_End_Date);
           const feesRaw = row.application_fees ?? row.Application_Fees;
           const application_fees = feesRaw != null && String(feesRaw).trim() !== '' ? parseFloat(String(feesRaw)) : null;
-          if (appStart || appClose || admitCardDate || examDate || resultDate || counsellingDate || (application_fees != null && !Number.isNaN(application_fees))) {
+          const utFeeRaw = row.ut_service_fee ?? row.UT_Service_Fee;
+          const ut_service_fee = utFeeRaw != null && String(utFeeRaw).trim() !== '' ? parseFloat(String(utFeeRaw)) : null;
+          if (
+            appStart || appClose || admitCardDate || examDate || resultDate || counsellingStart || counsellingEnd
+            || (application_fees != null && !Number.isNaN(application_fees))
+            || (ut_service_fee != null && !Number.isNaN(ut_service_fee))
+          ) {
             await ExamDates.create({
               exam_id: examId,
               application_start_date: appStart,
@@ -2540,8 +2674,11 @@ class ExamsTaxonomyController {
               admit_card_date: admitCardDate,
               exam_date: examDate,
               result_date: resultDate,
-              counselling_date: counsellingDate,
-              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null
+              counselling_start_date: counsellingStart,
+              counselling_end_date: counsellingEnd,
+              counselling_date: counsellingStart,
+              application_fees: application_fees != null && !Number.isNaN(application_fees) ? application_fees : null,
+              ut_service_fee: ut_service_fee != null && !Number.isNaN(ut_service_fee) ? ut_service_fee : null,
             });
           }
         } catch (e) {

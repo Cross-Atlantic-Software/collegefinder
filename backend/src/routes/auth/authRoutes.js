@@ -36,20 +36,20 @@ const upload = multer({
       'image/webp',
       'application/pdf'
     ];
-    
+
     // Check MIME type
     if (!allowedMimeTypes.includes(file.mimetype)) {
       return cb(new Error('Only JPEG, PNG, WebP images and PDF files are allowed'), false);
     }
-    
+
     // Check file extension as additional validation
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
     const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
-    
+
     if (!allowedExtensions.includes(fileExtension)) {
       return cb(new Error('Invalid file extension. Only .jpg, .jpeg, .png, .webp, and .pdf files are allowed'), false);
     }
-    
+
     cb(null, true);
   },
 });
@@ -336,6 +336,13 @@ router.get('/profile/dashboard-exams/meta', authenticate, ExamsController.getDas
  * @access  Private
  */
 router.get('/profile/dashboard-exams/tab', authenticate, ExamsController.getDashboardExamsTab);
+
+/**
+ * @route   GET /api/auth/profile/dashboard-exams/mock-test
+ * @desc    Mock Test picker: form-filled, then shortlisted, then recommended exams
+ * @access  Private
+ */
+router.get('/profile/dashboard-exams/mock-test', authenticate, ExamsController.getDashboardMockTestExams);
 
 /**
  * @route   GET /api/auth/profile/dashboard-exams/exam/:examId

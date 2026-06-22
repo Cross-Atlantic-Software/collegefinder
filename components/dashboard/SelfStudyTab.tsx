@@ -1,14 +1,14 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { FiExternalLink, FiPlayCircle } from "react-icons/fi";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FiChevronLeft, FiChevronRight, FiChevronUp, FiPlayCircle } from "react-icons/fi";
 import type { ExamPrepLectureDto } from "@/api/auth/profile";
+import VideoModal from "@/components/dashboard/VideoModal";
 import { formatDurationFromSeconds } from "@/lib/formatDuration";
 import {
   useExamPrepLecturesBySubjectQuery,
   useExamPrepRecommendedQuery,
 } from "@/lib/examPrepLectureQueries";
-import { useExamPrepStrengthsQuery } from "@/lib/strengthQueries";
 
 type Topic = {
   id: number;
@@ -50,18 +50,35 @@ type VideoItem = {
   hookSummary?: string | null;
 };
 
-type TabStripItem = {
-  id: string;
-  label: ReactNode;
-};
-
 type TopicGroup = {
   id: string;
   name: string;
   lectures: ExamPrepLectureDto[];
 };
 
-const LECTURES_PER_TOPIC_PAGE = 6;
+const VIDEOS_PER_TOPIC = 5;
+const MAX_VISIBLE_TOPICS = 5;
+const HERO_CYCLE_MS = 7000;
+
+/** Matches exam prep / profile dashboard palette */
+const SITE = {
+  surface: "bg-[#eaf4ff]",
+  border: "border-[#dceeff]",
+  borderHover: "hover:border-[#FAD53C]",
+  pillActive: "border-[#FAD53C] bg-[#FAD53C] text-black shadow-sm",
+  pillInactive:
+    "border-[#dceeff] bg-[#eaf4ff] text-black/70 hover:border-[#FAD53C] hover:bg-[#FAD53C]/10",
+  /** Alternate inactive style when 2+ topics (site yellow tint) */
+  pillInactiveAlt:
+    "border-[#FAD53C]/40 bg-[#FAD53C]/15 text-black/75 hover:border-[#FAD53C] hover:bg-[#FAD53C]/25",
+  cta: "border border-black bg-black text-[#FAD53C] hover:bg-black/90",
+  input:
+    "border border-[#dceeff] bg-[#eaf4ff] text-black placeholder:text-black/40 focus:border-[#FAD53C] focus:ring-1 focus:ring-[#FAD53C]/25",
+  card: "border border-[#dceeff] bg-white",
+} as const;
+
+const VIDEO_GRID_CLASS =
+  "grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]";
 
 function formatCompact(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "0";
@@ -91,7 +108,7 @@ function prepLectureToVideoItem(lec: ExamPrepLectureDto): VideoItem {
   return {
     id: `lec-${lec.id}-${lec.youtubeId}`,
     youtubeId: lec.youtubeId,
-    title: `${lec.topicName} • ${lec.title}`,
+    title: lec.title,
     channel: lec.channel || "YouTube",
     duration: formatDurationFromSeconds(lec.durationSeconds ?? undefined),
     views: `${likesStr} likes · ${subsStr} subs`,
@@ -127,76 +144,19 @@ const toEmbedUrl = (youtubeId: string, startSeconds = 12, endSeconds = 20): stri
   return `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeId}&start=${startSeconds}&end=${endSeconds}&playsinline=1&modestbranding=1&rel=0`;
 };
 
-function HorizontalTabStrip({
-  tabs,
-  activeId,
-  onChange,
-}: {
-  tabs: TabStripItem[];
-  activeId: string;
-  onChange: (id: string) => void;
-}) {
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-
-  useEffect(() => {
-    const updateIndicator = () => {
-      const activeEl = tabRefs.current[activeId];
-      if (!activeEl) return;
-      setIndicatorStyle({ left: activeEl.offsetLeft, width: activeEl.offsetWidth });
-    };
-
-    updateIndicator();
-    window.addEventListener("resize", updateIndicator);
-    return () => window.removeEventListener("resize", updateIndicator);
-  }, [activeId, tabs]);
-
-  if (tabs.length === 0) return null;
-
-  return (
-    <div className="relative -mb-px flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeId;
-        return (
-          <button
-            key={tab.id}
-            ref={(el) => {
-              tabRefs.current[tab.id] = el;
-            }}
-            type="button"
-            onClick={() => onChange(tab.id)}
-            className={[
-              "flex min-w-max items-center gap-2 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium transition-colors duration-300 ease-in-out",
-              isActive
-                ? "border-b-slate-900 text-slate-900 dark:border-b-slate-100 dark:text-slate-100"
-                : "text-black/30 hover:text-black/60 dark:text-white/40 dark:hover:text-white/75",
-            ].join(" ")}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 h-0.5 bg-slate-900 transition-all duration-300 ease-in-out dark:bg-slate-100"
-        style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
-      />
-    </div>
-  );
-}
+const toHeroEmbedUrl = (youtubeId: string): string => {
+  return `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeId}&playsinline=1&modestbranding=1&rel=0`;
+};
 
 function LectureGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="overflow-hidden rounded-xl bg-slate-50 shadow-sm dark:bg-slate-800/70">
-          <div className="aspect-video animate-pulse bg-slate-200 dark:bg-slate-700" />
-          <div className="space-y-2 p-2.5">
-            <div className="h-3 w-5/6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-2.5 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-2.5 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-5 w-14 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+    <div className={VIDEO_GRID_CLASS}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="overflow-hidden rounded-lg border border-[#dceeff] bg-[#eaf4ff] shadow-sm">
+          <div className="aspect-video animate-pulse bg-[#dceeff]" />
+          <div className="space-y-1.5 p-2">
+            <div className="h-2.5 w-5/6 animate-pulse rounded bg-[#dceeff]" />
+            <div className="h-2 w-1/2 animate-pulse rounded bg-[#dceeff]" />
           </div>
         </div>
       ))}
@@ -204,85 +164,608 @@ function LectureGridSkeleton() {
   );
 }
 
-function RecommendedSubjectVideoCard({
+function buildYoutubeEmbedIframe(youtubeId: string): string {
+  return `<iframe src="https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+}
+
+function examPrepToModalLecture(lec: ExamPrepLectureDto) {
+  const iframeCode = lec.iframeCode?.trim();
+  const videoFile = lec.videoFile?.trim();
+  return {
+    id: lec.id,
+    name: `${lec.topicName} • ${lec.title}`,
+    iframe_code: iframeCode || (lec.youtubeId ? buildYoutubeEmbedIframe(lec.youtubeId) : null),
+    video_file: videoFile || null,
+    description: lec.hookSummary,
+  };
+}
+
+function CompactLectureVideoCard({
   lecture,
+  video,
   cardIndex,
+  onWatch,
+  showSubtopicLabel = false,
 }: {
   lecture: ExamPrepLectureDto;
+  video: VideoItem;
   cardIndex: number;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+  showSubtopicLabel?: boolean;
 }) {
-  const video = prepLectureToVideoItem(lecture);
+  const subtopicLabel = lecture.subtopicName?.trim();
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white dark:border-slate-700 dark:from-slate-800/80 dark:to-slate-900">
-      <div className="border-b border-slate-200/80 px-3 py-2 dark:border-slate-700">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
-          {lecture.subjectName}
-        </p>
-      </div>
-      <a
-        href={video.youtubeUrl}
-        target="_blank"
-        rel="noreferrer"
-        title={video.hookSummary || undefined}
-        className="group flex min-h-0 flex-1 flex-col"
+    <div className="group relative min-w-0">
+      <button
+        type="button"
+        title={video.hookSummary || video.title}
+        onClick={() => onWatch(lecture)}
+        className="block min-w-0 w-full overflow-hidden rounded-lg border border-[#dceeff] bg-[#eaf4ff] text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FAD53C] hover:shadow-md"
       >
         <div className="relative aspect-video overflow-hidden bg-black">
           <iframe
-            src={toEmbedUrl(video.youtubeId, 8 + (cardIndex % 6), 16 + (cardIndex % 6))}
+            src={toEmbedUrl(video.youtubeId, 8 + (cardIndex % 6), 14 + (cardIndex % 6))}
             title={video.title}
             loading="lazy"
-            className="h-full w-full"
+            className="pointer-events-none h-full w-full scale-110"
             allow="autoplay; encrypted-media; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
           />
-          <span className="absolute right-2 top-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+          <span className="absolute right-1 top-1 rounded bg-black/80 px-1 py-0.5 text-[9px] font-medium text-white">
             {video.duration}
           </span>
         </div>
-        <div className="relative flex flex-1 flex-col p-3">
-          {video.hookSummary ? (
-            <div className="pointer-events-none absolute bottom-full left-3 right-3 z-20 mb-2 hidden max-h-32 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-700 shadow-lg group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
-              {video.hookSummary}
-            </div>
+
+        <div className="space-y-0.5 p-2">
+          {showSubtopicLabel && subtopicLabel ? (
+            <p className="truncate text-[10px] font-semibold text-black/55">{subtopicLabel}</p>
           ) : null}
-          <p className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-black px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FAD53C]">
-            <FiPlayCircle className="text-[11px]" /> Recommended
-          </p>
-          <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+          <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-black/85">
             {video.title}
-          </h4>
-          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            {video.channel} • {video.views}
           </p>
-          <span className="mt-auto inline-flex w-fit items-center gap-1 rounded-full bg-black px-3 py-1.5 text-[11px] font-semibold text-[#FAD53C]">
-            View <FiExternalLink className="text-[10px]" />
+          <p className="truncate text-[10px] text-black/50">{video.channel}</p>
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-black px-2 py-0.5 text-[9px] font-semibold text-[#FAD53C]">
+            Watch <FiPlayCircle className="text-[9px]" />
           </span>
         </div>
-      </a>
-    </article>
+      </button>
+    </div>
   );
 }
 
-function RecommendedVideosSkeleton({ count }: { count: number }) {
-  const slots = Math.max(count, 1);
+function HeroSkeleton() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: slots }).map((_, index) => (
+    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-[#dceeff] animate-pulse sm:aspect-[21/9]" />
+  );
+}
+
+function NetflixHeroCarousel({
+  lectures,
+  heroIndex,
+  onIndexChange,
+  onWatch,
+  onPauseChange,
+}: {
+  lectures: ExamPrepLectureDto[];
+  heroIndex: number;
+  onIndexChange: (index: number) => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+  onPauseChange: (paused: boolean) => void;
+}) {
+  const current = lectures[heroIndex];
+  if (!current) return null;
+
+  const video = prepLectureToVideoItem(current);
+  const goPrev = () => onIndexChange((heroIndex - 1 + lectures.length) % lectures.length);
+  const goNext = () => onIndexChange((heroIndex + 1) % lectures.length);
+
+  return (
+    <div
+      className="group relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-black shadow-lg sm:aspect-[21/9]"
+      onMouseEnter={() => onPauseChange(true)}
+      onMouseLeave={() => onPauseChange(false)}
+    >
+      {lectures.map((lecture, index) => (
         <div
-          key={index}
-          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40"
+          key={`${lecture.id}-${lecture.youtubeId}`}
+          className={[
+            "absolute inset-0 transition-opacity duration-700 ease-in-out",
+            index === heroIndex ? "opacity-100" : "pointer-events-none opacity-0",
+          ].join(" ")}
         >
-          <div className="h-9 animate-pulse border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" />
-          <div className="aspect-video animate-pulse bg-slate-200 dark:bg-slate-700" />
-          <div className="space-y-2 p-3">
-            <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-4 w-5/6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-          </div>
+          <iframe
+            src={toHeroEmbedUrl(lecture.youtubeId)}
+            title={lecture.title}
+            className="pointer-events-none h-full w-full scale-[1.15] object-cover"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
         </div>
       ))}
+
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent" />
+
+      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5 md:p-6">
+        <p className="text-[11px] font-medium text-white/75 sm:text-xs">
+          {current.subjectName}
+          <span className="mx-1.5 text-white/40">·</span>
+          {current.topicName}
+        </p>
+        <h2 className="mt-1 max-w-lg text-base font-bold leading-snug tracking-tight text-white sm:max-w-xl sm:text-lg md:text-xl">
+          {video.title}
+        </h2>
+        {current.hookSummary ? (
+          <p className="mt-1.5 line-clamp-2 max-w-md text-[11px] leading-relaxed text-white/65 sm:text-xs">
+            {current.hookSummary}
+          </p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4">
+          <button
+            type="button"
+            onClick={() => onWatch(current)}
+            className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-black bg-black px-4 py-1.5 text-xs font-bold text-[#FAD53C] shadow-md transition hover:bg-black/90 active:scale-95 sm:px-5 sm:py-2 sm:text-sm"
+          >
+            <FiPlayCircle className="text-base sm:text-lg" />
+            Play
+          </button>
+          <span className="text-[10px] text-white/55 sm:text-xs">{video.views}</span>
+        </div>
+      </div>
+
+      {lectures.length > 1 ? (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous video"
+            className="pointer-events-auto absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100 sm:left-4 sm:h-10 sm:w-10"
+          >
+            <FiChevronLeft className="text-xl" />
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next video"
+            className="pointer-events-auto absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100 sm:right-4 sm:h-10 sm:w-10"
+          >
+            <FiChevronRight className="text-xl" />
+          </button>
+          <div className="absolute bottom-3 right-4 flex gap-1.5 sm:bottom-4 sm:right-6">
+            {lectures.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Go to slide ${index + 1}`}
+                onClick={() => onIndexChange(index)}
+                className={[
+                  "pointer-events-auto h-1 rounded-full transition-all",
+                  index === heroIndex ? "w-5 bg-[#FAD53C]" : "w-1.5 bg-white/40 hover:bg-white/70",
+                ].join(" ")}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function UpcomingVideosQueue({
+  lectures,
+  heroIndex,
+  onSelect,
+}: {
+  lectures: ExamPrepLectureDto[];
+  heroIndex: number;
+  onSelect: (index: number) => void;
+}) {
+  if (lectures.length <= 1) {
+    return (
+      <div className="flex h-full min-h-[200px] flex-col justify-center rounded-2xl border border-dashed border-[#dceeff] bg-[#eaf4ff] p-4 text-center text-sm text-black/55">
+        More recommended videos will appear here as they are added for your stream.
+      </div>
+    );
+  }
+
+  const upcoming: { lecture: ExamPrepLectureDto; index: number }[] = [];
+  for (let offset = 1; offset < lectures.length; offset++) {
+    const index = (heroIndex + offset) % lectures.length;
+    upcoming.push({ lecture: lectures[index], index });
+  }
+
+  return (
+    <div className={`flex h-full flex-col rounded-2xl ${SITE.card} p-3 shadow-sm md:p-4`}>
+      <div className="mb-3 shrink-0">
+        <h3 className="text-sm font-semibold text-black/85">Up next</h3>
+        <p className="text-[11px] text-black/50">Tap to preview in the hero</p>
+      </div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+        {upcoming.map(({ lecture, index }, queuePos) => (
+          <button
+            key={`${lecture.id}-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={`flex w-full items-center gap-3 rounded-xl border ${SITE.border} ${SITE.surface} p-2 text-left transition ${SITE.borderHover} hover:bg-[#FAD53C]/10`}
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-[#FAD53C]">
+              {queuePos + 1}
+            </span>
+            <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-black">
+              <iframe
+                src={toEmbedUrl(lecture.youtubeId, 5, 12)}
+                title={lecture.title}
+                className="pointer-events-none h-full w-full scale-125"
+                loading="lazy"
+                allow="autoplay; encrypted-media"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[10px] font-medium text-black/50">
+                {lecture.subjectName} · {lecture.topicName}
+              </p>
+              <p className="truncate text-xs font-semibold text-black/85">{lecture.title}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopicPillTabs({
+  topicGroups,
+  activeTopicId,
+  onChange,
+  onExpand,
+}: {
+  topicGroups: TopicGroup[];
+  activeTopicId: string | null;
+  onChange: (id: string) => void;
+  onExpand: () => void;
+}) {
+  const visible = topicGroups.slice(0, MAX_VISIBLE_TOPICS);
+  const hasMore = topicGroups.length > MAX_VISIBLE_TOPICS;
+  const alternateColors = topicGroups.length > 1;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {visible.map((topic, index) => {
+        const isActive = topic.id === activeTopicId;
+        const inactiveClass =
+          alternateColors && index % 2 === 1 ? SITE.pillInactiveAlt : SITE.pillInactive;
+        return (
+          <button
+            key={topic.id}
+            type="button"
+            onClick={() => onChange(topic.id)}
+            className={[
+              "rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight transition",
+              isActive ? SITE.pillActive : inactiveClass,
+            ].join(" ")}
+          >
+            {topic.name}
+            <span
+              className={[
+                "ml-1 rounded-full px-1 py-px text-[9px] leading-none",
+                isActive
+                  ? "bg-black/10 text-black"
+                  : alternateColors && index % 2 === 1
+                    ? "bg-black/10 text-black/65"
+                    : "bg-black/5 text-black/55",
+              ].join(" ")}
+            >
+              {topic.lectures.length}
+            </span>
+          </button>
+        );
+      })}
+      {hasMore ? (
+        <button
+          type="button"
+          onClick={onExpand}
+          className="rounded-full border border-dashed border-[#dceeff] px-2.5 py-1 text-[11px] font-semibold text-black/60 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
+        >
+          + more
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function TopicVideosBlock({
+  topic,
+  sortBy,
+  visibleLimit,
+  onLoadMore,
+  onShowLess,
+  onWatch,
+  headingClassName = "text-base font-bold text-black/85",
+  showSubtopicLabel = false,
+}: {
+  topic: TopicGroup;
+  sortBy: "latest" | "popular";
+  visibleLimit: number;
+  onLoadMore: () => void;
+  onShowLess?: () => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+  headingClassName?: string;
+  showSubtopicLabel?: boolean;
+}) {
+  const videos = useMemo(
+    () => sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy),
+    [topic.lectures, sortBy]
+  );
+  const limit = Math.min(videos.length, visibleLimit);
+  const visibleVideos = videos.slice(0, limit);
+  const hasMore = videos.length > limit;
+  const canShowLess = visibleLimit > VIDEOS_PER_TOPIC && !!onShowLess;
+  const remaining = videos.length - limit;
+  const moreLabel =
+    remaining > 99 ? `+ more (${formatCompact(remaining)}+)` : `+ more (${remaining} more)`;
+
+  return (
+    <div className="space-y-3">
+      <h4 className={headingClassName}>{topic.name}</h4>
+      <div className={VIDEO_GRID_CLASS}>
+        {visibleVideos.map((video, index) => {
+          const lecture = topic.lectures.find((lec) => `lec-${lec.id}-${lec.youtubeId}` === video.id);
+          if (!lecture) return null;
+          return (
+            <CompactLectureVideoCard
+              key={video.id}
+              lecture={lecture}
+              video={video}
+              cardIndex={index}
+              onWatch={onWatch}
+              showSubtopicLabel={showSubtopicLabel}
+            />
+          );
+        })}
+      </div>
+      {hasMore || canShowLess ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {hasMore ? (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
+            >
+              {moreLabel}
+            </button>
+          ) : null}
+          {canShowLess ? (
+            <button
+              type="button"
+              onClick={onShowLess}
+              className={`inline-flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold transition ${SITE.cta}`}
+            >
+              <FiChevronUp className="text-sm" />
+              Show less
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ExpandedTopicsPanel({
+  topicGroups,
+  sortBy,
+  visibleByTopicId,
+  onLoadMoreVideos,
+  onShowLessVideos,
+  onCollapse,
+  onWatch,
+}: {
+  topicGroups: TopicGroup[];
+  sortBy: "latest" | "popular";
+  visibleByTopicId: Record<string, number>;
+  onLoadMoreVideos: (topicId: string, total: number) => void;
+  onShowLessVideos: (topicId: string) => void;
+  onCollapse: () => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+}) {
+  const alternateColors = topicGroups.length > 1;
+
+  return (
+    <div className="space-y-1">
+      <div className="mb-3 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onCollapse}
+          className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${SITE.cta}`}
+        >
+          <FiChevronUp className="text-sm" />
+          Show less
+        </button>
+      </div>
+
+      <div className={`divide-y divide-[#dceeff] rounded-xl border ${SITE.border} ${SITE.surface} p-3 md:p-4`}>
+        {topicGroups.map((topic, index) => (
+          <div
+            key={topic.id}
+            className={[
+              "py-5 first:pt-0 last:pb-0",
+              alternateColors && index % 2 === 1 ? "bg-[#FAD53C]/5" : "",
+            ].join(" ")}
+          >
+            <TopicVideosBlock
+              topic={topic}
+              sortBy={sortBy}
+              visibleLimit={visibleByTopicId[topic.id] ?? VIDEOS_PER_TOPIC}
+              onLoadMore={() =>
+                onLoadMoreVideos(
+                  topic.id,
+                  sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy).length
+                )
+              }
+              onShowLess={() => onShowLessVideos(topic.id)}
+              onWatch={onWatch}
+              headingClassName="mb-3 text-base font-bold text-black/90"
+              showSubtopicLabel
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SubjectStudySection({
+  subject,
+  query,
+  sortBy,
+  onWatch,
+}: {
+  subject: SubjectSection;
+  query: string;
+  sortBy: "latest" | "popular";
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+}) {
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const [topicsExpanded, setTopicsExpanded] = useState(false);
+  const [visibleByTopicId, setVisibleByTopicId] = useState<Record<string, number>>({});
+
+  const subjectQuery = useExamPrepLecturesBySubjectQuery({
+    subjectId: subject.id,
+    search: query,
+  });
+
+  const subjectLectures = subjectQuery.data?.lectures ?? [];
+
+  const topicGroups = useMemo<TopicGroup[]>(() => {
+    const grouped = new Map<string, ExamPrepLectureDto[]>();
+    for (const lecture of subjectLectures) {
+      const key = String(lecture.topicId);
+      const list = grouped.get(key);
+      if (list) list.push(lecture);
+      else grouped.set(key, [lecture]);
+    }
+    return [...grouped.entries()]
+      .map(([topicId, lectures]) => ({
+        id: topicId,
+        name: lectures[0]?.topicName || `Topic ${topicId}`,
+        lectures,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }, [subjectLectures]);
+
+  const topicIdsKey = useMemo(() => topicGroups.map((t) => t.id).join(","), [topicGroups]);
+
+  useEffect(() => {
+    setActiveTopicId((current) => {
+      if (!topicGroups.length) return null;
+      if (current && topicGroups.some((t) => t.id === current)) return current;
+      return topicGroups[0].id;
+    });
+    setTopicsExpanded(false);
+    setVisibleByTopicId({});
+  }, [subject.id, query, topicIdsKey]);
+
+  const activeTopic = useMemo(
+    () => topicGroups.find((t) => t.id === activeTopicId) ?? null,
+    [activeTopicId, topicGroups]
+  );
+
+  const activeTopicVideos = useMemo(() => {
+    if (!activeTopic) return [];
+    return sortVideos(activeTopic.lectures.map(prepLectureToVideoItem), sortBy);
+  }, [activeTopic, sortBy]);
+
+  const activeLimit = activeTopic
+    ? Math.min(activeTopicVideos.length, visibleByTopicId[activeTopic.id] ?? VIDEOS_PER_TOPIC)
+    : 0;
+
+  return (
+    <section
+      className={[
+        "space-y-4 border-t border-[#dceeff] pt-6 first:border-t-0 first:pt-0 transition-all duration-300",
+        topicsExpanded ? "rounded-xl border border-[#dceeff] bg-[#f8fbff] p-4 -mx-1 sm:mx-0" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-xl font-bold text-black/90">{subject.name}</h3>
+        {subjectQuery.isFetching && subjectQuery.data ? (
+          <span className="text-[11px] text-black/40">Updating…</span>
+        ) : null}
+      </div>
+
+      {subjectQuery.isError ? (
+        <div className="rounded-xl bg-red-50 px-4 py-8 text-center text-sm text-red-600">
+          Could not load videos for {subject.name}.
+          <button
+            type="button"
+            onClick={() => void subjectQuery.refetch()}
+            className="ml-2 font-semibold underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : subjectQuery.isLoading ? (
+        <LectureGridSkeleton />
+      ) : topicGroups.length === 0 ? (
+        <p className="text-sm text-black/55">No videos available for this subject yet.</p>
+      ) : topicsExpanded ? (
+        <ExpandedTopicsPanel
+          topicGroups={topicGroups}
+          sortBy={sortBy}
+          visibleByTopicId={visibleByTopicId}
+          onLoadMoreVideos={(topicId, total) =>
+            setVisibleByTopicId((prev) => ({
+              ...prev,
+              [topicId]: Math.min(total, (prev[topicId] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC),
+            }))
+          }
+          onShowLessVideos={(topicId) =>
+            setVisibleByTopicId((prev) => ({
+              ...prev,
+              [topicId]: VIDEOS_PER_TOPIC,
+            }))
+          }
+          onCollapse={() => setTopicsExpanded(false)}
+          onWatch={onWatch}
+        />
+      ) : (
+        <>
+          <TopicPillTabs
+            topicGroups={topicGroups}
+            activeTopicId={activeTopicId}
+            onChange={setActiveTopicId}
+            onExpand={() => setTopicsExpanded(true)}
+          />
+
+          <div className="w-full min-w-0">
+            {activeTopic ? (
+              <TopicVideosBlock
+                topic={activeTopic}
+                sortBy={sortBy}
+                visibleLimit={activeLimit}
+                onLoadMore={() =>
+                  setVisibleByTopicId((prev) => ({
+                    ...prev,
+                    [activeTopic.id]: Math.min(
+                      activeTopicVideos.length,
+                      (prev[activeTopic.id] ?? VIDEOS_PER_TOPIC) + VIDEOS_PER_TOPIC
+                    ),
+                  }))
+                }
+                onShowLess={() =>
+                  setVisibleByTopicId((prev) => ({
+                    ...prev,
+                    [activeTopic.id]: VIDEOS_PER_TOPIC,
+                  }))
+                }
+                onWatch={onWatch}
+              />
+            ) : null}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -293,38 +776,24 @@ export default function SelfStudyTab({
   sortBy,
   onToggleSort,
 }: Props) {
-  const { strengths: userStrengths, loading: strengthsLoading } = useExamPrepStrengthsQuery();
   const filteredSubjects = useMemo(() => {
     const q = query.toLowerCase().trim();
     if (!q) return subjects;
-
     return subjects.filter((subject) => {
       if (subject.name.toLowerCase().includes(q)) return true;
       return [...subject.topics, ...subject.allTopics].some((topic) => topic.name.toLowerCase().includes(q));
     });
   }, [query, subjects]);
 
-  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(filteredSubjects[0]?.id ?? null);
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
-  const [visibleByTopicId, setVisibleByTopicId] = useState<Record<string, number>>({});
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const [videoModalLecture, setVideoModalLecture] = useState<ReturnType<typeof examPrepToModalLecture> | null>(null);
 
-  useEffect(() => {
-    setActiveSubjectId((current) => {
-      if (!filteredSubjects.length) return null;
-      if (current && filteredSubjects.some((subject) => subject.id === current)) return current;
-      return filteredSubjects[0].id;
-    });
-  }, [filteredSubjects]);
-
-  useEffect(() => {
-    setVisibleByTopicId({});
-  }, [activeSubjectId, query, sortBy]);
+  const openVideoModal = useCallback((lecture: ExamPrepLectureDto) => {
+    setVideoModalLecture(examPrepToModalLecture(lecture));
+  }, []);
 
   const recommendedQuery = useExamPrepRecommendedQuery(sortBy);
-  const subjectQuery = useExamPrepLecturesBySubjectQuery({
-    subjectId: activeSubjectId,
-    search: query,
-  });
 
   const recommendedLectures = useMemo(() => {
     const lectures = recommendedQuery.data?.lectures ?? [];
@@ -337,361 +806,125 @@ export default function SelfStudyTab({
       .filter((lecture): lecture is ExamPrepLectureDto => lecture != null);
   }, [recommendedQuery.data?.lectures, recommendedQuery.data?.lecture, filteredSubjects]);
 
-  const activeSubject = useMemo(
-    () => filteredSubjects.find((subject) => subject.id === activeSubjectId) ?? null,
-    [activeSubjectId, filteredSubjects]
-  );
-
-  const subjectLectures = subjectQuery.data?.lectures ?? [];
-
-  const subjectTabs = useMemo<TabStripItem[]>(
-    () => filteredSubjects.map((subject) => ({ id: subject.id, label: subject.name })),
-    [filteredSubjects]
-  );
-
-  const topicGroups = useMemo<TopicGroup[]>(() => {
-    const grouped = new Map<string, ExamPrepLectureDto[]>();
-    for (const lecture of subjectLectures) {
-      const key = String(lecture.topicId);
-      const list = grouped.get(key);
-      if (list) {
-        list.push(lecture);
-      } else {
-        grouped.set(key, [lecture]);
-      }
-    }
-
-    return [...grouped.entries()]
-      .map(([topicId, lectures]) => ({
-        id: topicId,
-        name: lectures[0]?.topicName || `Topic ${topicId}`,
-        lectures,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }, [subjectLectures]);
-
-  const topicTabs = useMemo<TabStripItem[]>(
-    () =>
-      topicGroups.map((topic) => ({
-        id: topic.id,
-        label: (
-          <span className="inline-flex items-center gap-1">
-            <span>{topic.name}</span>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {topic.lectures.length}
-            </span>
-          </span>
-        ),
-      })),
-    [topicGroups]
-  );
+  useEffect(() => {
+    setHeroIndex((i) => (recommendedLectures.length ? i % recommendedLectures.length : 0));
+  }, [recommendedLectures.length]);
 
   useEffect(() => {
-    if (!topicTabs.length) {
-      setActiveTopicId(null);
-      return;
-    }
-
-    setActiveTopicId((current) => {
-      if (current && topicTabs.some((tab) => tab.id === current)) return current;
-      return topicTabs[0].id;
-    });
-  }, [topicTabs]);
-
-  const activeTopic = useMemo(
-    () => topicGroups.find((topic) => topic.id === activeTopicId) ?? null,
-    [activeTopicId, topicGroups]
-  );
-
-  const activeTopicVideos = useMemo(() => {
-    if (!activeTopic) return [];
-    return sortVideos(activeTopic.lectures.map(prepLectureToVideoItem), sortBy);
-  }, [activeTopic, sortBy]);
+    if (heroPaused || recommendedLectures.length <= 1) return;
+    const timer = setInterval(() => {
+      setHeroIndex((i) => (i + 1) % recommendedLectures.length);
+    }, HERO_CYCLE_MS);
+    return () => clearInterval(timer);
+  }, [heroPaused, recommendedLectures.length]);
 
   const recommendedLoading = recommendedQuery.isLoading && recommendedLectures.length === 0;
-  const subjectLoading = subjectQuery.isLoading && !!activeSubjectId;
-  const hasSubjects = filteredSubjects.length > 0;
-  const activeLimit = activeTopic ? Math.min(activeTopicVideos.length, visibleByTopicId[activeTopic.id] ?? LECTURES_PER_TOPIC_PAGE) : 0;
-  const visibleTopicVideos = activeTopicVideos.slice(0, activeLimit);
-  const hasMoreTopicVideos = activeTopic ? activeTopicVideos.length > activeLimit : false;
   const searchText = query.trim();
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden">
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]">
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-4">
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recommended Videos</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                One top pick per subject from your stream
-              </p>
-            </div>
-
-            <div className="flex w-full items-center gap-2 md:w-auto">
-              <input
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="Search videos by topic or subject"
-                className="w-full rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:bg-slate-200/70 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700/70 md:w-[300px]"
-              />
-              <button
-                type="button"
-                onClick={onToggleSort}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                {sortBy === "latest" ? "Latest" : "Popular"}
-              </button>
-            </div>
-          </div>
-
-          {recommendedQuery.isError ? (
-            <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-red-600 dark:bg-slate-800/40 dark:text-red-300">
-              <div>
-                <p className="font-semibold">Could not load the recommended video.</p>
-                <button
-                  type="button"
-                  onClick={() => void recommendedQuery.refetch()}
-                  className="mt-3 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 dark:border-red-900/40 dark:text-red-200 dark:hover:bg-red-950/30"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          ) : recommendedLoading ? (
-            <RecommendedVideosSkeleton count={filteredSubjects.length || 3} />
-          ) : recommendedLectures.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {recommendedLectures.map((lecture, index) => (
-                <RecommendedSubjectVideoCard key={lecture.subjectId} lecture={lecture} cardIndex={index} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-500 dark:bg-slate-800/40 dark:text-slate-300">
-              <div>
-                <p className="font-semibold text-slate-700 dark:text-slate-200">No recommended video yet.</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {recommendedQuery.data?.message || "Try another sort option or check back after more lectures are tagged."}
-                </p>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-4">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Your Strengths</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Top strengths from your analysis</p>
-            </div>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
-              {strengthsLoading ? "Loading" : userStrengths?.length ? `${userStrengths.length} listed` : "No data"}
-            </span>
-          </div>
-
-          {strengthsLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-              ))}
-            </div>
-          ) : userStrengths && userStrengths.length > 0 ? (
-            <div className="space-y-2">
-              {userStrengths.slice(0, 5).map((strength, index) => (
-                <div
-                  key={`${strength}-${index}`}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/70"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-xs font-semibold text-[#FAD53C]">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{strength}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
-              Your strength results will appear here once the analysis is available.
-            </div>
-          )}
-        </section>
-      </div>
-
-      <section className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-4">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      {/* Recommended hero + up next */}
+      <section className={`rounded-2xl ${SITE.card} p-3 shadow-sm md:p-4`}>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Study by Subject</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Click a subject to load its lectures, then switch topics within that subject.
-            </p>
+            <h3 className="text-lg font-semibold text-black/90">Recommended</h3>
+            <p className="text-xs text-black/50">Top picks for your stream</p>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            {subjectQuery.isFetching && subjectQuery.data ? "Updating lectures..." : null}
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Search by subject or topic"
+              className={`w-full rounded-xl px-3 py-2 text-sm outline-none md:w-[260px] ${SITE.input}`}
+            />
+            <button
+              type="button"
+              onClick={onToggleSort}
+              className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition ${SITE.cta}`}
+            >
+              {sortBy === "latest" ? "Latest" : "Popular"}
+            </button>
           </div>
         </div>
 
-        {!hasSubjects ? (
-          <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-slate-50 px-4 py-12 text-center text-sm text-slate-500 dark:bg-slate-800/40 dark:text-slate-300">
+        {recommendedQuery.isError ? (
+          <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-[#eaf4ff] px-4 py-10 text-center text-sm text-red-600">
             <div>
-              <p className="font-semibold text-slate-700 dark:text-slate-200">
-                {searchText ? "No subjects match this search." : "No subjects available yet."}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {searchText
-                  ? "Try a different query or clear the search box to browse all subjects."
-                  : "Once your stream is configured, subject tabs will appear here."}
-              </p>
+              <p className="font-semibold">Could not load recommended videos.</p>
+              <button
+                type="button"
+                onClick={() => void recommendedQuery.refetch()}
+                className="mt-3 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                Retry
+              </button>
             </div>
           </div>
+        ) : recommendedLoading ? (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
+            <HeroSkeleton />
+            <div className="hidden min-h-[200px] animate-pulse rounded-2xl bg-[#eaf4ff] xl:block" />
+          </div>
+        ) : recommendedLectures.length > 0 ? (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
+            <NetflixHeroCarousel
+              lectures={recommendedLectures}
+              heroIndex={heroIndex}
+              onIndexChange={setHeroIndex}
+              onWatch={openVideoModal}
+              onPauseChange={setHeroPaused}
+            />
+            <UpcomingVideosQueue
+              lectures={recommendedLectures}
+              heroIndex={heroIndex}
+              onSelect={setHeroIndex}
+            />
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-[#eaf4ff] px-4 py-10 text-center text-sm text-black/55">
             <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Subjects</h4>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{filteredSubjects.length} tabs</span>
-              </div>
-              <HorizontalTabStrip
-                tabs={subjectTabs}
-                activeId={activeSubjectId ?? subjectTabs[0]?.id ?? ""}
-                onChange={(id) => setActiveSubjectId(id)}
-              />
+              <p className="font-semibold text-black/75">No recommended video yet.</p>
+              <p className="mt-1 text-xs text-black/50">
+                {recommendedQuery.data?.message || "Check back after more lectures are tagged for your stream."}
+              </p>
             </div>
-
-            {subjectQuery.isError ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-xl bg-slate-50 px-4 py-10 text-center text-sm text-red-600 dark:bg-slate-800/40 dark:text-red-300">
-                <div>
-                  <p className="font-semibold">Could not load lectures for this subject.</p>
-                  <button
-                    type="button"
-                    onClick={() => void subjectQuery.refetch()}
-                    className="mt-3 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 dark:border-red-900/40 dark:text-red-200 dark:hover:bg-red-950/30"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            ) : subjectLoading ? (
-              <div className="space-y-4">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <div className="h-4 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                  <div className="h-3 w-20 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                </div>
-                <div className="h-11 w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-                <LectureGridSkeleton />
-              </div>
-            ) : topicTabs.length === 0 ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-500 dark:bg-slate-800/40 dark:text-slate-300">
-                <div>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200">
-                    {searchText
-                      ? `No videos found for "${searchText}" in ${activeSubject?.name || "this subject"}.`
-                      : `No videos found for ${activeSubject?.name || "this subject"} yet.`}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Try a broader search or pick another subject tab.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Topics</h4>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{topicTabs.length} topics</span>
-                  </div>
-                  <HorizontalTabStrip
-                    tabs={topicTabs}
-                    activeId={activeTopicId ?? topicTabs[0]?.id ?? ""}
-                    onChange={(id) => setActiveTopicId(id)}
-                  />
-                </div>
-
-                <div className="w-full min-w-0">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {activeTopic?.name || "Topic"}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {activeTopicVideos.length} videos in this topic
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="w-full min-w-0 pb-1">
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                      {visibleTopicVideos.map((video, index) => (
-                        <div key={video.id} className="group relative min-w-0">
-                          <a
-                            href={video.youtubeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={video.hookSummary || undefined}
-                            className="block min-w-0 overflow-hidden rounded-xl bg-slate-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/70"
-                          >
-                            <div className="relative aspect-video overflow-hidden bg-black">
-                              <iframe
-                                src={toEmbedUrl(video.youtubeId, 8 + (index % 6), 14 + (index % 6))}
-                                title={video.title}
-                                loading="lazy"
-                                className="h-full w-full"
-                                allow="autoplay; encrypted-media; picture-in-picture"
-                                referrerPolicy="strict-origin-when-cross-origin"
-                              />
-                              <span className="absolute right-1.5 top-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                {video.duration}
-                              </span>
-                            </div>
-
-                            <div className="space-y-1 p-2.5">
-                              <p className="line-clamp-2 text-xs font-semibold leading-4 text-slate-900 dark:text-slate-100">
-                                {video.title}
-                              </p>
-                              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{video.channel}</p>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400">{video.views}</p>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-[#FAD53C]">
-                                View <FiExternalLink className="text-[10px]" />
-                              </span>
-                            </div>
-                          </a>
-                          {video.hookSummary ? (
-                            <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 hidden w-[min(100%,280px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-700 shadow-xl group-hover:block dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
-                              {video.hookSummary}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-
-                    {hasMoreTopicVideos ? (
-                      <div className="mt-3 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            activeTopic &&
-                            setVisibleByTopicId((prev) => ({
-                              ...prev,
-                              [activeTopic.id]: Math.min(
-                                activeTopicVideos.length,
-                                (prev[activeTopic.id] ?? LECTURES_PER_TOPIC_PAGE) + LECTURES_PER_TOPIC_PAGE
-                              ),
-                            }))
-                          }
-                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                        >
-                          Load more lectures ({activeTopicVideos.length - activeLimit} more)
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </section>
+
+      {/* Stacked subjects */}
+      {filteredSubjects.length === 0 ? (
+        <div className={`rounded-2xl ${SITE.card} p-6 text-center text-sm text-black/55 shadow-sm`}>
+          <p className="font-semibold text-black/75">
+            {searchText ? "No subjects match this search." : "No subjects available yet."}
+          </p>
+          {searchText ? (
+            <p className="mt-1 text-xs">Try a different query or clear the search box.</p>
+          ) : null}
+        </div>
+      ) : (
+        <div className={`rounded-2xl ${SITE.card} p-3 shadow-sm md:p-5`}>
+          <div className="space-y-8">
+            {filteredSubjects.map((subject) => (
+              <SubjectStudySection
+                key={subject.id}
+                subject={subject}
+                query={query}
+                sortBy={sortBy}
+                onWatch={openVideoModal}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {videoModalLecture ? (
+        <VideoModal
+          lecture={videoModalLecture}
+          isOpen={!!videoModalLecture}
+          onClose={() => setVideoModalLecture(null)}
+        />
+      ) : null}
     </div>
   );
 }

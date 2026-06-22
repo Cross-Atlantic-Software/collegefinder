@@ -29,9 +29,8 @@ export function CollegeShortlistCard({
 }: CollegeShortlistCardProps) {
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
-      <CollegeCardHeader college={college} />
-
-      <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2">
+      <div className="relative">
+        <CollegeCardHeader college={college} />
         <div className="absolute right-2 top-2 z-10">
           <CardShortlistHeart
             isShortlisted={isShortlisted}
@@ -40,8 +39,10 @@ export function CollegeShortlistCard({
             itemLabel={college.college_name}
           />
         </div>
+      </div>
 
-        <p className="line-clamp-3 pr-8 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+      <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-3">
+        <p className="line-clamp-3 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
           {displayOverview}
         </p>
 

@@ -21,6 +21,7 @@ const {
 const multer = require('multer');
 const db = require('../../config/database');
 const { scheduleLectureHookSummary } = require('../../utils/lectureHookSummary');
+const { syncLectureExamPrepTags } = require('../../services/lectureExamPrepTags');
 const {
   enqueueLectureHookSummary,
   enqueueLectureHookSummaryIfPending,
@@ -483,12 +484,12 @@ class LectureController {
         youtube_subscriber_count: youtubeMeta?.subscriberCount ?? null,
       });
 
-      if (req.body.stream_ids !== undefined) {
-        await Lecture.setStreams(lecture.id, parseIdArrayField(req.body.stream_ids));
-      }
-      if (req.body.subject_ids !== undefined) {
-        await Lecture.setSubjects(lecture.id, parseIdArrayField(req.body.subject_ids));
-      }
+      await syncLectureExamPrepTags(
+        lecture.id,
+        parseInt(topic_id, 10),
+        parseIdArrayField(req.body.subject_ids),
+        parseIdArrayField(req.body.stream_ids)
+      );
       if (req.body.exam_ids !== undefined) {
         await Lecture.setExams(lecture.id, parseIdArrayField(req.body.exam_ids));
       }
@@ -693,12 +694,14 @@ class LectureController {
 
       const lecture = await Lecture.update(parseInt(id), updateData);
 
-      if (req.body.stream_ids !== undefined) {
-        await Lecture.setStreams(parseInt(id), parseIdArrayField(req.body.stream_ids));
-      }
-      if (req.body.subject_ids !== undefined) {
-        await Lecture.setSubjects(parseInt(id), parseIdArrayField(req.body.subject_ids));
-      }
+      const finalTopicId =
+        updateData.topic_id != null ? updateData.topic_id : existingLecture.topic_id;
+      await syncLectureExamPrepTags(
+        parseInt(id, 10),
+        finalTopicId,
+        parseIdArrayField(req.body.subject_ids),
+        parseIdArrayField(req.body.stream_ids)
+      );
       if (req.body.exam_ids !== undefined) {
         await Lecture.setExams(parseInt(id), parseIdArrayField(req.body.exam_ids));
       }

@@ -1,262 +1,309 @@
 // components/dashboard/Applications.tsx
 "use client";
 
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import {
-  MdSchool,
-  MdCheckCircle,
-  MdHourglassTop,
-  MdAdd,
-  MdRefresh,
-  MdError,
-} from "react-icons/md";
-import { FiPlay, FiRefreshCw } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { MdAdd, MdRefresh, MdWarning, MdClose } from "react-icons/md";
+import { FiPlay, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
 import { Button } from "@/components/shared";
 import { StudentExamCreateModal } from "./StudentExamCreateModal";
-import { StudentWorkflowModal } from "./StudentWorkflowModal";
 import { getApiBaseUrl } from "@/api/client";
+import {
+  formatApplicationDate,
+  formatApplicationFee,
+  formatUtServiceFee,
+  getApplicationDisplayStatus,
+  getApplicationMissingFields,
+  openRegistrationUrl,
+  type StudentApplication,
+} from "@/lib/applicationDisplay";
+import { APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
+import {
+  deductCreditsForRegistration,
+  refundCreditsForRegistration,
+} from "@/api/credits";
 
-type ApplicationStatus = "pending" | "approved" | "running" | "completed" | "failed";
+function getDisplayStatusStyles(displayStatus: ReturnType<typeof getApplicationDisplayStatus>) {
+  switch (displayStatus) {
+    case "In Process":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300";
+    case "Filled":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "Applied":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "Failed":
+      return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300";
+    default:
+      return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
+  }
+}
 
-type Application = {
-  id: number;
-  exam_id: number;
-  exam_name: string;
-  exam_slug: string;
-  taxonomy_exam_id?: number | null;
-  status: ApplicationStatus;
-  created_at: string;
-  session_id?: string;
-  source?: string;
-};
-
-function ApplicationCard({
+function ApplicationTableRow({
   app,
-  onStartWorkflow,
-  onViewProgress
+  onStartProcessing,
+  processingAppId,
 }: {
-  app: Application;
-  onStartWorkflow: (app: Application) => void;
-  onViewProgress: (app: Application) => void;
+  app: StudentApplication;
+  onStartProcessing: (app: StudentApplication) => void;
+  processingAppId: number | null;
 }) {
   const detailHref = `/dashboard/exams/${app.taxonomy_exam_id ?? app.exam_slug ?? app.exam_id}?from=dashboard-applications`;
-
-  const getStatusConfig = (status: ApplicationStatus) => {
-    switch (status) {
-      case "pending":
-        return {
-          icon: <MdHourglassTop className="h-4 w-4" />,
-          label: "Pending Approval",
-          bgColor: "bg-amber-100",
-          textColor: "text-amber-700",
-        };
-      case "approved":
-        return {
-          icon: <MdCheckCircle className="h-4 w-4" />,
-          label: "Ready to Start",
-          bgColor: "bg-blue-100",
-          textColor: "text-blue-700",
-        };
-      case "running":
-        return {
-          icon: <FiRefreshCw className="h-4 w-4 animate-spin" />,
-          label: "In Progress",
-          bgColor: "bg-purple-100",
-          textColor: "text-purple-700",
-        };
-      case "completed":
-        return {
-          icon: <MdCheckCircle className="h-4 w-4" />,
-          label: "Completed",
-          bgColor: "bg-emerald-100",
-          textColor: "text-emerald-700",
-        };
-      case "failed":
-        return {
-          icon: <MdError className="h-4 w-4" />,
-          label: "Failed",
-          bgColor: "bg-red-100",
-          textColor: "text-red-700",
-        };
-      default:
-        return {
-          icon: <MdHourglassTop className="h-4 w-4" />,
-          label: status,
-          bgColor: "bg-gray-100",
-          textColor: "text-gray-700",
-        };
-    }
-  };
-
-  const statusConfig = getStatusConfig(app.status);
+  const displayStatus = getApplicationDisplayStatus(app);
+  const missingFields = getApplicationMissingFields(app);
+  const canStartProcessing =
+    app.status === "approved" ||
+    app.status === "failed" ||
+    (app.status === "completed" && app.source !== "already_filled_form");
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-      {/* Top row */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-          <MdSchool />
-        </div>
-
-        <div className="flex-1 space-y-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <Link href={detailHref} className="mb-2 inline-block text-sm font-semibold text-slate-900 transition-colors hover:text-black dark:text-slate-100 dark:hover:text-white">
-                {app.exam_name}
-              </Link>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Exam Registration Automation
-              </p>
-            </div>
-
-            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}>
-              {statusConfig.icon}
-              {statusConfig.label}
-            </span>
+    <tr className="border-b border-slate-100 text-xs dark:border-slate-800">
+      <td className="px-3 py-3 align-top">
+        <Link
+          href={detailHref}
+          className="font-semibold text-slate-900 transition-colors hover:text-black dark:text-slate-100 dark:hover:text-white"
+        >
+          {app.exam_name}
+        </Link>
+        {missingFields.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {missingFields.map((field) => (
+              <span
+                key={field}
+                className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                title={`Missing: ${field}`}
+              >
+                <MdWarning className="h-3 w-3 shrink-0" />
+                {field}
+              </span>
+            ))}
           </div>
-        </div>
-      </div>
+        ) : null}
+      </td>
+      <td className="px-3 py-3 align-top text-slate-700 dark:text-slate-300">
+        {formatApplicationDate(app.application_start_date)}
+      </td>
+      <td className="px-3 py-3 align-top text-slate-700 dark:text-slate-300">
+        {formatApplicationDate(app.application_close_date)}
+      </td>
+      <td className="px-3 py-3 align-top text-slate-700 dark:text-slate-300">
+        {formatApplicationFee(app.application_fees)}
+      </td>
+      <td className="px-3 py-3 align-top text-slate-700 dark:text-slate-300">
+        {formatUtServiceFee(app.ut_service_fee)}
+      </td>
+      <td className="px-3 py-3 align-top">
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${getDisplayStatusStyles(displayStatus)}`}
+        >
+          {displayStatus}
+        </span>
+      </td>
+      <td className="px-3 py-3 align-top">
+        {canStartProcessing ? (
+          <Button
+            variant="themeButton"
+            size="sm"
+            className="flex items-center gap-1.5 rounded-full !border-black !bg-black !px-3 !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
+            onClick={() => onStartProcessing(app)}
+            disabled={processingAppId === app.id}
+          >
+            <FiPlay className="h-3 w-3" />
+            {processingAppId === app.id ? "Processing…" : "Start Processing"}
+          </Button>
+        ) : (
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
 
-      {/* Meta row */}
-      <div className="mt-4 grid gap-3 text-[11px] sm:grid-cols-2">
-        <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/70">
-          <p className="text-slate-500 dark:text-slate-400">Applied on</p>
-          <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
-            {new Date(app.created_at).toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+function InsufficientCreditsModal({
+  isOpen,
+  message,
+  examName,
+  onClose,
+  onPurchaseCredits,
+}: {
+  isOpen: boolean;
+  message: string;
+  examName?: string;
+  onClose: () => void;
+  onPurchaseCredits: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="insufficient-credits-title"
+      >
+        <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+            <h2 id="insufficient-credits-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Insufficient UT Credits
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            aria-label="Close"
+          >
+            <MdClose className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3 px-4 py-4">
+          {examName ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Exam: <span className="font-medium text-slate-700 dark:text-slate-300">{examName}</span>
+            </p>
+          ) : null}
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{message}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Purchase more credits from the UT Credits wallet to continue registration.
           </p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/70">
-          <p className="text-slate-500 dark:text-slate-400">Status</p>
-          <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
-            {statusConfig.label}
-          </p>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <Button
+            variant="themeButtonOutline"
+            size="sm"
+            className="rounded-full"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          <Button
+            variant="themeButton"
+            size="sm"
+            className="rounded-full !border-black !bg-black !text-[#FAD53C] hover:!bg-black/90"
+            onClick={onPurchaseCredits}
+          >
+            Go to UT Credits
+          </Button>
         </div>
       </div>
-
-      {/* Footer actions */}
-      <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 text-[11px] dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-slate-500 dark:text-slate-400">
-          Application ID:&nbsp;
-          <span className="font-mono text-slate-700 dark:text-slate-200">{app.id}</span>
-        </p>
-
-        <div className="flex gap-2">
-          {app.status === "approved" && (
-            <Button
-              variant="themeButton"
-              size="sm"
-              className="flex items-center gap-2 rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
-              onClick={() => onStartWorkflow(app)}
-            >
-              <FiPlay className="h-3 w-3" />
-              Start Automation
-            </Button>
-          )}
-
-          {app.status === "running" && (
-            <Button
-              variant="themeButton"
-              size="sm"
-              className="flex items-center gap-2 rounded-full !border-black !bg-black !text-[#FAD53C] transition-all duration-200 hover:!bg-black/90 active:scale-95"
-              onClick={() => onViewProgress(app)}
-            >
-              <FiRefreshCw className="h-3 w-3 animate-spin" />
-              View Progress
-            </Button>
-          )}
-
-          {(app.status === "completed" || app.status === "failed") &&
-            app.source !== "already_filled_form" && (
-            <Button
-              variant="themeButtonOutline"
-              size="sm"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-              onClick={() => onStartWorkflow(app)}
-            >
-              <MdRefresh className="h-3 w-3" />
-              Retry
-            </Button>
-          )}
-        </div>
-      </div>
-    </article>
+    </div>
   );
 }
 
 export default function ApplicationsPage() {
-  const [activeTab, setActiveTab] = useState<ApplicationStatus | "all">("all");
-  const [applications, setApplications] = useState<Application[]>([]);
+  const router = useRouter();
+  const [applications, setApplications] = useState<StudentApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Modal states
+  const [applyNotice, setApplyNotice] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
-  const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
-  const [selectedExamName, setSelectedExamName] = useState<string>("");
+  const [processingAppId, setProcessingAppId] = useState<number | null>(null);
+  const [creditErrorModal, setCreditErrorModal] = useState<{
+    message: string;
+    examName?: string;
+  } | null>(null);
 
-  // Fetch applications
   const fetchApplications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
-
-      const response = await fetch(`${getApiBaseUrl()}/user/automation-applications${statusParam}`, {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch(`${getApiBaseUrl()}/user/automation-applications`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       } as RequestInit);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch applications');
+        throw new Error("Failed to fetch applications");
       }
 
       const data = await response.json();
       setApplications(data.data || []);
     } catch (err) {
-      console.error('Error fetching applications:', err);
-      setError('Failed to load applications. Please try again.');
+      console.error("Error fetching applications:", err);
+      setError("Failed to load applications. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     fetchApplications();
+    const notice = sessionStorage.getItem(APPLICATIONS_NOTICE_KEY);
+    if (notice) {
+      sessionStorage.removeItem(APPLICATIONS_NOTICE_KEY);
+      setApplyNotice(notice);
+    }
   }, [fetchApplications]);
 
-  const filteredApplications = useMemo(() => {
-    if (activeTab === "all") return applications;
-    return applications.filter((app) => app.status === activeTab);
-  }, [activeTab, applications]);
+  useEffect(() => {
+    if (!applyNotice) return;
+    const timer = window.setTimeout(() => setApplyNotice(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [applyNotice]);
 
-  const handleStartWorkflow = (app: Application) => {
-    setSelectedExamId(app.exam_id);
-    setSelectedExamName(app.exam_name);
-    setShowWorkflowModal(true);
+  const handleStartProcessing = async (app: StudentApplication) => {
+    setError(null);
+    setCreditErrorModal(null);
+    setProcessingAppId(app.id);
+
+    try {
+      const fee = app.ut_service_fee != null ? Number(app.ut_service_fee) : 0;
+      if (fee > 0) {
+        const deductRes = await deductCreditsForRegistration(app.id);
+        if (!deductRes.success) {
+          const message = deductRes.message || "Failed to deduct UT Credits";
+          if (message.toLowerCase().includes("insufficient")) {
+            setCreditErrorModal({ message, examName: app.exam_name });
+          } else {
+            setError(message);
+          }
+          return;
+        }
+      }
+
+      const opened = openRegistrationUrl(app.exam_url);
+      if (!opened) {
+        if (fee > 0) {
+          await refundCreditsForRegistration(app.id, "Registration link unavailable");
+        }
+        setError("Registration link is not available for this exam yet.");
+        return;
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start processing. Please try again.";
+      if (message.toLowerCase().includes("insufficient")) {
+        setCreditErrorModal({ message, examName: app.exam_name });
+      } else {
+        console.error("Start processing error:", err);
+        setError(message);
+      }
+    } finally {
+      setProcessingAppId(null);
+    }
   };
 
-  const handleViewProgress = (app: Application) => {
-    setSelectedExamId(app.exam_id);
-    setSelectedExamName(app.exam_name);
-    setShowWorkflowModal(true);
+  const handleGoToUtCredits = () => {
+    setCreditErrorModal(null);
+    router.push("/dashboard?section=ut-credits");
   };
 
-  const handleNewExamWorkflow = (examId: number, examName: string) => {
-    setSelectedExamId(examId);
-    setSelectedExamName(examName);
-    setShowWorkflowModal(true);
-    // Refresh applications list
-    fetchApplications();
+  const handleApplicationAdded = (message: string) => {
+    setApplyNotice(message);
+    void fetchApplications();
   };
 
   return (
@@ -265,9 +312,11 @@ export default function ApplicationsPage() {
         <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
           <div className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">My Applications</p>
+              <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+                My Applications
+              </p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Manage your exam automation requests.
+                Track exam applications and start processing when you are ready.
               </p>
             </div>
             <Button
@@ -277,58 +326,16 @@ export default function ApplicationsPage() {
               onClick={() => setShowCreateModal(true)}
             >
               <MdAdd className="h-4 w-4" />
-              New Application
+              Add Application
             </Button>
           </div>
         </header>
 
-        <div className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+        <div
+          className="bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6"
+          style={{ animation: "fade-in 220ms ease-out" }}
+        >
           <main className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
-                    activeTab === "all"
-                      ? "bg-black text-[#FAD53C]"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setActiveTab("approved")}
-                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
-                    activeTab === "approved"
-                      ? "bg-black text-[#FAD53C]"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  }`}
-                >
-                  Ready
-                </button>
-                <button
-                  onClick={() => setActiveTab("running")}
-                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
-                    activeTab === "running"
-                      ? "bg-black text-[#FAD53C]"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  }`}
-                >
-                  In Progress
-                </button>
-                <button
-                  onClick={() => setActiveTab("completed")}
-                  className={`rounded-full px-4 py-2.5 text-center text-sm font-medium transition-all duration-200 active:scale-95 ${
-                    activeTab === "completed"
-                      ? "bg-black text-[#FAD53C]"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  }`}
-                >
-                  Completed
-                </button>
-              </div>
-            </div>
-
             <div className="flex justify-end">
               <button
                 onClick={fetchApplications}
@@ -340,40 +347,61 @@ export default function ApplicationsPage() {
               </button>
             </div>
 
-            {error && (
+            {applyNotice ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+                {applyNotice}
+              </div>
+            ) : null}
+
+            {error ? (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <section>
               {isLoading ? (
-                <div className="flex min-h-[160px] items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                  <FiRefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <FiRefreshCw className="h-5 w-5 animate-spin" />
                   Loading applications...
                 </div>
-              ) : filteredApplications.length === 0 ? (
+              ) : applications.length === 0 ? (
                 <div className="flex min-h-[160px] flex-col items-center justify-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-                  <p>No applications found.</p>
+                  <p>No applications yet.</p>
                   <Button
                     variant="themeButtonOutline"
                     size="sm"
                     className="rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                     onClick={() => setShowCreateModal(true)}
                   >
-                    Create your first application
+                    Add your first application
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {filteredApplications.map((app) => (
-                    <ApplicationCard
-                      key={app.id}
-                      app={app}
-                      onStartWorkflow={handleStartWorkflow}
-                      onViewProgress={handleViewProgress}
-                    />
-                  ))}
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <table className="min-w-[980px] w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+                        <th className="px-3 py-3">Exam Name</th>
+                        <th className="px-3 py-3">Application Start</th>
+                        <th className="px-3 py-3">Application End</th>
+                        <th className="px-3 py-3">Form Fee</th>
+                        <th className="px-3 py-3">UT Service Fee</th>
+                        <th className="px-3 py-3">Progress</th>
+                        <th className="px-3 py-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {applications.map((app) => (
+                        <ApplicationTableRow
+                          key={app.id}
+                          app={app}
+                          onStartProcessing={handleStartProcessing}
+                          processingAppId={processingAppId}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </section>
@@ -381,22 +409,16 @@ export default function ApplicationsPage() {
             <StudentExamCreateModal
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
-              onStartWorkflow={handleNewExamWorkflow}
+              onApplicationAdded={handleApplicationAdded}
             />
 
-            {selectedExamId && (
-              <StudentWorkflowModal
-                isOpen={showWorkflowModal}
-                onClose={() => {
-                  setShowWorkflowModal(false);
-                  setSelectedExamId(null);
-                  setSelectedExamName("");
-                  fetchApplications();
-                }}
-                examId={selectedExamId}
-                examName={selectedExamName}
-              />
-            )}
+            <InsufficientCreditsModal
+              isOpen={creditErrorModal != null}
+              message={creditErrorModal?.message ?? ""}
+              examName={creditErrorModal?.examName}
+              onClose={() => setCreditErrorModal(null)}
+              onPurchaseCredits={handleGoToUtCredits}
+            />
           </main>
         </div>
       </section>

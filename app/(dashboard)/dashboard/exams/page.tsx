@@ -6,23 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { MdSchool } from "react-icons/md";
 import { getAllExams, type Exam } from "@/api/exams";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { ExamCardBody } from "@/components/dashboard/ExamCardBody";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_LABEL: Record<string, string> = {
   "profile-recommended": "Profile Recommended Exams",
@@ -76,7 +63,7 @@ export default function ExamDirectoryPage() {
     );
   }, [exams, query]);
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
@@ -134,7 +121,7 @@ export default function ExamDirectoryPage() {
           </section>
 
           <div className="px-4 py-4 md:px-6">
-            <div className="mx-auto w-full max-w-6xl space-y-5">
+            <div className="mx-auto w-full space-y-5">
 
             {loading ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
@@ -158,7 +145,7 @@ export default function ExamDirectoryPage() {
                           {exam.name}
                         </p>
                       </div>
-                      <ExamLogo exam={exam} className="h-14 w-14 p-1" />
+                      <ExamLogo exam={exam} className="h-16 w-16 shrink-0 rounded-xl" />
                     </div>
                     <div className="mt-1.5">
                       <ExamCardBody

@@ -349,7 +349,9 @@ class Lecture {
   }
 
   /**
-   * Video lectures for a student's stream: explicit lecture_streams tags OR subject.streams on the topic's subject.
+   * Video lectures for a student's stream: lecture_streams, topic subject streams,
+   * or streams on subjects tagged in lecture_subjects. Subject filter matches topic
+   * parent subject or lecture_subjects tags.
    * Used for dashboard Exam Prep self-study feed.
    */
   static async findVideoLecturesForExamPrepByStream(streamId, { subjectId = null } = {}) {
@@ -374,6 +376,8 @@ class Lecture {
          l.updated_at,
          t.id AS topic_id,
          t.name AS topic_name,
+         st.id AS subtopic_id,
+         st.name AS subtopic_name,
          subj.id AS subject_id,
          subj.name AS subject_name,
          COALESCE(
@@ -387,6 +391,7 @@ class Lecture {
        FROM lectures l
        INNER JOIN topics t ON l.topic_id = t.id
        INNER JOIN subjects subj ON t.sub_id = subj.id
+       LEFT JOIN subtopics st ON l.subtopic_id = st.id
        LEFT JOIN lecture_exams leex ON leex.lecture_id = l.id
        WHERE l.status = TRUE
          AND l.content_type = 'VIDEO'
@@ -394,7 +399,14 @@ class Lecture {
            (l.iframe_code IS NOT NULL AND TRIM(l.iframe_code) <> '')
            OR (l.video_file IS NOT NULL AND TRIM(l.video_file) <> '')
          )
-         AND ($2::int IS NULL OR subj.id = $2)
+         AND (
+           $2::int IS NULL
+           OR subj.id = $2
+           OR EXISTS (
+             SELECT 1 FROM lecture_subjects ls_subj
+             WHERE ls_subj.lecture_id = l.id AND ls_subj.subject_id = $2
+           )
+         )
          AND (
            EXISTS (
              SELECT 1 FROM lecture_streams ls
@@ -403,6 +415,14 @@ class Lecture {
            OR EXISTS (
              SELECT 1 FROM jsonb_array_elements(subj.streams) AS stream_elem
              WHERE stream_elem::text::integer = $1 OR stream_elem::text = $3
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM lecture_subjects ls_tag
+             INNER JOIN subjects s_tag ON s_tag.id = ls_tag.subject_id
+             CROSS JOIN LATERAL jsonb_array_elements(s_tag.streams) AS stream_elem2
+             WHERE ls_tag.lecture_id = l.id
+               AND (stream_elem2::text::integer = $1 OR stream_elem2::text = $3)
            )
          )
        GROUP BY
@@ -417,6 +437,8 @@ class Lecture {
          l.updated_at,
          t.id,
          t.name,
+         st.id,
+         st.name,
          subj.id,
          subj.name
        ORDER BY subj.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,

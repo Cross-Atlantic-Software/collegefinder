@@ -442,6 +442,12 @@ class AdminUsersController {
         }
       }
 
+      const creditService = require('../../services/credit/creditService');
+      const [creditBalance, creditHistory] = await Promise.all([
+        creditService.getBalance(userId),
+        creditService.getTransactionHistory(userId, { page: 1, limit: 25 }),
+      ]);
+
       res.json({
         success: true,
         data: {
@@ -574,7 +580,13 @@ class AdminUsersController {
             exam_city_names: examCityNames,
             created_at: otherInfo.created_at,
             updated_at: otherInfo.updated_at
-          } : null
+          } : null,
+          utCredits: {
+            user_id: userId,
+            balance: creditBalance.balance,
+            updated_at: creditBalance.updated_at,
+            transactions: creditHistory.transactions,
+          },
         }
       });
     } catch (error) {

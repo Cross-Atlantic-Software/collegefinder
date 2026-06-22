@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
@@ -18,7 +18,10 @@ import {
   buildExamDetailSections,
   examCardSubtitle,
   examLevelBadge,
+  getExamApplicationWindowStatus,
+  isExamApplicationButtonEnabled,
 } from "@/lib/examDisplay";
+import { addExamToApplications, APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
 import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
 import { useExamLinkedInstitutesQuery } from "@/lib/examLinkedInstitutesQueries";
@@ -28,19 +31,6 @@ import {
   useUpdateAlreadyFilledFormMutation,
 } from "@/lib/dashboardExamShortlistQueries";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "profile-recommended": [
@@ -106,7 +96,7 @@ function ExamDetailShell({
   setSidebarOpen: (v: boolean | ((p: boolean) => boolean)) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (v: boolean | ((p: boolean) => boolean)) => void;
-  onSectionChange: (section: SectionId) => void;
+  onSectionChange: (section: DashboardSectionId) => void;
 }) {
   return (
     <div className="flex h-screen bg-[#F6F8FA] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
@@ -140,6 +130,8 @@ export default function ExamDetailPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [startApplicationSaving, setStartApplicationSaving] = useState(false);
+  const [startApplicationError, setStartApplicationError] = useState<string | null>(null);
 
   const { data: pageData, isLoading, isError, error } = useExamDetailQuery(examId);
   const exam = pageData?.exam;
@@ -183,7 +175,7 @@ export default function ExamDetailPage() {
     { label: "Exam Directory", href: "/dashboard/exams" },
   ];
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
@@ -203,6 +195,28 @@ export default function ExamDetailPage() {
     });
   };
 
+  const canStartApplication =
+    exam != null && isExamApplicationButtonEnabled(getExamApplicationWindowStatus(exam));
+
+  const handleStartApplication = async () => {
+    if (examNumericId == null || !canStartApplication || startApplicationSaving) return;
+    setStartApplicationSaving(true);
+    setStartApplicationError(null);
+    try {
+      const result = await addExamToApplications(examNumericId);
+      if (!result.ok) {
+        setStartApplicationError(result.message);
+        return;
+      }
+      sessionStorage.setItem(APPLICATIONS_NOTICE_KEY, result.message);
+      router.push("/dashboard?section=applications");
+    } catch {
+      setStartApplicationError("Could not add this exam to My Applications.");
+    } finally {
+      setStartApplicationSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <ExamDetailShell
@@ -213,7 +227,7 @@ export default function ExamDetailPage() {
         onSectionChange={handleSectionChange}
       >
         <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <div className="mx-auto w-full rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             Loading exam details...
           </div>
         </div>
@@ -231,7 +245,7 @@ export default function ExamDetailPage() {
         onSectionChange={handleSectionChange}
       >
         <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 dark:bg-slate-900">
+          <div className="mx-auto w-full rounded-2xl bg-white p-8 dark:bg-slate-900">
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Exam not found</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {error instanceof Error ? error.message : "This exam could not be loaded."}
@@ -260,7 +274,7 @@ export default function ExamDetailPage() {
     >
       <section className="bg-white dark:bg-slate-900">
         <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto flex max-w-6xl gap-4 md:gap-6">
+          <div className="mx-auto flex gap-4 md:gap-6">
             <div className="min-w-0 flex-1">
               {levelBadge ? (
                 <span className="mb-2 inline-block rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-700">
@@ -281,7 +295,7 @@ export default function ExamDetailPage() {
 
       <section className="border-y border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="px-4 py-2 md:px-6">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mx-auto flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             {breadcrumbTrail.map((crumb, index) => (
               <div key={`${crumb.label}-${index}`} className="inline-flex items-center gap-1.5">
                 {index > 0 && <ChevronRight className="h-3 w-3" />}
@@ -304,7 +318,7 @@ export default function ExamDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
             <ExamDetailSections sections={sections} />
             <ExamDetailLinkedColleges
@@ -366,10 +380,15 @@ export default function ExamDetailPage() {
                   variant="themeButton"
                   size="sm"
                   className="w-full justify-center !rounded-full"
-                  href="/dashboard?section=applications"
+                  disabled={examNumericId == null || !canStartApplication || startApplicationSaving}
+                  onClick={() => void handleStartApplication()}
                 >
-                  <MdSchool className="h-4 w-4" /> Start Application
+                  <MdSchool className="h-4 w-4" />{" "}
+                  {startApplicationSaving ? "Adding..." : "Start Application"}
                 </Button>
+                {startApplicationError ? (
+                  <p className="text-center text-xs text-red-600 dark:text-red-400">{startApplicationError}</p>
+                ) : null}
                 <Button
                   variant="themeButtonOutline"
                   size="sm"

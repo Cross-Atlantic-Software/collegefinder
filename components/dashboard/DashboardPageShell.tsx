@@ -12,12 +12,14 @@ export type DashboardSectionId =
   | "coaching-institutes"
   | "scholarships"
   | "applications"
+  | "ut-credits"
   | "exam-prep"
   | "test-module"
   | "counselling"
   | "know-your-strengths"
   | "admission-help"
-  | "referral";
+  | "referral"
+  | "settings";
 
 type DashboardPageShellProps = {
   activeSection: DashboardSectionId;

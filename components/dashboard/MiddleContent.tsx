@@ -126,7 +126,7 @@ const quickStudyPicks = [
     thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg",
     videoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
   },
-];
+].slice(0, 4);
 
 const ACTIVE_RECOMMENDATION_MS = 6800;
 
@@ -793,7 +793,7 @@ export default function MiddleContent() {
   };
 
   return (
-    <div>
+    <div className="flex xl:h-full flex-1 xl:min-h-0 flex-col">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slideUpVideo {
           0% { transform: translateY(40px) scale(0.95); opacity: 0; }
@@ -811,9 +811,9 @@ export default function MiddleContent() {
           animation: progressPulseScale 1.8s ease-in-out infinite;
         }
       `}} />
-      <section className="relative grid gap-3 xl:grid-cols-[2.15fr,1fr]">
-        <div className="relative z-30 flex max-h-[calc(100vh-180px)] min-h-0 flex-col gap-3 overflow-visible">
-          <article>
+      <section className="relative grid xl:h-full xl:min-h-0 flex-1 gap-3 xl:grid-cols-[2.15fr,1fr]">
+        <div className="relative z-30 flex xl:h-full xl:min-h-0 flex-col gap-3 overflow-visible">
+          <article className="flex xl:min-h-0 flex-[1.3] flex-col overflow-visible xl:overflow-hidden">
             {examMetaLoading ? (
               <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                 Loading your journey planner…
@@ -830,8 +830,8 @@ export default function MiddleContent() {
             )}
           </article>
 
-          <div className="grid min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
-            <article className="relative z-20 flex h-full flex-col overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
+          <div className="grid xl:min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
+            <article className="relative z-20 flex xl:h-full flex-col xl:overflow-hidden rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
               {/* Card header — always visible */}
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -839,7 +839,7 @@ export default function MiddleContent() {
               </p>
 
               {/* Scrollable step list with fade-out hint */}
-              <div className="relative mt-2.5 min-h-0 flex-1">
+              <div className="relative mt-2.5 xl:min-h-0 flex-1">
                 <style dangerouslySetInnerHTML={{ __html: `
                   .progress-meter-scroll::-webkit-scrollbar { width: 3px; }
                   .progress-meter-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -848,7 +848,7 @@ export default function MiddleContent() {
                   .progress-meter-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
                 ` }} />
                 <div
-                  className="progress-meter-scroll h-full overflow-y-auto rounded-xl bg-slate-50/70 p-2 dark:bg-slate-800/40"
+                  className="progress-meter-scroll xl:h-full xl:overflow-y-auto rounded-xl bg-slate-50/70 p-2 pb-10 dark:bg-slate-800/40"
                 >
                   <div className="space-y-0.5">
                     {progressMeterSteps.map((step, idx) => {
@@ -911,14 +911,14 @@ export default function MiddleContent() {
               )}
             </article>
 
-            <article className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
+            <article className="relative z-50 flex xl:h-full flex-col rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Confidence Meter</h3>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 See how your topic confidence is improving based on mock and revision performance.
               </p>
               {/* Two-column on wide panels, single-column when cramped.
                   min-w-0 + overflow-hidden prevent any donut from escaping. */}
-              <div className="mt-2.5 grid min-w-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden [container-type:inline-size] sm:grid-cols-2">
+              <div className="mt-2.5 grid min-w-0 flex-1 grid-cols-1 gap-2.5 [container-type:inline-size] sm:grid-cols-2">
                 <ConfidenceDonut
                   totalLabel="Total Topics"
                   totalValue="30"
@@ -936,8 +936,8 @@ export default function MiddleContent() {
           </div>
         </div>
 
-        <div className="flex max-h-[calc(100vh-180px)] flex-col gap-3 overflow-hidden">
-          <article className="rounded-2xl bg-white dark:bg-slate-900 p-3">
+        <div className="flex xl:h-full xl:min-h-0 flex-col gap-3 xl:overflow-hidden">
+          <article className="rounded-2xl bg-white dark:bg-slate-900 p-3 shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recommendations</h2>
@@ -1022,8 +1022,8 @@ export default function MiddleContent() {
             </div>
           </article>
 
-          <article className="flex min-h-0 flex-1 flex-col rounded-2xl bg-white dark:bg-slate-900 p-3">
-            <div className="flex items-center justify-between">
+          <article className="flex xl:min-h-0 flex-1 flex-col rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
+            <div className="flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Quick Self-Study Picks</h3>
                 <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -1037,7 +1037,7 @@ export default function MiddleContent() {
               </div>
             </div>
 
-            <article className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40 relative">
+            <article className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40 relative shrink-0">
               <div className="relative overflow-hidden rounded-lg bg-black aspect-[21/9] w-full">
                 {quickStudyPicks.map((video, idx) => {
                   const isPreload = idx === preloadVideoIndex;
@@ -1095,8 +1095,8 @@ export default function MiddleContent() {
               </div>
             </article>
 
-            <div className="relative mt-3 min-h-[250px] flex-1 overflow-hidden shrink-0">
-              <div className="min-h-0 h-full overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
+            <div className="relative mt-3 xl:min-h-0 flex-1 xl:overflow-hidden">
+              <div className="xl:h-full xl:overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
               {quickStudyPicks.map((item, idx) => {
                 if (idx === activeVideoIndex) return null;
                 return (

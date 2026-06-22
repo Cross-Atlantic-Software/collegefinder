@@ -11,19 +11,139 @@ import {
   updateAutomationExam,
   deleteAutomationExam,
   AutomationExam,
+  AutomationExamDetails,
   CreateAutomationExamData,
   TaxonomyExamOption,
 } from '@/api/admin/automation-exams';
-import { getAllExamsAdmin } from '@/api/admin/exams';
+import { getAllExamsAdmin, type Exam, type ExamDates } from '@/api/admin/exams';
 import { getApiBaseUrl, getBrowserAdminToken } from '@/api/client';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiEye, FiLink, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { ConfirmationModal, useToast, Dropdown } from '@/components/shared';
 import type { DropdownOption } from '@/components/shared';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
+import { AutomationCollegesTab } from '@/components/admin/automation/AutomationCollegesTab';
+import { AutomationScholarshipsTab } from '@/components/admin/automation/AutomationScholarshipsTab';
 
-export default function AutomationExamsPage() {
+type AutomationFormsSectionTab = 'exams' | 'colleges' | 'scholarships';
+
+const AUTOMATION_FORMS_TABS: { id: AutomationFormsSectionTab; label: string }[] = [
+  { id: 'exams', label: 'Automation Exams' },
+  { id: 'colleges', label: 'Automation Colleges' },
+  { id: 'scholarships', label: 'Automation Scholarships' },
+];
+
+type ExamDetailsForm = {
+  application_start_date: string;
+  application_close_date: string;
+  admit_card_date: string;
+  exam_date: string;
+  result_date: string;
+  counselling_start_date: string;
+  counselling_end_date: string;
+  application_fees: string;
+  ut_service_fee: string;
+};
+
+const emptyExamDetailsForm = (): ExamDetailsForm => ({
+  application_start_date: '',
+  application_close_date: '',
+  admit_card_date: '',
+  exam_date: '',
+  result_date: '',
+  counselling_start_date: '',
+  counselling_end_date: '',
+  application_fees: '',
+  ut_service_fee: '',
+});
+
+function toDateInputValue(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value).slice(0, 10);
+}
+
+function examDetailsFromApi(details?: AutomationExamDetails | null): ExamDetailsForm {
+  if (!details) return emptyExamDetailsForm();
+  return {
+    application_start_date: toDateInputValue(details.application_start_date),
+    application_close_date: toDateInputValue(details.application_close_date),
+    admit_card_date: toDateInputValue(details.admit_card_date),
+    exam_date: toDateInputValue(details.exam_date),
+    result_date: toDateInputValue(details.result_date),
+    counselling_start_date: toDateInputValue(details.counselling_start_date),
+    counselling_end_date: toDateInputValue(details.counselling_end_date),
+    application_fees: details.application_fees != null ? String(details.application_fees) : '',
+    ut_service_fee: details.ut_service_fee != null ? String(details.ut_service_fee) : '',
+  };
+}
+
+function examDetailsPayload(form: ExamDetailsForm) {
+  return {
+    application_start_date: form.application_start_date || null,
+    application_close_date: form.application_close_date || null,
+    admit_card_date: form.admit_card_date || null,
+    exam_date: form.exam_date || null,
+    result_date: form.result_date || null,
+    counselling_start_date: form.counselling_start_date || null,
+    counselling_end_date: form.counselling_end_date || null,
+    application_fees: form.application_fees.trim() ? Number(form.application_fees) : null,
+    ut_service_fee: form.ut_service_fee.trim() ? Number(form.ut_service_fee) : null,
+  };
+}
+
+function formatMappingStatus(status?: string) {
+  return status === 'mapped' ? 'Mapped' : 'Not Mapped';
+}
+
+function formatDisplayDate(value: string | null | undefined) {
+  if (!value) return '—';
+  return String(value).slice(0, 10);
+}
+
+function formatDisplayFee(value: number | null | undefined, suffix = '') {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return `${value}${suffix}`;
+}
+
+function generateSlug(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function slugFromTaxonomyCode(code: string) {
+  return code
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function resolveTaxonomyIdForExam(
+  exam: Pick<AutomationExam, 'name' | 'slug' | 'taxonomy_exam_id'>,
+  options: TaxonomyExamOption[]
+): number | null {
+  if (exam.taxonomy_exam_id) return exam.taxonomy_exam_id;
+  const slugNorm = exam.slug.trim().toLowerCase();
+  const nameNorm = exam.name.trim().toLowerCase();
+  const match = options.find((option) => {
+    const codeSlug = option.code ? slugFromTaxonomyCode(option.code) : '';
+    return (
+      option.name.trim().toLowerCase() === nameNorm ||
+      (codeSlug && codeSlug === slugNorm)
+    );
+  });
+  return match?.id ?? null;
+}
+
+export default function AutomationFormsPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const [activeSectionTab, setActiveSectionTab] = useState<AutomationFormsSectionTab>('exams');
   const [exams, setExams] = useState<AutomationExam[]>([]);
   const [allExams, setAllExams] = useState<AutomationExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +173,7 @@ export default function AutomationExamsPage() {
   const [taxonomyExams, setTaxonomyExams] = useState<TaxonomyExamOption[]>([]);
   const [selectedTaxonomyId, setSelectedTaxonomyId] = useState<number | null>(null);
   const [taxonomyLoading, setTaxonomyLoading] = useState(false);
+  const [examDetailsForm, setExamDetailsForm] = useState<ExamDetailsForm>(emptyExamDetailsForm());
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('admin_authenticated');
@@ -124,6 +245,7 @@ export default function AutomationExamsPage() {
     setNotificationEmailsText('');
     setEditingExam(null);
     setSelectedTaxonomyId(null);
+    setExamDetailsForm(emptyExamDetailsForm());
     setError(null);
   };
 
@@ -139,11 +261,26 @@ export default function AutomationExamsPage() {
       const fallback = await getAllExamsAdmin();
       if (fallback.success && fallback.data?.exams?.length) {
         setTaxonomyExams(
-          fallback.data.exams.map((exam) => ({
+          fallback.data.exams.map((exam: Exam & { examDates?: ExamDates | null }) => ({
             id: exam.id,
             name: exam.name,
             code: exam.code,
             website: exam.website ?? null,
+            registration_link: exam.registration_link ?? null,
+            exam_details: exam.examDates
+              ? {
+                  application_start_date: exam.examDates.application_start_date,
+                  application_close_date: exam.examDates.application_close_date,
+                  admit_card_date: exam.examDates.admit_card_date,
+                  exam_date: exam.examDates.exam_date,
+                  result_date: exam.examDates.result_date,
+                  counselling_start_date:
+                    exam.examDates.counselling_start_date ?? exam.examDates.counselling_date,
+                  counselling_end_date: exam.examDates.counselling_end_date,
+                  application_fees: exam.examDates.application_fees,
+                  ut_service_fee: exam.examDates.ut_service_fee,
+                }
+              : null,
           }))
         );
         return;
@@ -178,11 +315,11 @@ export default function AutomationExamsPage() {
   };
 
   useEffect(() => {
-    if (showModal && !editingExam) {
+    if (showModal) {
       void loadTaxonomyExams();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showModal, editingExam]);
+  }, [showModal]);
 
   const handleCreate = () => {
     resetForm();
@@ -201,12 +338,25 @@ export default function AutomationExamsPage() {
       notify_on_complete: exam.notify_on_complete,
       notify_on_failure: exam.notify_on_failure,
       notification_emails: exam.notification_emails || [],
+      taxonomy_exam_id: exam.taxonomy_exam_id ?? null,
     });
+    setSelectedTaxonomyId(exam.taxonomy_exam_id ?? null);
+    setExamDetailsForm(examDetailsFromApi(exam.exam_details));
     setFieldMappingsText(JSON.stringify(exam.field_mappings || {}, null, 2));
     setAgentConfigText(JSON.stringify(exam.agent_config || {}, null, 2));
     setNotificationEmailsText((exam.notification_emails || []).join(', '));
     setShowModal(true);
   };
+
+  useEffect(() => {
+    if (!showModal || !editingExam || taxonomyExams.length === 0) return;
+    if (selectedTaxonomyId != null) return;
+    const matched = resolveTaxonomyIdForExam(editingExam, taxonomyExams);
+    if (matched != null) {
+      setSelectedTaxonomyId(matched);
+      setFormData((prev) => ({ ...prev, taxonomy_exam_id: matched }));
+    }
+  }, [showModal, editingExam, taxonomyExams, selectedTaxonomyId]);
 
   const handleView = (exam: AutomationExam) => {
     setViewingExam(exam);
@@ -218,6 +368,11 @@ export default function AutomationExamsPage() {
 
     if (!editingExam && selectedTaxonomyId == null) {
       setError('Please select an exam from the catalog');
+      return;
+    }
+
+    if (editingExam && !selectedTaxonomyId && !editingExam.taxonomy_exam_id) {
+      setError('Link this automation exam to a catalog exam to sync dates and fees');
       return;
     }
 
@@ -273,6 +428,8 @@ export default function AutomationExamsPage() {
         field_mappings: fieldMappings,
         agent_config: agentConfig,
         notification_emails: notificationEmails,
+        taxonomy_exam_id: selectedTaxonomyId ?? editingExam?.taxonomy_exam_id ?? null,
+        exam_details: examDetailsPayload(examDetailsForm),
       };
 
       let response;
@@ -329,24 +486,6 @@ export default function AutomationExamsPage() {
     }
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
-
-  const slugFromTaxonomyCode = (code: string) =>
-    code
-      .trim()
-      .toLowerCase()
-      .replace(/_/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
   const taxonomyDropdownOptions: DropdownOption<number>[] = taxonomyExams.map((exam) => ({
     value: exam.id,
     label: exam.code ? `${exam.name} (${exam.code})` : exam.name,
@@ -364,8 +503,16 @@ export default function AutomationExamsPage() {
       ...prev,
       name: exam.name,
       slug: slug || generateSlug(exam.name),
-      url: exam.website?.trim() || '',
+      url: exam.registration_link?.trim() || exam.website?.trim() || prev.url,
+      taxonomy_exam_id: taxonomyId,
     }));
+    if (exam.exam_details) {
+      setExamDetailsForm((prev) => {
+        const loaded = examDetailsFromApi(exam.exam_details);
+        const hasExisting = Object.values(prev).some((v) => String(v).trim() !== '');
+        return hasExisting && editingExam ? prev : loaded;
+      });
+    }
   };
 
   const handleNameChange = (name: string) => {
@@ -381,14 +528,46 @@ export default function AutomationExamsPage() {
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AdminHeader />
-        <main className="flex-1 p-6 overflow-auto">
-          {/* Header */}
+        <main className="flex-1 p-6 overflow-auto min-w-0">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">Automation Forms</h1>
+            <p className="text-slate-600">
+              Manage automation configurations for exams, colleges, and scholarships
+            </p>
+          </div>
+
+          <div className="mb-6 border-b border-slate-200">
+            <div className="flex gap-1 overflow-x-auto">
+              {AUTOMATION_FORMS_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveSectionTab(tab.id)}
+                  className={`py-2.5 px-4 text-sm font-medium border-b-2 whitespace-nowrap -mb-px transition-colors ${
+                    activeSectionTab === tab.id
+                      ? 'border-[#341050] text-[#341050] bg-white rounded-t'
+                      : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {activeSectionTab === 'colleges' && <AutomationCollegesTab />}
+
+          {activeSectionTab === 'scholarships' && <AutomationScholarshipsTab />}
+
+          {activeSectionTab === 'exams' && (
+            <>
+          {/* Exams tab header */}
           <div className="mb-6 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Automation Exams</h1>
-              <p className="text-slate-600">Manage exam configurations for automation workflows</p>
+              <h2 className="text-lg font-semibold text-slate-900">Automation Exams</h2>
+              <p className="text-sm text-slate-600">Manage exam configurations for automation workflows</p>
             </div>
             <button
               onClick={handleCreate}
@@ -421,7 +600,7 @@ export default function AutomationExamsPage() {
           )}
 
           {/* Exams Table */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             {isLoading ? (
               <div className="p-12 text-center text-slate-500">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -432,71 +611,95 @@ export default function AutomationExamsPage() {
                 No exams found. Create your first exam to get started.
               </div>
             ) : (
-              <table className="w-full">
-                <thead className="bg-[#F6F8FA] border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Slug</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">URL</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Created</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {exams.map((exam) => (
-                    <tr key={exam.id} className="hover:bg-[#F6F8FA]">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-slate-900">{exam.name}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <code className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{exam.slug}</code>
-                      </td>
-                      <td className="px-6 py-4">
-                        <a
-                          href={exam.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
-                        >
-                          <FiLink className="w-3 h-3" />
-                          {exam.url.length > 40 ? `${exam.url.substring(0, 40)}...` : exam.url}
-                        </a>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            exam.is_active
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-slate-100 text-slate-800'
-                          }`}
-                        >
-                          {exam.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {new Date(exam.created_at).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <AdminTableActions
-                          onView={() => handleView(exam)}
-                          onEdit={() => handleEdit(exam)}
-                          onDelete={() => handleDeleteClick(exam.id)}
-                        />
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] table-fixed">
+                  <thead className="bg-[#F6F8FA] border-b">
+                    <tr>
+                      <th className="w-[18%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
+                      <th className="w-[26%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">URL</th>
+                      <th className="w-[12%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Mapping</th>
+                      <th className="w-[11%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">App closes</th>
+                      <th className="w-[10%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                      <th className="w-[11%] px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">Created</th>
+                      <th className="w-[12%] px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {exams.map((exam) => (
+                      <tr key={exam.id} className="hover:bg-[#F6F8FA]">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-slate-900 truncate" title={exam.name}>
+                            {exam.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <a
+                            href={exam.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm min-w-0"
+                            title={exam.url}
+                          >
+                            <FiLink className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{exam.url}</span>
+                          </a>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                              exam.mapping_status === 'mapped'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {formatMappingStatus(exam.mapping_status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                          {exam.exam_details?.application_close_date
+                            ? toDateInputValue(exam.exam_details.application_close_date)
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                              exam.is_active
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}
+                          >
+                            {exam.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
+                          {new Date(exam.created_at).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <AdminTableActions
+                            onView={() => handleView(exam)}
+                            onEdit={() => handleEdit(exam)}
+                            onDelete={() => handleDeleteClick(exam.id)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
+            </>
+          )}
+
         </main>
       </div>
 
+      {activeSectionTab === 'exams' && (
+        <>
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -523,13 +726,29 @@ export default function AutomationExamsPage() {
                   Exam Name <span className="text-red-500">*</span>
                 </label>
                 {editingExam ? (
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  taxonomyLoading ? (
+                    <p className="text-sm text-slate-500 py-2">Loading exams...</p>
+                  ) : (
+                    <>
+                      <Dropdown<number>
+                        options={taxonomyDropdownOptions}
+                        value={selectedTaxonomyId}
+                        onChange={handleTaxonomySelect}
+                        placeholder="Search and select linked catalog exam..."
+                        searchable
+                        maxMenuHeight={200}
+                        usePortal={false}
+                        className="w-full"
+                      />
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        className="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </>
+                  )
                 ) : taxonomyLoading ? (
                   <p className="text-sm text-slate-500 py-2">Loading exams...</p>
                 ) : taxonomyExams.length === 0 ? (
@@ -586,6 +805,129 @@ export default function AutomationExamsPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
+              </div>
+
+              {/* Exam catalog dates & fees — synced to exams_taxonomies + exam_dates */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Exam details (synced to exam database)</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Saved to the linked taxonomy exam and <code className="text-[11px]">exam_dates</code> when you create or update.
+                    {!selectedTaxonomyId ? (
+                      <span className="block mt-1 text-amber-700">
+                        Select a catalog exam above — dates cannot be saved without a linked exam.
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Application start date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.application_start_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, application_start_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Application end date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.application_close_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, application_close_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Hall ticket / admit card date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.admit_card_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, admit_card_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Exam date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.exam_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, exam_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Result date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.result_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, result_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Counselling start date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.counselling_start_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, counselling_start_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Counselling end date</label>
+                    <input
+                      type="date"
+                      value={examDetailsForm.counselling_end_date}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, counselling_end_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Form fee (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={examDetailsForm.application_fees}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, application_fees: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                      placeholder="Application fee"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">UT service fee (credits)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={examDetailsForm.ut_service_fee}
+                      onChange={(e) => setExamDetailsForm((p) => ({ ...p, ut_service_fee: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                      placeholder="Credits charged by UT"
+                    />
+                  </div>
+                </div>
+
+                {editingExam ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Mapping status</label>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        editingExam.mapping_status === 'mapped'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {formatMappingStatus(editingExam.mapping_status)}
+                    </span>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Auto-updated when field mappings JSON is saved (Mapped when mappings exist).
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               {/* Active Status */}
@@ -759,7 +1101,69 @@ export default function AutomationExamsPage() {
                     {new Date(viewingExam.created_at).toLocaleString('en-IN')}
                   </p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Mapping status</label>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      viewingExam.mapping_status === 'mapped'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {formatMappingStatus(viewingExam.mapping_status)}
+                  </span>
+                </div>
+                {viewingExam.taxonomy_exam_id && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-500 mb-1">Linked taxonomy exam</label>
+                    <p className="text-slate-900">ID {viewingExam.taxonomy_exam_id}</p>
+                  </div>
+                )}
               </div>
+
+              {viewingExam.exam_details && (
+                <div className="border rounded-lg p-4 bg-slate-50">
+                  <h3 className="text-sm font-semibold text-slate-900 mb-3">Portal exam dates & fees</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-500">Application start</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.application_start_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Application end</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.application_close_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Hall ticket date</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.admit_card_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Exam date</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.exam_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Result date</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.result_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Counselling start</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.counselling_start_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Counselling end</span>
+                      <p className="text-slate-900">{formatDisplayDate(viewingExam.exam_details.counselling_end_date)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Form fee (₹)</span>
+                      <p className="text-slate-900">{formatDisplayFee(viewingExam.exam_details.application_fees)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">UT service fee</span>
+                      <p className="text-slate-900">{formatDisplayFee(viewingExam.exam_details.ut_service_fee, ' credits')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-500 mb-1">Field Mappings</label>
@@ -820,6 +1224,8 @@ export default function AutomationExamsPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
       />
+        </>
+      )}
     </div>
   );
 }

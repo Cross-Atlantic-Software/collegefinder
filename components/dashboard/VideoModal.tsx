@@ -35,11 +35,11 @@ export default function VideoModal({ lecture, isOpen, onClose }: Props) {
         </div>
 
         {/* Video Content */}
-        <div className="flex-1 p-6 flex items-center justify-center">
+        <div className="flex-1 p-6 flex items-center justify-center min-h-0">
           {lecture.iframe_code ? (
-            <div className="w-full aspect-video">
-              <div 
-                className="w-full h-full rounded-lg overflow-hidden"
+            <div className="w-full aspect-video max-h-[70vh] rounded-lg overflow-hidden bg-black [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0">
+              <div
+                className="h-full w-full"
                 dangerouslySetInnerHTML={{ __html: lecture.iframe_code }}
               />
             </div>

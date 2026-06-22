@@ -85,6 +85,7 @@ async function enrichCollegeRows(colleges) {
       id: r.exam_id,
       name: r.exam_name,
       code: r.exam_code,
+      abbreviation: r.exam_abbreviation ?? null,
     }));
     return {
       ...c,

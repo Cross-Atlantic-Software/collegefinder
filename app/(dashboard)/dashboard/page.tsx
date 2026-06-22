@@ -14,6 +14,7 @@ import {
   ShortlistColleges,
   ShortlistInstitutes,
   ShortlistScholarships,
+  Settings,
 } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
@@ -21,6 +22,7 @@ import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
 import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 import Counselling from "@/components/dashboard/Counselling";
+import UtCreditsWallet from "@/components/dashboard/UtCredits/UtCreditsWallet";
 
 type SectionId =
   | "dashboard"
@@ -30,12 +32,14 @@ type SectionId =
   | "coaching-institutes"
   | "scholarships"
   | "applications"
+  | "ut-credits"
   | "exam-prep"
   | "test-module"
   | "counselling"
   | "know-your-strengths"
   | "admission-help"
-  | "referral";
+  | "referral"
+  | "settings";
 
 const VALID_SECTIONS: SectionId[] = [
   "dashboard",
@@ -45,12 +49,14 @@ const VALID_SECTIONS: SectionId[] = [
   "coaching-institutes",
   "scholarships",
   "applications",
+  "ut-credits",
   "exam-prep",
   "test-module",
   "counselling",
   "know-your-strengths",
   "admission-help",
   "referral",
+  "settings",
 ];
 
 function parseSectionFromSearchParams(searchParams: URLSearchParams): SectionId {
@@ -126,12 +132,14 @@ function DashboardPageContent() {
     "coaching-institutes",
     "scholarships",
     "applications",
+    "ut-credits",
     "exam-prep",
     "test-module",
     "counselling",
     "know-your-strengths",
     "admission-help",
     "referral",
+    "settings",
   ];
 
   return (
@@ -184,8 +192,8 @@ function DashboardPageContent() {
             <div className="flex flex-1 flex-col overflow-hidden">
               <DashboardHeader />
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
-                <main className="min-w-0">
+              <div className="flex-1 flex flex-col min-h-0 px-4 pb-4 pt-2 md:px-6 md:pb-4 md:pt-2">
+                <main className="min-w-0 flex-1 min-h-0 flex flex-col">
                   <MiddleContent />
                 </main>
               </div>
@@ -224,6 +232,8 @@ function DashboardPageContent() {
 
                 {activeSection === "applications" && <ApplicationsPage />}
 
+                {activeSection === "ut-credits" && <UtCreditsWallet />}
+
                 {activeSection === "exam-prep" && (
                   <ExamPreparation initialMode={examPrepMode} />
                 )}
@@ -245,6 +255,8 @@ function DashboardPageContent() {
                 )}
 
                 {activeSection === "referral" && <ReferralCard />}
+
+                {activeSection === "settings" && <Settings />}
               </main>
             </div>
           )}

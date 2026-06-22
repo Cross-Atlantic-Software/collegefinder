@@ -61,6 +61,7 @@ app.use('/api/colleges', require('./src/routes/public/collegesRoutes'));
 app.use('/api/applications', require('./src/routes/public/applicationsRoutes'));
 app.use('/api/exam-cities', require('./src/routes/public/examCitiesRoutes'));
 app.use('/api/user', require('./src/routes/user/userAutomationRoutes'));
+app.use('/api/user/credits', require('./src/routes/user/userCreditRoutes'));
 app.use('/api/strength', require('./src/routes/user/strengthRoutes'));
 app.use('/api/admin/counsellor', require('./src/routes/admin/counsellorRoutes'));
 app.use('/api/admin/experts', require('./src/routes/admin/expertRoutes'));

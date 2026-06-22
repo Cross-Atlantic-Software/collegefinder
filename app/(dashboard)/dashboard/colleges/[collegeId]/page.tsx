@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FiTrendingUp } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar } from "@/components/dashboard";
+import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { CollegeDetailRecommendedExams } from "@/components/dashboard/CollegeDetailRecommendedExams";
@@ -17,19 +17,6 @@ import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
 import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
 import { resolveCollegeLogoSrc } from "@/lib/collegeLogo";
 
-type SectionId =
-  | "dashboard"
-  | "profile"
-  | "exam-shortlist"
-  | "college-shortlist"
-  | "coaching-institutes"
-  | "scholarships"
-  | "applications"
-  | "exam-prep"
-  | "test-module"
-  | "know-your-strengths"
-  | "admission-help"
-  | "referral";
 
 const SOURCE_BREADCRUMBS: Record<string, Array<{ label: string; href?: string }>> = {
   "dashboard-college-shortlist-recommended": [
@@ -92,7 +79,7 @@ function CollegeDetailShell({
   onSectionChange,
 }: {
   children: React.ReactNode;
-  onSectionChange: (section: SectionId) => void;
+  onSectionChange: (section: DashboardSectionId) => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -160,14 +147,14 @@ export default function CollegeDetailPage() {
     { label: "College Shortlist", href: "/dashboard?section=college-shortlist" },
   ];
 
-  const handleSectionChange = (section: SectionId) => {
+  const handleSectionChange = (section: DashboardSectionId) => {
     router.push(`/dashboard?section=${section}`);
   };
 
   if (isLoading) {
     return (
       <CollegeDetailShell onSectionChange={handleSectionChange}>
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             Loading college details...
           </div>
@@ -179,7 +166,7 @@ export default function CollegeDetailPage() {
   if (isError || !college) {
     return (
       <CollegeDetailShell onSectionChange={handleSectionChange}>
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full px-4 py-8 md:px-6">
           <div className="rounded-2xl bg-white p-8 text-center dark:bg-slate-900">
             <p className="text-sm text-red-600 dark:text-red-400">
               {error instanceof Error ? error.message : "College not found."}
@@ -257,7 +244,7 @@ export default function CollegeDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
           </div>

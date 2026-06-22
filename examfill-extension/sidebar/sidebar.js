@@ -164,7 +164,7 @@
     // adapter still loads for validation (the student path now requires approval).
     const [profileRes, adapterRes] = await Promise.all([
       msg('GET_PROFILE'),
-      msg((adminValidateMode || isAdmin) ? 'GET_ADAPTER_ADMIN' : 'GET_ADAPTER', { exam_id: examId })
+      msg((adminValidateMode || isAdmin) ? 'GET_ADAPTER_ADMIN' : 'GET_ADAPTER', { exam_id: examId, forceRefresh: true })
     ]);
 
     if (!profileRes.success) {

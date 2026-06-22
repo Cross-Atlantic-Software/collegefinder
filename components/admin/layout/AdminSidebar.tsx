@@ -39,6 +39,7 @@ import {
   FiMessageCircle,
   FiSettings,
   FiFileText,
+  FiCreditCard,
 } from 'react-icons/fi';
 const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 
@@ -86,6 +87,7 @@ const navGroups: NavGroup[] = [
     superAdminOnly: true,
     children: [
       { label: 'Site Users', href: '/admin/site-users', icon: <FiUser className="h-4 w-4" /> },
+      { label: 'UT Credits Ledger', href: '/admin/ledger', icon: <FiCreditCard className="h-4 w-4" /> },
       { label: 'Admin Users', href: '/admin/admin-users', icon: <FiShield className="h-4 w-4" /> },
       { label: 'Modules', href: '/admin/modules', icon: <FiLayers className="h-4 w-4" /> },
     ],
@@ -195,7 +197,7 @@ const navItems: NavItem[] = [
   { label: 'Credit Packs', href: '/admin/credit-packs', icon: <FiPackage className="h-4 w-4" />, moduleCode: 'applications' },
   { label: 'Payment Settings', href: '/admin/payment-settings', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'applications' },
   { label: 'Payments Ledger', href: '/admin/payments-ledger', icon: <FiList className="h-4 w-4" />, moduleCode: 'applications' },
-  { label: 'Automation Exams', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
+  { label: 'Automation Forms', href: '/admin/automation-exams', icon: <FiSettings className="h-4 w-4" />, moduleCode: 'automation_exams' },
   { label: 'Add Experts', href: '/admin/experts', icon: <FiUserPlus className="h-4 w-4" /> },
 ];
 

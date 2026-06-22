@@ -204,6 +204,8 @@ export async function getSubjectsByStream(): Promise<ApiResponse<{
 export type ExamPrepLectureDto = {
   id: number;
   youtubeId: string;
+  iframeCode?: string | null;
+  videoFile?: string | null;
   title: string;
   channel: string;
   hookSummary: string | null;
@@ -218,6 +220,8 @@ export type ExamPrepLectureDto = {
   subjectName: string;
   topicId: number;
   topicName: string;
+  subtopicId?: number | null;
+  subtopicName?: string | null;
   /** Full video length in seconds (YouTube Data API); null if unavailable. */
   durationSeconds?: number | null;
 };
@@ -474,7 +478,12 @@ export interface DashboardCollege {
   documentsRequired?: Array<{ id?: number; document_name?: string | null }>;
   counsellingSteps?: Array<{ step_number?: number | null; description?: string | null }>;
   programs?: DashboardCollegeProgram[];
-  linkedExams?: Array<{ id: number; name: string; code: string | null }>;
+  linkedExams?: Array<{
+    id: number;
+    name: string;
+    code: string | null;
+    abbreviation?: string | null;
+  }>;
   majorProgramNames?: string[];
 }
 
@@ -599,6 +608,7 @@ export interface DashboardLinkedExam {
   id: number;
   name: string;
   code: string | null;
+  abbreviation?: string | null;
 }
 
 export interface DashboardInstitute {

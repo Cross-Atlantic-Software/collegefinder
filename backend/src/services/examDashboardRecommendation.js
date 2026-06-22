@@ -164,6 +164,52 @@ function sortExamsByPopularityRank(exams) {
 }
 
 /**
+ * @param {number} examId
+ * @param {number} userStreamId
+ * @param {number|null|undefined} defaultStreamId
+ * @param {ReadonlyMap<number, number[]>|null|undefined} eligibilityStreamsByExamId exam_id -> ec.stream_ids
+ * @returns {'user'|'default'}
+ */
+function getExamStreamTier(examId, userStreamId, defaultStreamId, eligibilityStreamsByExamId) {
+  const uid = Number(userStreamId);
+  const did =
+    defaultStreamId != null && Number.isInteger(Number(defaultStreamId))
+      ? Number(defaultStreamId)
+      : null;
+  const streams = (eligibilityStreamsByExamId?.get(Number(examId)) || []).map(Number);
+  if (Number.isInteger(uid) && streams.includes(uid)) return 'user';
+  if (did != null && streams.includes(did)) return 'default';
+  return 'default';
+}
+
+/**
+ * Dashboard "All exams" tab: profile stream first, Default stream second; popularity within each group.
+ */
+function sortExamsUserStreamBeforeDefault(
+  exams,
+  userStreamId,
+  defaultStreamId,
+  eligibilityStreamsByExamId
+) {
+  const userTier = [];
+  const defaultTier = [];
+  for (const exam of exams || []) {
+    const tier = getExamStreamTier(
+      exam.id,
+      userStreamId,
+      defaultStreamId,
+      eligibilityStreamsByExamId
+    );
+    if (tier === 'user') userTier.push(exam);
+    else defaultTier.push(exam);
+  }
+  return [
+    ...sortExamsByPopularityRank(userTier),
+    ...sortExamsByPopularityRank(defaultTier),
+  ];
+}
+
+/**
  * @param {object[]} streamExams exams_taxonomies rows for user's stream
  * @param {number[]} userInterestIds normalized career goal / interest ids
  * @param {object[]} streamMappings rows from StreamInterestRecommendation.findByStream
@@ -348,6 +394,8 @@ module.exports = {
   mergeExamTagMaps,
   collectMappedExamIdsForUserInterests,
   sortExamsByPopularityRank,
+  sortExamsUserStreamBeforeDefault,
+  getExamStreamTier,
   computeRecommendedExamIdsTop20,
   computeDashboardRecommendedExamOrder,
 };

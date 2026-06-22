@@ -88,6 +88,7 @@ const init = async () => {
       'automation_applications.sql', // Automation application queue (depends on automation_exams, users, admin_users, automation_sessions)
       'strength_payments.sql',       // Strength payment status (depends on users)
       'strength_results.sql',        // Strength analysis results (depends on users, admin_users)
+      'user_credits.sql',            // UT credits wallet + transaction ledger (depends on users)
       'admission_experts.sql',        // Admission help experts (depends on admin_users)
       'referral_codes.sql'            // Referral codes on users + institutes
     ];
@@ -190,7 +191,11 @@ const runMigrations = async () => {
     'add_stream_interest_recommendation_mappings_2026.sql',
     'add_ssc_cgl_and_extension_catalog.sql',
     'add_credits_and_payments.sql',
-    'add_adapter_approval_and_validation.sql'
+    'add_adapter_approval_and_validation.sql',
+    'fix_ssc_cgl_portal_url_patterns.sql',
+    'add_automation_exam_taxonomy_sync_fields.sql',
+    'backfill_automation_exam_taxonomy_links.sql',
+    'add_user_credits_system.sql',
   ];
 
   console.log('\n🔄 Running database migrations...\n');

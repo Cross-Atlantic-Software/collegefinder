@@ -31,6 +31,7 @@ const RecommendedMappingController = require('../../controllers/admin/recommende
 const CoachingExamsMappingController = require('../../controllers/admin/coachingExamsMappingController');
 const ScholarshipExamsCollegesMappingController = require('../../controllers/admin/scholarshipExamsCollegesMappingController');
 const QueryAdminController = require('../../controllers/admin/queryAdminController');
+const AdminCreditController = require('../../controllers/admin/adminCreditController');
 const { authenticateAdmin, requireSuperAdmin, requireModuleAccess, requireCanDelete, requireCanEdit, requireCanDownloadExcel } = require('../../middleware/adminAuth');
 const {
   validateAdminLogin,
@@ -1515,6 +1516,18 @@ router.delete('/automation-exams/:id', authenticateAdmin, requireModuleAccess('a
  * @access  Private (Admin)
  */
 router.get('/users-for-automation', authenticateAdmin, AutomationApplicationsController.getUsersForSelection);
+
+/**
+ * @route   GET /api/admin/credits/ledger
+ * @desc    Paginated UT credit transactions (optional user_id filter)
+ * @access  Private (Super Admin)
+ */
+router.get(
+  '/credits/ledger',
+  authenticateAdmin,
+  requireSuperAdmin,
+  AdminCreditController.getLedger
+);
 
 module.exports = router;
 
