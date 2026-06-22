@@ -53,21 +53,9 @@ CREATE TABLE IF NOT EXISTS credit_wallets (
 
 CREATE INDEX IF NOT EXISTS idx_credit_wallets_user ON credit_wallets(user_id);
 
--- credit_transactions: append-only ledger. Source of truth for balances. Never updated/deleted.
-CREATE TABLE IF NOT EXISTS credit_transactions (
-    id            SERIAL PRIMARY KEY,
-    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    delta         INTEGER NOT NULL,
-    type          VARCHAR(20) NOT NULL CHECK (type IN ('purchase','fill_debit','refund','admin_adjust')),
-    balance_after INTEGER NOT NULL,
-    ref_type      VARCHAR(30),
-    ref_id        INTEGER,
-    note          TEXT,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_credit_txns_user ON credit_transactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_credit_txns_created ON credit_transactions(created_at DESC);
+-- credit_transactions is created by add_user_credits_system.sql (main's canonical schema:
+-- amount/reference_type/idempotency_key). It is intentionally NOT defined here to avoid a
+-- conflicting duplicate; that migration runs before this one (see config/database.js).
 
 -- credit_orders: Razorpay purchases. UNIQUE(razorpay_payment_id) is the double-credit guard.
 CREATE TABLE IF NOT EXISTS credit_orders (

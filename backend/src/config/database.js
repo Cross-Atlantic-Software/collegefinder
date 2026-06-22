@@ -190,12 +190,14 @@ const runMigrations = async () => {
     'add_profile_field_registry.sql',
     'add_stream_interest_recommendation_mappings_2026.sql',
     'add_ssc_cgl_and_extension_catalog.sql',
+    // main's credit system creates the canonical credit_transactions table; it must run
+    // before add_credits_and_payments.sql, whose fill_charges FK references it.
+    'add_user_credits_system.sql',
     'add_credits_and_payments.sql',
     'add_adapter_approval_and_validation.sql',
     'fix_ssc_cgl_portal_url_patterns.sql',
     'add_automation_exam_taxonomy_sync_fields.sql',
     'backfill_automation_exam_taxonomy_links.sql',
-    'add_user_credits_system.sql',
   ];
 
   console.log('\n🔄 Running database migrations...\n');

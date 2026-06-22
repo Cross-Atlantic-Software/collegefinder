@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const db = require('../../config/database');
 
 // CreditLedger — the single chokepoint through which every balance change flows.
@@ -42,11 +43,25 @@ async function withTransaction(fn) {
   }
 }
 
+// Map our internal kinds to main's credit_transactions.type enum {purchase, deduction,
+// refund}. Direction (credit-in vs credit-out) is carried by `type`; `amount` is always
+// positive (main's CHECK (amount > 0)). Positive admin adjustments map to 'refund' (credits
+// granted without payment); negative to 'deduction'. reference_type='admin' keeps the audit.
+function toCanonicalType(type, delta) {
+  switch (type) {
+    case 'purchase':     return 'purchase';                          // delta > 0
+    case 'refund':       return 'refund';                            // delta > 0
+    case 'fill_debit':   return 'deduction';                         // delta < 0
+    case 'admin_adjust': return delta >= 0 ? 'refund' : 'deduction';
+    default:             return type; // unknown → main's CHECK rejects (fail loud)
+  }
+}
+
 // Apply a signed delta to a user's wallet and write the matching ledger row.
 // MUST be called with a client that is already inside a transaction.
 //   delta > 0 credits (purchase/refund/admin_adjust+), delta < 0 debits (fill_debit).
 // Returns { balance_after, transaction }.
-async function applyDelta(client, { userId, delta, type, refType = null, refId = null, note = null }) {
+async function applyDelta(client, { userId, delta, type, refType = null, refId = null, note = null, idempotencyKey = null }) {
   // Ensure the wallet exists, then lock it for the balance read-modify-write.
   await client.query(
     'INSERT INTO credit_wallets (user_id, balance) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING',
@@ -68,11 +83,15 @@ async function applyDelta(client, { userId, delta, type, refType = null, refId =
     [newBalance, userId]
   );
 
+  // main's schema: signed delta→positive amount (direction carried by type),
+  // ref_type→reference_type, ref_id→reference_id, note→description; idempotency_key is
+  // NOT NULL UNIQUE (default to a generated UUID); metadata relies on its '{}' default.
   const txnRes = await client.query(
-    `INSERT INTO credit_transactions (user_id, delta, type, balance_after, ref_type, ref_id, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO credit_transactions
+       (user_id, type, amount, balance_after, reference_type, reference_id, description, idempotency_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [userId, delta, type, newBalance, refType, refId, note]
+    [userId, toCanonicalType(type, delta), Math.abs(delta), newBalance, refType, refId, note, idempotencyKey || crypto.randomUUID()]
   );
 
   return { balance_after: newBalance, transaction: txnRes.rows[0] };
