@@ -233,8 +233,8 @@ class ExamAdapterController {
         `UPDATE exam_adapters
             SET status = $1,
                 is_active = $2,
-                last_verified_at = CASE WHEN $1 = 'published' THEN CURRENT_TIMESTAMP ELSE last_verified_at END,
-                last_verified_by = CASE WHEN $1 = 'published' THEN $3 ELSE last_verified_by END,
+                last_verified_at = CASE WHEN $2 THEN CURRENT_TIMESTAMP ELSE last_verified_at END,
+                last_verified_by = CASE WHEN $2 THEN $3 ELSE last_verified_by END,
                 updated_by = $3,
                 updated_at = CURRENT_TIMESTAMP
           WHERE exam_id = $4
