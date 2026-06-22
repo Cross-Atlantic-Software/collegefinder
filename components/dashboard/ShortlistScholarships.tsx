@@ -160,11 +160,6 @@ export default function ShortlistScholarships({
                     All, your shortlist, and recommended scholarships aligned with your exams and stream.
                   </p>
                 </div>
-                {shortlistedIds.length > 0 && (
-                  <span className="shrink-0 rounded-full bg-[#FAD53C] px-2.5 py-0.5 text-xs font-bold text-black">
-                    {shortlistedIds.length}
-                  </span>
-                )}
               </div>
 
               <div className="relative -mb-px mt-3 flex gap-1 overflow-x-auto scrollbar-hide">
@@ -189,6 +184,18 @@ export default function ShortlistScholarships({
                     >
                       <span className="text-[15px]">{tab.icon}</span>
                       <span>{tab.label}</span>
+                      {tab.id === 'shortlisted' && shortlistedIds.length > 0 ? (
+                        <span
+                          className={[
+                            "ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                            isActive
+                              ? "bg-[#FAD53C] text-black"
+                              : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                          ].join(" ")}
+                        >
+                          {shortlistedIds.length}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -255,32 +262,34 @@ export default function ShortlistScholarships({
                     />
                   ))}
                 </div>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Showing {total === 0 ? 0 : (effectivePage - 1) * PER_PAGE + 1}-
-                    {Math.min(effectivePage * PER_PAGE, total)} of {total}
-                  </p>
+                <div className="mt-8 flex flex-col items-center justify-center gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setPage(effectivePage - 1)}
                       disabled={effectivePage <= 1}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
+                      className="rounded-full px-4 py-2 font-medium text-slate-600 transition hover:bg-slate-200/50 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800"
                     >
                       Prev
                     </button>
-                    <span className="text-slate-700 dark:text-slate-300">
-                      Page {effectivePage} / {totalPages}
-                    </span>
+                    <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-black">
+                        {effectivePage}
+                      </span>
+                      <span className="text-slate-500">/ {totalPages}</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setPage(effectivePage + 1)}
                       disabled={effectivePage >= totalPages}
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 transition disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
+                      className="rounded-full px-4 py-2 font-medium text-slate-600 transition hover:bg-slate-200/50 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800"
                     >
                       Next
                     </button>
                   </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Showing {total === 0 ? 0 : (effectivePage - 1) * PER_PAGE + 1} to {Math.min(effectivePage * PER_PAGE, total)} of {total} scholarships
+                  </p>
                 </div>
               </>
             )}

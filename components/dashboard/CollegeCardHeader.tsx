@@ -2,9 +2,9 @@
 
 import type { DashboardCollege } from "@/api/auth/profile";
 import { CollegeLogo } from "@/components/dashboard/CollegeLogo";
-import { EXAM_CARD_CHIP_CLASS } from "@/components/dashboard/examCardChipStyles";
 import { ExamCardFieldTooltip } from "@/components/dashboard/examCardFieldTooltip";
 import { collegeLocationLine } from "@/lib/collegeDisplay";
+import { FaMapMarkerAlt } from "react-icons/fa";
 
 type CollegeCardHeaderProps = {
   college: DashboardCollege;
@@ -13,10 +13,9 @@ type CollegeCardHeaderProps = {
   compact?: boolean;
 };
 
-/** Shared college card top row: name, location · affiliation, type badge on logo. */
+/** Shared college card top row: full width banner image with title and subtitle overlay. */
 export function CollegeCardHeader({
   college,
-  borderClassName = "border-slate-100 dark:border-slate-800",
   compact = false,
 }: CollegeCardHeaderProps) {
   const location = collegeLocationLine(college);
@@ -30,60 +29,41 @@ export function CollegeCardHeader({
       : collegeType
     : null;
 
-  const logoSide = compact ? (
-    <div className="flex shrink-0 flex-col items-center gap-0.5">
-      {typeBadgeLabel && collegeType ? (
-        <span className="group/field relative z-10 max-w-[4.75rem]">
-          <span
-            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
-            tabIndex={0}
-            aria-label={`College type: ${collegeType}`}
-          >
-            {typeBadgeLabel}
-          </span>
-          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
-        </span>
-      ) : null}
-      <CollegeLogo college={college} className="h-11 w-11 shrink-0 p-1" />
-    </div>
-  ) : (
-    <div className="relative shrink-0 overflow-visible pt-1.5">
-      {typeBadgeLabel && collegeType ? (
-        <span className="group/field absolute left-1/2 top-0 z-10 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 pb-2">
-          <span
-            className={`${EXAM_CARD_CHIP_CLASS} block cursor-default border border-slate-200/80 text-center text-[9px] font-semibold leading-tight shadow-sm dark:border-slate-600`}
-            tabIndex={0}
-            aria-label={`College type: ${collegeType}`}
-          >
-            {typeBadgeLabel}
-          </span>
-          <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
-        </span>
-      ) : null}
-      <CollegeLogo college={college} className="h-16 w-16 shrink-0 p-1.5" />
-    </div>
-  );
-
   return (
-    <div
-      className={`flex items-start border-b px-3 ${compact ? "gap-2.5 pt-2 pb-1.5" : "gap-3 pt-4 pb-1"} ${borderClassName}`}
-    >
-      <div className="min-w-0 flex-1 space-y-1">
-        <h3
-          className={`line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100 ${compact ? "leading-tight" : "leading-snug"}`}
-        >
+    <div className={`relative w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800 ${compact ? "h-24" : "h-32"} rounded-t-2xl`}>
+      <CollegeLogo 
+        college={college} 
+        className="absolute inset-0 h-full w-full" 
+        imageClassName="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      
+      {typeBadgeLabel && collegeType ? (
+        <div className="absolute left-2 top-2">
+          <span className="group/field relative z-10 inline-block">
+            <span
+              className="inline-flex items-center rounded-full border border-white/20 bg-black/60 px-2 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md dark:border-slate-600 dark:bg-black/60"
+              tabIndex={0}
+              aria-label={`College type: ${collegeType}`}
+            >
+              {typeBadgeLabel}
+            </span>
+            <ExamCardFieldTooltip text={`College type: ${collegeType}`} />
+          </span>
+        </div>
+      ) : null}
+
+      <div className="absolute bottom-3 left-3 pr-4 text-white">
+        <h3 className="line-clamp-1 text-[15px] font-bold leading-tight drop-shadow-sm">
           {college.college_name}
         </h3>
         {subtitleParts.length > 0 ? (
-          <p
-            className="line-clamp-2 text-[11px] leading-snug text-slate-500 dark:text-slate-400"
-            title={subtitleParts.join(" · ")}
-          >
-            {subtitleParts.join(" · ")}
+          <p className="mt-1 flex items-center gap-1 text-[11px] text-white/80 drop-shadow-sm" title={subtitleParts.join(" · ")}>
+            <FaMapMarkerAlt className="h-3 w-3 shrink-0" />
+            <span className="truncate">{subtitleParts.join(" · ")}</span>
           </p>
         ) : null}
       </div>
-      {logoSide}
     </div>
   );
 }
