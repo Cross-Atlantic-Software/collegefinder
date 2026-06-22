@@ -502,7 +502,7 @@ export default function ExamAdapterEditorPage() {
                 type="text"
                 value={adapter.exam_name}
                 onChange={(e) => setAdapter({ ...adapter, exam_name: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800"
               />
             </div>
             <div>
@@ -513,7 +513,7 @@ export default function ExamAdapterEditorPage() {
                 type="text"
                 value={adapter.portal_url_pattern}
                 onChange={(e) => setAdapter({ ...adapter, portal_url_pattern: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono text-slate-800"
               />
             </div>
             <div>
@@ -531,7 +531,7 @@ export default function ExamAdapterEditorPage() {
                   })
                 }
                 placeholder="1"
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800"
               />
             </div>
             <div>
@@ -550,7 +550,7 @@ export default function ExamAdapterEditorPage() {
                   })
                 }
                 placeholder="e.g. 2000"
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800"
               />
             </div>
           </div>
@@ -671,7 +671,7 @@ function SectionEditor({
                 type="text"
                 value={section.section_name}
                 onChange={(e) => onChange({ section_name: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800"
               />
             </div>
             <div>
@@ -688,7 +688,7 @@ function SectionEditor({
                     }
                   })
                 }
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800"
               >
                 {PAGE_INDICATOR_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -712,7 +712,7 @@ function SectionEditor({
                     }
                   })
                 }
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono"
+                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono text-slate-800"
               />
             </div>
           </div>
@@ -910,7 +910,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
               <select
                 value={field.format || ''}
                 onChange={(e) => onChange({ format: (e.target.value || undefined) as AdapterField['format'] })}
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white text-slate-800"
               >
                 {FORMATS.map((f) => (
                   <option key={f} value={f}>
@@ -957,7 +957,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
                     }
                   });
                 }}
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono text-slate-800"
               />
             </div>
           </div>
@@ -983,7 +983,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
                       }
                     })
                   }
-                  className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                  className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white text-slate-800"
                 >
                   <option value="text">text</option>
                   <option value="masked_text">masked_text</option>
@@ -1002,7 +1002,7 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
                       }
                     })
                   }
-                  className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+                  className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono text-slate-800"
                   placeholder="DD/MM/YYYY"
                 />
               </div>
@@ -1085,7 +1085,7 @@ function ValueMapEditor({
               type="text"
               defaultValue={k}
               onBlur={(e) => updateKey(k, e.target.value)}
-              className="px-2 py-1 text-xs border border-slate-300 rounded font-mono w-32"
+              className="px-2 py-1 text-xs border border-slate-300 rounded font-mono w-32 text-slate-800"
               placeholder="Canonical"
             />
             <span className="text-slate-400 text-xs">→</span>
@@ -1093,7 +1093,7 @@ function ValueMapEditor({
               type="text"
               value={variants.join(', ')}
               onChange={(e) => updateVariants(k, e.target.value)}
-              className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded"
+              className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded text-slate-800"
               placeholder="Variant 1, Variant 2"
             />
             <button onClick={() => removeKey(k)} className="text-red-600 hover:bg-red-50 p-1 rounded">
