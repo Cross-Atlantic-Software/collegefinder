@@ -1399,7 +1399,6 @@ router.get('/fill-reports', authenticateAdmin, requireModuleAccess('applications
 router.get('/fill-reports/:id', authenticateAdmin, requireModuleAccess('applications'), FillReportController.adminGetReportDetail);
 
 // ---- Fees & Credits admin (gated under the 'applications' module) ----
-const AdminCreditController = require('../../controllers/admin/adminCreditController');
 
 // Credit packs CRUD
 router.get('/credit-packs', authenticateAdmin, requireModuleAccess('applications'), AdminCreditController.listPacks);
