@@ -421,7 +421,8 @@
         section: 'portal_login',
         fields: loginFields,
         userData: profile,
-        tabId
+        tabId,
+        admin_validate: adminValidateMode
       });
 
       const resultEl = $('portalFillResult');
@@ -851,7 +852,8 @@
         section:       section.section_id,
         fields:        section.fields,
         userData:      profile,
-        page_indicator: section.page_indicator || null
+        page_indicator: section.page_indicator || null,
+        admin_validate: adminValidateMode
       });
 
       if (!result.success) { showError(result.error || 'Fill failed'); return; }
@@ -866,6 +868,9 @@
       // Animate the live list
       let doneCount = 0;
       for (const r of report.results) {
+        // Admin-validation 'unmapped' entries are page fields not in the adapter —
+        // they aren't a fill outcome, so keep them out of the fill animation.
+        if (r.status === 'unmapped') continue;
         doneCount++;
         addLiveRow(r);
         $('fillCount').textContent = doneCount;
@@ -1064,7 +1069,8 @@
         section: builderState.section.section_id,
         page_indicator: builderState.section.page_indicator || null,
         fields: mappedFields,
-        userData: profile
+        userData: profile,
+        admin_validate: adminValidateMode
       });
 
       setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
@@ -1212,7 +1218,8 @@
       section: section.section_id,
       page_indicator: section.page_indicator || null,
       fields,
-      userData: profile
+      userData: profile,
+      admin_validate: adminValidateMode
     });
 
     if (!result?.success) {

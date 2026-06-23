@@ -27,69 +27,89 @@ const PageScanner = {
     const url = window.location.href;
     const title = document.title || '';
     const headings = collectHeadings();
-
-    const elements = Array.from(document.querySelectorAll('input, select, textarea, [role="combobox"]'));
-
-    const fields = [];
-    const labelBucket = new Map();      // label -> count
-    const placeholderBucket = new Map();
-
-    for (const el of elements) {
-      if (!isUsable(el)) continue;
-
-      const type = inferType(el);
-      const label = labelFor(el);
-      const placeholder = (el.placeholder || '').trim();
-      const id = (el.id || '').trim();
-      const name = (el.getAttribute('name') || '').trim();
-      const required = !!(el.required || el.getAttribute('aria-required') === 'true');
-
-      // Compute idx within the most-distinctive bucket (label preferred).
-      let idx = 0;
-      if (label) {
-        const c = labelBucket.get(label) || 0;
-        idx = c;
-        labelBucket.set(label, c + 1);
-      } else if (placeholder) {
-        const c = placeholderBucket.get(placeholder) || 0;
-        idx = c;
-        placeholderBucket.set(placeholder, c + 1);
-      }
-
-      const field = {
-        label,
-        id,
-        name,
-        placeholder,
-        type,
-        idx,
-        required
-      };
-
-      if (type === 'select' && el.tagName === 'SELECT') {
-        field.options = Array.from(el.options || [])
-          .map((o) => (o.textContent || '').trim())
-          .filter((t) => t && t.toLowerCase() !== 'select')
-          .slice(0, 60);
-      } else if (type === 'radio') {
-        // Capture sibling radios with the same name — their values become the options
-        if (name) {
-          const radios = document.querySelectorAll(`input[type="radio"][name="${cssEscape(name)}"]`);
-          field.options = Array.from(radios)
-            .map((r) => labelFor(r) || (r.value || '').trim())
-            .filter(Boolean)
-            .slice(0, 20);
-        }
-      }
-
-      fields.push(field);
-    }
-
+    const fields = scanFieldPairs().map((p) => p.field);
     return { url, title, headings, fields: dedupeRadios(fields) };
+  },
+
+  /**
+   * Like scan(), but returns each field descriptor paired with its live DOM element:
+   *   [{ el, field }]
+   * Used IN-PAGE (admin validation) to diff page fields against the mapped set by
+   * element identity. Radios are deduped to one entry per name, matching scan().
+   * Element references never cross the message boundary — only the descriptor does.
+   */
+  scanElements() {
+    return dedupeRadioPairs(scanFieldPairs());
   }
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Enumerate every usable page field, returning { el, field } pairs in DOM order.
+ * This is the single source of "what is a field" for both scan() (build time) and
+ * scanElements() (in-page diff) — keep them in sync by going through here.
+ */
+function scanFieldPairs() {
+  const elements = Array.from(document.querySelectorAll('input, select, textarea, [role="combobox"]'));
+
+  const pairs = [];
+  const labelBucket = new Map();      // label -> count
+  const placeholderBucket = new Map();
+
+  for (const el of elements) {
+    if (!isUsable(el)) continue;
+
+    const type = inferType(el);
+    const label = labelFor(el);
+    const placeholder = (el.placeholder || '').trim();
+    const id = (el.id || '').trim();
+    const name = (el.getAttribute('name') || '').trim();
+    const required = !!(el.required || el.getAttribute('aria-required') === 'true');
+
+    // Compute idx within the most-distinctive bucket (label preferred).
+    let idx = 0;
+    if (label) {
+      const c = labelBucket.get(label) || 0;
+      idx = c;
+      labelBucket.set(label, c + 1);
+    } else if (placeholder) {
+      const c = placeholderBucket.get(placeholder) || 0;
+      idx = c;
+      placeholderBucket.set(placeholder, c + 1);
+    }
+
+    const field = {
+      label,
+      id,
+      name,
+      placeholder,
+      type,
+      idx,
+      required
+    };
+
+    if (type === 'select' && el.tagName === 'SELECT') {
+      field.options = Array.from(el.options || [])
+        .map((o) => (o.textContent || '').trim())
+        .filter((t) => t && t.toLowerCase() !== 'select')
+        .slice(0, 60);
+    } else if (type === 'radio') {
+      // Capture sibling radios with the same name — their values become the options
+      if (name) {
+        const radios = document.querySelectorAll(`input[type="radio"][name="${cssEscape(name)}"]`);
+        field.options = Array.from(radios)
+          .map((r) => labelFor(r) || (r.value || '').trim())
+          .filter(Boolean)
+          .slice(0, 20);
+      }
+    }
+
+    pairs.push({ el, field });
+  }
+
+  return pairs;
+}
 
 function collectHeadings() {
   const out = [];
@@ -200,6 +220,17 @@ function dedupeRadios(fields) {
     if (f.type !== 'radio' || !f.name) return true;
     if (seenRadioNames.has(f.name)) return false;
     seenRadioNames.add(f.name);
+    return true;
+  });
+}
+
+/** Same radio dedupe as dedupeRadios, but over { el, field } pairs (for scanElements). */
+function dedupeRadioPairs(pairs) {
+  const seenRadioNames = new Set();
+  return pairs.filter(({ field }) => {
+    if (field.type !== 'radio' || !field.name) return true;
+    if (seenRadioNames.has(field.name)) return false;
+    seenRadioNames.add(field.name);
     return true;
   });
 }

@@ -17,6 +17,7 @@ import {
   ProfilePathEntry,
   AdapterSection,
   AdapterField,
+  AdapterFieldSelectors,
   FieldType,
   ValidationFieldResult
 } from '@/api/admin/examAdapters';
@@ -76,6 +77,9 @@ export default function ExamAdapterEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [validation, setValidation] = useState<ValidationMap>({});
+  // Admin-validation 'unmapped' entries (page fields not in the adapter), per section.
+  // Kept separate from `validation` because they have no adapter field_id to index by.
+  const [unmapped, setUnmapped] = useState<Record<string, ValidationFieldResult[]>>({});
   const [isApplying, setIsApplying] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
 
@@ -121,14 +125,22 @@ export default function ExamAdapterEditorPage() {
       const res = await getValidationFeed(examId);
       if (res.success && res.data) {
         const map: ValidationMap = {};
+        const unmappedMap: Record<string, ValidationFieldResult[]> = {};
         for (const row of res.data) {
           const byField: Record<string, ValidationFieldResult> = {};
+          const unmappedList: ValidationFieldResult[] = [];
           for (const fr of row.field_results || []) {
-            if (fr && fr.field_id) byField[fr.field_id] = fr;
+            if (!fr) continue;
+            // Unmapped page fields have no adapter field_id — collect them separately
+            // so they render in their own per-section block, not the field index.
+            if (fr.status === 'unmapped') unmappedList.push(fr);
+            else if (fr.field_id) byField[fr.field_id] = fr;
           }
           map[row.section_name] = byField;
+          if (unmappedList.length) unmappedMap[row.section_name] = unmappedList;
         }
         setValidation(map);
+        setUnmapped(unmappedMap);
       }
     } catch (err) {
       console.error('Failed to load validation feed', err);
@@ -321,6 +333,41 @@ export default function ExamAdapterEditorPage() {
               ]
             }
           : s
+      )
+    );
+  };
+
+  // Map a detected-but-unmapped page field into the section's adapter config. Selectors
+  // are pre-filled from the scan (id → name → label), so the NEXT validation run fills
+  // it and it drops off the unmapped block. leaveBlank maps it as a skip (Captcha/OTP).
+  // Persists on Save (version bump), same as every other field edit.
+  const addMappedFieldFromScan = (
+    sectionId: string,
+    scanned: NonNullable<ValidationFieldResult['scanned']>,
+    opts: { source?: string | null; leaveBlank?: boolean }
+  ) => {
+    const id = scanned.id?.trim();
+    const name = scanned.name?.trim();
+    const label = scanned.label?.trim();
+    const selectors: AdapterFieldSelectors = id
+      ? { by_id: [id] }
+      : name
+        ? { by_name: [name] }
+        : label
+          ? { by_label: [label] }
+          : {};
+    const newField: AdapterField = {
+      field_id: `field_${Date.now()}`,
+      label: label || id || name || '',
+      source: opts.leaveBlank ? null : (opts.source ?? null),
+      type: (scanned.type as FieldType) || 'text',
+      required: false,
+      selectors,
+      ...(opts.leaveBlank ? { leave_blank: true } : {})
+    };
+    updateSections((prev) =>
+      prev.map((s) =>
+        s.section_id === sectionId ? { ...s, fields: [...s.fields, newField] } : s
       )
     );
   };
@@ -577,7 +624,9 @@ export default function ExamAdapterEditorPage() {
                 onUpdateField={(idx, patch) => updateField(section.section_id, idx, patch)}
                 onRemoveField={(idx) => removeField(section.section_id, idx)}
                 onAddDiscoveredField={handleAddDiscoveredField}
+                onAddMappedField={addMappedFieldFromScan}
                 validation={validation[section.section_id] || {}}
+                unmapped={unmapped[section.section_id] || []}
                 profileSchema={profileSchema}
               />
             ))}
@@ -610,7 +659,13 @@ interface SectionEditorProps {
   onUpdateField: (idx: number, patch: Partial<AdapterField>) => void;
   onRemoveField: (idx: number) => void;
   onAddDiscoveredField: (label: string) => void;
+  onAddMappedField: (
+    sectionId: string,
+    scanned: NonNullable<ValidationFieldResult['scanned']>,
+    opts: { source?: string | null; leaveBlank?: boolean }
+  ) => void;
   validation: Record<string, ValidationFieldResult>;
+  unmapped: ValidationFieldResult[];
   profileSchema: ProfilePathEntry[];
 }
 
@@ -626,10 +681,42 @@ function SectionEditor({
   onUpdateField,
   onRemoveField,
   onAddDiscoveredField,
+  onAddMappedField,
   validation,
+  unmapped,
   profileSchema
 }: SectionEditorProps) {
   const [newFieldLabel, setNewFieldLabel] = useState('');
+
+  // Flag 5 — hide an unmapped entry once a field in THIS section already covers its
+  // scanned id/name/label (e.g. just mapped via the block below), so it drops off
+  // immediately without waiting for the next validation run.
+  const mappedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const add = (v?: string | null) => {
+      const k = (v || '').trim().toLowerCase();
+      if (k) keys.add(k);
+    };
+    for (const f of section.fields) {
+      (f.selectors?.by_id || []).forEach(add);
+      (f.selectors?.by_name || []).forEach(add);
+      (f.selectors?.by_label || []).forEach(add);
+      add(f.label);
+    }
+    return keys;
+  }, [section.fields]);
+
+  const visibleUnmapped = useMemo(
+    () =>
+      unmapped.filter((u) => {
+        const s = u.scanned || {};
+        const cand = [s.id, s.name, s.label]
+          .map((x) => (x || '').trim().toLowerCase())
+          .filter(Boolean);
+        return !cand.some((c) => mappedKeys.has(c));
+      }),
+    [unmapped, mappedKeys]
+  );
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
@@ -763,9 +850,110 @@ function SectionEditor({
                 + Add New Field
               </button>
             </div>
+
+            {/* Client request A: page fields detected during admin validation that
+                aren't in the adapter yet. Mapping one appends a real field (selectors
+                pre-filled from the scan) so the next run fills it. */}
+            {visibleUnmapped.length > 0 && (
+              <div className="space-y-2 pt-3 mt-1 border-t border-amber-200">
+                <div className="text-[11px] font-semibold uppercase text-amber-700">
+                  Fields detected on the page, not yet mapped ({visibleUnmapped.length})
+                </div>
+                {visibleUnmapped.map((u, i) => (
+                  <UnmappedFieldRow
+                    key={u.field_id || i}
+                    scanned={u.scanned || {}}
+                    fallbackLabel={u.label}
+                    profileSchema={profileSchema}
+                    onAddDiscoveredField={onAddDiscoveredField}
+                    onMap={(opts) => onAddMappedField(section.section_id, u.scanned || {}, opts)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── UnmappedFieldRow ─────────────────────────────────────────────────
+// One detected-but-unmapped page field, with the three review-screen controls:
+// (A) pick a profile source and Map, (B) Add New Field to the registry, (C) Leave Blank.
+
+interface UnmappedFieldRowProps {
+  scanned: NonNullable<ValidationFieldResult['scanned']>;
+  fallbackLabel?: string;
+  profileSchema: ProfilePathEntry[];
+  onAddDiscoveredField: (label: string) => void;
+  onMap: (opts: { source?: string | null; leaveBlank?: boolean }) => void;
+}
+
+function UnmappedFieldRow({
+  scanned,
+  fallbackLabel,
+  profileSchema,
+  onAddDiscoveredField,
+  onMap
+}: UnmappedFieldRowProps) {
+  const [source, setSource] = useState('');
+  const name = scanned.label || fallbackLabel || scanned.id || scanned.name || '(no label)';
+  const meta = scanned.id
+    ? `#${scanned.id}`
+    : scanned.name
+      ? `[name=${scanned.name}]`
+      : null;
+
+  return (
+    <div className="border border-amber-200 bg-amber-50/40 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-slate-800 truncate">{name}</div>
+        <div className="text-[10px] text-slate-500 font-mono truncate">
+          {scanned.type || 'text'}
+          {meta ? ` · ${meta}` : ''}
+        </div>
+      </div>
+
+      {/* Control A — pick a profile source (same options as the FieldEditor source select) */}
+      <select
+        value={source}
+        onChange={(e) => setSource(e.target.value)}
+        className="px-2 py-1 text-xs border border-slate-300 rounded bg-white max-w-[200px] text-slate-800"
+        title="Map to a profile path"
+      >
+        <option value="">— pick source —</option>
+        {profileSchema.map((p) => (
+          <option key={p.path} value={p.path}>
+            {p.path}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={() => onMap({ source })}
+        disabled={!source}
+        className="px-2.5 py-1 text-xs text-white bg-[#341050] rounded hover:bg-[#341050]/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+      >
+        Map
+      </button>
+
+      {/* Control B — no matching profile path: queue a discovered field */}
+      <button
+        onClick={() => onAddDiscoveredField(name)}
+        className="px-2.5 py-1 text-xs text-[#341050] border border-slate-300 rounded hover:bg-slate-50 whitespace-nowrap"
+        title="Add to the profile registry (discovered-fields queue)"
+      >
+        + Add New Field
+      </button>
+
+      {/* Control C — Captcha/OTP/manual: map as leave-blank */}
+      <button
+        onClick={() => onMap({ leaveBlank: true })}
+        className="px-2.5 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:bg-slate-50 whitespace-nowrap"
+        title="Map as leave-blank (Captcha/OTP/manual)"
+      >
+        Leave Blank
+      </button>
     </div>
   );
 }

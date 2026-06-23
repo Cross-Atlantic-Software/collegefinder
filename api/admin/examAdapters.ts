@@ -95,9 +95,17 @@ export interface ExamAdapterDetail extends ExamAdapter {
 export interface ValidationFieldResult {
   field_id: string;
   label?: string;
-  status: 'filled' | 'check' | 'failed' | 'not_found' | 'skipped';
+  status: 'filled' | 'check' | 'failed' | 'not_found' | 'skipped' | 'unmapped';
   value?: string | null;
   note?: string | null;
+  /** Present only on 'unmapped' entries: the page field detected but not in the adapter. */
+  scanned?: {
+    label?: string;
+    id?: string;
+    name?: string;
+    type?: string;
+    options?: string[];
+  };
 }
 
 /** Latest validation-run fill report for one section. */

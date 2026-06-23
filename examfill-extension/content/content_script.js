@@ -140,12 +140,24 @@
     try {
       const { fields, userData } = payload;
 
+      // Admin-validation only: build the authoritative "mapped" set so we can later
+      // surface page fields that AREN'T in the adapter. touchedKeys is seeded from
+      // EVERY mapped field's by_id/by_name/by_label up front — a field is mapped the
+      // moment it's in payload.fields, regardless of fill outcome (leave_blank and
+      // "no profile data" both return BEFORE element resolution, so recording only at
+      // resolution time would re-flag them as unmapped every run). touchedEls
+      // additionally captures elements resolved at runtime for fields mapped only by
+      // index/placeholder/proximity that have no stable id/name key in config.
+      const adminValidate = payload.admin_validate === true;
+      const touchedEls = adminValidate ? new Set() : null;
+      const touchedKeys = adminValidate ? seedTouchedKeys(fields) : null;
+
       // Sort fields: fill non-dependent fields first, then cascade-dependent ones
       const sorted = sortByCascade(fields);
 
       for (const fieldConfig of sorted) {
         try {
-          const result = await fillOneField(fieldConfig, userData);
+          const result = await fillOneField(fieldConfig, userData, touchedEls);
           results.push(result);
         } catch (fieldErr) {
           results.push({
@@ -159,6 +171,16 @@
 
         // Small delay between fields to let portals process events
         if (Waiter) await Waiter.delay(150);
+      }
+
+      // Admin-validation only: append page fields that matched no mapped field.
+      if (adminValidate) {
+        try {
+          results.push(...collectUnmapped(touchedEls, touchedKeys));
+        } catch (scanErr) {
+          // Non-fatal — a scan failure must never break the fill report.
+          console.warn('[ExamFill] unmapped scan failed:', scanErr.message);
+        }
       }
     } catch (err) {
       results.push({
@@ -181,7 +203,7 @@
   /**
    * Fill a single field: resolve value → detect element → fill → verify → highlight.
    */
-  async function fillOneField(fieldConfig, userData) {
+  async function fillOneField(fieldConfig, userData, touched = null) {
     const fieldId = fieldConfig.field_id;
     const label = fieldConfig.label || fieldId;
 
@@ -272,6 +294,11 @@
       }
     }
 
+    // Admin-validation: record the resolved element(s) so the post-fill diff knows
+    // this page node is mapped (covers index/placeholder/proximity matches that have
+    // no stable id/name key in the adapter config).
+    if (touched) recordTouched(touched, el);
+
     // 5. Fill
     const fillResult = await Filler.fill(el, rawValue, fieldConfig);
 
@@ -335,6 +362,89 @@
       else if (r.status === 'not_found') notFound++;
     }
     return { filled, check, failed, not_found: notFound, total: results.length };
+  }
+
+  // ─── Admin-validation: unmapped-field detection ───────────────────────────
+
+  /** Normalise a selector / scanned key for case-insensitive matching. */
+  function normalizeKey(s) {
+    return String(s == null ? '' : s).trim().toLowerCase();
+  }
+
+  /**
+   * The authoritative mapped set: every by_id / by_name / by_label value across all
+   * mapped fields. A field is "mapped" the moment it's in payload.fields — outcome
+   * (filled / not_found / leave_blank) is irrelevant.
+   *
+   * Limitation: a field mapped ONLY by by_placeholder/by_index that also never resolves
+   * at runtime (e.g. a placeholder-only leave_blank Captcha) would surface as unmapped.
+   * No such field exists in any current adapter (all leave_blank/placeholder-only fields
+   * also carry by_id/by_name/by_label), so by_placeholder is intentionally not seeded.
+   */
+  function seedTouchedKeys(fields) {
+    const keys = new Set();
+    for (const f of fields || []) {
+      const sel = (f && f.selectors) || {};
+      for (const k of ['by_id', 'by_name', 'by_label']) {
+        const vals = sel[k];
+        if (!Array.isArray(vals)) continue;
+        for (const v of vals) {
+          const norm = normalizeKey(v);
+          if (norm) keys.add(norm);
+        }
+      }
+    }
+    return keys;
+  }
+
+  /** Record a resolved element or radio NodeList into the touched-elements set. */
+  function recordTouched(touched, el) {
+    if (!touched || !el) return;
+    if (el instanceof Element) { touched.add(el); return; }
+    if (el instanceof NodeList || Array.isArray(el)) {
+      for (const e of el) if (e instanceof Element) touched.add(e);
+    }
+  }
+
+  /**
+   * Diff every usable page field (PageScanner's enumeration — the SAME definition of
+   * "a field" used at build time) against the mapped set. An element is unmapped only
+   * if it matches NEITHER a resolved element (by reference) NOR a seeded selector key
+   * (by scanned id / name / label). Returns result entries with status 'unmapped',
+   * which summarise() leaves uncounted and the backend stores as-is.
+   */
+  function collectUnmapped(touchedEls, touchedKeys) {
+    if (!PageScanner || typeof PageScanner.scanElements !== 'function') return [];
+    const out = [];
+    let i = 0;
+    for (const { el, field } of PageScanner.scanElements()) {
+      i++;
+      const byRef = !!(touchedEls && touchedEls.has(el));
+      const idKey = normalizeKey(field.id);
+      const nameKey = normalizeKey(field.name);
+      const labelKey = normalizeKey(field.label);
+      const byKey = !!(touchedKeys && (
+        (idKey && touchedKeys.has(idKey)) ||
+        (nameKey && touchedKeys.has(nameKey)) ||
+        (labelKey && touchedKeys.has(labelKey))
+      ));
+      if (byRef || byKey) continue;
+      out.push({
+        field_id: `__unmapped_${field.id || field.name || `${field.type}_${i}`}`,
+        label: field.label || field.id || field.name || '(no label)',
+        status: 'unmapped',
+        value: null,
+        note: 'On page, not in adapter',
+        scanned: {
+          label: field.label,
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          options: field.options
+        }
+      });
+    }
+    return out;
   }
 
   // Signal readiness
