@@ -915,7 +915,7 @@
   }
 
   function addLiveRow(result) {
-    const icons = { filling: '…', filled: '✓', check: '!', failed: '✗', not_found: '✗' };
+    const icons = { filling: '…', filled: '✓', check: '!', failed: '✗', not_found: '✗', skipped: '✋' };
     const row = document.createElement('div');
     row.className = `live-row ${result.status === 'filled' ? 'done' : result.status}`;
     const displayVal = formatReportValue(result.value);
@@ -926,10 +926,25 @@
 
   // ─── Complete state ───
 
+  // Student-facing guidance for a 'skipped' (manual) field. Upload vs. fill-in is
+  // decided by the field TYPE (stable adapter config), NOT the producer's note
+  // string — the note is only a fallback for older payloads that lack `type`. The
+  // raw dev note ('Configured to leave blank' / 'No document URL in profile') is
+  // never shown to the student.
+  function manualGuidance(r) {
+    const isUpload = r.type === 'file' || (!r.type && /document|url/i.test(r.note || ''));
+    return isUpload
+      ? 'Upload this document yourself (or add it to your profile).'
+      : "You'll need to fill this in yourself (e.g. CAPTCHA / OTP).";
+  }
+
   function showCompleteState(section, report, reviewMeta = null) {
     showView('complete');
 
     const s = report.summary;
+    // 'skipped' is intentionally uncounted by summarise() (it must never inflate
+    // failed or flip a section off 'done'), so derive the manual list locally.
+    const skipped = report.results.filter(r => r.status === 'skipped');
     const totalDone = s.filled + s.check;
     const hasFailed = s.failed + s.not_found > 0;
     const isClean   = s.check === 0 && !hasFailed;
@@ -948,11 +963,29 @@
       <div class="stat-pill filled"><span class="stat-num">${s.filled}</span><span class="stat-label">Filled</span></div>
       <div class="stat-pill check" ><span class="stat-num">${s.check}</span><span class="stat-label">Check</span></div>
       <div class="stat-pill failed"><span class="stat-num">${s.failed + s.not_found}</span><span class="stat-label">Failed</span></div>
+      <div class="stat-pill manual"><span class="stat-num">${skipped.length}</span><span class="stat-label">Manual</span></div>
     `;
 
     // Per-field report
     const container = $('fillReport');
     container.innerHTML = '';
+
+    // Manual-actions block — the headline checklist of everything the auto-fill
+    // can't do (CAPTCHA, OTP, live photo, signature, uploads). Sits at the very
+    // top so the student sees their remaining work first. Rendered only when ≥1.
+    if (skipped.length) {
+      const block = document.createElement('div');
+      block.className = 'manual-actions';
+      block.innerHTML = `
+        <div class="manual-actions-title">✋ Complete these yourself (${skipped.length})</div>
+        ${skipped.map(r => `
+          <div class="manual-actions-item">
+            <span class="manual-actions-label">${escHtml(r.label)}</span>
+            <span class="manual-actions-guide">${escHtml(manualGuidance(r))}</span>
+          </div>`).join('')}
+      `;
+      container.appendChild(block);
+    }
 
     // Audit strip — only for student-reviewed/confirmed fills (the spec's
     // "Changes made by the student" + "User confirmations", surfaced in context).
@@ -968,7 +1001,7 @@
     }
 
     for (const r of report.results) {
-      const iconMap = { filled: '✅', check: '⚠️', failed: '❌', not_found: '❌' };
+      const iconMap = { filled: '✅', check: '⚠️', failed: '❌', not_found: '❌', skipped: '✋' };
       const row = document.createElement('div');
       row.className = `report-row status-${r.status}`;
 
@@ -979,6 +1012,7 @@
           ${r.value    ? `<div class="report-value">→ ${escHtml(formatReportValue(r.value))}</div>` : ''}
           ${r.note && (r.status === 'check')  ? `<div class="report-note">${escHtml(r.note)}</div>` : ''}
           ${r.note && (r.status === 'failed' || r.status === 'not_found') ? `<div class="report-note error">${escHtml(r.note)}</div>` : ''}
+          ${r.status === 'skipped' ? `<div class="report-note manual">${escHtml(manualGuidance(r))}</div>` : ''}
         </div>
       `;
       container.appendChild(row);

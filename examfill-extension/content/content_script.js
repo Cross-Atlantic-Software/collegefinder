@@ -214,6 +214,7 @@
       return {
         field_id: fieldId,
         label,
+        type: fieldConfig.type,
         status: 'skipped',
         note: 'Configured to leave blank',
         value: null
@@ -320,6 +321,7 @@
     return {
       field_id: fieldId,
       label,
+      type: fieldConfig.type,
       status: verifyResult.status,
       note: verifyResult.note,
       value: String(rawValue)
