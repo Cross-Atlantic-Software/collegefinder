@@ -1,5 +1,6 @@
 const Subject = require('../../models/taxonomy/Subject');
 const UserAcademics = require('../../models/user/UserAcademics');
+const Chapter = require('../../models/taxonomy/Chapter');
 const Topic = require('../../models/taxonomy/Topic');
 
 class SubjectsController {
@@ -61,38 +62,43 @@ class SubjectsController {
       }
 
       // Get topics for each subject (with home_display filter for initial display)
-      const subjectsWithTopics = await Promise.all(subjects.map(async (subject) => {
-        // Get first 3 topics with home_display = true
-        const homeDisplayTopics = await Topic.findBySubjectIdWithHomeDisplay(subject.id, true, 3);
-        // Get all topics for the subject (for "view more")
-        const allTopics = await Topic.findBySubjectIdWithHomeDisplay(subject.id, false);
-        
+      const subjectsWithChapters = await Promise.all(subjects.map(async (subject) => {
+        const chapters = await Chapter.findBySubjectId(subject.id);
+        const chaptersWithTopics = await Promise.all(chapters.map(async (chapter) => {
+          const homeDisplayTopics = await Topic.findByChapterIdWithHomeDisplay(chapter.id, true, 3);
+          const allTopics = await Topic.findByChapterIdWithHomeDisplay(chapter.id, false);
+          const mapTopic = (topic) => ({
+            id: topic.id,
+            name: topic.name,
+            thumbnail: topic.thumbnail,
+            description: topic.description,
+            home_display: topic.home_display,
+            sort_order: topic.sort_order,
+          });
+          return {
+            id: chapter.id,
+            name: chapter.name,
+            sort_order: chapter.sort_order,
+            topics: homeDisplayTopics.map(mapTopic),
+            allTopics: allTopics.map(mapTopic),
+          };
+        }));
+
+        const flatAllTopics = chaptersWithTopics.flatMap((ch) => ch.allTopics);
+
         return {
           id: subject.id.toString(),
           name: subject.name,
-          topics: homeDisplayTopics.map(topic => ({
-            id: topic.id,
-            name: topic.name,
-            thumbnail: topic.thumbnail,
-            description: topic.description,
-            home_display: topic.home_display,
-            sort_order: topic.sort_order
-          })),
-          allTopics: allTopics.map(topic => ({
-            id: topic.id,
-            name: topic.name,
-            thumbnail: topic.thumbnail,
-            description: topic.description,
-            home_display: topic.home_display,
-            sort_order: topic.sort_order
-          }))
+          chapters: chaptersWithTopics,
+          topics: flatAllTopics.filter((t) => t.home_display).slice(0, 3),
+          allTopics: flatAllTopics,
         };
       }));
 
       res.json({
         success: true,
         data: {
-          subjects: subjectsWithTopics,
+          subjects: subjectsWithChapters,
           requiresStreamSelection: false,
           stream_id: academics.stream_id
         }

@@ -1,5 +1,6 @@
 const Topic = require('../../models/taxonomy/Topic');
 const Subject = require('../../models/taxonomy/Subject');
+const Chapter = require('../../models/taxonomy/Chapter');
 const { validationResult } = require('express-validator');
 const XLSX = require('xlsx');
 const { splitList, getCell } = require('../../utils/bulkUploadUtils');
@@ -26,11 +27,12 @@ const uploadExcel = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-/** Normalized composite key: same topic name is allowed under different subjects. */
-function topicSubjectKey(topicName, subjectName) {
+/** Normalized composite key: same topic name is allowed under different chapters. */
+function topicChapterKey(topicName, chapterName, subjectName) {
   const topic = String(topicName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const chapter = String(chapterName || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const subject = String(subjectName || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  return `${subject}::${topic}`;
+  return `${subject}::${chapter}::${topic}`;
 }
 
 class TopicController {
@@ -103,23 +105,24 @@ class TopicController {
         });
       }
 
-      const { sub_id, name, home_display, status, sort_order } = req.body;
+      const { chapter_id, name, home_display, status, sort_order } = req.body;
 
       const nameSame = String(name || '').trim();
       if (!nameSame) {
         return res.status(400).json({ success: false, message: 'Name is required' });
       }
 
-      const duplicates = await Topic.findBySubjectIdAndNameInsensitive(parseInt(sub_id, 10), nameSame);
+      const chapterId = parseInt(chapter_id, 10);
+      const duplicates = await Topic.findByChapterIdAndNameInsensitive(chapterId, nameSame);
       if (duplicates) {
         return res.status(400).json({
           success: false,
-          message: 'A topic with this name already exists for this subject',
+          message: 'A topic with this name already exists for this chapter',
         });
       }
 
       const topic = await Topic.create({
-        sub_id: parseInt(sub_id, 10),
+        chapter_id: chapterId,
         name: nameSame,
         thumbnail: null,
         home_display: home_display === 'true' || home_display === true,
@@ -168,25 +171,25 @@ class TopicController {
         });
       }
 
-      const { sub_id, name, home_display, status, sort_order } = req.body;
+      const { chapter_id, name, home_display, status, sort_order } = req.body;
 
-      const subjectId = sub_id != null ? parseInt(sub_id, 10) : existingTopic.sub_id;
+      const chapterId = chapter_id != null ? parseInt(chapter_id, 10) : existingTopic.chapter_id;
       const nextName = name !== undefined ? String(name).trim() : existingTopic.name;
       if (
         (name !== undefined && nextName !== String(existingTopic.name).trim()) ||
-        (sub_id !== undefined && subjectId !== existingTopic.sub_id)
+        (chapter_id !== undefined && chapterId !== existingTopic.chapter_id)
       ) {
-        const inSubject = await Topic.findBySubjectIdAndNameInsensitive(subjectId, nextName);
-        if (inSubject && inSubject.id !== parseInt(id, 10)) {
+        const inChapter = await Topic.findByChapterIdAndNameInsensitive(chapterId, nextName);
+        if (inChapter && inChapter.id !== parseInt(id, 10)) {
           return res.status(400).json({
             success: false,
-            message: 'A topic with this name already exists for this subject',
+            message: 'A topic with this name already exists for this chapter',
           });
         }
       }
 
       const updateData = {};
-      if (sub_id !== undefined) updateData.sub_id = subjectId;
+      if (chapter_id !== undefined) updateData.chapter_id = chapterId;
       if (name !== undefined) updateData.name = nextName;
       if (home_display !== undefined) updateData.home_display = home_display === 'true' || home_display === true;
       if (status !== undefined) updateData.status = status === 'true' || status === true;
@@ -269,15 +272,15 @@ class TopicController {
    * POST /api/admin/topics/upload-thumbnail
    */
   /**
-   * Excel template: topic_name, subject_names (one subject per row; subject name must exist).
+   * Excel template: topic_name, chapter_name, subject_name (subject identifies chapter).
    * GET /api/admin/topics/bulk-upload-template
    */
   static async downloadBulkTemplate(req, res) {
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([
-        ['topic_name', 'subject_names'],
-        ['Algebra Basics', 'Mathematics'],
+        ['topic_name', 'chapter_name', 'subject_name'],
+        ['Algebra Basics', 'General', 'Mathematics'],
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Topics');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -291,7 +294,7 @@ class TopicController {
   }
 
   /**
-   * Bulk create topics from Excel (topic_name, subject_names → Subject table by name).
+   * Bulk create topics from Excel (topic_name, chapter_name, subject_name).
    * POST /api/admin/topics/bulk-upload  (field: excel)
    */
   static async bulkUpload(req, res) {
@@ -320,7 +323,7 @@ class TopicController {
 
       const created = [];
       const errors = [];
-      const seenTopicSubjectKeys = new Set();
+      const seenTopicChapterKeys = new Set();
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -332,67 +335,55 @@ class TopicController {
           continue;
         }
 
-        const subjectCell = getCell(row, 'subject_names', 'subject_Names', 'Subject_Names', 'subject name', 'Subject name');
-        if (!subjectCell) {
-          errors.push({ row: rowNum, message: 'subject_names is required' });
+        const chapterName = getCell(row, 'chapter_name', 'chapter_Name', 'Chapter_Name', 'Chapter name');
+        if (!chapterName) {
+          errors.push({ row: rowNum, message: 'chapter_name is required' });
           continue;
         }
 
-        const nameParts = splitList(subjectCell);
-        if (nameParts.length === 0) {
-          errors.push({ row: rowNum, message: 'subject_names is empty' });
+        const subjectName = getCell(row, 'subject_name', 'subject_Name', 'Subject_Name', 'subject_names', 'subject name', 'Subject name');
+        if (!subjectName) {
+          errors.push({ row: rowNum, message: 'subject_name is required' });
           continue;
         }
 
-        const resolvedSubjects = [];
-        const unknown = [];
-        for (const nm of nameParts) {
-          const subj = await Subject.findByName(nm);
-          if (!subj) unknown.push(nm);
-          else resolvedSubjects.push(subj);
+        const subject = await Subject.findByName(String(subjectName).trim());
+        if (!subject) {
+          errors.push({ row: rowNum, message: `subject not found: "${subjectName}"` });
+          continue;
         }
-        if (unknown.length) {
+
+        const chapter = await Chapter.findBySubjectIdAndNameInsensitive(subject.id, chapterName);
+        if (!chapter) {
           errors.push({
             row: rowNum,
-            message: `unknown subject(s): ${unknown.map((u) => `"${u}"`).join(', ')}`,
+            message: `chapter "${chapterName}" not found under subject "${subject.name}"`,
           });
           continue;
         }
 
-        const uniqueIds = [...new Set(resolvedSubjects.map((s) => s.id))];
-        if (uniqueIds.length !== 1) {
+        const rowKey = topicChapterKey(topicName, chapter.name, subject.name);
+        if (seenTopicChapterKeys.has(rowKey)) {
           errors.push({
             row: rowNum,
-            message: 'subject_names must resolve to exactly one subject (use one subject per row)',
+            message: `duplicate topic "${topicName}" under chapter "${chapter.name}" in file`,
           });
           continue;
         }
+        seenTopicChapterKeys.add(rowKey);
 
-        const subId = uniqueIds[0];
-        const subjectName = resolvedSubjects[0].name;
-
-        const rowKey = topicSubjectKey(topicName, subjectName);
-        if (seenTopicSubjectKeys.has(rowKey)) {
+        const existingInChapter = await Topic.findByChapterIdAndNameInsensitive(chapter.id, topicName);
+        if (existingInChapter) {
           errors.push({
             row: rowNum,
-            message: `duplicate topic "${topicName}" under subject "${subjectName}" in file`,
-          });
-          continue;
-        }
-        seenTopicSubjectKeys.add(rowKey);
-
-        const existingInSubject = await Topic.findBySubjectIdAndNameInsensitive(subId, topicName);
-        if (existingInSubject) {
-          errors.push({
-            row: rowNum,
-            message: `topic "${topicName}" already exists under subject "${subjectName}"`,
+            message: `topic "${topicName}" already exists under chapter "${chapter.name}"`,
           });
           continue;
         }
 
         try {
           const topic = await Topic.create({
-            sub_id: subId,
+            chapter_id: chapter.id,
             name: topicName.trim(),
             thumbnail: null,
             home_display: false,

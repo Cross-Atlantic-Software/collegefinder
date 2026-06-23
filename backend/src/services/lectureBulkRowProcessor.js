@@ -4,6 +4,7 @@
 const Topic = require('../models/taxonomy/Topic');
 const Subtopic = require('../models/taxonomy/Subtopic');
 const Subject = require('../models/taxonomy/Subject');
+const Chapter = require('../models/taxonomy/Chapter');
 const Exam = require('../models/taxonomy/Exam');
 const Lecture = require('../models/taxonomy/Lecture');
 const { uploadToS3 } = require('../../utils/storage/s3Upload');
@@ -81,7 +82,15 @@ async function resolveTopicForLectureBulk(topicName, subjectNamesCell) {
   }
 
   const topic = matches[0];
-  const subjectFromTopic = topic.sub_id ? await Subject.findById(topic.sub_id) : null;
+  let subjectFromTopic = null;
+  if (topic.sub_id) {
+    subjectFromTopic = await Subject.findById(topic.sub_id);
+  } else if (topic.chapter_id) {
+    const chapter = await Chapter.findById(topic.chapter_id);
+    if (chapter?.sub_id) {
+      subjectFromTopic = await Subject.findById(chapter.sub_id);
+    }
+  }
   return { topic, subjectFromTopic };
 }
 

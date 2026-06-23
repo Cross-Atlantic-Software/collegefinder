@@ -8,8 +8,12 @@ type ExamDetailSectionsProps = {
 
 const FULL_WIDTH_EXAM_FIELDS = new Set([
   "Description",
-  "Documents required",
+  "Eligibility",
+  "Documents Required",
   "Counselling",
+  "Exam Pattern",
+  "Weightage of Subjects",
+  "Programs",
 ]);
 
 export function ExamDetailSections({ sections }: ExamDetailSectionsProps) {

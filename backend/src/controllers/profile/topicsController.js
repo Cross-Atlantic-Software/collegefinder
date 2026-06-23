@@ -56,7 +56,9 @@ class TopicsController {
             name: topic.name,
             thumbnail: topic.thumbnail,
             description: topic.description,
-            sub_id: topic.sub_id
+            sub_id: topic.sub_id,
+            chapter_id: topic.chapter_id,
+            chapter_name: topic.chapter_name,
           },
           subtopics: subtopicsWithLectures
         }

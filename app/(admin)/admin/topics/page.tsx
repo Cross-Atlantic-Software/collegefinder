@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import AdminHeader from '@/components/admin/layout/AdminHeader';
 import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, deleteAllTopics, downloadTopicsBulkTemplate, bulkUploadTopics, Topic } from '@/api';
-import { getAllSubjectsPublic } from '@/api';
+import { getAllSubjectsPublic, getChaptersBySubjectId } from '@/api';
 import { getAllExamsAdmin } from '@/api/admin/exams';
 import { FiPlus, FiSearch, FiX, FiImage, FiUpload, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
@@ -23,7 +23,8 @@ export default function TopicsPage() {
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({ 
-    sub_id: '', 
+    filterSubjectId: '',
+    chapter_id: '', 
     name: '', 
     home_display: false, 
     status: true,
@@ -32,6 +33,7 @@ export default function TopicsPage() {
     exam_ids: [] as number[],
   });
   const [availableSubjects, setAvailableSubjects] = useState<SelectOption[]>([]);
+  const [availableChapters, setAvailableChapters] = useState<SelectOption[]>([]);
   const [availableExams, setAvailableExams] = useState<SelectOption[]>([]);
   const MAX_EXAMS = 10;
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -74,6 +76,23 @@ export default function TopicsPage() {
       }
     } catch (err) {
       console.error('Error fetching exams:', err);
+    }
+  };
+
+  const loadChaptersForSubject = async (subjectId: string) => {
+    if (!subjectId) {
+      setAvailableChapters([]);
+      return;
+    }
+    try {
+      const response = await getChaptersBySubjectId(parseInt(subjectId, 10));
+      if (response.success && response.data) {
+        setAvailableChapters(
+          response.data.chapters.map((c) => ({ value: String(c.id), label: c.name }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching chapters:', err);
     }
   };
 
@@ -137,8 +156,8 @@ export default function TopicsPage() {
     setError(null);
 
     const nameTrim = formData.name.trim();
-    if (!formData.sub_id) {
-      const msg = 'Subject is required';
+    if (!formData.chapter_id) {
+      const msg = 'Chapter is required';
       setError(msg);
       showError(msg);
       return;
@@ -155,14 +174,14 @@ export default function TopicsPage() {
     try {
       const payload = editingTopic
         ? {
-            sub_id: parseInt(formData.sub_id, 10),
+            chapter_id: parseInt(formData.chapter_id, 10),
             name: nameTrim,
             home_display: formData.home_display,
             status: formData.status,
             sort_order: formData.sort_order,
           }
         : {
-            sub_id: parseInt(formData.sub_id, 10),
+            chapter_id: parseInt(formData.chapter_id, 10),
             name: nameTrim,
           };
 
@@ -195,8 +214,13 @@ export default function TopicsPage() {
 
   const handleEdit = async (topic: Topic) => {
     setEditingTopic(topic);
+    const subjectId = topic.sub_id != null ? String(topic.sub_id) : '';
+    if (subjectId) {
+      await loadChaptersForSubject(subjectId);
+    }
     setFormData({
-      sub_id: String(topic.sub_id),
+      filterSubjectId: subjectId,
+      chapter_id: String(topic.chapter_id),
       name: topic.name,
       home_display: topic.home_display,
       status: topic.status,
@@ -262,7 +286,8 @@ export default function TopicsPage() {
 
   const resetForm = () => {
     setFormData({ 
-      sub_id: '', 
+      filterSubjectId: '',
+      chapter_id: '', 
       name: '', 
       home_display: false, 
       status: true,
@@ -272,6 +297,7 @@ export default function TopicsPage() {
     });
     setThumbnailFile(null);
     setThumbnailPreview(null);
+    setAvailableChapters([]);
     setError(null);
   };
 
@@ -441,6 +467,7 @@ export default function TopicsPage() {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">THUMBNAIL</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">NAME</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">CHAPTER</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">SUBJECT</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">HOME DISPLAY</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">STATUS</th>
@@ -451,7 +478,7 @@ export default function TopicsPage() {
                   <tbody className="divide-y divide-slate-200">
                     {topics.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-500">
+                        <td colSpan={8} className="px-4 py-4 text-center text-sm text-slate-500">
                           {topics.length < allTopics.length ? 'No topics found matching your search' : 'No topics found'}
                         </td>
                       </tr>
@@ -477,7 +504,10 @@ export default function TopicsPage() {
                               <span className="text-sm font-medium text-slate-900">{topic.name}</span>
                             </td>
                             <td className="px-4 py-2">
-                              <span className="text-sm text-slate-600">{subject?.label || `Subject ${topic.sub_id}`}</span>
+                              <span className="text-sm text-slate-600">{topic.chapter_name || `Chapter ${topic.chapter_id}`}</span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className="text-sm text-slate-600">{subject?.label || (topic.sub_id ? `Subject ${topic.sub_id}` : '—')}</span>
                             </td>
                             <td className="px-4 py-2">
                               {topic.home_display ? (
@@ -553,11 +583,30 @@ export default function TopicsPage() {
                   </label>
                   <Select
                     options={availableSubjects}
-                    value={formData.sub_id}
-                    onChange={(value) => setFormData({ ...formData, sub_id: value || '' })}
-                    placeholder="Select subject"
+                    value={formData.filterSubjectId}
+                    onChange={(value) => {
+                      const subjectId = value || '';
+                      setFormData({ ...formData, filterSubjectId: subjectId, chapter_id: '' });
+                      loadChaptersForSubject(subjectId);
+                    }}
+                    placeholder="Select subject first"
                     isSearchable
                     isClearable={false}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Chapter <span className="text-[#341050]">*</span>
+                  </label>
+                  <Select
+                    options={availableChapters}
+                    value={formData.chapter_id}
+                    onChange={(value) => setFormData({ ...formData, chapter_id: value || '' })}
+                    placeholder={formData.filterSubjectId ? 'Select chapter' : 'Select subject first'}
+                    isSearchable
+                    isClearable={false}
+                    disabled={!formData.filterSubjectId}
                   />
                 </div>
 
@@ -669,7 +718,7 @@ export default function TopicsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !formData.sub_id || !formData.name.trim()}
+                  disabled={isSubmitting || !formData.chapter_id || !formData.name.trim()}
                   className="px-4 py-2 text-sm font-medium text-white bg-[#341050] hover:bg-[#2a0c40] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : editingTopic ? 'Update' : 'Create'}
@@ -706,9 +755,13 @@ export default function TopicsPage() {
                   <p className="text-sm text-slate-900">{viewingTopic.name}</p>
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Chapter</label>
+                  <p className="text-sm text-slate-900">{viewingTopic.chapter_name || viewingTopic.chapter_id}</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
                   <p className="text-sm text-slate-900">
-                    {availableSubjects.find((s) => s.value === String(viewingTopic.sub_id))?.label || `Subject ${viewingTopic.sub_id}`}
+                    {availableSubjects.find((s) => s.value === String(viewingTopic.sub_id))?.label || (viewingTopic.sub_id ? `Subject ${viewingTopic.sub_id}` : '—')}
                   </p>
                 </div>
                 {viewingTopic.description && (

@@ -137,7 +137,7 @@ export default function ExamDirectoryPage() {
                   <Link
                     key={exam.id}
                     href={`/dashboard/exams/${exam.id}?from=exam-directory`}
-                    className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#FAD53C] dark:border-slate-800 dark:bg-slate-900"
+                    className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#FAD53C] dark:border-slate-800 dark:bg-slate-900"
                   >
                     <div className="flex gap-3">
                       <div className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 const Topic = require('../models/taxonomy/Topic');
+const Chapter = require('../models/taxonomy/Chapter');
 const Subject = require('../models/taxonomy/Subject');
 const Lecture = require('../models/taxonomy/Lecture');
 
@@ -13,7 +14,12 @@ async function syncLectureExamPrepTags(lectureId, topicId, explicitSubjectIds = 
   const subjectIds = new Set(
     (explicitSubjectIds || []).map((x) => parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n > 0)
   );
-  if (topic.sub_id) {
+  if (topic.chapter_id) {
+    const chapter = await Chapter.findById(topic.chapter_id);
+    if (chapter?.sub_id) {
+      subjectIds.add(Number(chapter.sub_id));
+    }
+  } else if (topic.sub_id) {
     subjectIds.add(Number(topic.sub_id));
   }
 

@@ -101,6 +101,7 @@ export const API_ENDPOINTS = {
     STREAMS: '/admin/streams',
     CAREERS: '/admin/careers',
     TOPICS: '/admin/topics',
+    CHAPTERS: '/admin/chapters',
     SUBTOPICS: '/admin/subtopics',
     LECTURES: '/admin/lectures',
     PURPOSES: '/admin/purposes',

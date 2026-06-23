@@ -10,6 +10,7 @@ import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistBut
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
+import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
 import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
 import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
 import { useUpdateShortlistedScholarshipMutation } from "@/lib/dashboardScholarshipQueries";
@@ -186,7 +187,7 @@ export default function ScholarshipDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
-        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             {scholarship.linkedColleges && scholarship.linkedColleges.length > 0 ? (
               <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
@@ -260,6 +261,7 @@ export default function ScholarshipDetailPage() {
                 </Button>
               </div>
             </div>
+            <QuickSelfStudyPicks variant="sidebar" />
             <DetailRecommendedExamsCTA
               linkedExams={scholarship.linkedExams}
               linkFrom="dashboard-scholarship-shortlist"

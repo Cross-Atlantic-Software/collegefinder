@@ -55,7 +55,8 @@ const init = async () => {
       'subjects.sql',         // Subjects taxonomies table
       'streams.sql',          // Streams taxonomies table
       'careers.sql',          // Careers taxonomies table
-      'topics.sql',           // Topics table (depends on subjects)
+      'chapters.sql',         // Chapters table (depends on subjects)
+      'topics.sql',           // Topics table (depends on chapters)
       'subtopics.sql',        // Subtopics table (depends on topics)
       'lectures.sql',         // Lectures table (depends on subtopics)
       'purposes.sql',         // Purposes table and lecture_purposes junction table
@@ -192,6 +193,7 @@ const runMigrations = async () => {
     'add_automation_exam_taxonomy_sync_fields.sql',
     'backfill_automation_exam_taxonomy_links.sql',
     'add_user_credits_system.sql',
+    'add_chapters_taxonomy.sql',
   ];
 
   console.log('\n🔄 Running database migrations...\n');

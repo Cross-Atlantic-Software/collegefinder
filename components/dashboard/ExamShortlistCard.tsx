@@ -70,10 +70,10 @@ export function ExamShortlistCard({
   };
 
   return (
-    <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
       <ExamCardHeader exam={exam} name={name} />
 
-      <div className="relative flex flex-1 flex-col gap-2 overflow-visible p-3 pt-2.5">
+      <div className="relative flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-3 pt-2.5">
         <div className="absolute right-2 top-2 z-10">
           <CardShortlistHeart
             isShortlisted={isShortlisted}

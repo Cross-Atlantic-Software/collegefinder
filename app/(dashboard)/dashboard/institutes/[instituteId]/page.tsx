@@ -10,6 +10,7 @@ import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistBut
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
+import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
 import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
 import {
   buildInstituteDetailSections,
@@ -191,7 +192,7 @@ export default function InstituteDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6" style={{ animation: "fade-in 220ms ease-out" }}>
-        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
           </div>
@@ -255,6 +256,7 @@ export default function InstituteDetailPage() {
                 </Button>
               </div>
             </div>
+            <QuickSelfStudyPicks variant="sidebar" />
             <DetailRecommendedExamsCTA
               linkedExams={institute.linkedExams}
               linkFrom={examLinkFrom}

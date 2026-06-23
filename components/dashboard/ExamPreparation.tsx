@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/shared";
 import { FiAlertCircle } from "react-icons/fi";
@@ -21,9 +20,18 @@ type Topic = {
   sort_order: number;
 };
 
+type ChapterSection = {
+  id: number;
+  name: string;
+  sort_order: number;
+  topics: Topic[];
+  allTopics: Topic[];
+};
+
 type SubjectSection = {
   id: string;
   name: string;
+  chapters?: ChapterSection[];
   topics: Topic[];
   allTopics: Topic[];
 };
@@ -38,7 +46,6 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<PrepMode>(initialMode);
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"latest" | "popular">("latest");
   const subjectsQuery = useExamPrepSubjectsQuery();
 
   const subjects = useMemo<SubjectSection[]>(() => {
@@ -47,6 +54,7 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
     return raw.map((subj) => ({
       id: String(subj.id),
       name: subj.name,
+      chapters: subj.chapters || [],
       topics: subj.topics || [],
       allTopics: subj.allTopics || [],
     }));
@@ -72,34 +80,11 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <section className="w-full min-w-0 max-w-full overflow-x-hidden bg-[#f5f9ff]">
-        <header className="border-b border-slate-200 bg-white px-4 pt-2 pb-0 dark:border-slate-800 dark:bg-slate-900 md:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <Link
-                  href="/dashboard"
-                  className="font-semibold text-black/70 hover:text-black hover:underline dark:text-slate-200 dark:hover:text-white"
-                >
-                  Dashboard
-                </Link>
-                <span>/</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">Exam Prep</span>
-                <span>/</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">
-                  {mode === "self" ? "Self Study" : "Coaching Institutes"}
-                </span>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Exam Prep</p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Practice by subject or explore top coaching options.
-                </p>
-              </div>
-            </div>
-          </div>
+        <header className="border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 md:px-6">
+          <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Exam Prep</p>
         </header>
 
-        <div className="min-w-0 max-w-full overflow-x-hidden bg-[#f8fbff] p-4 dark:bg-slate-950/40 md:p-6" style={{ animation: "fade-in 220ms ease-out" }}>
+        <div className="min-w-0 max-w-full overflow-x-hidden bg-[#f8fbff] p-2 dark:bg-slate-950/40 md:p-3" style={{ animation: "fade-in 220ms ease-out" }}>
       {/* Stream Selection Required Message */}
       {requiresStreamSelection && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
@@ -145,9 +130,6 @@ export default function ExamPreparation({ initialMode = "self" }: ExamPreparatio
           <SelfStudyTab
             subjects={subjects}
             query={query}
-            onQueryChange={setQuery}
-            sortBy={sortBy}
-            onToggleSort={() => setSortBy((prev) => (prev === "latest" ? "popular" : "latest"))}
           />
         ) : (
           <CoachingCentersTab />
