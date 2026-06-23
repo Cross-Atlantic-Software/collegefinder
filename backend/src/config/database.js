@@ -198,6 +198,7 @@ const runMigrations = async () => {
     'fix_ssc_cgl_portal_url_patterns.sql',
     'add_automation_exam_taxonomy_sync_fields.sql',
     'backfill_automation_exam_taxonomy_links.sql',
+    'add_taxonomy_exam_id_to_automation_applications.sql',
   ];
 
   console.log('\n🔄 Running database migrations...\n');
