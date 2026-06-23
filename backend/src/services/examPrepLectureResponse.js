@@ -89,6 +89,11 @@ async function rowsToLectureDtos(rows, { limit } = {}) {
       updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date(0).toISOString(),
       subjectId: String(row.subject_id),
       subjectName: row.subject_name || 'Subject',
+      chapterId: row.chapter_id != null ? Number(row.chapter_id) : null,
+      chapterName:
+        row.chapter_name != null && String(row.chapter_name).trim() !== ''
+          ? String(row.chapter_name).trim()
+          : null,
       topicId: row.topic_id,
       topicName: row.topic_name || 'Topic',
       subtopicId: row.subtopic_id != null ? Number(row.subtopic_id) : null,
@@ -113,6 +118,7 @@ function matchesSearch(row, searchRaw) {
     row.youtube_title,
     row.youtube_channel_name,
     row.subject_name,
+    row.chapter_name,
     row.topic_name,
     row.subtopic_name,
     row.hook_summary,

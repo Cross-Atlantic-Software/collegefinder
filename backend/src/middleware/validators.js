@@ -868,11 +868,11 @@ const validateUpdateCareer = [
  * Validation rules for creating topic
  */
 const validateCreateTopic = [
-  body('sub_id')
+  body('chapter_id')
     .notEmpty()
-    .withMessage('Subject ID is required')
+    .withMessage('Chapter ID is required')
     .isInt({ min: 1 })
-    .withMessage('Subject ID must be a positive integer'),
+    .withMessage('Chapter ID must be a positive integer'),
   body('name')
     .notEmpty()
     .withMessage('Name is required')
@@ -902,10 +902,10 @@ const validateCreateTopic = [
  * Validation rules for updating topic
  */
 const validateUpdateTopic = [
-  body('sub_id')
+  body('chapter_id')
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Subject ID must be a positive integer'),
+    .withMessage('Chapter ID must be a positive integer'),
   body('name')
     .optional()
     .trim()
@@ -928,6 +928,64 @@ const validateUpdateTopic = [
     .optional()
     .isInt({ min: 0 })
     .withMessage('Sort order must be a non-negative integer')
+];
+
+/**
+ * Validation rules for creating chapter
+ */
+const validateCreateChapter = [
+  body('sub_id')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer'),
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer'),
+];
+
+/**
+ * Validation rules for updating chapter
+ */
+const validateUpdateChapter = [
+  body('sub_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Subject ID must be a positive integer'),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage('Name must be between 1 and 255 characters'),
+  body('status')
+    .optional()
+    .isBoolean()
+    .withMessage('Status must be a boolean'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be less than 2000 characters'),
+  body('sort_order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sort order must be a non-negative integer'),
 ];
 
 /**
@@ -1091,6 +1149,8 @@ module.exports = {
   validateUpdateCareer,
   validateCreateTopic,
   validateUpdateTopic,
+  validateCreateChapter,
+  validateUpdateChapter,
   validateCreateSubtopic,
   validateUpdateSubtopic,
   validateCreateLecture,
@@ -2123,6 +2183,8 @@ module.exports = {
   validateUpdateCareer,
   validateCreateTopic,
   validateUpdateTopic,
+  validateCreateChapter,
+  validateUpdateChapter,
   validateCreateSubtopic,
   validateUpdateSubtopic,
   validateCreateLecture,

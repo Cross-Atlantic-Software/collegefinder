@@ -376,6 +376,8 @@ class Lecture {
          l.updated_at,
          t.id AS topic_id,
          t.name AS topic_name,
+         ch.id AS chapter_id,
+         ch.name AS chapter_name,
          st.id AS subtopic_id,
          st.name AS subtopic_name,
          subj.id AS subject_id,
@@ -390,7 +392,8 @@ class Lecture {
          ) AS rank_score
        FROM lectures l
        INNER JOIN topics t ON l.topic_id = t.id
-       INNER JOIN subjects subj ON t.sub_id = subj.id
+       INNER JOIN chapters ch ON t.chapter_id = ch.id
+       INNER JOIN subjects subj ON ch.sub_id = subj.id
        LEFT JOIN subtopics st ON l.subtopic_id = st.id
        LEFT JOIN lecture_exams leex ON leex.lecture_id = l.id
        WHERE l.status = TRUE
@@ -437,11 +440,13 @@ class Lecture {
          l.updated_at,
          t.id,
          t.name,
+         ch.id,
+         ch.name,
          st.id,
          st.name,
          subj.id,
          subj.name
-       ORDER BY subj.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,
+       ORDER BY subj.name ASC, ch.sort_order ASC, ch.name ASC, t.name ASC, rank_score DESC NULLS LAST, l.updated_at DESC`,
       [sid, subjFilter, String(sid)]
     );
     return result.rows;
@@ -570,7 +575,8 @@ class Lecture {
          FROM lectures l
          INNER JOIN lecture_exams le ON le.lecture_id = l.id AND le.exam_id = ANY($1::int[])
          INNER JOIN topics t ON l.topic_id = t.id
-         INNER JOIN subjects subj ON t.sub_id = subj.id
+         INNER JOIN chapters ch ON t.chapter_id = ch.id
+       INNER JOIN subjects subj ON ch.sub_id = subj.id
          WHERE l.status = TRUE
            AND l.content_type = 'VIDEO'
            AND (
@@ -625,7 +631,8 @@ class Lecture {
        FROM lectures l
        INNER JOIN lecture_exams le ON le.lecture_id = l.id AND le.exam_id = $1
        INNER JOIN topics t ON l.topic_id = t.id
-       INNER JOIN subjects subj ON t.sub_id = subj.id
+       INNER JOIN chapters ch ON t.chapter_id = ch.id
+       INNER JOIN subjects subj ON ch.sub_id = subj.id
        WHERE l.status = TRUE
          AND l.content_type = 'VIDEO'
          AND (

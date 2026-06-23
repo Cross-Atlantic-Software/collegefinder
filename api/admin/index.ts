@@ -115,6 +115,18 @@ export {
 } from './topics';
 export type { Topic, TopicsBulkUploadResult } from './topics';
 
+// Export chapters taxonomy management APIs
+export {
+  getAllChapters,
+  getChaptersBySubjectId,
+  getChapterById,
+  createChapter,
+  updateChapter,
+  deleteChapter,
+  deleteAllChapters,
+} from './chapters';
+export type { Chapter } from './chapters';
+
 // Export subtopics taxonomy management APIs
 export {
   getAllSubtopics,

@@ -191,6 +191,27 @@ export async function getSubjectsByStream(): Promise<ApiResponse<{
       home_display: boolean;
       sort_order: number;
     }>;
+    chapters?: Array<{
+      id: number;
+      name: string;
+      sort_order: number;
+      topics: Array<{
+        id: number;
+        name: string;
+        thumbnail: string | null;
+        description: string | null;
+        home_display: boolean;
+        sort_order: number;
+      }>;
+      allTopics: Array<{
+        id: number;
+        name: string;
+        thumbnail: string | null;
+        description: string | null;
+        home_display: boolean;
+        sort_order: number;
+      }>;
+    }>;
   }>;
   requiresStreamSelection: boolean;
   message?: string;
@@ -218,6 +239,8 @@ export type ExamPrepLectureDto = {
   updatedAt: string;
   subjectId: string;
   subjectName: string;
+  chapterId?: number | null;
+  chapterName?: string | null;
   topicId: number;
   topicName: string;
   subtopicId?: number | null;

@@ -4,7 +4,9 @@ import { ApiResponse } from '../../types';
 
 export interface Topic {
   id: number;
-  sub_id: number;
+  chapter_id: number;
+  sub_id?: number;
+  chapter_name?: string;
   name: string;
   thumbnail: string | null;
   home_display: boolean;
@@ -42,7 +44,7 @@ export async function getTopicById(id: number): Promise<ApiResponse<{
  * Create new topic (name + subject only; optional home_display, status, sort_order)
  */
 export async function createTopic(data: FormData | {
-  sub_id: number;
+  chapter_id: number;
   name: string;
   home_display?: boolean;
   status?: boolean;
@@ -68,7 +70,7 @@ export async function createTopic(data: FormData | {
 export async function updateTopic(
   id: number,
   data: FormData | Partial<{
-    sub_id: number;
+    chapter_id: number;
     name: string;
     home_display: boolean;
     status: boolean;

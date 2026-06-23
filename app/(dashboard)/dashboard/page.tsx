@@ -201,13 +201,13 @@ function DashboardPageContent() {
           ) : (
             <div
               className={[
-                "flex flex-1 flex-col lg:flex-row lg:items-start overflow-y-auto",
+                "flex flex-1 flex-col lg:flex-row lg:items-start overflow-x-hidden overflow-y-auto",
                 fullWidthSections.includes(activeSection)
                   ? "px-0 py-0"
                   : "gap-4 px-4 py-4 md:px-6 md:py-4",
               ].join(" ")}
             >
-              <main className="flex-1 min-w-0">
+              <main className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden">
                 {activeSection === "profile" && (
                   <div className="w-full">
                     <ProfileTabs />

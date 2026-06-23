@@ -10,6 +10,7 @@ const SubjectController = require('../../controllers/admin/subjectController');
 const StreamController = require('../../controllers/admin/streamController');
 const CareerController = require('../../controllers/admin/careerController');
 const TopicController = require('../../controllers/admin/topicController');
+const ChapterController = require('../../controllers/admin/chapterController');
 const SubtopicController = require('../../controllers/admin/subtopicController');
 const LectureController = require('../../controllers/admin/lectureController');
 const PurposeController = require('../../controllers/admin/purposeController');
@@ -45,6 +46,8 @@ const {
   validateUpdateCareer,
   validateCreateTopic,
   validateUpdateTopic,
+  validateCreateChapter,
+  validateUpdateChapter,
   validateCreateSubtopic,
   validateUpdateSubtopic,
   validateCreateLecture,
@@ -604,6 +607,17 @@ router.delete('/exams/:id', authenticateAdmin, requireModuleAccess('exams'), req
 router.get('/mock-prompts', authenticateAdmin, MockPromptsController.list);
 router.get('/mock-prompts/:examId', authenticateAdmin, MockPromptsController.get);
 router.put('/mock-prompts/:examId', authenticateAdmin, MockPromptsController.update);
+
+/**
+ * Chapters Routes
+ */
+router.get('/chapters', authenticateAdmin, requireModuleAccess('chapters'), ChapterController.getAllChapters);
+router.get('/chapters/subject/:subjectId', authenticateAdmin, requireModuleAccess('chapters'), ChapterController.getChaptersBySubjectId);
+router.get('/chapters/:id', authenticateAdmin, requireModuleAccess('chapters'), ChapterController.getChapterById);
+router.post('/chapters', authenticateAdmin, requireModuleAccess('chapters'), validateCreateChapter, ChapterController.createChapter);
+router.put('/chapters/:id', authenticateAdmin, requireModuleAccess('chapters'), requireCanEdit, validateUpdateChapter, ChapterController.updateChapter);
+router.delete('/chapters/all', authenticateAdmin, requireModuleAccess('chapters'), requireCanDelete, ChapterController.deleteAllChapters);
+router.delete('/chapters/:id', authenticateAdmin, requireModuleAccess('chapters'), requireCanDelete, ChapterController.deleteChapter);
 
 /**
  * Topics Routes

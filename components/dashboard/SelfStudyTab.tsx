@@ -22,6 +22,13 @@ type Topic = {
 type SubjectSection = {
   id: string;
   name: string;
+  chapters?: Array<{
+    id: number;
+    name: string;
+    sort_order: number;
+    topics: Topic[];
+    allTopics: Topic[];
+  }>;
   topics: Topic[];
   allTopics: Topic[];
 };
@@ -29,9 +36,7 @@ type SubjectSection = {
 type Props = {
   subjects: SubjectSection[];
   query: string;
-  onQueryChange: (v: string) => void;
-  sortBy: "latest" | "popular";
-  onToggleSort: () => void;
+  sortBy?: "latest" | "popular";
 };
 
 type VideoItem = {
@@ -56,8 +61,92 @@ type TopicGroup = {
   lectures: ExamPrepLectureDto[];
 };
 
+type ChapterGroup = {
+  id: string;
+  name: string;
+  topicGroups: TopicGroup[];
+};
+
+function buildChapterGroups(lectures: ExamPrepLectureDto[]): ChapterGroup[] {
+  const byChapter = new Map<string, ExamPrepLectureDto[]>();
+  for (const lecture of lectures) {
+    const chapterKey =
+      lecture.chapterId != null && lecture.chapterId > 0 ? String(lecture.chapterId) : "0";
+    const list = byChapter.get(chapterKey);
+    if (list) list.push(lecture);
+    else byChapter.set(chapterKey, [lecture]);
+  }
+
+  return [...byChapter.entries()]
+    .map(([chapterId, chapterLectures]) => {
+      const byTopic = new Map<string, ExamPrepLectureDto[]>();
+      for (const lecture of chapterLectures) {
+        const topicKey = String(lecture.topicId);
+        const list = byTopic.get(topicKey);
+        if (list) list.push(lecture);
+        else byTopic.set(topicKey, [lecture]);
+      }
+
+      const topicGroups = [...byTopic.entries()]
+        .map(([topicId, topicLectures]) => ({
+          id: topicId,
+          name: topicLectures[0]?.topicName || `Topic ${topicId}`,
+          lectures: topicLectures,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+      return {
+        id: chapterId,
+        name: chapterLectures[0]?.chapterName?.trim() || "General",
+        topicGroups,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+/** Merge taxonomy chapter order with lecture-backed groups so all chapters with videos appear. */
+function buildChapterGroupsForSubject(
+  subject: SubjectSection,
+  lectures: ExamPrepLectureDto[]
+): ChapterGroup[] {
+  const fromLectures = buildChapterGroups(lectures);
+  const lectureMap = new Map(fromLectures.map((group) => [group.id, group]));
+  const taxonomyChapters = subject.chapters;
+
+  if (!taxonomyChapters?.length) {
+    return fromLectures;
+  }
+
+  const ordered: ChapterGroup[] = [];
+  const sortedTaxonomy = [...taxonomyChapters].sort(
+    (a, b) =>
+      (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+
+  for (const chapter of sortedTaxonomy) {
+    const id = String(chapter.id);
+    const fromLecture = lectureMap.get(id);
+    if (fromLecture) {
+      ordered.push({ ...fromLecture, name: chapter.name || fromLecture.name });
+      lectureMap.delete(id);
+    }
+  }
+
+  for (const group of lectureMap.values()) {
+    ordered.push(group);
+  }
+
+  return ordered;
+}
+
+function chaptersWithLectures(chapterGroups: ChapterGroup[]): ChapterGroup[] {
+  return chapterGroups.filter((chapter) => chapter.topicGroups.length > 0);
+}
+
 const VIDEOS_PER_TOPIC = 5;
 const MAX_VISIBLE_TOPICS = 5;
+const MAX_VISIBLE_CHAPTERS = 5;
 const HERO_CYCLE_MS = 7000;
 
 /** Matches exam prep / profile dashboard palette */
@@ -76,9 +165,6 @@ const SITE = {
     "border border-[#dceeff] bg-[#eaf4ff] text-black placeholder:text-black/40 focus:border-[#FAD53C] focus:ring-1 focus:ring-[#FAD53C]/25",
   card: "border border-[#dceeff] bg-white",
 } as const;
-
-const VIDEO_GRID_CLASS =
-  "grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]";
 
 function formatCompact(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "0";
@@ -150,9 +236,12 @@ const toHeroEmbedUrl = (youtubeId: string): string => {
 
 function LectureGridSkeleton() {
   return (
-    <div className={VIDEO_GRID_CLASS}>
+    <div className="flex gap-2.5 overflow-hidden pb-1">
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="overflow-hidden rounded-lg border border-[#dceeff] bg-[#eaf4ff] shadow-sm">
+        <div
+          key={index}
+          className="w-[148px] flex-shrink-0 overflow-hidden rounded-lg border border-[#dceeff] bg-[#eaf4ff] shadow-sm sm:w-[158px]"
+        >
           <div className="aspect-video animate-pulse bg-[#dceeff]" />
           <div className="space-y-1.5 p-2">
             <div className="h-2.5 w-5/6 animate-pulse rounded bg-[#dceeff]" />
@@ -196,7 +285,7 @@ function CompactLectureVideoCard({
   const subtopicLabel = lecture.subtopicName?.trim();
 
   return (
-    <div className="group relative min-w-0">
+    <div className="group relative w-[148px] max-w-[148px] flex-shrink-0 sm:w-[158px] sm:max-w-[158px]">
       <button
         type="button"
         title={video.hookSummary || video.title}
@@ -208,7 +297,7 @@ function CompactLectureVideoCard({
             src={toEmbedUrl(video.youtubeId, 8 + (cardIndex % 6), 14 + (cardIndex % 6))}
             title={video.title}
             loading="lazy"
-            className="pointer-events-none h-full w-full scale-110"
+            className="pointer-events-none h-full w-full max-w-full scale-110"
             allow="autoplay; encrypted-media; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
           />
@@ -236,7 +325,7 @@ function CompactLectureVideoCard({
 
 function HeroSkeleton() {
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-[#dceeff] animate-pulse sm:aspect-[21/9]" />
+    <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-[#dceeff] animate-pulse sm:aspect-[21/9]" />
   );
 }
 
@@ -262,7 +351,7 @@ function NetflixHeroCarousel({
 
   return (
     <div
-      className="group relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-black shadow-lg sm:aspect-[21/9]"
+      className="group relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-black shadow-lg sm:aspect-[21/9]"
       onMouseEnter={() => onPauseChange(true)}
       onMouseLeave={() => onPauseChange(false)}
     >
@@ -290,6 +379,12 @@ function NetflixHeroCarousel({
       <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5 md:p-6">
         <p className="text-[11px] font-medium text-white/75 sm:text-xs">
           {current.subjectName}
+          {current.chapterName ? (
+            <>
+              <span className="mx-1.5 text-white/40">·</span>
+              {current.chapterName}
+            </>
+          ) : null}
           <span className="mx-1.5 text-white/40">·</span>
           {current.topicName}
         </p>
@@ -404,12 +499,86 @@ function UpcomingVideosQueue({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[10px] font-medium text-black/50">
-                {lecture.subjectName} · {lecture.topicName}
+                {lecture.subjectName}
+                {lecture.chapterName ? ` · ${lecture.chapterName}` : ""} · {lecture.topicName}
               </p>
               <p className="truncate text-xs font-semibold text-black/85">{lecture.title}</p>
             </div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function chapterLectureCount(chapter: ChapterGroup): number {
+  return chapter.topicGroups.reduce((sum, topic) => sum + topic.lectures.length, 0);
+}
+
+type PillTabItem = { id: string; name: string; count: number };
+
+function PillTabs({
+  items,
+  activeId,
+  onChange,
+  onExpand,
+  maxVisible = 5,
+}: {
+  items: PillTabItem[];
+  activeId: string | null;
+  onChange: (id: string) => void;
+  onExpand: () => void;
+  maxVisible?: number;
+}) {
+  const visible = items.slice(0, maxVisible);
+  const remaining = items.length - maxVisible;
+  const hasMore = remaining > 0;
+  const alternateColors = items.length > 1;
+  const moreLabel =
+    remaining > 99 ? `more (${formatCompact(remaining)}+)` : `more (${remaining})`;
+
+  return (
+    <div className="w-full min-w-0 max-w-full overflow-hidden [contain:inline-size]">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {visible.map((item, index) => {
+          const isActive = item.id === activeId;
+          const inactiveClass =
+            alternateColors && index % 2 === 1 ? SITE.pillInactiveAlt : SITE.pillInactive;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChange(item.id)}
+              className={[
+                "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight transition",
+                isActive ? SITE.pillActive : inactiveClass,
+              ].join(" ")}
+            >
+              {item.name}
+              <span
+                className={[
+                  "ml-1 rounded-full px-1 py-px text-[9px] leading-none",
+                  isActive
+                    ? "bg-black/10 text-black"
+                    : alternateColors && index % 2 === 1
+                      ? "bg-black/10 text-black/65"
+                      : "bg-black/5 text-black/55",
+                ].join(" ")}
+              >
+                {item.count}
+              </span>
+            </button>
+          );
+        })}
+        {hasMore ? (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="shrink-0 rounded-full border border-dashed border-[#dceeff] bg-white px-2.5 py-1 text-[11px] font-semibold text-black/60 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
+          >
+            + {moreLabel}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -426,51 +595,73 @@ function TopicPillTabs({
   onChange: (id: string) => void;
   onExpand: () => void;
 }) {
-  const visible = topicGroups.slice(0, MAX_VISIBLE_TOPICS);
-  const hasMore = topicGroups.length > MAX_VISIBLE_TOPICS;
-  const alternateColors = topicGroups.length > 1;
+  const items: PillTabItem[] = topicGroups.map((topic) => ({
+    id: topic.id,
+    name: topic.name,
+    count: topic.lectures.length,
+  }));
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {visible.map((topic, index) => {
-        const isActive = topic.id === activeTopicId;
-        const inactiveClass =
-          alternateColors && index % 2 === 1 ? SITE.pillInactiveAlt : SITE.pillInactive;
-        return (
-          <button
-            key={topic.id}
-            type="button"
-            onClick={() => onChange(topic.id)}
-            className={[
-              "rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight transition",
-              isActive ? SITE.pillActive : inactiveClass,
-            ].join(" ")}
-          >
-            {topic.name}
-            <span
-              className={[
-                "ml-1 rounded-full px-1 py-px text-[9px] leading-none",
-                isActive
-                  ? "bg-black/10 text-black"
-                  : alternateColors && index % 2 === 1
-                    ? "bg-black/10 text-black/65"
-                    : "bg-black/5 text-black/55",
-              ].join(" ")}
-            >
-              {topic.lectures.length}
-            </span>
-          </button>
-        );
-      })}
-      {hasMore ? (
-        <button
-          type="button"
-          onClick={onExpand}
-          className="rounded-full border border-dashed border-[#dceeff] px-2.5 py-1 text-[11px] font-semibold text-black/60 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10"
-        >
-          + more
-        </button>
-      ) : null}
+    <PillTabs
+      items={items}
+      activeId={activeTopicId}
+      onChange={onChange}
+      onExpand={onExpand}
+      maxVisible={MAX_VISIBLE_TOPICS}
+    />
+  );
+}
+
+function ChapterPillTabs({
+  chapterGroups,
+  activeChapterId,
+  onChange,
+  onExpand,
+}: {
+  chapterGroups: ChapterGroup[];
+  activeChapterId: string | null;
+  onChange: (id: string) => void;
+  onExpand: () => void;
+}) {
+  const items: PillTabItem[] = chapterGroups.map((chapter) => ({
+    id: chapter.id,
+    name: chapter.name,
+    count: chapterLectureCount(chapter),
+  }));
+
+  return (
+    <PillTabs
+      items={items}
+      activeId={activeChapterId}
+      onChange={onChange}
+      onExpand={onExpand}
+      maxVisible={MAX_VISIBLE_CHAPTERS}
+    />
+  );
+}
+
+function HorizontalMoreCard({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-[148px] flex-shrink-0 flex-col items-center justify-center gap-1 self-stretch rounded-lg border border-dashed border-[#dceeff] bg-white/90 px-2 py-6 text-center shadow-sm transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10 sm:w-[158px]"
+    >
+      <span className="text-xl font-bold leading-none text-black/45">+</span>
+      <span className="text-[11px] font-semibold leading-snug text-black/60">{label}</span>
+    </button>
+  );
+}
+
+function HorizontalLectureScrollRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-full min-w-0 max-w-full overflow-hidden [contain:inline-size]">
+      <div
+        className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain scroll-smooth [scrollbar-width:thin]"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="flex w-max max-w-none flex-nowrap items-stretch gap-2.5 pr-1">{children}</div>
+      </div>
     </div>
   );
 }
@@ -484,6 +675,7 @@ function TopicVideosBlock({
   onWatch,
   headingClassName = "text-base font-bold text-black/85",
   showSubtopicLabel = false,
+  hideHeading = false,
 }: {
   topic: TopicGroup;
   sortBy: "latest" | "popular";
@@ -493,6 +685,8 @@ function TopicVideosBlock({
   onWatch: (lecture: ExamPrepLectureDto) => void;
   headingClassName?: string;
   showSubtopicLabel?: boolean;
+  /** When true, topic title is omitted (active tab already shows the name). */
+  hideHeading?: boolean;
 }) {
   const videos = useMemo(
     () => sortVideos(topic.lectures.map(prepLectureToVideoItem), sortBy),
@@ -501,15 +695,15 @@ function TopicVideosBlock({
   const limit = Math.min(videos.length, visibleLimit);
   const visibleVideos = videos.slice(0, limit);
   const hasMore = videos.length > limit;
-  const canShowLess = visibleLimit > VIDEOS_PER_TOPIC && !!onShowLess;
   const remaining = videos.length - limit;
   const moreLabel =
-    remaining > 99 ? `+ more (${formatCompact(remaining)}+)` : `+ more (${remaining} more)`;
+    remaining > 99 ? `more (${formatCompact(remaining)}+)` : `more (${remaining})`;
+  const canShowLess = visibleLimit > VIDEOS_PER_TOPIC && !!onShowLess;
 
   return (
-    <div className="space-y-3">
-      <h4 className={headingClassName}>{topic.name}</h4>
-      <div className={VIDEO_GRID_CLASS}>
+    <div className="min-w-0 w-full max-w-full space-y-1 overflow-hidden">
+      {!hideHeading ? <h4 className={headingClassName}>{topic.name}</h4> : null}
+      <HorizontalLectureScrollRow>
         {visibleVideos.map((video, index) => {
           const lecture = topic.lectures.find((lec) => `lec-${lec.id}-${lec.youtubeId}` === video.id);
           if (!lecture) return null;
@@ -524,30 +718,64 @@ function TopicVideosBlock({
             />
           );
         })}
-      </div>
-      {hasMore || canShowLess ? (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={onLoadMore}
-              className={`rounded-full border ${SITE.border} bg-white px-5 py-2 text-xs font-semibold text-black/70 transition hover:border-[#FAD53C] hover:bg-[#FAD53C]/10`}
-            >
-              {moreLabel}
-            </button>
-          ) : null}
-          {canShowLess ? (
-            <button
-              type="button"
-              onClick={onShowLess}
-              className={`inline-flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold transition ${SITE.cta}`}
-            >
-              <FiChevronUp className="text-sm" />
-              Show less
-            </button>
-          ) : null}
+        {hasMore ? <HorizontalMoreCard label={moreLabel} onClick={onLoadMore} /> : null}
+      </HorizontalLectureScrollRow>
+      {canShowLess ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onShowLess}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold transition ${SITE.cta}`}
+          >
+            <FiChevronUp className="text-xs" />
+            Show less
+          </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ExpandedChaptersPanel({
+  chapterGroups,
+  sortBy,
+  onCollapse,
+  onWatch,
+}: {
+  chapterGroups: ChapterGroup[];
+  sortBy: "latest" | "popular";
+  onCollapse: () => void;
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+}) {
+  const alternateColors = chapterGroups.length > 1;
+
+  return (
+    <div className="space-y-1">
+      <div className="mb-3 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onCollapse}
+          className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${SITE.cta}`}
+        >
+          <FiChevronUp className="text-sm" />
+          Show less
+        </button>
+      </div>
+
+      <div className={`min-w-0 max-w-full divide-y divide-[#dceeff] overflow-x-hidden rounded-xl border ${SITE.border} ${SITE.surface} p-3 md:p-4`}>
+        {chapterGroups.map((chapter, index) => (
+          <div
+            key={chapter.id}
+            className={[
+              "min-w-0 max-w-full space-y-3 overflow-x-hidden py-5 first:pt-0 last:pb-0",
+              alternateColors && index % 2 === 1 ? "bg-[#FAD53C]/5" : "",
+            ].join(" ")}
+          >
+            <h4 className="text-base font-bold text-black/85">{chapter.name}</h4>
+            <ChapterStudyBlock chapter={chapter} sortBy={sortBy} onWatch={onWatch} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -584,12 +812,12 @@ function ExpandedTopicsPanel({
         </button>
       </div>
 
-      <div className={`divide-y divide-[#dceeff] rounded-xl border ${SITE.border} ${SITE.surface} p-3 md:p-4`}>
+      <div className={`min-w-0 max-w-full divide-y divide-[#dceeff] overflow-x-hidden rounded-xl border ${SITE.border} ${SITE.surface} p-3 md:p-4`}>
         {topicGroups.map((topic, index) => (
           <div
             key={topic.id}
             className={[
-              "py-5 first:pt-0 last:pb-0",
+              "min-w-0 max-w-full overflow-x-hidden py-5 first:pt-0 last:pb-0",
               alternateColors && index % 2 === 1 ? "bg-[#FAD53C]/5" : "",
             ].join(" ")}
           >
@@ -615,44 +843,19 @@ function ExpandedTopicsPanel({
   );
 }
 
-function SubjectStudySection({
-  subject,
-  query,
+function ChapterStudyBlock({
+  chapter,
   sortBy,
   onWatch,
 }: {
-  subject: SubjectSection;
-  query: string;
+  chapter: ChapterGroup;
   sortBy: "latest" | "popular";
   onWatch: (lecture: ExamPrepLectureDto) => void;
 }) {
+  const { topicGroups } = chapter;
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [topicsExpanded, setTopicsExpanded] = useState(false);
   const [visibleByTopicId, setVisibleByTopicId] = useState<Record<string, number>>({});
-
-  const subjectQuery = useExamPrepLecturesBySubjectQuery({
-    subjectId: subject.id,
-    search: query,
-  });
-
-  const subjectLectures = subjectQuery.data?.lectures ?? [];
-
-  const topicGroups = useMemo<TopicGroup[]>(() => {
-    const grouped = new Map<string, ExamPrepLectureDto[]>();
-    for (const lecture of subjectLectures) {
-      const key = String(lecture.topicId);
-      const list = grouped.get(key);
-      if (list) list.push(lecture);
-      else grouped.set(key, [lecture]);
-    }
-    return [...grouped.entries()]
-      .map(([topicId, lectures]) => ({
-        id: topicId,
-        name: lectures[0]?.topicName || `Topic ${topicId}`,
-        lectures,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }, [subjectLectures]);
 
   const topicIdsKey = useMemo(() => topicGroups.map((t) => t.id).join(","), [topicGroups]);
 
@@ -664,7 +867,7 @@ function SubjectStudySection({
     });
     setTopicsExpanded(false);
     setVisibleByTopicId({});
-  }, [subject.id, query, topicIdsKey]);
+  }, [chapter.id, topicIdsKey, topicGroups]);
 
   const activeTopic = useMemo(
     () => topicGroups.find((t) => t.id === activeTopicId) ?? null,
@@ -676,40 +879,18 @@ function SubjectStudySection({
     return sortVideos(activeTopic.lectures.map(prepLectureToVideoItem), sortBy);
   }, [activeTopic, sortBy]);
 
-  const activeLimit = activeTopic
-    ? Math.min(activeTopicVideos.length, visibleByTopicId[activeTopic.id] ?? VIDEOS_PER_TOPIC)
-    : 0;
+  if (!topicGroups.length) return null;
+
+  const showTopicTabs = topicGroups.length > 1;
 
   return (
-    <section
+    <div
       className={[
-        "space-y-4 border-t border-[#dceeff] pt-6 first:border-t-0 first:pt-0 transition-all duration-300",
-        topicsExpanded ? "rounded-xl border border-[#dceeff] bg-[#f8fbff] p-4 -mx-1 sm:mx-0" : "",
+        "min-w-0 w-full max-w-full space-y-1.5 overflow-hidden transition-all duration-300",
+        topicsExpanded ? `rounded-xl border border-[#dceeff] ${SITE.surface} p-3 md:p-4` : "",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-xl font-bold text-black/90">{subject.name}</h3>
-        {subjectQuery.isFetching && subjectQuery.data ? (
-          <span className="text-[11px] text-black/40">Updating…</span>
-        ) : null}
-      </div>
-
-      {subjectQuery.isError ? (
-        <div className="rounded-xl bg-red-50 px-4 py-8 text-center text-sm text-red-600">
-          Could not load videos for {subject.name}.
-          <button
-            type="button"
-            onClick={() => void subjectQuery.refetch()}
-            className="ml-2 font-semibold underline"
-          >
-            Retry
-          </button>
-        </div>
-      ) : subjectQuery.isLoading ? (
-        <LectureGridSkeleton />
-      ) : topicGroups.length === 0 ? (
-        <p className="text-sm text-black/55">No videos available for this subject yet.</p>
-      ) : topicsExpanded ? (
+      {topicsExpanded ? (
         <ExpandedTopicsPanel
           topicGroups={topicGroups}
           sortBy={sortBy}
@@ -731,19 +912,21 @@ function SubjectStudySection({
         />
       ) : (
         <>
-          <TopicPillTabs
-            topicGroups={topicGroups}
-            activeTopicId={activeTopicId}
-            onChange={setActiveTopicId}
-            onExpand={() => setTopicsExpanded(true)}
-          />
+          {showTopicTabs ? (
+            <TopicPillTabs
+              topicGroups={topicGroups}
+              activeTopicId={activeTopicId}
+              onChange={setActiveTopicId}
+              onExpand={() => setTopicsExpanded(true)}
+            />
+          ) : null}
 
-          <div className="w-full min-w-0">
+          <div className="min-w-0 w-full max-w-full overflow-hidden">
             {activeTopic ? (
               <TopicVideosBlock
                 topic={activeTopic}
                 sortBy={sortBy}
-                visibleLimit={activeLimit}
+                visibleLimit={visibleByTopicId[activeTopic.id] ?? VIDEOS_PER_TOPIC}
                 onLoadMore={() =>
                   setVisibleByTopicId((prev) => ({
                     ...prev,
@@ -760,10 +943,109 @@ function SubjectStudySection({
                   }))
                 }
                 onWatch={onWatch}
+                hideHeading={showTopicTabs}
+                showSubtopicLabel
               />
             ) : null}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function SubjectStudySection({
+  subject,
+  query,
+  sortBy,
+  onWatch,
+}: {
+  subject: SubjectSection;
+  query: string;
+  sortBy: "latest" | "popular";
+  onWatch: (lecture: ExamPrepLectureDto) => void;
+}) {
+  const subjectQuery = useExamPrepLecturesBySubjectQuery({
+    subjectId: subject.id,
+    search: query,
+  });
+
+  const subjectLectures = subjectQuery.data?.lectures ?? [];
+
+  const chapterGroups = useMemo(
+    () => chaptersWithLectures(buildChapterGroupsForSubject(subject, subjectLectures)),
+    [subject, subjectLectures]
+  );
+
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
+  const [chaptersExpanded, setChaptersExpanded] = useState(false);
+
+  const chapterIdsKey = useMemo(() => chapterGroups.map((c) => c.id).join(","), [chapterGroups]);
+  const showChapterTabs = chapterGroups.length > 1;
+
+  useEffect(() => {
+    setActiveChapterId((current) => {
+      if (!chapterGroups.length) return null;
+      if (current && chapterGroups.some((c) => c.id === current)) return current;
+      return chapterGroups[0].id;
+    });
+    setChaptersExpanded(false);
+  }, [subject.id, query, chapterIdsKey, chapterGroups]);
+
+  const activeChapter = useMemo(
+    () => chapterGroups.find((c) => c.id === activeChapterId) ?? null,
+    [activeChapterId, chapterGroups]
+  );
+
+  return (
+    <section className="min-w-0 w-full max-w-full space-y-2 overflow-hidden border-t border-[#dceeff] pt-3 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-xl font-bold text-black/90">{subject.name}</h3>
+        {subjectQuery.isFetching && subjectQuery.data ? (
+          <span className="text-[11px] text-black/40">Updating…</span>
+        ) : null}
+      </div>
+
+      {subjectQuery.isError ? (
+        <div className="rounded-xl bg-red-50 px-4 py-8 text-center text-sm text-red-600">
+          Could not load videos for {subject.name}.
+          <button
+            type="button"
+            onClick={() => void subjectQuery.refetch()}
+            className="ml-2 font-semibold underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : subjectQuery.isLoading ? (
+        <LectureGridSkeleton />
+      ) : chapterGroups.length === 0 ? (
+        <p className="text-sm text-black/55">No videos available for this subject yet.</p>
+      ) : (
+        <div className="min-w-0 w-full max-w-full space-y-1.5 overflow-hidden">
+          {chaptersExpanded && showChapterTabs ? (
+            <ExpandedChaptersPanel
+              chapterGroups={chapterGroups}
+              sortBy={sortBy}
+              onCollapse={() => setChaptersExpanded(false)}
+              onWatch={onWatch}
+            />
+          ) : (
+            <>
+              {showChapterTabs ? (
+                <ChapterPillTabs
+                  chapterGroups={chapterGroups}
+                  activeChapterId={activeChapterId}
+                  onChange={setActiveChapterId}
+                  onExpand={() => setChaptersExpanded(true)}
+                />
+              ) : null}
+              {activeChapter ? (
+                <ChapterStudyBlock chapter={activeChapter} sortBy={sortBy} onWatch={onWatch} />
+              ) : null}
+            </>
+          )}
+        </div>
       )}
     </section>
   );
@@ -772,16 +1054,25 @@ function SubjectStudySection({
 export default function SelfStudyTab({
   subjects,
   query,
-  onQueryChange,
-  sortBy,
-  onToggleSort,
+  sortBy = "latest",
 }: Props) {
   const filteredSubjects = useMemo(() => {
     const q = query.toLowerCase().trim();
     if (!q) return subjects;
     return subjects.filter((subject) => {
       if (subject.name.toLowerCase().includes(q)) return true;
-      return [...subject.topics, ...subject.allTopics].some((topic) => topic.name.toLowerCase().includes(q));
+      if (
+        subject.chapters?.some(
+          (chapter) =>
+            chapter.name.toLowerCase().includes(q) ||
+            chapter.allTopics.some((topic) => topic.name.toLowerCase().includes(q))
+        )
+      ) {
+        return true;
+      }
+      return [...subject.topics, ...subject.allTopics].some((topic) =>
+        topic.name.toLowerCase().includes(q)
+      );
     });
   }, [query, subjects]);
 
@@ -822,31 +1113,9 @@ export default function SelfStudyTab({
   const searchText = query.trim();
 
   return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
+    <div className="min-w-0 w-full max-w-full overflow-x-hidden">
       {/* Recommended hero + up next */}
-      <section className={`rounded-2xl ${SITE.card} p-3 shadow-sm md:p-4`}>
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-black/90">Recommended</h3>
-            <p className="text-xs text-black/50">Top picks for your stream</p>
-          </div>
-          <div className="flex w-full items-center gap-2 md:w-auto">
-            <input
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Search by subject or topic"
-              className={`w-full rounded-xl px-3 py-2 text-sm outline-none md:w-[260px] ${SITE.input}`}
-            />
-            <button
-              type="button"
-              onClick={onToggleSort}
-              className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition ${SITE.cta}`}
-            >
-              {sortBy === "latest" ? "Latest" : "Popular"}
-            </button>
-          </div>
-        </div>
-
+      <section className={`rounded-2xl ${SITE.card} p-1.5 shadow-sm sm:p-2`}>
         {recommendedQuery.isError ? (
           <div className="flex min-h-[220px] items-center justify-center rounded-2xl bg-[#eaf4ff] px-4 py-10 text-center text-sm text-red-600">
             <div>
@@ -861,12 +1130,12 @@ export default function SelfStudyTab({
             </div>
           </div>
         ) : recommendedLoading ? (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
+          <div className="grid gap-2 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
             <HeroSkeleton />
-            <div className="hidden min-h-[200px] animate-pulse rounded-2xl bg-[#eaf4ff] xl:block" />
+            <div className="hidden min-h-[160px] animate-pulse rounded-2xl bg-[#eaf4ff] xl:block" />
           </div>
         ) : recommendedLectures.length > 0 ? (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
+          <div className="grid gap-2 xl:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.75fr)]">
             <NetflixHeroCarousel
               lectures={recommendedLectures}
               heroIndex={heroIndex}
@@ -903,8 +1172,8 @@ export default function SelfStudyTab({
           ) : null}
         </div>
       ) : (
-        <div className={`rounded-2xl ${SITE.card} p-3 shadow-sm md:p-5`}>
-          <div className="space-y-8">
+        <div className={`rounded-2xl ${SITE.card} p-2 shadow-sm md:p-3`}>
+          <div className="min-w-0 max-w-full space-y-3 overflow-x-hidden">
             {filteredSubjects.map((subject) => (
               <SubjectStudySection
                 key={subject.id}

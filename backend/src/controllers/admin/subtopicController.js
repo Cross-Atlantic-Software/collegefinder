@@ -1,5 +1,6 @@
 const Subtopic = require('../../models/taxonomy/Subtopic');
 const Topic = require('../../models/taxonomy/Topic');
+const Chapter = require('../../models/taxonomy/Chapter');
 const Subject = require('../../models/taxonomy/Subject');
 const { validationResult } = require('express-validator');
 const XLSX = require('xlsx');
