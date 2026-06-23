@@ -17,11 +17,11 @@ export function PublicExamCard({ exam, name, toneIndex = 0 }: PublicExamCardProp
 
   return (
     <article
-      className={`flex h-full flex-col overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/[0.07] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${bgClass}`}
+      className={`flex h-full min-w-0 flex-col overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/[0.07] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${bgClass}`}
     >
       <ExamCardHeader exam={exam} name={name} borderClassName="border-black/10" />
 
-      <div className="flex flex-1 flex-col gap-2 p-3 pt-2.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-3 pt-2.5">
         <ExamCardFields exam={exam} linkFrom="exam-card" />
       </div>
     </article>

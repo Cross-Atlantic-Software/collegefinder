@@ -9,11 +9,11 @@ import { Button } from "@/components/shared";
 import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
-import { ExamDetailLinkedColleges } from "@/components/dashboard/ExamDetailLinkedColleges";
 import { ExamDetailLinkedCoaching } from "@/components/dashboard/ExamDetailLinkedCoaching";
-import { ExamDetailLinkedScholarships } from "@/components/dashboard/ExamDetailLinkedScholarships";
+import { ExamDetailMapping } from "@/components/dashboard/ExamDetailMapping";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ExamDetailSections } from "@/components/dashboard/ExamDetailSections";
+import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
 import {
   buildExamDetailSections,
   examCardSubtitle,
@@ -318,22 +318,20 @@ export default function ExamDetailPage() {
       </section>
 
       <div className="px-4 py-4 md:px-6">
-        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <ExamDetailSections sections={sections} />
-            <ExamDetailLinkedColleges
+            <ExamDetailMapping
               colleges={linkedColleges}
-              totalCount={linkedCollegesTotal}
-              isLoading={collegesLoading && !!exam}
+              linkedCollegesTotal={linkedCollegesTotal}
+              collegesLoading={collegesLoading && !!exam}
+              scholarships={linkedScholarships}
+              linkedScholarshipTotal={linkedScholarshipTotal}
             />
             <ExamDetailLinkedCoaching
               institutes={linkedInstitutes}
               totalCount={linkedInstitutesTotal}
               isLoading={institutesLoading && !!exam}
-            />
-            <ExamDetailLinkedScholarships
-              scholarships={linkedScholarships}
-              totalCount={linkedScholarshipTotal}
             />
           </div>
 
@@ -399,6 +397,7 @@ export default function ExamDetailPage() {
                 </Button>
               </div>
             </div>
+            <QuickSelfStudyPicks variant="sidebar" />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
               lectures={taggedLecturePreviews}

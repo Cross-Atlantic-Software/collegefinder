@@ -38,6 +38,18 @@ export function formatExamDate(iso: string | null | undefined): string | null {
   }
 }
 
+/** Month label derived from an ISO date (no separate month column in DB). */
+export function formatExamMonth(iso: string | null | undefined): string | null {
+  if (!hasDisplayValue(iso)) return null;
+  try {
+    const d = new Date(String(iso));
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  } catch {
+    return null;
+  }
+}
+
 export function formatApplicationDateRange(exam: Exam): string | null {
   const d = exam.examDates;
   if (!d) return null;
@@ -317,176 +329,145 @@ function field(label: string, value: unknown): ExamField | null {
   return { label, value: text };
 }
 
+function pushField(arr: ExamField[], f: ExamField | null) {
+  if (f) arr.push(f);
+}
+
+function pushSection(
+  sections: ExamDetailSection[],
+  id: string,
+  title: string,
+  fields: ExamField[]
+) {
+  const populated = fields.filter((f) => f.value.trim() && f.value !== "—");
+  if (populated.length) sections.push({ id, title, fields: populated });
+}
+
+function avgApplicantsLastThreeYears(exam: Exam): number | null {
+  if (hasDisplayValue(exam.avg_applicant_prev_three)) {
+    return Number(exam.avg_applicant_prev_three);
+  }
+  const yearly = [exam.avg_applicant_2023, exam.avg_applicant_2024, exam.avg_applicant_2025].filter(
+    (n) => n != null && Number.isFinite(Number(n))
+  );
+  if (!yearly.length) return null;
+  const sum = yearly.reduce((acc, n) => acc + Number(n), 0);
+  return Math.round(sum / yearly.length);
+}
+
 /** Sections built only from enriched exam API payload (no placeholders). */
 export function buildExamDetailSections(exam: Exam): ExamDetailSection[] {
   const sections: ExamDetailSection[] = [];
 
-  const overview: ExamField[] = [];
-  const push = (arr: ExamField[], f: ExamField | null) => {
-    if (f) arr.push(f);
-  };
-
-  push(overview, field("Exam name", exam.name));
-  push(overview, field("Exam code", exam.code));
-  push(overview, field("Abbreviation", exam.abbreviation));
-  push(overview, field("Category", exam.category));
-  push(overview, field("Exam frequency", exam.exam_frequency));
-  push(overview, field("Exam type", exam.exam_type));
+  // 1) Exam Information
+  const examInfo: ExamField[] = [];
+  pushField(examInfo, field("Exam Name", exam.name));
+  pushField(examInfo, field("Abbreviation", exam.abbreviation));
   if (hasDisplayValue(exam.description)) {
-    push(overview, field("Description", exam.description));
+    pushField(examInfo, field("Description", exam.description));
   }
-  push(overview, field("Difficulty level", examCardDifficultyLevel(exam)));
-  push(overview, field("Conducting authority", exam.conducting_authority));
-  push(
-    overview,
-    field(
-      "Number of papers",
-      exam.number_of_papers != null && exam.number_of_papers > 0
-        ? exam.number_of_papers
-        : null
-    )
-  );
-  push(overview, field("Counselling", exam.counselling));
-  push(overview, field("Documents required", exam.documents_required));
-  const logo = examLogoUrl(exam);
-  if (logo) push(overview, field("Logo", logo));
-  if (exam.exam_popularity_rank != null && Number.isFinite(Number(exam.exam_popularity_rank))) {
-    push(overview, field("Popularity rank", exam.exam_popularity_rank));
-  }
-  if (
-    exam.total_mocks_generated != null &&
-    Number.isFinite(Number(exam.total_mocks_generated))
-  ) {
-    push(overview, field("Mock tests generated", exam.total_mocks_generated));
-  }
-  const linkedCollegeCount =
-    exam.linkedColleges?.length ?? exam.linkedCollegeNames?.length ?? 0;
-  if (linkedCollegeCount > 0) {
-    push(overview, field("Colleges listing this exam", linkedCollegeCount));
-  }
-  push(overview, field("Last updated", formatExamDate(exam.updated_at)));
-  push(overview, field("Created", formatExamDate(exam.created_at)));
-  sections.push({ id: "overview", title: "Exam information", fields: overview });
+  pushField(examInfo, field("Category", exam.category));
+  pushField(examInfo, field("Exam Frequency", exam.exam_frequency));
+  pushSection(sections, "exam-information", "Exam Information", examInfo);
 
+  // 2) Important Dates
   const dates: ExamField[] = [];
   const ed = exam.examDates;
   if (ed) {
-    push(dates, field("Application opens", formatExamDate(ed.application_start_date)));
-    push(dates, field("Application closes", formatExamDate(ed.application_close_date)));
-    push(dates, field("Admit card date", formatExamDate(ed.admit_card_date)));
-    push(dates, field("Exam date", formatExamDate(ed.exam_date)));
-    push(dates, field("Result date", formatExamDate(ed.result_date)));
-    push(dates, field("Counselling start", formatExamDate(ed.counselling_start_date ?? ed.counselling_date)));
-    push(dates, field("Counselling end", formatExamDate(ed.counselling_end_date)));
-    push(dates, field("Application fee", formatInrFee(ed.application_fees)));
-    push(dates, field("UT service fee", ed.ut_service_fee != null ? `${ed.ut_service_fee} credits` : "—"));
-  }
-  if (dates.length) {
-    sections.push({ id: "dates", title: "Important dates", fields: dates });
-  }
-
-  const pattern: ExamField[] = [];
-  const ep = exam.examPattern;
-  if (ep) {
-    push(pattern, field("Mode", ep.mode));
-    push(
-      pattern,
-      field(
-        "Duration",
-        formatExamPatternDurationHours(ep.duration_minutes ?? undefined) !== "—"
-          ? formatExamPatternDurationHours(ep.duration_minutes ?? undefined)
-          : null
-      )
+    pushField(dates, field("Application Start Date", formatExamDate(ed.application_start_date)));
+    pushField(dates, field("Application Start Month", formatExamMonth(ed.application_start_date)));
+    pushField(dates, field("Application Close Date", formatExamDate(ed.application_close_date)));
+    pushField(dates, field("Application End Month", formatExamMonth(ed.application_close_date)));
+    pushField(
+      dates,
+      field("Hall Ticket Downloading Open Date", formatExamDate(ed.admit_card_date))
     );
-    push(
-      pattern,
-      field(
-        "Number of questions",
-        ep.number_of_questions != null ? ep.number_of_questions : null
-      )
+    pushField(
+      dates,
+      field("Hall Ticket Downloading Open Month", formatExamMonth(ed.admit_card_date))
     );
-    push(pattern, field("Total marks", ep.total_marks != null ? ep.total_marks : null));
-    push(pattern, field("Negative marking", ep.negative_marking));
-    push(pattern, field("Subject weightage", ep.weightage_of_subjects));
+    pushField(dates, field("Exam Date", formatExamDate(ed.exam_date)));
+    pushField(dates, field("Exam Month", formatExamMonth(ed.exam_date)));
+    pushField(dates, field("Result Date", formatExamDate(ed.result_date)));
+    pushField(dates, field("Result Month", formatExamMonth(ed.result_date)));
   }
-  if (pattern.length) {
-    sections.push({ id: "pattern", title: "Exam pattern", fields: pattern });
-  }
+  pushSection(sections, "important-dates", "Important Dates", dates);
 
-  if (hasDisplayValue(exam.exam_pattern)) {
-    sections.push({
-      id: "pattern-overview",
-      title: "Exam pattern overview",
-      fields: [field("Pattern", exam.exam_pattern)!],
-    });
-  }
-
-  const applicantStats: ExamField[] = [];
-  push(applicantStats, field("Avg applicants (2023)", exam.avg_applicant_2023));
-  push(applicantStats, field("Avg applicants (2024)", exam.avg_applicant_2024));
-  push(applicantStats, field("Avg applicants (2025)", exam.avg_applicant_2025));
-  push(applicantStats, field("Avg applicants (prev 3 years)", exam.avg_applicant_prev_three));
-  push(applicantStats, field("Qualified candidates", exam.qualified_candidate));
-  push(applicantStats, field("Success rate", exam.success_rate));
-  if (applicantStats.length) {
-    sections.push({ id: "applicant-stats", title: "Applicant statistics", fields: applicantStats });
-  }
-
+  // 3) Eligibility Criteria
   const eligibility: ExamField[] = [];
   if (hasDisplayValue(exam.eligibility)) {
-    push(eligibility, field("Eligibility summary", exam.eligibility));
+    pushField(eligibility, field("Eligibility", exam.eligibility));
   }
   const el = exam.eligibilityCriteria;
   if (el) {
+    pushField(eligibility, field("Domicile", el.domicile));
     const streams = (el.stream_labels ?? []).filter(Boolean).join(", ");
     const subjects = (el.subject_labels ?? []).filter(Boolean).join(", ");
-    push(eligibility, field("Streams", streams || null));
-    push(eligibility, field("Subjects", subjects || null));
-    push(eligibility, field("Age limit", el.age_limit));
-    push(eligibility, field("Attempt limit", el.attempt_limit));
-    push(eligibility, field("Domicile", el.domicile));
+    pushField(eligibility, field("Streams", streams || null));
+    pushField(eligibility, field("Subjects", subjects || null));
+    pushField(eligibility, field("Age Limit", el.age_limit));
+    pushField(eligibility, field("Attempt Limit", el.attempt_limit));
   }
-  if (eligibility.length) {
-    sections.push({ id: "eligibility", title: "Eligibility", fields: eligibility });
-  }
+  pushSection(sections, "eligibility", "Eligibility Criteria", eligibility);
 
-  const cutoff: ExamField[] = [];
-  const ec = exam.examCutoff;
-  if (ec) {
-    push(cutoff, field("Ranks / percentiles", ec.ranks_percentiles));
-    push(cutoff, field("Cutoff (General)", ec.cutoff_general));
-    push(cutoff, field("Cutoff (OBC)", ec.cutoff_obc));
-    push(cutoff, field("Cutoff (SC)", ec.cutoff_sc));
-    push(cutoff, field("Cutoff (ST)", ec.cutoff_st));
-    push(cutoff, field("Target rank range", ec.target_rank_range));
-  }
-  if (cutoff.length) {
-    sections.push({ id: "cutoff", title: "Cutoff & benchmarks", fields: cutoff });
-  }
+  // 4) Application Details
+  const application: ExamField[] = [];
+  pushField(application, field("Documents Required", exam.documents_required));
+  pushField(
+    application,
+    field("Application Fees", formatInrFee(ed?.application_fees ?? null))
+  );
+  pushField(application, field("Mode", exam.examPattern?.mode));
+  pushSection(sections, "application-details", "Application Details", application);
 
-  const programs = (exam.linkedPrograms ?? []).filter((p) => p.name?.trim());
-  if (programs.length) {
-    sections.push({
-      id: "programs",
-      title: "Linked programs",
-      fields: programs.map((p, i) => ({
-        label: programs.length > 1 ? `Program ${i + 1}` : "Program",
-        value: p.name!.trim(),
-      })),
-    });
+  // 5) Exam Pattern
+  const pattern: ExamField[] = [];
+  const ep = exam.examPattern;
+  pushField(pattern, field("Exam Pattern", exam.exam_pattern));
+  if (ep) {
+    pushField(
+      pattern,
+      field(
+        "Number of Questions",
+        ep.number_of_questions != null ? ep.number_of_questions : null
+      )
+    );
+    pushField(pattern, field("Total Marks", ep.total_marks != null ? ep.total_marks : null));
+    pushField(pattern, field("Negative Marking / Marking", ep.negative_marking));
+    pushField(pattern, field("Weightage of Subjects", ep.weightage_of_subjects));
+    pushField(
+      pattern,
+      field(
+        "Duration Minutes",
+        ep.duration_minutes != null ? ep.duration_minutes : null
+      )
+    );
   }
+  pushSection(sections, "exam-pattern", "Exam Pattern", pattern);
 
-  const interests = (exam.linkedCareerGoals ?? []).filter((g) => g.label?.trim());
-  if (interests.length) {
-    sections.push({
-      id: "interests",
-      title: "Linked career interests",
-      fields: interests.map((g, i) => ({
-        label: interests.length > 1 ? `Interest ${i + 1}` : "Interest",
-        value: g.label!.trim(),
-      })),
-    });
-  }
+  // 6) Admissions & Counselling
+  const admissions: ExamField[] = [];
+  const programNames = (exam.linkedPrograms ?? []).map((p) => p.name?.trim()).filter(Boolean);
+  pushField(
+    admissions,
+    field("Programs", programNames.length ? programNames.join(", ") : null)
+  );
+  pushField(admissions, field("Counselling", exam.counselling));
+  pushSection(sections, "admissions-counselling", "Admissions & Counselling", admissions);
+
+  // 7) Competition & Performance Metrics
+  const metrics: ExamField[] = [];
+  const avgApplicants = avgApplicantsLastThreeYears(exam);
+  pushField(
+    metrics,
+    field(
+      "No. of Average Applicants Appeared (last 3 Years)",
+      avgApplicants != null ? avgApplicants : null
+    )
+  );
+  pushField(metrics, field("Difficulty Level", examCardDifficultyLevel(exam)));
+  pushField(metrics, field("Success Rate", exam.success_rate));
+  pushSection(sections, "competition-metrics", "Competition & Performance Metrics", metrics);
 
   return sections;
 }

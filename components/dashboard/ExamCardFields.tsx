@@ -37,10 +37,12 @@ export function ExamCardFields({
 
       <ExamCardMetaChips exam={exam} />
 
-      <ExamCardAttemptNegativeRow
-        attemptLimit={attemptLimit}
-        negativeMarking={negativeMarking}
-      />
+      <div className="min-w-0 w-full overflow-hidden">
+        <ExamCardAttemptNegativeRow
+          attemptLimit={attemptLimit}
+          negativeMarking={negativeMarking}
+        />
+      </div>
 
       <ExamCardLinkedColleges exam={exam} variant="chips" linkFrom={linkFrom} />
     </>

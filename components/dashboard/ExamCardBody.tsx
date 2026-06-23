@@ -82,17 +82,19 @@ export function ExamCardBody({
       attemptLimit ||
       negativeMarking ||
       linkedCollegeNames.length ? (
-        <div className="m-0 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+        <div className="m-0 min-w-0 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
           {conductingAuthority ? (
             <p className="m-0">
               <ExamCardHoverField label="Conducting Authority" value={conductingAuthority} />
             </p>
           ) : null}
           <ExamCardMetaChips exam={exam} />
-          <ExamCardAttemptNegativeRow
-            attemptLimit={attemptLimit}
-            negativeMarking={negativeMarking}
-          />
+          <div className="min-w-0 w-full overflow-hidden">
+            <ExamCardAttemptNegativeRow
+              attemptLimit={attemptLimit}
+              negativeMarking={negativeMarking}
+            />
+          </div>
           <ExamCardLinkedColleges exam={exam} embedInLink={embedInLink} />
         </div>
       ) : null}

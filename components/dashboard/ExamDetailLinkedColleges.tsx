@@ -27,6 +27,8 @@ type ExamDetailLinkedCollegesProps = {
   colleges: DashboardCollege[];
   totalCount: number;
   isLoading?: boolean;
+  /** When true, renders as a subsection inside Mapping (no outer card). */
+  embedded?: boolean;
 };
 
 function CollegeCard({ college }: { college: DashboardCollege }) {
@@ -73,50 +75,71 @@ export function ExamDetailLinkedColleges({
   colleges,
   totalCount,
   isLoading = false,
+  embedded = false,
 }: ExamDetailLinkedCollegesProps) {
   const [expanded, setExpanded] = useState(false);
   const count = Math.max(totalCount, colleges.length);
   const hasMore = count > PREVIEW_COUNT;
   const visibleColleges = expanded ? colleges : colleges.slice(0, PREVIEW_COUNT);
 
+  const heading = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3
+          className={
+            embedded
+              ? "text-sm font-semibold text-slate-900 dark:text-slate-100"
+              : "text-base font-semibold text-slate-900 dark:text-slate-100"
+          }
+        >
+          Colleges
+        </h3>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Colleges whose recommended exam includes this exam ({count} total).
+        </p>
+      </div>
+      {hasMore ? (
+        <Button
+          type="button"
+          variant="themeButtonOutline"
+          size="sm"
+          className="shrink-0 !rounded-full"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Show less" : "View more"}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const body = isLoading ? (
+    <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Loading colleges…</p>
+  ) : count === 0 ? (
+    <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+      No colleges are linked to this exam yet. In admin, add this exam under the college&apos;s
+      recommended exams (college or program level).
+    </p>
+  ) : (
+    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {visibleColleges.map((college) => (
+        <CollegeCard key={college.id} college={college} />
+      ))}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <section>
+        {heading}
+        {body}
+      </section>
+    );
+  }
+
   return (
     <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-            Colleges you can get
-          </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Colleges whose recommended exam includes this exam ({count} total).
-          </p>
-        </div>
-        {hasMore ? (
-          <Button
-            type="button"
-            variant="themeButtonOutline"
-            size="sm"
-            className="shrink-0 !rounded-full"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? "Show less" : "View more"}
-          </Button>
-        ) : null}
-      </div>
-
-      {isLoading ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Loading colleges…</p>
-      ) : count === 0 ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          No colleges are linked to this exam yet. In admin, add this exam under the college&apos;s
-          recommended exams (college or program level).
-        </p>
-      ) : (
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleColleges.map((college) => (
-            <CollegeCard key={college.id} college={college} />
-          ))}
-        </div>
-      )}
+      {heading}
+      {body}
     </article>
   );
 }

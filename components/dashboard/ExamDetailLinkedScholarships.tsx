@@ -11,6 +11,8 @@ const PREVIEW_COUNT = 3;
 type ExamDetailLinkedScholarshipsProps = {
   scholarships: ExamLinkedScholarshipPreview[];
   totalCount: number;
+  /** When true, renders as a subsection inside Mapping (no outer card). */
+  embedded?: boolean;
 };
 
 function ScholarshipCard({ scholarship }: { scholarship: ExamLinkedScholarshipPreview }) {
@@ -39,53 +41,75 @@ function ScholarshipCard({ scholarship }: { scholarship: ExamLinkedScholarshipPr
 export function ExamDetailLinkedScholarships({
   scholarships,
   totalCount,
+  embedded = false,
 }: ExamDetailLinkedScholarshipsProps) {
   const [expanded, setExpanded] = useState(false);
   const count = Math.max(totalCount, scholarships.length);
   const hasMore = count > PREVIEW_COUNT;
   const visibleScholarships = expanded ? scholarships : scholarships.slice(0, PREVIEW_COUNT);
 
+  const heading = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3
+          className={
+            embedded
+              ? "text-sm font-semibold text-slate-900 dark:text-slate-100"
+              : "text-base font-semibold text-slate-900 dark:text-slate-100"
+          }
+        >
+          Scholarships
+        </h3>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {count > 0
+            ? `Scholarships tagged to this exam in admin mapping (${count} total).`
+            : "Scholarships linked to this exam via admin mapping."}
+        </p>
+      </div>
+      {hasMore ? (
+        <Button
+          type="button"
+          variant="themeButtonOutline"
+          size="sm"
+          className="shrink-0 !rounded-full"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Show less" : "View more"}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const body =
+    count === 0 ? (
+      <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+        No scholarships are linked to this exam yet. In admin, map this exam under{" "}
+        <span className="font-medium text-slate-700 dark:text-slate-300">
+          Mapping → Scholarship exams &amp; colleges
+        </span>
+        .
+      </p>
+    ) : (
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {visibleScholarships.map((scholarship) => (
+          <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
+        ))}
+      </div>
+    );
+
+  if (embedded) {
+    return (
+      <section>
+        {heading}
+        {body}
+      </section>
+    );
+  }
+
   return (
     <article className="rounded-2xl bg-white p-5 dark:bg-slate-900">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-            Scholarships
-          </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {count > 0
-              ? `Scholarships tagged to this exam in admin mapping (${count} total).`
-              : "Scholarships linked to this exam via admin mapping."}
-          </p>
-        </div>
-        {hasMore ? (
-          <Button
-            type="button"
-            variant="themeButtonOutline"
-            size="sm"
-            className="shrink-0 !rounded-full"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? "Show less" : "View more"}
-          </Button>
-        ) : null}
-      </div>
-
-      {count === 0 ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          No scholarships are linked to this exam yet. In admin, map this exam under{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-300">
-            Mapping → Scholarship exams &amp; colleges
-          </span>
-          .
-        </p>
-      ) : (
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleScholarships.map((scholarship) => (
-            <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
-          ))}
-        </div>
-      )}
+      {heading}
+      {body}
     </article>
   );
 }

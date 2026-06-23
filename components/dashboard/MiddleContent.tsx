@@ -14,6 +14,7 @@ import {
 } from "@/lib/dashboardSidebarQueries";
 import { useStrengthPaymentStatusQuery, useGoalSelectionStatusQuery } from "@/lib/strengthQueries";
 import { buildJourneyPhases, buildJourneyMilestones } from "@/lib/dashboardJourneyPhases";
+import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
 import { calculateDocumentVaultCompletion } from "@/lib/documentVault";
 import {
   getProgressMeterDotColor,
@@ -61,73 +62,6 @@ const recommendations = [
   },
 ];
 
-const quickStudyPicks = [
-  {
-    title: "JEE Main Physics Revision Marathon",
-    duration: "42 min",
-    tag: "Physics",
-    tags: ["Physics", "Revision", "JEE Main"],
-    thumbnail: "https://i.ytimg.com/vi/8hly31xKli0/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=8hly31xKli0",
-  },
-  {
-    title: "Coordinate Geometry One Shot",
-    duration: "35 min",
-    tag: "Math",
-    tags: ["Math", "Coordinate Geometry", "One Shot"],
-    thumbnail: "https://i.ytimg.com/vi/rfscVS0vtbw/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=rfscVS0vtbw",
-  },
-  {
-    title: "Organic Chemistry Quick Concepts",
-    duration: "28 min",
-    tag: "Chemistry",
-    tags: ["Organic Chemistry", "Concepts", "Quick Revision"],
-    thumbnail: "https://i.ytimg.com/vi/kqtD5dpn9C8/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=kqtD5dpn9C8",
-  },
-  {
-    title: "Probability PYQ Strategy",
-    duration: "19 min",
-    tag: "Math",
-    tags: ["Math", "PYQ", "Strategy"],
-    thumbnail: "https://i.ytimg.com/vi/_uQrJ0TkZlc/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=_uQrJ0TkZlc",
-  },
-  {
-    title: "Current Electricity Fast Revision",
-    duration: "24 min",
-    tag: "Physics",
-    tags: ["Physics", "Current Electricity", "Fast Revision"],
-    thumbnail: "https://i.ytimg.com/vi/3fumBcKC6RE/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=3fumBcKC6RE",
-  },
-  {
-    title: "How to Attempt Mock Tests Better",
-    duration: "16 min",
-    tag: "Exam Prep",
-    tags: ["Exam Prep", "Mock Tests", "Tactics"],
-    thumbnail: "https://i.ytimg.com/vi/HGTJBPNC-Gw/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=HGTJBPNC-Gw",
-  },
-  {
-    title: "Electrostatics Rapid Practice Session",
-    duration: "21 min",
-    tag: "Physics",
-    tags: ["Physics", "Electrostatics", "Practice"],
-    thumbnail: "https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=9bZkp7q19f0",
-  },
-  {
-    title: "Ionic Equilibrium Problem Solving",
-    duration: "26 min",
-    tag: "Chemistry",
-    tags: ["Chemistry", "Ionic Equilibrium", "Problem Solving"],
-    thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-  },
-].slice(0, 4);
-
 const ACTIVE_RECOMMENDATION_MS = 6800;
 
 function ProgressMeterDot({
@@ -169,11 +103,6 @@ function ProgressMeterDot({
     </span>
   );
 }
-
-const getYoutubeId = (url: string) => {
-  const match = url.match(/[?&]v=([^&]+)/);
-  return match?.[1] ?? "";
-};
 
 type DonutSegment = {
   id: string;
@@ -751,57 +680,9 @@ export default function MiddleContent() {
     setActiveRecommendationIndex((prev) => (prev + 1) % recommendations.length);
   };
 
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
-  const [prevVideoIndex, setPrevVideoIndex] = useState<number | null>(null);
-  const [preloadVideoIndex, setPreloadVideoIndex] = useState<number | null>(null);
-  const [videoProgressMs, setVideoProgressMs] = useState(0);
-
-  const activeVideoRef = useRef(activeVideoIndex);
-  useEffect(() => {
-    activeVideoRef.current = activeVideoIndex;
-  }, [activeVideoIndex]);
-
-  useEffect(() => {
-    const tickMs = 100;
-    const timer = setInterval(() => {
-      setVideoProgressMs((prev) => {
-        const next = prev + tickMs;
-        if (next === 1000) {
-          setPrevVideoIndex(null);
-        }
-        if (next === 9000) {
-          setPreloadVideoIndex((activeVideoRef.current + 1) % quickStudyPicks.length);
-        }
-        if (next >= 10000) {
-          setPrevVideoIndex(activeVideoRef.current);
-          setActiveVideoIndex((activeVideoRef.current + 1) % quickStudyPicks.length);
-          setPreloadVideoIndex(null);
-          return 0;
-        }
-        return next;
-      });
-    }, tickMs);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleVideoSelect = (idx: number) => {
-    if (idx === activeVideoIndex) return;
-    setPrevVideoIndex(activeVideoIndex);
-    setActiveVideoIndex(idx);
-    setPreloadVideoIndex(null);
-    setVideoProgressMs(0);
-  };
-
   return (
     <div className="flex xl:h-full flex-1 xl:min-h-0 flex-col">
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes slideUpVideo {
-          0% { transform: translateY(40px) scale(0.95); opacity: 0; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        .animate-video-slide {
-          animation: slideUpVideo 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
         @keyframes progressPulseScale {
           0% { transform: scale(0.94); opacity: 0.5; }
           50% { transform: scale(1.1); opacity: 0.28; }
@@ -1022,118 +903,7 @@ export default function MiddleContent() {
             </div>
           </article>
 
-          <article className="flex xl:min-h-0 flex-1 flex-col rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
-            <div className="flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Quick Self-Study Picks</h3>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Short tactical videos curated to improve your next mock score.
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700">
-                  <BiChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <article className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40 relative shrink-0">
-              <div className="relative overflow-hidden rounded-lg bg-black aspect-[21/9] w-full">
-                {quickStudyPicks.map((video, idx) => {
-                  const isPreload = idx === preloadVideoIndex;
-                  const isActive = idx === activeVideoIndex;
-                  const isPrev = idx === prevVideoIndex;
-                  if (!isActive && !isPreload && !isPrev) return null;
-                  
-                  const vId = getYoutubeId(video.videoUrl);
-                  
-                  let containerClass = "absolute inset-0 w-full h-full ";
-                  if (isActive) containerClass += "z-20 animate-video-slide";
-                  else if (isPrev) containerClass += "z-10 opacity-100";
-                  else if (isPreload) containerClass += "z-0 opacity-0 pointer-events-none";
-
-                  return (
-                    <div key={vId || video.title} className={containerClass}>
-                      {vId ? (
-                        <iframe
-                          src={`https://www.youtube-nocookie.com/embed/${vId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${vId}&start=5&end=15`}
-                          title={`${video.title} preview`}
-                          className="absolute top-1/2 left-0 w-full aspect-video -translate-y-1/2 pointer-events-none"
-                          loading="lazy"
-                          allow="autoplay; encrypted-media; picture-in-picture"
-                        />
-                      ) : (
-                        <img src={video.thumbnail} alt={video.title} className="absolute top-1/2 left-0 w-full aspect-video -translate-y-1/2 object-cover pointer-events-none" loading="lazy" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-2.5 relative min-h-[36px]">
-                {quickStudyPicks.map((video, idx) => {
-                  const isActive = idx === activeVideoIndex;
-                  const isPrev = idx === prevVideoIndex;
-                  if (!isActive && !isPrev) return null;
-                  
-                  return (
-                    <div 
-                      key={"details-" + video.title} 
-                      className={`absolute inset-0 flex items-center justify-between gap-2 w-full bg-slate-50 dark:bg-slate-800 ${isActive ? "z-20 animate-video-slide" : "z-10 opacity-100"}`}
-                    >
-                      <p className="line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100">{video.title}</p>
-                      <Button
-                        href={video.videoUrl}
-                        variant="themeButtonOutline"
-                        size="sm"
-                        className="!rounded-full px-3 py-1 text-[11px] shrink-0"
-                      >
-                        Watch now
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
-
-            <div className="relative mt-3 xl:min-h-0 flex-1 xl:overflow-hidden">
-              <div className="xl:h-full xl:overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
-              {quickStudyPicks.map((item, idx) => {
-                if (idx === activeVideoIndex) return null;
-                return (
-                  <article key={item.title} className="py-2 first:pt-0 last:pb-0">
-                    <button onClick={() => handleVideoSelect(idx)} className="w-full text-left flex items-start gap-3 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded-md bg-action-50 dark:bg-slate-700">
-                        <img
-                          src={item.thumbnail}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                          {item.duration}
-                        </span>
-                      </div>
-                      <div className="min-w-0 pt-0.5">
-                        <h3 className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-100 line-clamp-2">{item.title}</h3>
-                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{item.tag} · YouTube</p>
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {item.tags.map((tag) => (
-                            <span
-                              key={`${item.title}-${tag}`}
-                              className="rounded-full border border-slate-300/90 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:border-slate-600 dark:text-slate-300"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </button>
-                  </article>
-                );
-              })}
-              </div>
-            </div>
-          </article>
+          <QuickSelfStudyPicks variant="dashboard" />
         </div>
       </section>
     </div>
