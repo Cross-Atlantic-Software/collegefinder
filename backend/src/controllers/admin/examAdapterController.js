@@ -515,7 +515,10 @@ function sanitizeField(f) {
   const source = typeof f.source === 'string' ? f.source.trim() : '';
   // Allow saving fields that admin manually authored even if source temporarily blank;
   // but if source is provided, validate it. Drop only when source is non-empty AND invalid.
-  if (source && !isValidSource(source)) return null;
+  // Exception: leave_blank fields (Captcha/OTP/manual) are never filled from a source, so
+  // an unrecognized source must NOT delete the whole field — that silently loses the
+  // leave_blank flag and the field disappears for the student.
+  if (source && !isValidSource(source) && f.leave_blank !== true) return null;
 
   const type = ALLOWED_TYPES.has(f.type) ? f.type : 'text';
   const out = {
@@ -549,8 +552,14 @@ function sanitizeField(f) {
     out.cascade_wait_ms = Math.max(0, Math.min(10000, Math.floor(f.cascade_wait_ms)));
   }
   // Admin "Leave Blank" (Captcha/OTP/etc.): the filler short-circuits these to
-  // 'skipped' so they never attempt a selector and never block approval.
-  if (f.leave_blank === true) out.leave_blank = true;
+  // 'skipped' so they never attempt a selector and never block approval. A
+  // leave_blank field is kept even with an unrecognized source (see above), so
+  // null that stale/invalid source here — never persist a source the system
+  // considers invalid for a reader that doesn't short-circuit on leave_blank first.
+  if (f.leave_blank === true) {
+    out.leave_blank = true;
+    if (source && !isValidSource(source)) out.source = null;
+  }
   return out;
 }
 
