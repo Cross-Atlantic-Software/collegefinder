@@ -348,7 +348,7 @@ function avgApplicantsLastThreeYears(exam: Exam): number | null {
     return Number(exam.avg_applicant_prev_three);
   }
   const yearly = [exam.avg_applicant_2023, exam.avg_applicant_2024, exam.avg_applicant_2025].filter(
-    (n) => n != null && Number.isFinite(Number(n))
+    (n): n is number => n != null && Number.isFinite(Number(n))
   );
   if (!yearly.length) return null;
   const sum = yearly.reduce((acc, n) => acc + Number(n), 0);
