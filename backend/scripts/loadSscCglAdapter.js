@@ -66,7 +66,7 @@ const selectField = (id, label, source, value_map, extra = {}) => ({
 const SECTION = {
   section_id: 'personal_details',
   section_name: 'Personal Details',
-  page_indicator: { type: 'url_contains', value: 'personal-details' },
+  page_indicator: { type: 'url_contains', value: 'one-time-registration/personal-details' },
   fields: [
     // Aadhaar (+ verify) — 12-digit UID. Portal masks the value to "****" once
     // typed, so it can't be read back — mark masked so the verifier trusts it.

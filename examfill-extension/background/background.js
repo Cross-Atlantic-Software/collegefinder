@@ -12,8 +12,8 @@
  * - Drive the admin-only "Build Adapter" flow that calls Gemini server-side.
  */
 
-// API base. Defaults to production. Override for local/staging testing via:
-//   chrome.storage.local.set({ examfill_api_base: 'http://127.0.0.1:5001/api' })
+// API base. Production CollegeFinder backend. A staging override may be set via
+// chrome.storage.local ('examfill_api_base'); absent that, this is used.
 const DEFAULT_API_BASE = 'https://unitracko.com/api';
 let _apiBaseCache = null;
 
@@ -35,6 +35,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.examfill_api_base) _apiBaseCache = null;
 });
 
+/**
+ * fetch() with a hard timeout. An MV3 service worker that awaits a fetch which
+ * never resolves (e.g. an unreachable backend) will hold the sidebar's message
+ * channel open until Chrome tears it down — surfacing as "the message channel
+ * closed before a response was received". Bounding every network call prevents
+ * that: an unreachable host fails fast instead of hanging.
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── Hardcoded fallback exam list ────────────────────────────────
 // These are always detected even when the backend is offline.
 // The backend list (fetched below) supplements / overrides this.
@@ -48,7 +65,7 @@ const FALLBACK_EXAMS = [
   { exam_id: 'bitsat',        exam_name: 'BITSAT 2026',           portal_url_pattern: 'bitsadmission.com',             has_published_adapter: false, status: 'draft'     },
   { exam_id: 'viteee',        exam_name: 'VITEEE 2026',           portal_url_pattern: 'viteee.vit.ac.in',              has_published_adapter: false, status: 'draft'     },
   { exam_id: 'kiitee_2026',   exam_name: 'KIITEE 2026',           portal_url_pattern: 'kiitee.eduquity.com',           has_published_adapter: false, status: 'draft'     },
-  { exam_id: 'ssc_cgl',       exam_name: 'SSC CGL',               portal_url_pattern: 'ssc.gov.in',                    has_published_adapter: false, status: 'draft'     },
+  { exam_id: 'ssc_cgl',       exam_name: 'SSC CGL',               portal_url_pattern: 'ssc.gov.in',                    has_published_adapter: true,  status: 'published' },
 ];
 
 // Content scripts to inject on-demand, in dependency order (mirrors manifest.json).
@@ -93,7 +110,7 @@ async function ensureRegisteredExamsFresh(force = false) {
     const token = await getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${await apiBase()}/extension/adapters/registered`, { headers });
+    const res = await fetchWithTimeout(`${await apiBase()}/extension/adapters/registered`, { headers }, 6000);
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -230,13 +247,18 @@ async function handleMessage(message, sender) {
 // ─── Auth ───
 
 async function getAuthStatus() {
-  const { examfill_token } = await chrome.storage.local.get('examfill_token');
-  if (!examfill_token) return { success: true, authenticated: false, is_admin: false };
+  let token = await getToken();
+  if (!token) return { success: true, authenticated: false, is_admin: false };
   // The admin flag lives in an in-memory cache that's wiped whenever the service
   // worker restarts (which is constant). Refresh it from the server so the Builder
   // is correctly shown for admins regardless of how/when they authenticated.
-  await refreshAuthMeta();
-  return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
+  const meta = await refreshAuthMeta();
+  // refreshAuthMeta clears the token on 401/403 — re-read so a dead token reports
+  // as "not authenticated" (which lets the sidebar trigger SSO) instead of a
+  // broken authenticated state.
+  token = await getToken();
+  if (!token) return { success: true, authenticated: false, is_admin: false };
+  return { success: true, authenticated: true, is_admin: meta?.is_admin === true };
 }
 
 async function sendOtp({ email }) {
@@ -291,57 +313,65 @@ async function login(payload) { return sendOtp(payload); }
 
 const WEB_TAB_PATTERNS = [
   'https://unitracko.com/*',
-  'https://*.unitracko.com/*',
-  'http://localhost:3000/*',
-  'http://127.0.0.1:3000/*'
+  'https://*.unitracko.com/*'
 ];
 
 /**
- * Validate a candidate JWT against /auth/me and, if valid, store it as the
- * ExamFill token. Returns { ok, is_admin }.
+ * Map a session's origin to the API base it was issued by. In production every
+ * CollegeFinder session is minted by the unitracko.com backend.
  */
-/**
- * Map a session's origin to the API base it was issued by, so we always
- * validate/serve against the SAME backend that minted the token. This prevents
- * the classic "logged in locally but extension hits prod" mismatch.
- */
-function apiBaseForOrigin(origin) {
-  if (/localhost:3000|127\.0\.0\.1:3000/i.test(origin || '')) return 'http://127.0.0.1:5001/api';
+function apiBaseForOrigin(_origin) {
   return DEFAULT_API_BASE; // unitracko.com / unknown -> production
 }
 
+// Backends a session token might have been minted by. Production has one.
+const KNOWN_API_BASES = [DEFAULT_API_BASE];
+
+function candidateBasesForOrigin(sourceOrigin) {
+  const ordered = [];
+  if (sourceOrigin) ordered.push(apiBaseForOrigin(sourceOrigin));
+  for (const b of KNOWN_API_BASES) ordered.push(b);
+  return Array.from(new Set(ordered)); // dedupe, preserve order
+}
+
+/** Validate a token against ONE backend. Returns { base, isAdmin } or null. */
+async function validateTokenAgainst(base, token) {
+  try {
+    const res = await fetchWithTimeout(`${base}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }, 6000);
+    if (!res.ok) return null;                 // 401/403 = wrong token type/expired/wrong backend
+    const data = await res.json();
+    if (data && data.success === false) return null;
+    const isAdmin = !!(data.data?.user?.is_admin || data.data?.is_admin);
+    return { base, isAdmin };
+  } catch (_) {
+    return null;                              // network error — try next backend
+  }
+}
+
 /**
- * Validate a candidate token and, if valid, store it as the ExamFill token.
+ * Validate a candidate token against every plausible backend and, if any
+ * accepts it, store it as the ExamFill token + pin the API base to that backend.
  * @param {string} token
- * @param {string} [sourceOrigin]  Where the token came from; pins the API base.
+ * @param {string} [sourceOrigin]  Where the token came from; orders backend tries.
  */
 async function adoptToken(token, sourceOrigin) {
   if (!token) return { ok: false };
-  // If we know where the session came from, validate against THAT backend and
-  // pin the API base to it (so all later calls match the token's issuer).
-  const base = sourceOrigin ? apiBaseForOrigin(sourceOrigin) : await apiBase();
-  try {
-    const res = await fetch(`${base}/auth/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) return { ok: false };       // expired / wrong token type / wrong backend
-    const data = await res.json();
-    if (data && data.success === false) return { ok: false };
+  const bases = candidateBasesForOrigin(sourceOrigin);
+  for (const base of bases) {
+    const valid = await validateTokenAgainst(base, token);
+    if (!valid) continue;
 
-    const toStore = { examfill_token: token };
-    if (sourceOrigin) toStore.examfill_api_base = base; // pin to the session's backend
-    await chrome.storage.local.set(toStore);
-    if (sourceOrigin) _apiBaseCache = base;
-
+    await chrome.storage.local.set({ examfill_token: token, examfill_api_base: valid.base });
+    _apiBaseCache = valid.base;
     cachedProfile = null;
     cachedProfileTimestamp = 0;
-    const isAdmin = !!(data.data?.user?.is_admin || data.data?.is_admin);
-    cachedAuthMeta = { is_admin: isAdmin, fetchedAt: Date.now() };
+    cachedAuthMeta = { is_admin: valid.isAdmin, fetchedAt: Date.now() };
     await ensureRegisteredExamsFresh(true);
-    return { ok: true, is_admin: isAdmin };
-  } catch (_) {
-    return { ok: false };
+    return { ok: true, is_admin: valid.isAdmin };
   }
+  return { ok: false };
 }
 
 /** Push from the website content script (authSync.js). Adopt only if we don't already have a token. */
@@ -358,36 +388,36 @@ async function receiveWebSessionToken(payload = {}, sender) {
 // Candidate origins where the website drops the readable `auth_token` cookie.
 const WEB_COOKIE_URLS = [
   'https://unitracko.com',
-  'https://www.unitracko.com',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000'
+  'https://www.unitracko.com'
 ];
 
 /**
  * Read the auth token from the website's cookie store. Works even with NO
- * website tab open. Returns { token, origin } or null.
+ * website tab open. Returns array of { token, origin }.
  */
-async function readTokenFromCookies() {
+async function readTokensFromCookies() {
+  const out = [];
   for (const url of WEB_COOKIE_URLS) {
     try {
       const cookie = await chrome.cookies.get({ url, name: 'auth_token' });
       const val = cookie?.value;
       if (val && val !== 'null' && val !== 'undefined') {
         const decoded = decodeURIComponent(val).trim();
-        if (decoded) return { token: decoded, origin: url };
+        if (decoded) out.push({ token: decoded, origin: url, src: 'cookie' });
       }
     } catch (_) { /* no cookies permission for this url / not found */ }
   }
-  return null;
+  return out;
 }
 
-/** Best available source of the web session token: cookie first, then open tabs. */
-async function readWebToken() {
-  return (await readTokenFromCookies()) || (await readTokenFromWebTabs());
-}
-
-/** Read the web token from any open CollegeFinder/CMS tab via scripting. Returns { token, origin } or null. */
-async function readTokenFromWebTabs() {
+/**
+ * Read user tokens from EVERY open CollegeFinder/CMS tab via scripting, checking
+ * both localStorage and sessionStorage. Returns array of { token, origin }.
+ * (We read the user `auth_token` only — an admin token can't fetch a student
+ * profile, and adoptToken would reject it anyway.)
+ */
+async function readTokensFromWebTabs() {
+  const out = [];
   let tabs = [];
   try {
     tabs = await chrome.tabs.query({ url: WEB_TAB_PATTERNS });
@@ -399,48 +429,92 @@ async function readTokenFromWebTabs() {
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
-          try {
-            const u = localStorage.getItem('auth_token');
-            if (u && u !== 'null' && u !== 'undefined' && u.trim()) return u.trim();
-            const a = localStorage.getItem('admin_token');
-            if (a && a !== 'null' && a !== 'undefined' && a.trim()) return a.trim();
-          } catch (_) { /* blocked */ }
-          return null;
+          const found = [];
+          const stores = [];
+          try { stores.push(localStorage); } catch (_) {}
+          try { stores.push(sessionStorage); } catch (_) {}
+          for (const store of stores) {
+            try {
+              const u = store.getItem('auth_token');
+              if (u && u !== 'null' && u !== 'undefined' && u.trim()) found.push(u.trim());
+            } catch (_) { /* blocked */ }
+          }
+          return found;
         }
       });
-      const token = results?.[0]?.result;
-      if (token) {
-        let origin = '';
-        try { origin = new URL(tab.url).origin; } catch (_) {}
-        return { token, origin };
-      }
+      const tokens = results?.[0]?.result || [];
+      let origin = '';
+      try { origin = new URL(tab.url).origin; } catch (_) {}
+      for (const t of tokens) out.push({ token: t, origin, src: 'tab' });
     } catch (_) { /* no host permission / restricted page — try next tab */ }
   }
-  return null;
+  return out;
+}
+
+/**
+ * Gather every candidate web session token (cookies + all open tabs), deduped.
+ * Returns { candidates: [{token, origin, src}], webTabCount }.
+ */
+async function collectWebTokens() {
+  let webTabCount = 0;
+  try {
+    const tabs = await chrome.tabs.query({ url: WEB_TAB_PATTERNS });
+    webTabCount = tabs.length;
+  } catch (_) {}
+
+  const all = [...(await readTokensFromCookies()), ...(await readTokensFromWebTabs())];
+  const seen = new Set();
+  const candidates = all.filter((c) => {
+    if (!c.token || seen.has(c.token)) return false;
+    seen.add(c.token);
+    return true;
+  });
+  return { candidates, webTabCount };
+}
+
+/** Back-compat single-token helper (first valid-looking candidate). */
+async function readWebToken() {
+  const { candidates } = await collectWebTokens();
+  return candidates[0] || null;
 }
 
 /**
  * Attempt single-sign-on from the website/CMS session.
- * Returns { success, authenticated, is_admin }.
+ * Returns { success, authenticated, is_admin, diag } where diag explains the
+ * outcome (surfaced in the sidebar console to debug failed connects).
  */
 async function tryWebSso() {
+  // 1. If we already hold a token, verify it. If it's stale/invalid, drop it so
+  //    we can re-adopt a fresh one from the website instead of being stuck.
   const existing = await getToken();
   if (existing) {
-    await refreshAuthMeta();
-    return { success: true, authenticated: true, is_admin: cachedAuthMeta?.is_admin === true };
+    const meta = await refreshAuthMeta();
+    const stillThere = await getToken(); // refreshAuthMeta clears on 401
+    if (stillThere) {
+      return { success: true, authenticated: true, is_admin: meta?.is_admin === true,
+               diag: { source: 'stored_token' } };
+    }
   }
 
-  const web = await readWebToken();
-  if (!web?.token) return { success: true, authenticated: false };
+  // 2. Collect every candidate token from cookies + open tabs and try each.
+  const { candidates, webTabCount } = await collectWebTokens();
+  const diag = { webTabCount, tokensFound: candidates.length, tried: 0 };
 
-  const adopted = await adoptToken(web.token, web.origin);
-  return { success: true, authenticated: adopted.ok, is_admin: adopted.is_admin === true };
+  for (const c of candidates) {
+    diag.tried += 1;
+    const adopted = await adoptToken(c.token, c.origin);
+    if (adopted.ok) {
+      return { success: true, authenticated: true, is_admin: adopted.is_admin === true,
+               diag: { ...diag, adoptedFrom: c.src, origin: c.origin } };
+    }
+  }
+
+  return { success: true, authenticated: false, diag };
 }
 
 function isWebOrigin(url) {
   if (!url) return false;
-  return /^https?:\/\/([^/]+\.)?unitracko\.com\//i.test(url) ||
-         /^https?:\/\/(localhost|127\.0\.0\.1):3000\//i.test(url);
+  return /^https?:\/\/([^/]+\.)?unitracko\.com\//i.test(url);
 }
 
 /** Best-effort: adopt the website session if we don't already have a token. */
@@ -448,8 +522,11 @@ async function autoAdoptFromWeb() {
   try {
     const existing = await getToken();
     if (existing) return;
-    const web = await readWebToken();
-    if (web?.token) await adoptToken(web.token, web.origin);
+    const { candidates } = await collectWebTokens();
+    for (const c of candidates) {
+      const adopted = await adoptToken(c.token, c.origin);
+      if (adopted.ok) return;
+    }
   } catch (_) { /* non-fatal */ }
 }
 
@@ -467,7 +544,7 @@ if (chrome.cookies && chrome.cookies.onChanged) {
   chrome.cookies.onChanged.addListener(({ cookie, removed }) => {
     if (removed || cookie?.name !== 'auth_token') return;
     const domain = (cookie.domain || '').replace(/^\./, '');
-    if (domain.endsWith('unitracko.com') || domain === 'localhost' || domain === '127.0.0.1') {
+    if (domain.endsWith('unitracko.com')) {
       autoAdoptFromWeb();
     }
   });
@@ -492,14 +569,21 @@ async function refreshAuthMeta() {
   if (!token) { cachedAuthMeta = null; return null; }
   if (cachedAuthMeta && (Date.now() - cachedAuthMeta.fetchedAt) < AUTH_META_TTL) return cachedAuthMeta;
   try {
-    const res = await fetch(`${await apiBase()}/auth/me`, {
+    const res = await fetchWithTimeout(`${await apiBase()}/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) return cachedAuthMeta;
+    }, 6000);
+    // Token rejected → it's expired/invalid/for-the-wrong-backend. Drop it so SSO
+    // can re-adopt a fresh session instead of being wedged on a dead token.
+    if (res.status === 401 || res.status === 403) {
+      await chrome.storage.local.remove('examfill_token');
+      cachedAuthMeta = null;
+      return null;
+    }
+    if (!res.ok) return cachedAuthMeta; // transient (5xx/network) — keep what we have
     const data = await res.json();
     const isAdmin = !!(data.data?.user?.is_admin || data.data?.is_admin);
     cachedAuthMeta = { is_admin: isAdmin, fetchedAt: Date.now() };
-  } catch (_) { /* ignore */ }
+  } catch (_) { /* network — keep cached */ }
   return cachedAuthMeta;
 }
 

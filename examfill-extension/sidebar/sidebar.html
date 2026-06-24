@@ -25,18 +25,28 @@
 
     <!-- ─── State: Not on exam portal ─── -->
     <section id="stateNoPortal" class="view" style="display:none;">
-      <div class="view-hero">
-        <div class="hero-icon">🎯</div>
-        <h2>Open an Exam Portal</h2>
-        <p>Navigate to a supported exam site and ExamFill will activate automatically.</p>
+      <div class="home-hero">
+        <div class="home-badge">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="9" y1="13" x2="15" y2="13"/>
+            <line x1="9" y1="17" x2="13" y2="17"/>
+          </svg>
+        </div>
+        <h2>Which exam are you applying for?</h2>
+        <p>Pick your exam and ExamFill will fill the registration form with your CollegeFinder profile.</p>
       </div>
-      <div class="section-label">Supported Exams</div>
-      <div id="supportedExamsList" class="tag-grid"></div>
 
-      <button class="btn-secondary full manual-pick-cta" id="manualSelectBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-        Choose an exam manually
+      <button class="btn-primary full home-pick-cta" id="manualSelectBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        Choose your exam
       </button>
+
+      <div class="home-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>On a supported exam portal, ExamFill activates automatically.</span>
+      </div>
     </section>
 
     <!-- ─── State: Manual exam picker ─── -->
@@ -66,29 +76,32 @@
       <!-- Step A: Enter email -->
       <div id="loginStepEmail">
         <div class="view-hero compact">
-          <div class="hero-icon small">✉️</div>
+          <div class="hero-icon small">🔗</div>
           <h2>Sign In to ExamFill</h2>
-          <p>We'll send a one-time code to your CollegeFinder email.</p>
+          <p>Connect your CollegeFinder account to auto-fill this form.</p>
         </div>
+
+        <!-- Primary: one-tap SSO from the website / CMS session -->
+        <button type="button" class="btn-primary full" id="ssoConnectBtn">
+          <span id="ssoConnectText">Connect with my CollegeFinder login</span>
+          <div id="ssoConnectSpinner" class="btn-spinner" style="display:none;"></div>
+        </button>
+        <p class="sso-hint" id="ssoHint">Already signed in on the CollegeFinder website or CMS? Tap above and we'll connect you instantly.</p>
+        <div id="ssoError" class="alert alert-error" style="display:none;"></div>
+
+        <div class="sso-divider"><span>or sign in with email</span></div>
+
         <form id="emailForm" class="login-form">
           <div class="field-group">
             <label>Email address</label>
             <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required>
           </div>
           <div id="emailError" class="alert alert-error" style="display:none;"></div>
-          <button type="submit" class="btn-primary full" id="sendOtpBtn">
+          <button type="submit" class="btn-secondary full" id="sendOtpBtn">
             <span id="sendOtpBtnText">Send OTP</span>
             <div id="sendOtpSpinner" class="btn-spinner" style="display:none;"></div>
           </button>
         </form>
-
-        <div class="sso-divider"><span>or</span></div>
-        <button type="button" class="btn-secondary full" id="ssoConnectBtn">
-          <span id="ssoConnectText">Connect with my CollegeFinder login</span>
-          <div id="ssoConnectSpinner" class="btn-spinner" style="display:none;"></div>
-        </button>
-        <p class="sso-hint">Already signed in on the CollegeFinder website or CMS? We'll connect you automatically.</p>
-        <div id="ssoError" class="alert alert-error" style="display:none;"></div>
       </div>
 
       <!-- Step B: Enter OTP -->
@@ -122,7 +135,7 @@
     <!-- ─── State: Loading ─── -->
     <section id="stateLoading" class="view center" style="display:none;">
       <div class="pulse-ring"></div>
-      <p class="loading-text">Loading your profile…</p>
+      <p class="loading-text" id="loadingText">Loading your profile…</p>
     </section>
 
     <!-- ─── State: Portal login page (user must log in to exam portal first) ─── -->

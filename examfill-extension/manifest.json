@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ExamFill — Exam Form Assistant",
-  "version": "1.1.0",
+  "version": "1.2.2",
   "description": "Fill Indian competitive exam registration forms in under 5 minutes with your pre-loaded profile data.",
 
   "permissions": [
@@ -15,6 +15,7 @@
 
   "host_permissions": [
     "https://unitracko.com/*",
+    "https://*.unitracko.com/*",
     "https://*.nata-app.org/*",
     "https://*.srmist.edu.in/*",
     "https://*.nta.nic.in/*",
@@ -24,11 +25,7 @@
     "https://*.vit.ac.in/*",
     "https://*.eduquity.com/*",
     "https://*.ssc.gov.in/*",
-    "https://ssc.gov.in/*",
-    "http://localhost:3000/*",
-    "http://127.0.0.1:3000/*",
-    "http://localhost:5001/*",
-    "http://127.0.0.1:5001/*"
+    "https://ssc.gov.in/*"
   ],
 
   "background": {
@@ -69,9 +66,7 @@
     {
       "matches": [
         "https://unitracko.com/*",
-        "https://*.unitracko.com/*",
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*"
+        "https://*.unitracko.com/*"
       ],
       "js": [
         "content/authSync.js"

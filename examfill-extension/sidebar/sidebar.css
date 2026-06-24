@@ -696,6 +696,38 @@ body {
   margin-top: 18px;
 }
 
+/* ─── Home (no-portal) state ─── */
+.home-hero { text-align: center; margin: 28px 0 22px; }
+.home-badge {
+  width: 56px; height: 56px; margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 16px;
+  background: var(--brand-lt);
+  color: var(--brand);
+  box-shadow: 0 4px 14px rgba(99,102,241,.18);
+}
+.home-hero h2 {
+  font-size: 16px; font-weight: 700; color: var(--ink);
+  margin-bottom: 7px; line-height: 1.35;
+}
+.home-hero p {
+  color: var(--ink3); font-size: 12.5px; line-height: 1.55;
+  max-width: 280px; margin: 0 auto;
+}
+.home-pick-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13.5px; padding: 12px;
+}
+.home-note {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 14px; padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--ink3); font-size: 11.5px; line-height: 1.4;
+}
+.home-note svg { flex-shrink: 0; color: var(--brand); }
+
 .picker-link { margin-top: 14px; color: var(--ink3); }
 .picker-link:hover { background: var(--brand-lt); color: var(--brand); }
 

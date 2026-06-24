@@ -45,11 +45,22 @@ export function ExamShortlistCard({
   const applyLabel = applySaving ? "Adding..." : examApplicationButtonLabel(applicationStatus);
   const applyEnabled = isExamApplicationButtonEnabled(applicationStatus) && !applySaving;
 
+  const registrationUrl = exam.registration_link?.trim();
+  const applyHref = registrationUrl
+    ? (registrationUrl.startsWith("http") ? registrationUrl : `https://${registrationUrl}`)
+    : undefined;
+
   const handleApply = async () => {
     if (!applyEnabled) return;
 
     if (onApply) {
       onApply();
+      return;
+    }
+
+    // If the exam has a direct registration link, open it — no API call needed.
+    if (applyHref) {
+      window.open(applyHref, "_blank", "noopener,noreferrer");
       return;
     }
 

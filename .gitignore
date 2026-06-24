@@ -82,3 +82,6 @@ deploy.log
 .idea/
 *.swp
 *.swo
+
+# ExamFill build artifacts
+examfill-extension-*.zip

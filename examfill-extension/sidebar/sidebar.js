@@ -84,7 +84,6 @@
 
     if (!detection.detected) {
       showView('noPortal');
-      renderSupportedExams();
       return;
     }
 
@@ -109,11 +108,29 @@
     let auth = await msg('GET_AUTH_STATUS');
     if (!auth.authenticated) {
       // Try to adopt an existing website / CMS session before asking for OTP.
-      const sso = await msg('TRY_WEB_SSO');
+      // Retry a few times — a website tab may still be loading, or the service
+      // worker may have just woken and needs a beat to read the session.
+      showView('loading');
+      const connectingEl = $('loadingText');
+      if (connectingEl) connectingEl.textContent = 'Connecting to your CollegeFinder account…';
+
+      let sso = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        sso = await msg('TRY_WEB_SSO');
+        if (sso?.diag) console.log('[ExamFill] SSO attempt', attempt + 1, sso.diag);
+        if (sso?.authenticated) break;
+        // Tokens were found but none validated → retrying gives the same result.
+        // Only keep retrying when nothing was found yet (a tab may still be loading).
+        if (sso?.diag && sso.diag.tokensFound > 0) break;
+        await new Promise((r) => setTimeout(r, 450));
+      }
+
       if (sso?.authenticated) {
         auth = { authenticated: true, is_admin: sso.is_admin };
       } else {
-        showView('login');
+        // Genuinely no session found — show login, but tell the user whether we
+        // even saw a CollegeFinder tab (helps them understand why).
+        showLoginWithSsoHint(sso?.diag);
         return;
       }
     }
@@ -188,6 +205,24 @@
     }
   }
 
+  /**
+   * Show the login view, tailoring the SSO hint to what auto-connect actually saw.
+   * If a CollegeFinder tab is open but we couldn't read a session, tell the user
+   * to refresh it; if none is open, tell them to open/sign in to the website.
+   */
+  function showLoginWithSsoHint(diag) {
+    showView('login');
+    const hint = $('ssoHint');
+    if (!hint) return;
+    if (diag && diag.webTabCount > 0 && diag.tokensFound === 0) {
+      hint.textContent = 'We found your CollegeFinder tab but couldn\'t read the session. Refresh that tab, then tap Connect.';
+    } else if (diag && diag.webTabCount === 0) {
+      hint.textContent = 'Open CollegeFinder in another tab and sign in, then tap Connect — or use email below.';
+    } else {
+      hint.textContent = 'Already signed in on the CollegeFinder website or CMS? Tap Connect and we\'ll log you in instantly.';
+    }
+  }
+
   function showExamBadge(name) {
     const badge = $('examBadge');
     badge.textContent = name;
@@ -197,20 +232,6 @@
   function showError(message) {
     $('errorMessage').textContent = message;
     showView('error');
-  }
-
-  // ─── State: No portal ───
-
-  function renderSupportedExams() {
-    const exams = ['SSC CGL', 'JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA', 'SRMJEEE'];
-    const container = $('supportedExamsList');
-    container.innerHTML = '';
-    exams.forEach(name => {
-      const tag = document.createElement('div');
-      tag.className = 'exam-tag';
-      tag.textContent = name;
-      container.appendChild(tag);
-    });
   }
 
   // ─── State: Manual exam picker ───
@@ -999,7 +1020,15 @@
       setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', true, 'Connecting…');
       $('ssoError').style.display = 'none';
 
-      const sso = await msg('TRY_WEB_SSO');
+      // Retry a couple times — covers a website tab that's still loading.
+      let sso = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        sso = await msg('TRY_WEB_SSO');
+        if (sso?.diag) console.log('[ExamFill] manual SSO attempt', attempt + 1, sso.diag);
+        if (sso?.authenticated) break;
+        if (sso?.diag && sso.diag.tokensFound > 0) break; // invalid tokens — retry won't help
+        await sleep(450);
+      }
 
       setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', false, 'Connect with my CollegeFinder login');
 
@@ -1008,7 +1037,18 @@
         else await detectAndLoad();
         return;
       }
-      $('ssoError').textContent = 'No active CollegeFinder session found. Open and sign in to CollegeFinder in another tab, then try again — or use OTP above.';
+
+      // Tailor the failure message to what SSO actually saw.
+      const d = sso?.diag || {};
+      let msgText;
+      if (d.webTabCount > 0 && d.tokensFound === 0) {
+        msgText = 'Found your CollegeFinder tab but couldn\'t read the session. Refresh that tab (it may have been open before the extension updated), then tap Connect again.';
+      } else if (d.webTabCount === 0) {
+        msgText = 'No CollegeFinder tab is open. Open CollegeFinder, sign in, then tap Connect — or use OTP below.';
+      } else {
+        msgText = 'Your CollegeFinder session looks expired. Sign in again on the website, then tap Connect — or use OTP below.';
+      }
+      $('ssoError').textContent = msgText;
       $('ssoError').style.display = 'flex';
     });
 
@@ -1190,6 +1230,21 @@
         detectAndLoad();
       } catch (_) { /* ignore */ }
     });
+
+    // Auto-reconnect: when the panel becomes visible again while stuck on the
+    // login screen, silently retry SSO. This covers the flow "see login → go
+    // sign in on the website tab → come back to the panel" with no extra clicks.
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState !== 'visible') return;
+      const onLogin = views.login && views.login.style.display !== 'none';
+      if (!onLogin) return;
+      const sso = await msg('TRY_WEB_SSO');
+      if (sso?.diag) console.log('[ExamFill] visibility SSO', sso.diag);
+      if (sso?.authenticated) {
+        if (manualExamSelected) await loadProfileAndRoute({ checkPortalLogin: false });
+        else await detectAndLoad();
+      }
+    });
   }
 
   function showExamBadgeHide() {
@@ -1199,8 +1254,25 @@
 
   // ─── Utils ───
 
-  function msg(type, payload) {
-    return chrome.runtime.sendMessage({ type, payload });
+  /**
+   * Send a message to the background and resolve with its response.
+   * MV3 service workers can be torn down mid-flight, which rejects sendMessage
+   * with "message channel closed before a response was received". We retry once
+   * (a fresh send wakes the worker) and, if that also fails, resolve to a safe
+   * failure object instead of throwing an uncaught promise rejection.
+   */
+  async function msg(type, payload) {
+    try {
+      return await chrome.runtime.sendMessage({ type, payload });
+    } catch (_) {
+      try {
+        await new Promise((r) => setTimeout(r, 150));
+        return await chrome.runtime.sendMessage({ type, payload });
+      } catch (err) {
+        console.warn('[ExamFill] message failed:', type, err?.message || err);
+        return { success: false, error: 'no_response' };
+      }
+    }
   }
 
   /** Replace long document / S3 URLs with a short label in the sidebar */
