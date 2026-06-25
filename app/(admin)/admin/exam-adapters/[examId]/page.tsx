@@ -625,6 +625,8 @@ export default function ExamAdapterEditorPage() {
                 onRemoveField={(idx) => removeField(section.section_id, idx)}
                 onAddDiscoveredField={handleAddDiscoveredField}
                 onAddMappedField={addMappedFieldFromScan}
+                onSave={handleSave}
+                isSaving={isSaving}
                 validation={validation[section.section_id] || {}}
                 unmapped={unmapped[section.section_id] || []}
                 profileSchema={profileSchema}
@@ -664,6 +666,8 @@ interface SectionEditorProps {
     scanned: NonNullable<ValidationFieldResult['scanned']>,
     opts: { source?: string | null; leaveBlank?: boolean }
   ) => void;
+  onSave: () => void;
+  isSaving: boolean;
   validation: Record<string, ValidationFieldResult>;
   unmapped: ValidationFieldResult[];
   profileSchema: ProfilePathEntry[];
@@ -682,6 +686,8 @@ function SectionEditor({
   onRemoveField,
   onAddDiscoveredField,
   onAddMappedField,
+  onSave,
+  isSaving,
   validation,
   unmapped,
   profileSchema
@@ -801,6 +807,34 @@ function SectionEditor({
                 }
                 className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none font-mono text-slate-800"
               />
+            </div>
+          </div>
+
+          {/* Section notes — shown on every section. Free-text admin remarks
+              (e.g. "Captcha on this page"); persisted in adapter_config on save,
+              annotation only (not used by the filler). */}
+          <div>
+            <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1">
+              Notes
+            </label>
+            <div className="flex items-start gap-2">
+              <textarea
+                value={section.notes || ''}
+                onChange={(e) => onChange({ notes: e.target.value })}
+                rows={3}
+                maxLength={2000}
+                placeholder="Add notes for this section (e.g. Captcha appears on this page; OTP must be entered manually)."
+                className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none text-slate-800 resize-y"
+              />
+              <button
+                onClick={onSave}
+                disabled={isSaving}
+                title="Save these notes"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg disabled:opacity-60 whitespace-nowrap"
+              >
+                <FiSave className="h-4 w-4" />
+                {isSaving ? 'Saving…' : 'Save'}
+              </button>
             </div>
           </div>
 

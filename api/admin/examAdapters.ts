@@ -52,6 +52,9 @@ export interface AdapterSection {
   section_name: string;
   page_indicator: AdapterPageIndicator | null;
   fields: AdapterField[];
+  // Free-text admin notes/remarks for the section (e.g. "Captcha on this page").
+  // Annotation only — not used during form-filling.
+  notes?: string;
 }
 
 export interface AdapterConfig {

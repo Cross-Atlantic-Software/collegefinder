@@ -498,6 +498,11 @@ function sanitizeSection(section) {
       ? section.fields.map(sanitizeField).filter(Boolean)
       : []
   };
+  // Free-text admin notes/remarks for the section. Annotation only (not used by
+  // the filler). Whitelisted here so it survives save; capped to a sane length.
+  if (typeof section.notes === 'string' && section.notes.trim()) {
+    out.notes = section.notes.slice(0, 2000);
+  }
   return out;
 }
 
