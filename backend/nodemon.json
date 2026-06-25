@@ -1,0 +1,7 @@
+{
+  "comment": "legacyWatch (polling) is required because Docker Desktop on Windows/WSL2 does not deliver host inotify file-change events into the Linux container, so nodemon's default watcher never fires. Polling makes `docker-compose up` hot-reload backend edits on every host save.",
+  "watch": ["server.js", "src"],
+  "ext": "js,json",
+  "legacyWatch": true,
+  "delay": 500
+}

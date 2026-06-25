@@ -1087,6 +1087,37 @@ function FieldEditor({ field, onChange, onRemove, onAddDiscoveredField, validati
           leave blank
         </label>
 
+        {/* "Add to DB": fill a fixed literal value into this field on every fill,
+            instead of resolving from the student's profile source. */}
+        <label
+          className="text-[11px] text-slate-600 inline-flex items-center gap-1 cursor-pointer"
+          title="Fill a fixed value into this field on every fill (ignores the profile source)"
+        >
+          <input
+            type="checkbox"
+            checked={field.use_static_value === true}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? { use_static_value: true }
+                  : { use_static_value: undefined, static_value: undefined }
+              )
+            }
+          />
+          add to DB
+        </label>
+
+        {field.use_static_value === true && (
+          <input
+            type="text"
+            value={field.static_value || ''}
+            onChange={(e) => onChange({ static_value: e.target.value })}
+            placeholder="value to fill"
+            className="px-2 py-1 text-xs border border-slate-300 rounded bg-white max-w-[160px] text-slate-800"
+            title="Literal value typed into this field on every fill"
+          />
+        )}
+
         {!field.source && (
           <button
             type="button"

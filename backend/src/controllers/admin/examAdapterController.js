@@ -522,8 +522,9 @@ function sanitizeField(f) {
   // but if source is provided, validate it. Drop only when source is non-empty AND invalid.
   // Exception: leave_blank fields (Captcha/OTP/manual) are never filled from a source, so
   // an unrecognized source must NOT delete the whole field — that silently loses the
-  // leave_blank flag and the field disappears for the student.
-  if (source && !isValidSource(source) && f.leave_blank !== true) return null;
+  // leave_blank flag and the field disappears for the student. Same for "add to DB"
+  // (use_static_value) fields, which fill a fixed literal instead of any profile source.
+  if (source && !isValidSource(source) && f.leave_blank !== true && f.use_static_value !== true) return null;
 
   const type = ALLOWED_TYPES.has(f.type) ? f.type : 'text';
   const out = {
@@ -563,6 +564,14 @@ function sanitizeField(f) {
   // considers invalid for a reader that doesn't short-circuit on leave_blank first.
   if (f.leave_blank === true) {
     out.leave_blank = true;
+    if (source && !isValidSource(source)) out.source = null;
+  }
+  // Admin "add to DB": the filler types this fixed literal instead of resolving from a
+  // profile source, so any source on the field is irrelevant — null a stale/invalid one
+  // rather than persisting a value the system considers invalid.
+  if (f.use_static_value === true) {
+    out.use_static_value = true;
+    out.static_value = typeof f.static_value === 'string' ? f.static_value.slice(0, 500) : '';
     if (source && !isValidSource(source)) out.source = null;
   }
   return out;

@@ -45,6 +45,10 @@ export interface AdapterField {
   cascade_wait_ms?: number;
   /** Admin "Leave Blank" (Captcha/OTP/manual): the filler skips these. */
   leave_blank?: boolean;
+  /** Admin "add to DB": fill a fixed literal value instead of a profile source. */
+  use_static_value?: boolean;
+  /** The literal value typed into the field when use_static_value is set. */
+  static_value?: string;
 }
 
 export interface AdapterSection {

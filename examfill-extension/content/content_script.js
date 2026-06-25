@@ -221,17 +221,32 @@
       };
     }
 
-    // 1. Resolve value from user profile
-    let rawValue = Resolver.resolve(fieldConfig.source, userData);
-
-    if (!Resolver.hasValue(rawValue)) {
-      return {
-        field_id: fieldId,
-        label,
-        status: 'not_found',
-        note: `No data in profile for "${fieldConfig.source}"`,
-        value: null
-      };
+    // 1. Resolve value. Admin "add to DB" (use_static_value) takes priority: the field
+    // is filled with a fixed literal regardless of the profile source. Otherwise resolve
+    // the value from the student's profile via the configured source.
+    let rawValue;
+    if (fieldConfig.use_static_value === true) {
+      rawValue = fieldConfig.static_value;
+      if (!Resolver.hasValue(rawValue)) {
+        return {
+          field_id: fieldId,
+          label,
+          status: 'not_found',
+          note: 'Configured static value ("add to DB") is empty',
+          value: null
+        };
+      }
+    } else {
+      rawValue = Resolver.resolve(fieldConfig.source, userData);
+      if (!Resolver.hasValue(rawValue)) {
+        return {
+          field_id: fieldId,
+          label,
+          status: 'not_found',
+          note: `No data in profile for "${fieldConfig.source}"`,
+          value: null
+        };
+      }
     }
 
     // 2. Format the value
