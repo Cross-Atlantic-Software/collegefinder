@@ -1,4 +1,8 @@
-import type { DashboardInstituteDetail, DashboardInstituteStatistics } from "@/api/auth/profile";
+import type {
+  DashboardInstituteCourse,
+  DashboardInstituteDetail,
+  DashboardInstituteStatistics,
+} from "@/api/auth/profile";
 import type { CollegeDetailSection } from "@/lib/collegeDisplay";
 import { hasDisplayValue, formatExamDate } from "@/lib/examDisplay";
 
@@ -77,8 +81,23 @@ function pushItem(
   items.push({ label, value: String(value).trim() });
 }
 
-function formatDeliveryType(type: string | null | undefined): string | null {
-  return instituteModeLabel(type);
+/** Distinct, non-empty values across an institute's courses, joined for a single key-value row. */
+function distinctCourseValues(
+  courses: DashboardInstituteCourse[] | undefined,
+  pick: (c: DashboardInstituteCourse) => string | null | undefined
+): string | null {
+  if (!courses?.length) return null;
+  const vals = Array.from(
+    new Set(
+      courses
+        .map((c) => {
+          const v = pick(c);
+          return v == null ? null : String(v).trim();
+        })
+        .filter((v): v is string => Boolean(v))
+    )
+  );
+  return vals.length ? vals.join(", ") : null;
 }
 
 function formatInstituteMetric(value: string | number | null | undefined): string | null {
@@ -133,61 +152,75 @@ function formatYesNo(value: boolean | null | undefined): string | null {
 export function buildInstituteDetailSections(
   institute: DashboardInstituteDetail
 ): CollegeDetailSection[] {
-  const isOnline = isInstituteOnlineMode(institute.type);
-  const overview: Array<{ label: string; value: string }> = [];
+  const sections: CollegeDetailSection[] = [];
+  const courses = institute.courses;
 
-  const description = instituteDescriptionText(institute);
-  if (description) pushItem(overview, "Description", description);
+  // 1. Institute Information
+  const info: Array<{ label: string; value: string }> = [];
+  pushItem(info, "Institute Name", institute.institute_name);
+  pushItem(info, "Parent Institute", institute.parent_institute);
+  pushItem(info, "Description", instituteDescriptionText(institute));
+  sections.push({ id: "overview", title: "Institute Information", items: info });
 
-  pushItem(overview, "Institute Name", institute.institute_name);
-  if (!isOnline) pushItem(overview, "Location", instituteLocationLine(institute));
-  pushItem(overview, "Mode", formatDeliveryType(institute.type));
-  pushItem(overview, "Contact", institute.contact_number);
-  pushItem(overview, "Branches", institute.branches_number);
-  pushItem(overview, "Student Strength", institute.student_strength);
-  pushItem(overview, "Fee type", institute.fee_type);
-  pushItem(overview, "Fee band", institute.fee_band);
-  pushItem(overview, "Batch category", institute.batch_category);
-  pushItem(overview, "Course cycle", institute.course_cycle);
-  pushItem(overview, "Parent institute", institute.parent_institute);
-  pushItem(overview, "Demo Available", formatYesNo(institute.instituteDetails?.demo_available));
+  // 2. Location Details
+  const location: Array<{ label: string; value: string }> = [];
+  pushItem(location, "City", institute.city);
+  pushItem(location, "Institute Location", institute.institute_location);
+  pushItem(location, "State", institute.state);
+  pushItem(location, "Number of Branches", institute.branches_number);
+  sections.push({ id: "location", title: "Location Details", items: location });
+
+  // 3. Program Details (Target Class / Duration / Start Date are course-level; Course Cycle is institute-level)
+  const program: Array<{ label: string; value: string }> = [];
+  pushItem(program, "Target Class", distinctCourseValues(courses, (c) => c.target_class));
+  pushItem(program, "Duration (Months)", distinctCourseValues(courses, (c) => c.duration_months));
+  pushItem(program, "Course Cycle", institute.course_cycle);
+  pushItem(program, "Start Date", distinctCourseValues(courses, (c) => formatExamDate(c.start_date)));
+  sections.push({ id: "program", title: "Program Details", items: program });
+
+  // 4. Learning & Delivery
+  const learning: Array<{ label: string; value: string }> = [];
+  pushItem(learning, "Mode", instituteModeLabel(institute.type));
+  pushItem(learning, "Batch Size", distinctCourseValues(courses, (c) => c.batch_size));
+  pushItem(learning, "Batch Category", institute.batch_category);
+  pushItem(learning, "Demo Available", formatYesNo(institute.instituteDetails?.demo_available));
+  sections.push({ id: "learning", title: "Learning & Delivery", items: learning });
+
+  // 5. Fee & Scholarship
+  const fee: Array<{ label: string; value: string }> = [];
+  pushItem(fee, "Fees", distinctCourseValues(courses, (c) => c.fees));
+  pushItem(fee, "Fee Type", institute.fee_type);
+  pushItem(fee, "Fee Band", institute.fee_band);
   pushItem(
-    overview,
+    fee,
     "Scholarship Available",
     formatYesNo(institute.instituteDetails?.scholarship_available)
   );
+  sections.push({ id: "fees", title: "Fee & Scholarship", items: fee });
 
-  const stats: Array<{ label: string; value: string }> = [];
-  pushItem(stats, "Ranking", institute.statistics?.ranking_score);
-  pushItem(stats, "Success Rate", institute.statistics?.success_rate);
-  pushItem(stats, "Student Rating", institute.statistics?.student_rating);
+  // 6. Performance & Reputation
+  const performance: Array<{ label: string; value: string }> = [];
+  pushItem(performance, "Ranking Score", institute.statistics?.ranking_score);
+  pushItem(
+    performance,
+    "Institute Success Potential (%)",
+    instituteCardSuccessRateDisplay(institute.statistics?.success_rate)
+  );
+  const rating = formatInstituteMetric(institute.statistics?.student_rating);
+  if (rating) pushItem(performance, "Student Rating", `${rating} / 5`);
+  pushItem(performance, "Student Strength", institute.student_strength);
+  sections.push({ id: "statistics", title: "Performance & Reputation", items: performance });
 
-  const sections: CollegeDetailSection[] = [];
-  if (overview.some((i) => i.value)) {
-    sections.push({ id: "overview", title: "Overview", items: overview });
+  // 7. Mapping
+  const mapping: Array<{ label: string; value: string }> = [];
+  if (institute.linkedExams?.length) {
+    pushItem(
+      mapping,
+      "Exams",
+      institute.linkedExams.map((e) => e.code?.trim() || e.name).join(", ")
+    );
   }
-  if (stats.some((i) => i.value)) {
-    sections.push({ id: "statistics", title: "Statistics", items: stats });
-  }
-
-  if (institute.courses?.length) {
-    institute.courses.forEach((course, index) => {
-      const items: Array<{ label: string; value: string }> = [];
-      pushItem(items, "Course", course.course_name);
-      pushItem(items, "Target Class", course.target_class);
-      pushItem(items, "Duration (Months)", course.duration_months);
-      pushItem(items, "Fees", course.fees);
-      pushItem(items, "Batch Size", course.batch_size);
-      pushItem(items, "Start Date", formatExamDate(course.start_date));
-      if (items.length) {
-        sections.push({
-          id: `course-${course.id ?? index}`,
-          title: course.course_name?.trim() || `Course ${index + 1}`,
-          items,
-        });
-      }
-    });
-  }
+  sections.push({ id: "mappings", title: "Mapping", items: mapping });
 
   return sections;
 }

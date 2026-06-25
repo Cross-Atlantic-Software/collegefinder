@@ -82,63 +82,99 @@ export function scholarshipLinkedCollegeLocation(s: DashboardScholarship): strin
 export function buildScholarshipDetailSections(
   scholarship: DashboardScholarshipDetail
 ): CollegeDetailSection[] {
-  const overview: Array<{ label: string; value: string }> = [];
-  pushItem(overview, "Description", scholarship.description);
-  pushItem(overview, "Conducting Authority", scholarship.conducting_authority);
-  pushItem(overview, "Scholarship Type", scholarship.scholarship_type);
-  pushItem(overview, "Stream", scholarship.stream_name);
-  pushItem(overview, "Amount", scholarship.scholarship_amount);
-  pushItem(overview, "Mode", scholarship.mode);
-  pushItem(overview, "Academic Year", scholarship.academic_year);
-  pushItem(overview, "Education Level", scholarship.education_level);
-  pushItem(overview, "Scope", scholarship.scope);
-  pushItem(overview, "Value Category", scholarship.value_category);
-  pushItem(overview, "Status", scholarship.active_status);
-  pushItem(overview, "Income Limit", scholarship.income_limit);
-  pushItem(overview, "Minimum Marks", scholarship.minimum_marks_required);
-  pushItem(overview, "Eligible Degree", scholarship.eligible_degree);
-  pushItem(overview, "Number of Awards", scholarship.number_of_awards);
-  pushItem(overview, "Application Opens", formatExamDate(scholarship.application_start_date));
-  pushItem(overview, "Application Closes", formatExamDate(scholarship.application_end_date));
-  if (scholarship.documentsRequired?.length) {
-    pushItem(
-      overview,
-      "Required Documents",
-      scholarship.documentsRequired.map((r) => r.document_name).filter(Boolean).join(", ")
-    );
-  }
+  const sections: CollegeDetailSection[] = [];
 
-  const about: Array<{ label: string; value: string }> = [];
-  pushItem(about, "Selection Process", scholarship.selection_process);
-  pushItem(about, "Renewal Available", formatYesNo(scholarship.renewal_available));
-  pushItem(about, "Renewal Conditions", scholarship.renewal_conditions);
+  // 1. Scholarship Information
+  const info: Array<{ label: string; value: string }> = [];
+  pushItem(info, "Scholarship ID", scholarship.id);
+  pushItem(info, "Scholarship Name", scholarship.scholarship_name);
+  pushItem(info, "Scholarship Type", scholarship.scholarship_type);
+  pushItem(info, "About / Description", scholarship.description);
+  pushItem(info, "Scholarship Provider", scholarship.conducting_authority);
+  pushItem(info, "Coverage Scope", scholarship.scope);
+  sections.push({ id: "overview", title: "Scholarship Information", items: info });
 
+  // 2. Eligibility Criteria
   const eligibility: Array<{ label: string; value: string }> = [];
-  if (scholarship.eligibleCategories?.length) {
-    pushItem(
-      eligibility,
-      "Eligible Categories",
-      scholarship.eligibleCategories.map((r) => r.category).filter(Boolean).join(", ")
-    );
-  }
   if (scholarship.applicableStates?.length) {
     pushItem(
       eligibility,
-      "Applicable States",
+      "State Eligibility",
       scholarship.applicableStates.map((r) => r.state_name).filter(Boolean).join(", ")
     );
   }
+  pushItem(eligibility, "Education Level", scholarship.education_level);
+  pushItem(eligibility, "Stream", scholarship.stream_name);
+  if (scholarship.eligibleCategories?.length) {
+    pushItem(
+      eligibility,
+      "Reservation Category",
+      scholarship.eligibleCategories.map((r) => r.category).filter(Boolean).join(", ")
+    );
+  }
+  pushItem(eligibility, "Family Income Limit", scholarship.income_limit);
+  pushItem(
+    eligibility,
+    "Minimum Academic Percentage / CGPA",
+    scholarship.minimum_marks_required
+  );
+  sections.push({ id: "eligibility", title: "Eligibility Criteria", items: eligibility });
 
-  const sections: CollegeDetailSection[] = [];
-  if (overview.some((i) => i.value)) {
-    sections.push({ id: "overview", title: "Overview", items: overview });
+  // 3. Scholarship Benefits
+  const benefits: Array<{ label: string; value: string }> = [];
+  pushItem(benefits, "Scholarship Amount", scholarship.scholarship_amount);
+  pushItem(benefits, "Number of Awards", scholarship.number_of_awards);
+  sections.push({ id: "benefits", title: "Scholarship Benefits", items: benefits });
+
+  // 4. Renewal Details
+  const renewal: Array<{ label: string; value: string }> = [];
+  pushItem(renewal, "Renewal Available", formatYesNo(scholarship.renewal_available));
+  pushItem(renewal, "Renewal Conditions", scholarship.renewal_conditions);
+  sections.push({ id: "renewal", title: "Renewal Details", items: renewal });
+
+  // 5. Application Details
+  const application: Array<{ label: string; value: string }> = [];
+  pushItem(application, "Application Start Date", formatExamDate(scholarship.application_start_date));
+  pushItem(application, "Application End Date", formatExamDate(scholarship.application_end_date));
+  pushItem(application, "Application Mode", scholarship.mode);
+  if (scholarship.documentsRequired?.length) {
+    pushItem(
+      application,
+      "Documents Required",
+      scholarship.documentsRequired.map((r) => r.document_name).filter(Boolean).join(", ")
+    );
   }
-  if (about.some((i) => i.value)) {
-    sections.push({ id: "about", title: "About", items: about });
+  sections.push({ id: "application", title: "Application Details", items: application });
+
+  // 6. Selection Process
+  const selection: Array<{ label: string; value: string }> = [];
+  pushItem(selection, "Selection Process", scholarship.selection_process);
+  sections.push({ id: "selection", title: "Selection Process", items: selection });
+
+  // 7. Tracking & Links
+  const tracking: Array<{ label: string; value: string }> = [];
+  pushItem(tracking, "Scholarship Status", scholarship.active_status);
+  pushItem(tracking, "Official Website", scholarship.official_website);
+  pushItem(tracking, "Application Link", scholarship.application_link);
+  sections.push({ id: "tracking", title: "Tracking & Links", items: tracking });
+
+  // 8. Mapping
+  const mapping: Array<{ label: string; value: string }> = [];
+  if (scholarship.linkedExams?.length) {
+    pushItem(
+      mapping,
+      "Exams",
+      scholarship.linkedExams.map((e) => e.code?.trim() || e.name).join(", ")
+    );
   }
-  if (eligibility.some((i) => i.value)) {
-    sections.push({ id: "eligibility", title: "Eligibility", items: eligibility });
+  if (scholarship.linkedColleges?.length) {
+    pushItem(
+      mapping,
+      "Colleges",
+      scholarship.linkedColleges.map((c) => c.name).filter(Boolean).join(", ")
+    );
   }
+  sections.push({ id: "mappings", title: "Mapping", items: mapping });
 
   return sections;
 }

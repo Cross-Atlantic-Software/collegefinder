@@ -163,48 +163,82 @@ export function buildProgramItems(p: DashboardCollegeProgram): Array<{ label: st
   return items;
 }
 
-export function buildCollegeOverviewItems(c: DashboardCollege): Array<{ label: string; value: string }> {
-  const items: Array<{ label: string; value: string }> = [];
-  pushItem(items, "College name", c.college_name);
-  pushItem(items, "Abbreviation", c.abbreviation);
-  pushItem(items, "Location", c.college_location);
-  pushItem(items, "City", c.city);
-  pushItem(items, "State", c.state);
-  pushItem(items, "Parent university", c.parent_university);
-  pushNumber(items, "NIRF ranking", c.nirf_ranking != null ? Number(c.nirf_ranking) : null);
-  pushItem(items, "Admission timeline", c.admission_timeline);
-  pushNumber(items, "Program count", c.program_count != null ? Number(c.program_count) : null);
-  pushItem(items, "Placement rate", c.placement_rate);
-  pushItem(items, "Program fee", c.program_fee);
-  pushItem(items, "Average package", c.average_package);
-  const desc = c.collegeDetails?.college_description?.trim();
-  if (desc) pushItem(items, "Description", desc);
-  const updated = formatCollegeDate(c.updated_at);
-  if (updated) pushItem(items, "Last updated", updated);
-  return items;
+/** Distinct program names (admin programs preferred, else profile major programs). */
+function collegeProgramNames(c: DashboardCollege): string[] {
+  const fromPrograms = (c.programs ?? [])
+    .map((p) => p.program_name?.trim())
+    .filter((n): n is string => Boolean(n));
+  if (fromPrograms.length) return Array.from(new Set(fromPrograms));
+  return c.majorProgramNames ?? [];
+}
+
+/** Derived from each program's duration — no single college-level "program years" field exists. */
+function collegeProgramYears(c: DashboardCollege): string | null {
+  const years = Array.from(
+    new Set(
+      (c.programs ?? [])
+        .map((p) =>
+          p.duration_years != null && Number.isFinite(Number(p.duration_years))
+            ? `${p.duration_years} ${p.duration_unit?.trim() || "years"}`
+            : null
+        )
+        .filter((v): v is string => Boolean(v))
+    )
+  );
+  return years.length ? years.join(", ") : null;
+}
+
+/** Generated Google Maps search link (no stored address-link field exists for colleges). */
+function collegeMapsLink(c: DashboardCollege): string | null {
+  const query = [c.college_name, c.city, c.state, c.college_location]
+    .map((v) => v?.trim())
+    .filter(Boolean)
+    .join(", ");
+  if (!query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function collegeAcceptedExams(c: DashboardCollege): string | null {
+  if (!c.linkedExams?.length) return null;
+  return c.linkedExams.map((e) => e.code?.trim() || e.name).join(", ");
 }
 
 export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSection[] {
   const sections: CollegeDetailSection[] = [];
 
-  const overview = buildCollegeOverviewItems(c);
-  sections.push({ id: "overview", title: "College information", items: overview });
+  // 1. College Information
+  const info: Array<{ label: string; value: string }> = [];
+  pushItem(info, "College name", c.college_name);
+  pushItem(info, "Parent university", c.parent_university);
+  pushItem(info, "College description", c.collegeDetails?.college_description?.trim());
+  sections.push({ id: "overview", title: "College Information", items: info });
 
-  if (c.majorProgramNames?.length) {
-    sections.push({
-      id: "major-programs",
-      title: "Major programs (from profile)",
-      items: c.majorProgramNames.map((name, i) => ({
-        label: `Program ${i + 1}`,
-        value: name,
-      })),
-    });
-  }
+  // 2. Location Details
+  const location: Array<{ label: string; value: string }> = [];
+  pushItem(location, "City", c.city);
+  pushItem(location, "State", c.state);
+  pushItem(location, "Google address link", collegeMapsLink(c));
+  sections.push({ id: "location", title: "Location Details", items: location });
 
+  // 3. Academic Progress
+  const academic: Array<{ label: string; value: string }> = [];
+  const programNames = collegeProgramNames(c);
+  if (programNames.length) pushItem(academic, "Programs", programNames.join(", "));
+  pushNumber(academic, "Program count", c.program_count != null ? Number(c.program_count) : null);
+  pushItem(academic, "Program years", collegeProgramYears(c));
+  pushItem(academic, "Accepted exams", collegeAcceptedExams(c));
+  sections.push({ id: "academic", title: "Academic Progress", items: academic });
+
+  // 4. Ranking & Reputation
+  const ranking: Array<{ label: string; value: string }> = [];
+  pushNumber(ranking, "NIRF ranking", c.nirf_ranking != null ? Number(c.nirf_ranking) : null);
+  sections.push({ id: "ranking", title: "Ranking & Reputation", items: ranking });
+
+  // 5. Admissions By Programs / Branch
   if (c.programs?.length) {
     sections.push({
       id: "programs",
-      title: "Programs",
+      title: "Admissions By Programs / Branch",
       kind: "programs-table",
       items: [],
       programs: c.programs,
@@ -218,13 +252,13 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
       const date = formatCollegeDate(kd.event_date ?? undefined);
       pushItem(items, label, date || "—");
     }
-    sections.push({ id: "key-dates", title: "Key dates (college level)", items });
+    sections.push({ id: "key-dates", title: "Key Dates", items });
   }
 
   if (c.documentsRequired?.length) {
     sections.push({
       id: "documents",
-      title: "Documents required",
+      title: "Documents Required",
       kind: "documents-list",
       items: [],
       documents: c.documentsRequired,
@@ -237,12 +271,24 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
     );
     sections.push({
       id: "counselling",
-      title: "Counselling process",
+      title: "Counselling Process",
       kind: "counselling-timeline",
       items: [],
       counsellingSteps: sorted,
     });
   }
+
+  // 6. Fees and Placements
+  const fees: Array<{ label: string; value: string }> = [];
+  pushItem(fees, "Program fee", c.program_fee);
+  pushItem(fees, "Average package", c.average_package);
+  pushItem(fees, "Placement rate", c.placement_rate);
+  sections.push({ id: "fees", title: "Fees and Placements", items: fees });
+
+  // 7. Mappings
+  const mappings: Array<{ label: string; value: string }> = [];
+  pushItem(mappings, "Exams", collegeAcceptedExams(c));
+  sections.push({ id: "mappings", title: "Mappings", items: mappings });
 
   return sections;
 }

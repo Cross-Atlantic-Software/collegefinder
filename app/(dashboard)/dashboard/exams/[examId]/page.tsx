@@ -9,11 +9,9 @@ import { Button } from "@/components/shared";
 import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
-import { ExamDetailLinkedCoaching } from "@/components/dashboard/ExamDetailLinkedCoaching";
-import { ExamDetailMapping } from "@/components/dashboard/ExamDetailMapping";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ExamDetailSections } from "@/components/dashboard/ExamDetailSections";
-import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
+import { DetailMappingCarousel } from "@/components/dashboard/DetailMappingCarousel";
 import {
   buildExamDetailSections,
   examCardSubtitle,
@@ -21,6 +19,19 @@ import {
   getExamApplicationWindowStatus,
   isExamApplicationButtonEnabled,
 } from "@/lib/examDisplay";
+import {
+  collegeCardSubtitle,
+  collegeExamDetailStatsLine,
+  collegeLocationLine,
+} from "@/lib/collegeDisplay";
+import { slugifyCollegeName } from "@/lib/collegeSlug";
+import { scholarshipDetailHref } from "@/lib/scholarshipSlug";
+import {
+  instituteExamDetailStatsLine,
+  instituteLocationLine,
+  instituteModeLabel,
+} from "@/lib/instituteDisplay";
+import { slugifyInstituteName } from "@/lib/instituteSlug";
 import { addExamToApplications, APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
 import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
@@ -136,14 +147,12 @@ export default function ExamDetailPage() {
   const { data: pageData, isLoading, isError, error } = useExamDetailQuery(examId);
   const exam = pageData?.exam;
   const examNumericId = exam ? Number(exam.id) : null;
-  const { data: linkedCollegesData, isLoading: collegesLoading } =
-    useExamLinkedCollegesQuery(examNumericId);
+  const { data: linkedCollegesData } = useExamLinkedCollegesQuery(examNumericId);
   const linkedColleges =
     linkedCollegesData?.colleges ?? pageData?.linkedColleges ?? [];
   const linkedCollegesTotal =
     linkedCollegesData?.totalCount ?? pageData?.linkedCollegesTotal ?? 0;
-  const { data: linkedInstitutesData, isLoading: institutesLoading } =
-    useExamLinkedInstitutesQuery(examNumericId);
+  const { data: linkedInstitutesData } = useExamLinkedInstitutesQuery(examNumericId);
   const linkedInstitutes = linkedInstitutesData?.institutes ?? [];
   const linkedInstitutesTotal = linkedInstitutesData?.totalCount ?? 0;
   const linkedScholarships = pageData?.linkedScholarships ?? [];
@@ -158,6 +167,41 @@ export default function ExamDetailPage() {
   const levelBadge = exam ? examLevelBadge(exam.exam_type) : null;
   const subtitle = exam ? examCardSubtitle(exam) : null;
   const websiteUrl = exam?.website?.trim() || null;
+
+  const collegeMappingItems = useMemo(
+    () =>
+      linkedColleges.map((c) => ({
+        id: c.id,
+        title: c.college_name,
+        subtitle: collegeCardSubtitle(c) || c.college_type || "College",
+        meta: collegeExamDetailStatsLine(c) || collegeLocationLine(c),
+        href: `/dashboard/colleges/${slugifyCollegeName(c.college_name)}?from=exam-detail`,
+      })),
+    [linkedColleges]
+  );
+  const scholarshipMappingItems = useMemo(
+    () =>
+      linkedScholarships.map((s) => ({
+        id: s.id,
+        title: s.scholarship_name,
+        subtitle:
+          s.scholarship_type?.trim() || s.conducting_authority?.trim() || "Scholarship",
+        meta: s.scholarship_amount?.trim() || null,
+        href: scholarshipDetailHref(s.scholarship_name, "exam-detail"),
+      })),
+    [linkedScholarships]
+  );
+  const coachingMappingItems = useMemo(
+    () =>
+      linkedInstitutes.map((i) => ({
+        id: i.id,
+        title: i.institute_name,
+        subtitle: instituteModeLabel(i.type) || "Coaching",
+        meta: instituteExamDetailStatsLine(i) || instituteLocationLine(i),
+        href: `/dashboard/institutes/${slugifyInstituteName(i.institute_name)}?from=exam-detail`,
+      })),
+    [linkedInstitutes]
+  );
 
   const shortlistedIds = examMeta?.shortlistedExamIds ?? [];
   const alreadyFilledIds = examMeta?.alreadyFilledFormExamIds ?? [];
@@ -321,21 +365,16 @@ export default function ExamDetailPage() {
         <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <ExamDetailSections sections={sections} />
-            <ExamDetailMapping
-              colleges={linkedColleges}
-              linkedCollegesTotal={linkedCollegesTotal}
-              collegesLoading={collegesLoading && !!exam}
-              scholarships={linkedScholarships}
-              linkedScholarshipTotal={linkedScholarshipTotal}
-            />
-            <ExamDetailLinkedCoaching
-              institutes={linkedInstitutes}
-              totalCount={linkedInstitutesTotal}
-              isLoading={institutesLoading && !!exam}
-            />
           </div>
 
-          <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+          <aside className={[
+    "space-y-4 xl:sticky xl:top-6 xl:self-start",
+    "xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto xl:overscroll-contain",
+    "xl:pr-1 [scrollbar-width:thin]",
+    "[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent",
+    "[&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90",
+    "dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80",
+  ].join(" ")}>
             <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Next steps</p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -397,7 +436,24 @@ export default function ExamDetailPage() {
                 </Button>
               </div>
             </div>
-            <QuickSelfStudyPicks variant="sidebar" />
+            <DetailMappingCarousel
+              title="Linked Colleges"
+              subtitle={`Colleges tagged to this exam (${linkedCollegesTotal} total).`}
+              viewLabel="View College"
+              items={collegeMappingItems}
+            />
+            <DetailMappingCarousel
+              title="Linked Scholarships"
+              subtitle={`Scholarships tagged to this exam (${linkedScholarshipTotal} total).`}
+              viewLabel="View Scholarship"
+              items={scholarshipMappingItems}
+            />
+            <DetailMappingCarousel
+              title="Coaching Institutes"
+              subtitle={`Coachings offering this exam (${linkedInstitutesTotal} total).`}
+              viewLabel="View Coaching"
+              items={coachingMappingItems}
+            />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
               lectures={taggedLecturePreviews}

@@ -256,9 +256,20 @@ export function CollegeDetailSections({ sections }: CollegeDetailSectionsProps) 
         );
         if (!visibleItems.length) return null;
 
-        const isOverview = section.id === "overview";
         const isCompactGrid =
-          isOverview ||
+          section.id === "overview" ||
+          section.id === "location" ||
+          section.id === "academic" ||
+          section.id === "ranking" ||
+          section.id === "program" ||
+          section.id === "learning" ||
+          section.id === "fees" ||
+          section.id === "mappings" ||
+          section.id === "benefits" ||
+          section.id === "renewal" ||
+          section.id === "application" ||
+          section.id === "selection" ||
+          section.id === "tracking" ||
           section.id === "statistics" ||
           section.id === "about" ||
           section.id === "eligibility";
@@ -280,6 +291,14 @@ export function CollegeDetailSections({ sections }: CollegeDetailSectionsProps) 
               {visibleItems.map((item) => {
                 const fullWidth =
                   item.label === "Description" ||
+                  item.label === "College description" ||
+                  item.label === "About / Description" ||
+                  item.label === "Programs" ||
+                  item.label === "Accepted exams" ||
+                  item.label === "Exams" ||
+                  item.label === "Colleges" ||
+                  item.label === "State Eligibility" ||
+                  item.label === "Reservation Category" ||
                   item.label === "Admission timeline" ||
                   item.label === "Admission Timeline" ||
                   item.label === "Required Documents" ||
@@ -308,7 +327,11 @@ export function CollegeDetailSections({ sections }: CollegeDetailSectionsProps) 
                         isCompactGrid ? "mt-0.5 text-[13px] leading-snug" : "mt-0.5 text-sm"
                       }`}
                     >
-                      {item.label === "Website" || item.label === "Brochure" ? (
+                      {item.label === "Website" ||
+                      item.label === "Brochure" ||
+                      item.label === "Google address link" ||
+                      item.label === "Official Website" ||
+                      item.label === "Application Link" ? (
                         <a
                           href={
                             item.value.startsWith("http")
@@ -319,7 +342,9 @@ export function CollegeDetailSections({ sections }: CollegeDetailSectionsProps) 
                           rel="noreferrer"
                           className="break-all font-medium text-[#b88900] underline-offset-2 hover:underline"
                         >
-                          {item.value}
+                          {item.label === "Google address link"
+                            ? "Open in Google Maps"
+                            : item.value}
                         </a>
                       ) : (
                         <span className="whitespace-pre-wrap break-words">{item.value}</span>

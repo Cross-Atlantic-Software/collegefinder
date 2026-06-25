@@ -12,7 +12,6 @@ import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistBut
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { CollegeDetailRecommendedExams } from "@/components/dashboard/CollegeDetailRecommendedExams";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
-import { QuickSelfStudyPicks } from "@/components/dashboard/QuickSelfStudyPicks";
 import { buildCollegeDetailSections, collegeLocationLine } from "@/lib/collegeDisplay";
 import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
 import { useUpdateShortlistedCollegeMutation } from "@/lib/dashboardCollegeShortlistQueries";
@@ -250,7 +249,14 @@ export default function CollegeDetailPage() {
             <CollegeDetailSections sections={sections} />
           </div>
 
-          <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+          <aside className={[
+    "space-y-4 xl:sticky xl:top-6 xl:self-start",
+    "xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto xl:overscroll-contain",
+    "xl:pr-1 [scrollbar-width:thin]",
+    "[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent",
+    "[&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90",
+    "dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80",
+  ].join(" ")}>
             <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Actions
@@ -291,7 +297,6 @@ export default function CollegeDetailPage() {
                 </Button>
               </div>
             </div>
-            <QuickSelfStudyPicks variant="sidebar" />
             <CollegeDetailRecommendedExams college={college} />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
