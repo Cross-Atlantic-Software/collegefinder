@@ -93,23 +93,23 @@ export function QuickSelfStudyPicks({
           <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
             Quick Self-Study Picks
           </h3>
-          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {/* <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
             Short tactical videos curated to improve your next mock score.
-          </p>
+          </p> */}
         </div>
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
             aria-hidden
             tabIndex={-1}
           >
-            <BiChevronRight className="h-4 w-4" />
+            <BiChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <article className="relative mt-3 shrink-0 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 dark:border-slate-700 dark:bg-slate-800/40">
+      <article className="relative mt-1 shrink-0 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 pt-2.5 dark:border-slate-700 dark:bg-slate-800/40">
         <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg bg-black">
           {picks.map((video, idx) => {
             const isPreload = idx === preloadVideoIndex;
@@ -147,7 +147,7 @@ export function QuickSelfStudyPicks({
           })}
         </div>
 
-        <div className="relative mt-2.5 min-h-[36px]">
+        <div className="relative mt-1 min-h-[36px]">
           {picks.map((video, idx) => {
             const isActive = idx === activeVideoIndex;
             const isPrev = idx === prevVideoIndex;
@@ -167,7 +167,7 @@ export function QuickSelfStudyPicks({
                   href={video.videoUrl}
                   variant="themeButtonOutline"
                   size="sm"
-                  className="!rounded-full px-3 py-1 text-[11px] shrink-0"
+                  className="!rounded-full !px-2 !py-0.5 text-[9px] leading-none shrink-0"
                 >
                   Watch now
                 </Button>
@@ -182,7 +182,7 @@ export function QuickSelfStudyPicks({
           {picks.map((item, idx) => {
             if (idx === activeVideoIndex) return null;
             return (
-              <article key={item.title} className="py-2 first:pt-0 last:pb-0">
+              <article key={item.title} className="py-1 first:pt-0 last:pb-0">
                 <button
                   type="button"
                   onClick={() => handleVideoSelect(idx)}

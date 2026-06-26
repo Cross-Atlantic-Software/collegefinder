@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BiCalendarAlt, BiListUl, BiSearch, BiTargetLock } from "react-icons/bi";
+import { BiCalendarAlt, BiInfoCircle, BiListUl, BiSearch, BiTargetLock } from "react-icons/bi";
 import { examDetailHref } from "@/lib/examDisplay";
 
 export type PhaseStatus = "done" | "active" | "upcoming" | "overdue";
@@ -280,11 +280,6 @@ const formatDate = (date: Date) =>
   date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 
 const clampPct = (value: number) => Math.min(100, Math.max(0, value));
-
-const parsePhaseNumber = (id: string) => {
-  const match = id.match(/phase-(\d+)/i);
-  return match ? Number(match[1]) : null;
-};
 
 const defaultPhaseId = (phases: StudyPhase[]) =>
   phases.find((phase) => phase.id === "phase-1")?.id ?? phases[0]?.id ?? null;
@@ -671,10 +666,22 @@ export default function UpcomingDeadlinesCard({
         }
       `}} />
       <article className="flex xl:h-full xl:min-h-0 flex-col xl:overflow-hidden rounded-2xl bg-white p-3 dark:bg-slate-900">
-      <div className="shrink-0 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <div>
+      <div className="shrink-0 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex items-center gap-1.5">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
-          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Track your mapped phases and milestone progress timeline over the months.</p>
+          <span className="group/info relative inline-flex">
+            <BiInfoCircle
+              className="h-4 w-4 cursor-help text-slate-400 outline-none transition-colors hover:text-slate-600 focus-visible:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              tabIndex={0}
+              aria-label="Timeline tip"
+            />
+            <span
+              role="tooltip"
+              className="pointer-events-none invisible absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600 opacity-0 shadow-lg transition-opacity duration-150 group-hover/info:visible group-hover/info:opacity-100 group-focus-within/info:visible group-focus-within/info:opacity-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            >
+              Tip: click a month label to expand crowded dates.
+            </span>
+          </span>
         </div>
         <div className="flex items-center">
           <div ref={yearMenuRef} className="relative">
@@ -683,11 +690,11 @@ export default function UpcomingDeadlinesCard({
               aria-haspopup="listbox"
               aria-expanded={isYearMenuOpen}
               onClick={() => setIsYearMenuOpen((open) => !open)}
-              className="flex min-w-[92px] items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex min-w-[64px] items-center justify-between gap-1 rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <span>{selectedYear}</span>
               <svg
-                className={`h-4 w-4 text-slate-400 transition-transform dark:text-slate-500 ${
+                className={`h-3.5 w-3.5 text-slate-400 transition-transform dark:text-slate-500 ${
                   isYearMenuOpen ? "rotate-180" : ""
                 }`}
                 fill="none"
@@ -731,8 +738,8 @@ export default function UpcomingDeadlinesCard({
       </div>
 
       {viewMode === "timeline" ? (
-        <div className="mt-2 flex xl:min-h-0 flex-1 flex-col xl:overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700/60 dark:bg-slate-900">
-          {/* Tip / zoom banner — sits ABOVE the grid so it doesn't shift alignment */}
+        <div className="mt-0.5 flex xl:min-h-0 flex-1 flex-col xl:overflow-hidden rounded-xl border border-slate-200/80 bg-white px-3 dark:border-slate-700/60 dark:bg-slate-900">
+          {/* Zoom banner — only when a month is expanded; sits ABOVE the grid so it doesn't shift alignment */}
           {focusedMonth ? (
             <div className="shrink-0 mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
@@ -746,13 +753,9 @@ export default function UpcomingDeadlinesCard({
                 Full timeline
               </button>
             </div>
-          ) : (
-            <p className="shrink-0 mb-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              Tip: click a month label to expand crowded dates.
-            </p>
-          )}
+          ) : null}
 
-          <div className="grid xl:min-h-0 flex-1 xl:overflow-y-auto overflow-x-hidden grid-cols-[136px_1fr] gap-0 sm:grid-cols-[160px_1fr] xl:pr-1 [scrollbar-width:thin] [scrollbar-color:black_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-lg [&::-webkit-scrollbar-thumb]:bg-black/90 [&::-webkit-scrollbar-thumb]:border-[2px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-white dark:[&::-webkit-scrollbar-thumb]:bg-[#FAD53C]/80 dark:[&::-webkit-scrollbar-thumb]:border-slate-900">
+          <div className="grid xl:min-h-0 flex-1 overflow-hidden grid-cols-[136px_1fr] gap-0 sm:grid-cols-[160px_1fr]">
             {/* ── Phase list sidebar ── */}
             <div className="border-r border-slate-200 pr-2 dark:border-slate-700">
               {/* Header spacer — matches month header row exactly */}
@@ -761,15 +764,14 @@ export default function UpcomingDeadlinesCard({
               </div>
               {/* Phase rows — h-10 each, no extra gap */}
               <div>
-                {filteredPhases.map((phase, index) => {
+                {filteredPhases.map((phase) => {
                   const isSelected = selectedPhaseId === phase.id;
-                  const phaseNumber = parsePhaseNumber(phase.id) ?? index + 1;
                   return (
                   <div key={phase.id}>
                     <button
                       type="button"
                       onClick={() => handleSelectPhase(phase.id)}
-                      className={`group flex h-10 w-full items-center gap-2 rounded-lg px-2 text-left transition-all duration-150 ease-out ${
+                      className={`group flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left transition-all duration-150 ease-out ${
                         isSelected
                           ? "bg-[#FAD53C]/15 dark:bg-[#FAD53C]/10"
                           : "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50"
@@ -779,9 +781,6 @@ export default function UpcomingDeadlinesCard({
                       {/* Left status accent */}
                       <span className={`h-6 w-[3px] shrink-0 rounded-full transition-all duration-200 ${phaseStatusAccent[phase.status]} ${isSelected ? "opacity-100" : "opacity-40 group-hover:opacity-70"}`} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                          P{phaseNumber}
-                        </p>
                         <p className="truncate text-[11px] font-semibold leading-tight text-slate-800 dark:text-slate-100">
                           {phase.label}
                         </p>
@@ -854,7 +853,7 @@ export default function UpcomingDeadlinesCard({
                                 handleSelectPhase(phase.id);
                               }
                             }}
-                            className={`group relative h-10 cursor-pointer overflow-visible border-b border-slate-100 transition-colors duration-200 ease-out last:border-b-0 dark:border-slate-800 ${
+                            className={`group relative h-7 cursor-pointer overflow-visible border-b border-slate-100 transition-colors duration-200 ease-out last:border-b-0 dark:border-slate-800 ${
                               isSelected
                                 ? "bg-[#FAD53C]/10 dark:bg-[#FAD53C]/5"
                                 : isEvenRow
