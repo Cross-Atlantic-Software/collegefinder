@@ -1,0 +1,230 @@
+/**
+ * Verifier — Read-back Verification
+ * 
+ * After every fill, reads back the element's value and compares
+ * with what was intended. Ensures no silent wrong fills.
+ */
+
+const Verifier = {
+  /**
+   * Verify a filled field.
+   * @param {Element} el             The DOM element that was filled
+   * @param {string}  intendedValue  What we tried to set
+   * @param {object}  fieldConfig    The adapter field definition
+   * @param {object}  fillResult     Result from Filler.fill() — { status, note }
+   * @returns {object} Final result: { status, note, actualValue }
+   */
+  verify(el, intendedValue, fieldConfig, fillResult) {
+    if (fillResult.status === 'not_found') {
+      return { ...fillResult, actualValue: null };
+    }
+
+    if (fillResult.status === 'failed') {
+      return { ...fillResult, actualValue: null };
+    }
+
+    // File inputs: verify by checking el.files.length
+    if (fieldConfig.type === 'file') {
+      const singleEl = (el instanceof NodeList || Array.isArray(el)) ? el[0] : el;
+      const hasFile = singleEl?.files?.length > 0;
+      if (fillResult.status === 'filled' && hasFile) {
+        return { status: 'filled', note: fillResult.note, actualValue: singleEl.files[0]?.name || '' };
+      }
+      if (fillResult.status === 'filled' && !hasFile) {
+        return { status: 'failed', note: 'File injection succeeded but portal did not accept it', actualValue: null };
+      }
+      return { ...fillResult, actualValue: null };
+    }
+
+    // Custom dropdown fills are verified by the filler itself (click confirmed).
+    // The underlying hidden <select> value may not match, so trust the filler.
+    if (fillResult.note && fillResult.note.startsWith('Custom dropdown:')) {
+      return { status: 'filled', note: fillResult.note, actualValue: fillResult.note.replace('Custom dropdown: ', '') };
+    }
+
+    // Masked fields (e.g. SSC's Aadhaar UID shows "****" once typed) can't be
+    // read back. Trust the fill and DON'T clear it — just flag for a manual check.
+    if (fieldConfig.masked || fieldConfig.skip_verify) {
+      return {
+        status: 'check',
+        note: 'Entered — the portal masks this value, so please confirm it was filled correctly',
+        actualValue: null
+      };
+    }
+
+    const type = fieldConfig.type || 'text';
+    const tag  = (el instanceof Element) ? (el.tagName || '').toLowerCase() : '';
+    let actual;
+
+    // Radio groups pass a NodeList (not a single Element) — handle before accessing tagName
+    if (type === 'radio') {
+      actual = this._readRadio(el, fieldConfig);
+    } else if (type === 'checkbox') {
+      actual = el.checked ? 'true' : 'false';
+    } else if (tag === 'select') {
+      // For hidden selects (custom dropdown), read back the visible overlay text if available
+      const cs = window.getComputedStyle(el);
+      const isHidden = cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05;
+      if (isHidden) {
+        // Try to read visible overlay text near the hidden select
+        let overlayText = '';
+        let wrapper = el.parentElement;
+        for (let i = 0; i < 5 && wrapper; i++) {
+          const valueEl = wrapper.querySelector(
+            '[class*="single-value"], [class*="selected-value"], ' +
+            '[class*="SelectValue"], [role="combobox"] span, ' +
+            '[class*="value-container"] span'
+          );
+          if (valueEl && valueEl.textContent.trim()) {
+            overlayText = valueEl.textContent.trim();
+            break;
+          }
+          wrapper = wrapper.parentElement;
+        }
+        actual = overlayText || (el.options[el.selectedIndex]?.textContent.trim() ?? '');
+      } else {
+        const selectedOpt = el.options[el.selectedIndex];
+        actual = selectedOpt ? selectedOpt.textContent.trim() : '';
+      }
+    } else {
+      actual = el.value || '';
+    }
+
+    if (fillResult.status === 'check') {
+      return { ...fillResult, actualValue: actual };
+    }
+
+    const intended = String(intendedValue ?? '').trim();
+    const actualTrimmed = String(actual).trim();
+
+    // For masked date inputs, compare digit-only sequences so "07 / 04 / 2006"
+    // matches the ISO source "2004-08-07" after reformatting.
+    if (fieldConfig.type === 'date') {
+      const dc = fieldConfig.date_config || {};
+      const fmt = (dc.format || 'DDMMYYYY').toUpperCase();
+      let digitsExpected = '';
+      const isoMatch = intended.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoMatch) {
+        const [, yyyy, mm, dd] = isoMatch;
+        digitsExpected = fmt === 'MMDDYYYY' ? mm + dd + yyyy : dd + mm + yyyy;
+      } else {
+        digitsExpected = intended.replace(/\D/g, '');
+      }
+      const digitsActual = actualTrimmed.replace(/\D/g, '');
+      if (digitsActual.length > 0 && digitsActual === digitsExpected) {
+        return { status: 'filled', note: null, actualValue: actual };
+      }
+      if (digitsActual.length > 0) {
+        return { status: 'check', note: `Date digits: got "${digitsActual}" expected "${digitsExpected}"`, actualValue: actual };
+      }
+    }
+
+    if (this._matches(intended, actualTrimmed, fieldConfig)) {
+      return { status: 'filled', note: null, actualValue: actual };
+    }
+
+    if (actualTrimmed === '' || actualTrimmed === intended) {
+      return { status: 'filled', note: null, actualValue: actual };
+    }
+
+    // Value was transformed (auto-capitalised, etc.) — acceptable but flag
+    if (this._fuzzyMatch(intended, actualTrimmed)) {
+      return {
+        status: 'check',
+        note: `Value was transformed: "${actualTrimmed}" (expected "${intended}")`,
+        actualValue: actual
+      };
+    }
+
+    // Complete mismatch — clear and report
+    try {
+      if (tag !== 'select' && type !== 'radio' && type !== 'checkbox') {
+        const proto = HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value');
+        if (setter && setter.set) {
+          setter.set.call(el, '');
+        } else {
+          el.value = '';
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    } catch (_) { /* best effort */ }
+
+    return {
+      status: 'failed',
+      note: `Read-back mismatch: got "${actualTrimmed}" instead of "${intended}"`,
+      actualValue: actual
+    };
+  },
+
+  _readRadio(elOrRadios, fieldConfig) {
+    let radios;
+    if (elOrRadios instanceof NodeList || Array.isArray(elOrRadios)) {
+      radios = elOrRadios;
+    } else if (elOrRadios.name) {
+      radios = document.querySelectorAll(`input[type="radio"][name="${elOrRadios.name}"]`);
+    } else {
+      radios = [elOrRadios];
+    }
+
+    for (const r of radios) {
+      if (r.checked) {
+        // Prefer the visible label ("Yes"/"No") over the raw value attribute,
+        // which is often the generic default "on".
+        const label = this._radioLabel(r);
+        const val = (r.value || '').trim();
+        if (label) return label;
+        if (val && val.toLowerCase() !== 'on') return val;
+        return val || '';
+      }
+    }
+    return '';
+  },
+
+  /** Visible label for a radio: wrapping label, label[for], or adjacent text. */
+  _radioLabel(radio) {
+    const wrap = radio.closest('label');
+    if (wrap && wrap.textContent.trim()) return wrap.textContent.trim();
+    if (radio.id) {
+      try {
+        const l = document.querySelector(`label[for="${CSS.escape(radio.id)}"]`);
+        if (l && l.textContent.trim()) return l.textContent.trim();
+      } catch (_) { /* invalid id */ }
+    }
+    let sib = radio.nextSibling;
+    while (sib) {
+      if (sib.nodeType === 3 && sib.textContent.trim()) return sib.textContent.trim();
+      if (sib.nodeType === 1) { const t = sib.textContent.trim(); if (t) return t; }
+      sib = sib.nextSibling;
+    }
+    return '';
+  },
+
+  _matches(intended, actual, fieldConfig) {
+    if (intended.toLowerCase() === actual.toLowerCase()) return true;
+
+    const valueMap = fieldConfig.value_map || {};
+    for (const aliases of Object.values(valueMap)) {
+      if (!Array.isArray(aliases)) continue;
+      const lowerAliases = aliases.filter(a => a != null).map(a => String(a).toLowerCase());
+      if (lowerAliases.includes(intended.toLowerCase()) && lowerAliases.includes(actual.toLowerCase())) {
+        return true;
+      }
+    }
+
+    return false;
+  },
+
+  _fuzzyMatch(a, b) {
+    // Strip ALL non-alphanumerics + lowercase, so values transformed by the
+    // portal (uppercased, commas/punctuation removed) still count as a match.
+    // e.g. "123, Sample Lane" === "123 SAMPLE LANE".
+    const normalize = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalize(a) === normalize(b);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.ExamFillVerifier = Verifier;
+}

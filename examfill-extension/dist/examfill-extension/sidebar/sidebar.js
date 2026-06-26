@@ -1,0 +1,1707 @@
+/**
+ * ExamFill Sidebar — Interactive State Manager
+ *
+ * States handled:
+ *  noPortal      — not on a known exam portal
+ *  login         — ExamFill not authenticated
+ *  loading       — fetching profile + adapter
+ *  portalLogin   — on portal's own login/auth page (step guide)
+ *  ready         — on registration form, ready to fill
+ *  filling       — fill pipeline running (live progress ring)
+ *  complete      — fill done, show per-field report
+ *  error         — something went wrong
+ */
+
+(function () {
+  'use strict';
+
+  // ─── App State ───
+
+  let profile = null;
+  let adapter = null;
+  let examId = null;
+  let examName = null;
+  let currentTabUrl = '';
+  let sectionStates = {};   // section_id → { status, report }
+  let progressLoaded = false;   // have we hydrated persisted progress for this exam?
+  let creditStatus = null;  // { balance, credit_cost, exam_fee, sufficient, has_active_charge }
+  let adminValidateMode = false; // admin "Admin Apply" run — credit-free, reports tagged validation_run
+  let nextSectionIdx = 0;   // for "Fill Next" button
+  let isAdmin = false;      // populated from background after login
+  let hasPublishedAdapter = false; // false → admin sees Builder by default
+  let profileSchemaPaths = []; // populated lazily for the Builder source dropdown
+  let builderState = {
+    section: null,        // last AI-generated section (sanitized) currently being edited
+    fillReports: {}       // field_id → status returned by the live filler
+  };
+  let lastKnownAdapterVersion = 0; // server adapter version; baseline for build recovery
+  let lastBuildBaseline = { version: 0, sectionIds: new Set() }; // snapshot taken before each build
+
+  // ─── DOM ───
+
+  const $ = id => document.getElementById(id);
+  const $q = sel => document.querySelector(sel);
+
+  const views = {
+    noPortal:    $('stateNoPortal'),
+    login:       $('stateLogin'),
+    loading:     $('stateLoading'),
+    portalLogin: $('statePortalLogin'),
+    ready:       $('stateReady'),
+    filling:     $('stateFilling'),
+    complete:    $('stateComplete'),
+    review:      $('stateReview'),
+    error:       $('stateError'),
+    noAdapter:   $('stateNoAdapter'),
+    builder:     $('stateBuilder'),
+    examPicker:  $('stateExamPicker'),
+    buyBlock:    $('stateBuyBlock')
+  };
+
+  let examCatalog = null;      // cached list from GET_EXAM_CATALOG
+  let manualExamSelected = false; // true once user picks from the dropdown (suppresses auto-detect override)
+
+  // ─── Init ───
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    boot();
+  });
+
+  async function boot() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    currentTabUrl = tab?.url || '';
+    // Admin Apply handoff: if the CMS launched this tab for validation, enter
+    // admin-validation mode (credit-free, reports tagged validation_run). Consume
+    // the key immediately so a later student run on this tab is never mistaken
+    // for a validation run.
+    await consumeAdminValidate();
+    // Proactively adopt any existing CollegeFinder/CMS session so a signed-in
+    // user never sees a login screen — no page refresh, no button click needed.
+    await msg('TRY_WEB_SSO');
+    // Bust any stale profile cache on panel open so freshly-edited profile data
+    // (new fields, updated marks) is picked up immediately.
+    await msg('GET_PROFILE', { force: true }).catch(() => {});
+    await detectAndLoad();
+  }
+
+  // One-shot read of the Admin Apply handoff. Deletes the key so it can never
+  // re-trigger on a subsequent (student) run in the same tab.
+  let adminValidateExamId = null;
+  async function consumeAdminValidate() {
+    try {
+      const { examfill_admin_validate } = await chrome.storage.local.get('examfill_admin_validate');
+      if (examfill_admin_validate && examfill_admin_validate.exam_id) {
+        adminValidateMode = true;
+        adminValidateExamId = String(examfill_admin_validate.exam_id);
+        await chrome.storage.local.remove('examfill_admin_validate');
+      }
+    } catch (_) { /* storage unavailable — proceed as a normal run */ }
+  }
+
+  async function detectAndLoad() {
+    // A manual selection takes precedence over URL auto-detection until the
+    // user explicitly goes back to the picker or logs out.
+    if (manualExamSelected) return;
+
+    showView('loading');
+
+    // Admin-validation mode: the exam is fixed by the CMS handoff. Skip DETECT_EXAM
+    // entirely — student detection now requires approval, so it would not match the
+    // (possibly unapproved) draft we are here to validate. The adapter is loaded via
+    // the admin draft-load path (GET_ADAPTER_ADMIN) in loadProfileAndRoute.
+    if (adminValidateMode && adminValidateExamId) {
+      examId   = adminValidateExamId;
+      examName = adminValidateExamId;
+      isAdmin  = true;
+      hasPublishedAdapter = true;
+      showExamBadge(examName);
+      await loadProfileAndRoute({ checkPortalLogin: false });
+      return;
+    }
+
+    const detection = await msg('DETECT_EXAM', { url: currentTabUrl });
+
+    if (!detection.detected) {
+      showView('noPortal');
+      renderSupportedExams();
+      return;
+    }
+
+    examId   = detection.exam_id;
+    examName = detection.exam_name || examId;
+    isAdmin  = detection.is_admin === true;
+    hasPublishedAdapter = detection.has_published_adapter === true;
+    showExamBadge(examName);
+
+    await loadProfileAndRoute({ checkPortalLogin: true });
+  }
+
+  /**
+   * Shared tail used by both auto-detection and manual selection:
+   * verify auth → load profile + adapter → route to the right view.
+   * @param {object} opts { checkPortalLogin } — manual picks skip the portal
+   *   login-page detour since the user has explicitly chosen the exam.
+   */
+  async function loadProfileAndRoute({ checkPortalLogin = true } = {}) {
+    const isPortalLoginPage = checkPortalLogin && isLoginPage(currentTabUrl);
+
+    let auth = await msg('GET_AUTH_STATUS');
+    if (!auth.authenticated) {
+      // Try to adopt an existing website / CMS session before asking for OTP.
+      const sso = await msg('TRY_WEB_SSO');
+      if (sso?.authenticated) {
+        auth = { authenticated: true, is_admin: sso.is_admin };
+      } else {
+        showView('login');
+        return;
+      }
+    }
+    if (auth.is_admin === true) isAdmin = true;
+
+    // Fetch profile (always) + adapter (might 404 for new exams). In admin-
+    // validation mode load via the admin draft path so an unapproved/unpublished
+    // adapter still loads for validation (the student path now requires approval).
+    const [profileRes, adapterRes] = await Promise.all([
+      msg('GET_PROFILE'),
+      msg((adminValidateMode || isAdmin) ? 'GET_ADAPTER_ADMIN' : 'GET_ADAPTER', { exam_id: examId, forceRefresh: true })
+    ]);
+
+    if (!profileRes.success) {
+      if ((profileRes.error || '').includes('Token expired')) { showView('login'); return; }
+      showError(profileRes.error || 'Failed to load your profile');
+      return;
+    }
+
+    profile  = profileRes.data;
+    adapter  = adapterRes.success ? adapterRes.data : null;
+    lastKnownAdapterVersion = (adapter && adapter.version) || 0;
+    if (adapter && adapter.exam_name) examName = adapter.exam_name;
+
+    if (isPortalLoginPage) {
+      showPortalLoginGuide();
+      return;
+    }
+
+    // No published adapter for this exam yet
+    if (!adapter || !Array.isArray(adapter.sections) || adapter.sections.length === 0) {
+      showNoAdapterState();
+      return;
+    }
+
+    showReadyState();
+  }
+
+  function showNoAdapterState() {
+    showView('noAdapter');
+    $('noAdapterHeading').textContent = `${examName} — Adapter not ready`;
+    $('noAdapterAdminCta').style.display    = isAdmin ? 'block' : 'none';
+    $('noAdapterStudentCta').style.display  = isAdmin ? 'none'  : 'block';
+    $('noAdapterSub').textContent = isAdmin
+      ? 'Use the Builder to scan this page and let AI map every field.'
+      : 'This exam is registered but our team is still preparing the field mappings. Please check back soon.';
+  }
+
+  // ─── Portal login page detection ───
+
+  const LOGIN_PATH_PATTERNS = ['/auth/login', '/login', '/signin', '/sign-in', '/auth', '/account/login'];
+
+  function isLoginPage(url) {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return LOGIN_PATH_PATTERNS.some(p => lower.includes(p));
+  }
+
+  // ─── Show/hide views ───
+
+  function showView(name) {
+    Object.values(views).forEach(el => { if (el) el.style.display = 'none'; });
+    if (views[name]) views[name].style.display = 'block';
+
+    const needLogout = name === 'ready' || name === 'filling' || name === 'complete' || name === 'portalLogin';
+    $('logoutBtn').style.display = needLogout ? 'block' : 'none';
+
+    // When showing login, always reset to email step
+    if (name === 'login') {
+      clearOtpTimer();
+      $('loginStepEmail').style.display = 'block';
+      $('loginStepOtp').style.display   = 'none';
+      $('emailError').style.display     = 'none';
+      $('otpError').style.display       = 'none';
+    }
+  }
+
+  function showExamBadge(name) {
+    const badge = $('examBadge');
+    badge.textContent = name;
+    badge.style.display = 'block';
+  }
+
+  function showError(message) {
+    $('errorMessage').textContent = message;
+    showView('error');
+  }
+
+  // ─── State: No portal ───
+
+  function renderSupportedExams() {
+    const exams = ['SSC CGL', 'JEE Main', 'NEET UG', 'CUET', 'MHT-CET', 'BITSAT', 'VITEEE', 'NATA', 'SRMJEEE'];
+    const container = $('supportedExamsList');
+    container.innerHTML = '';
+    exams.forEach(name => {
+      const tag = document.createElement('div');
+      tag.className = 'exam-tag';
+      tag.textContent = name;
+      container.appendChild(tag);
+    });
+  }
+
+  // ─── State: Manual exam picker ───
+
+  const MAX_PICKER_ROWS = 80; // cap rendered rows; search narrows the rest
+
+  async function openExamPicker() {
+    showView('examPicker');
+    $('pickerSearch').value = '';
+    $('pickerList').innerHTML = '<div class="picker-more-note">Loading exams…</div>';
+    $('pickerEmpty').style.display = 'none';
+
+    if (!examCatalog) {
+      const res = await msg('GET_EXAM_CATALOG');
+      if (!res?.success) {
+        if ((res?.error || '').includes('Token expired')) { showView('login'); return; }
+        $('pickerList').innerHTML = '';
+        $('pickerEmpty').textContent = res?.error || 'Could not load the exam list.';
+        $('pickerEmpty').style.display = 'block';
+        return;
+      }
+      examCatalog = Array.isArray(res.data) ? res.data : [];
+    }
+
+    renderExamCatalog('');
+    setTimeout(() => $('pickerSearch').focus(), 50);
+  }
+
+  function renderExamCatalog(filter) {
+    const list = $('pickerList');
+    const empty = $('pickerEmpty');
+    const q = (filter || '').trim().toLowerCase();
+
+    const matches = examCatalog.filter(e => {
+      if (!q) return true;
+      return (e.name || '').toLowerCase().includes(q) ||
+             (e.code || '').toLowerCase().includes(q) ||
+             (e.abbreviation || '').toLowerCase().includes(q) ||
+             (e.conducting_authority || '').toLowerCase().includes(q);
+    });
+
+    list.innerHTML = '';
+    if (matches.length === 0) {
+      empty.textContent = 'No exams match your search.';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const shown = matches.slice(0, MAX_PICKER_ROWS);
+    for (const exam of shown) {
+      const ready = !!exam.has_published_adapter;
+      const initials = (exam.abbreviation || exam.name || '?').trim().charAt(0).toUpperCase();
+      const meta = exam.conducting_authority || (ready ? 'Ready to fill' : 'Adapter coming soon');
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'picker-row';
+      row.innerHTML = `
+        <div class="picker-row-logo">${escHtml(initials)}</div>
+        <div class="picker-row-body">
+          <div class="picker-row-name">${escHtml(exam.name || exam.code || 'Untitled exam')}</div>
+          <div class="picker-row-meta">${escHtml(meta)}</div>
+        </div>
+        <span class="picker-badge ${ready ? 'ready' : 'soon'}">${ready ? 'Ready' : 'Soon'}</span>
+      `;
+      row.addEventListener('click', () => selectExamManually(exam));
+      list.appendChild(row);
+    }
+
+    if (matches.length > shown.length) {
+      const note = document.createElement('div');
+      note.className = 'picker-more-note';
+      note.textContent = `Showing ${shown.length} of ${matches.length}. Refine your search to see more.`;
+      list.appendChild(note);
+    }
+  }
+
+  /**
+   * User picked an exam from the catalog. Flow:
+   *  1. Ask the background to inject the content scripts into the active tab.
+   *     Injection relies on the manifest's static host_permissions (for the
+   *     listed portals incl. ssc.gov.in) or the `activeTab` grant the user gives
+   *     by opening ExamFill on this tab — no broad host permission is requested.
+   *  2. Set the active exam and run the standard profile + adapter routing.
+   */
+  async function selectExamManually(exam) {
+    // Only http(s) pages can host the fill engine.
+    if (!/^https?:\/\//i.test(currentTabUrl)) {
+      showError('Open the exam\'s registration page in this tab first, then pick the exam.');
+      return;
+    }
+
+    showView('loading');
+
+    examId   = exam.adapter_exam_id || exam.slug;
+    examName = exam.name || examId;
+    hasPublishedAdapter = !!exam.has_published_adapter;
+    manualExamSelected = true;
+    showExamBadge(examName);
+
+    // (1) Inject content scripts into the active tab (no-op if already present).
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) { showError('No active tab found.'); return; }
+
+    const inject = await msg('ENSURE_INJECTED', { tabId: tab.id });
+    if (!inject?.success) {
+      showError(inject?.error || 'Could not activate ExamFill on this page. Open the registration page in this tab and try again.');
+      return;
+    }
+
+    // (2) Standard routing. Skip portal-login detour — the user chose explicitly.
+    await loadProfileAndRoute({ checkPortalLogin: false });
+  }
+
+  // ─── State: Portal login guide ───
+
+  function showPortalLoginGuide() {
+    $('portalDetectedName').textContent = `${examName} portal detected`;
+    $('portalLoginAdminCta').style.display = isAdmin ? 'flex' : 'none';
+
+    // Show the email fill card if we have the user's email
+    const email = profile?.student?.email;
+    if (email) {
+      $('portalFillEmailDisplay').textContent = email;
+      $('portalLoginFillCard').style.display = 'flex';
+    } else {
+      $('portalLoginFillCard').style.display = 'none';
+    }
+    $('portalFillResult').style.display = 'none';
+
+    showView('portalLogin');
+  }
+
+  async function fillPortalEmail() {
+    const email = profile?.student?.email;
+    if (!email) return;
+
+    const btn = $('fillPortalEmailBtn');
+    btn.disabled = true;
+    btn.textContent = 'Filling…';
+
+    // Use the content script to fill the email field
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabId = tab?.id;
+
+    // Build a minimal field config matching the NATA login email field
+    const loginFields = [
+      {
+        field_id: 'portal_email',
+        label: 'Email',
+        source: 'student.email',
+        type: 'text',
+        selectors: {
+          by_label:       ['Email', 'Email Address', 'Registered Email'],
+          by_placeholder: ['Email', 'Email Address', 'Enter your email'],
+          by_id:          ['email', 'userEmail', 'loginEmail', 'username'],
+          by_name:        ['email', 'username', 'userEmail']
+        }
+      }
+    ];
+
+    try {
+      const result = await msg('FILL_SECTION', {
+        section: 'portal_login',
+        fields: loginFields,
+        userData: profile,
+        tabId,
+        admin_validate: adminValidateMode
+      });
+
+      const resultEl = $('portalFillResult');
+      const fieldResult = result?.report?.results?.[0];
+
+      if (result.success && fieldResult?.status === 'filled') {
+        resultEl.textContent = '✓ Email filled on portal!';
+        resultEl.className = 'portal-fill-result ok';
+      } else {
+        resultEl.textContent = '⚠ Could not find email field — please type it manually.';
+        resultEl.className = 'portal-fill-result failed';
+      }
+      resultEl.style.display = 'block';
+    } catch (err) {
+      const resultEl = $('portalFillResult');
+      resultEl.textContent = '⚠ Fill failed — please type your email manually.';
+      resultEl.className = 'portal-fill-result failed';
+      resultEl.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fill Email on Portal`;
+  }
+
+  // ─── State: Ready ───
+
+  function showReadyState() {
+    showView('ready');
+
+    // Profile strip
+    const name = profile?.student?.full_name || profile?.student?.name || '—';
+    $('profileName').textContent = name;
+    $('profileAvatar').textContent = name.charAt(0).toUpperCase();
+
+    const meta = [
+      profile?.student?.mobile,
+      profile?.address?.city,
+      profile?.address?.state
+    ].filter(Boolean).join(' · ');
+    $('profileMeta').textContent = meta || examName;
+
+    // Profile completeness
+    const fields = [
+      profile?.student?.full_name,
+      profile?.student?.dob,
+      profile?.student?.gender,
+      profile?.address?.state,
+      profile?.address?.city,
+      profile?.address?.pincode,
+      profile?.education?.class_12?.board,
+      profile?.education?.class_12?.percentage
+    ];
+    const filled = fields.filter(v => v && String(v).trim()).length;
+    const pct = Math.round((filled / fields.length) * 100);
+    $('profileCompletion').textContent = `${pct}% complete`;
+
+    // Admin: show the Builder toggle so they can refine the existing adapter
+    $('adminToggleCard').style.display = isAdmin ? 'flex' : 'none';
+
+    // Sections
+    renderSections();
+    hydrateProgress();   // restore saved progress (async; re-renders when it returns)
+    hydrateCreditStatus(); // balance + fee/cost + lifecycle actions (async)
+  }
+
+  // ─── Credits: fee/cost display + application lifecycle ───
+
+  // Refresh the credit card and the "mark submitted" / "cancel & refund" actions.
+  // Re-run on every showReadyState so the balance stays current after a charge/refund.
+  async function hydrateCreditStatus() {
+    if (!examId) return;
+    try {
+      const res = await msg('GET_CREDIT_STATUS', { exam_id: examId });
+      if (!res || !res.success || !res.data) return;
+      creditStatus = res.data;
+    } catch (_) {
+      return; // non-blocking — the fee card is a nicety, never block filling
+    }
+    renderCreditCard();
+  }
+
+  function renderCreditCard() {
+    if (!creditStatus) return;
+    const card = $('creditCard');
+    if (card) card.style.display = 'flex';
+
+    $('creditBalance').textContent =
+      `${creditStatus.balance} credit${creditStatus.balance === 1 ? '' : 's'}`;
+    $('creditCost').textContent =
+      `${creditStatus.credit_cost} credit${creditStatus.credit_cost === 1 ? '' : 's'}`;
+
+    if (creditStatus.exam_fee != null) {
+      $('examFeeRow').style.display = 'flex';
+      $('examFee').textContent = `₹${Number(creditStatus.exam_fee).toLocaleString('en-IN')}`;
+    } else {
+      $('examFeeRow').style.display = 'none';
+    }
+
+    // Lifecycle actions
+    const actions = $('creditActions');
+    const markBtn = $('markSubmittedBtn');
+    const cancelBtn = $('cancelRefundBtn');
+
+    const total = adapter?.sections?.length || 0;
+    const completed = (adapter?.sections || []).filter(
+      (sec) => sectionStates[sec.section_id]?.status === 'done'
+    ).length;
+    const allDone = total > 0 && completed === total;
+    const hasActive = !!creditStatus.has_active_charge;
+
+    // "Mark as submitted" — only meaningful once everything is filled AND a charge is open.
+    markBtn.style.display = allDone && hasActive ? 'block' : 'none';
+    // "Cancel & refund" — available whenever an active charge exists (not yet submitted).
+    cancelBtn.style.display = hasActive ? 'block' : 'none';
+    actions.style.display = (markBtn.style.display !== 'none' || cancelBtn.style.display !== 'none')
+      ? 'flex' : 'none';
+  }
+
+  // Pre-fill gate: ensure a fill charge exists before letting the student fill a
+  // section. Idempotent server-side, so calling before each section / on a
+  // save-and-continue reopen returns the active charge without re-debiting.
+  // Returns true when filling may proceed; false when blocked (buy-block shown).
+  async function ensureCharged() {
+    const res = await msg('FILL_CHARGE', { exam_id: examId });
+    if (res && res.success) {
+      // Refresh local view of the wallet/charge so the card + actions update.
+      if (res.data && typeof res.data.balance === 'number') {
+        creditStatus = {
+          ...(creditStatus || {}),
+          balance: res.data.balance,
+          has_active_charge: true,
+          sufficient: true
+        };
+        renderCreditCard();
+      }
+      return true;
+    }
+    if (res && res.code === 'INSUFFICIENT_CREDITS') {
+      showBuyBlock(res.shortfall, res.wallet_url);
+      return false;
+    }
+    showError((res && res.error) || 'Could not start the fill. Please try again.');
+    return false;
+  }
+
+  // Gate then route into the existing pre-fill review flow.
+  async function startFill(section, idx) {
+    // Admin validation runs are credit-free: never enter the charge path (no
+    // fill_charge created, no 402), so the wallet is untouched.
+    if (adminValidateMode) {
+      showReviewState(section, idx);
+      return;
+    }
+    const ok = await ensureCharged();
+    if (ok) showReviewState(section, idx);
+  }
+
+  function showBuyBlock(shortfall, walletUrl) {
+    showView('buyBlock');
+    const n = Number(shortfall) || 0;
+    $('buyBlockSub').textContent = n > 0
+      ? `You need ${n} more credit${n === 1 ? '' : 's'} to auto-fill this form.`
+      : 'You need more credits to auto-fill this form.';
+    const buyBtn = $('buyCreditsBtn');
+    buyBtn.onclick = () => {
+      if (walletUrl) chrome.tabs.create({ url: walletUrl });
+    };
+  }
+
+  async function markApplicationSubmitted() {
+    const btn = $('markSubmittedBtn');
+    btn.disabled = true;
+    const res = await msg('FILL_CHARGE_COMPLETE', { exam_id: examId });
+    btn.disabled = false;
+    if (!res || !res.success) {
+      showError((res && res.error) || 'Could not mark the application as submitted.');
+      return;
+    }
+    await hydrateCreditStatus();
+  }
+
+  async function cancelAndRefund() {
+    if (!confirm('Cancel this application and refund the credits to your wallet?')) return;
+    const btn = $('cancelRefundBtn');
+    btn.disabled = true;
+    const res = await msg('FILL_CHARGE_REFUND', { exam_id: examId });
+    btn.disabled = false;
+    if (!res || !res.success) {
+      showError((res && res.error) || 'Could not refund the credits.');
+      return;
+    }
+    await hydrateCreditStatus();
+  }
+
+  /**
+   * Returns true if the current tab URL / page title matches this section's
+   * page_indicator. Supports: url_contains, step_number, page_text_contains.
+   */
+  function sectionMatchesCurrentPage(section) {
+    const pi = section.page_indicator;
+    if (!pi) return false;
+
+    if (pi.type === 'url_contains') {
+      return currentTabUrl.includes(pi.value);
+    }
+    if (pi.type === 'page_text_contains') {
+      // We can't read the live DOM here (sidebar is a separate page),
+      // so we embed the page title in the URL query param sent by the content script.
+      // Fallback: always return true so the section is shown as potentially active.
+      return true;
+    }
+    // step_number: not directly resolvable from the sidebar without querying the tab
+    return false;
+  }
+
+  function renderSections() {
+    const container = $('sectionsList');
+    container.innerHTML = '';
+    if (!adapter?.sections) return;
+
+    // Save & continue: show how many sections the student has completed so far
+    // (counts both freshly filled this session and progress restored on load).
+    const total = adapter.sections.length;
+    const completed = adapter.sections.filter(
+      (sec) => sectionStates[sec.section_id]?.status === 'done'
+    ).length;
+    if (completed > 0) {
+      const summary = document.createElement('div');
+      summary.className = 'sections-progress';
+      summary.textContent = `${completed} of ${total} sections completed`;
+      container.appendChild(summary);
+    }
+
+    adapter.sections.forEach((section, idx) => {
+      const state = sectionStates[section.section_id] || {};
+      const card = document.createElement('div');
+
+      const icons = { done: '✅', check: '⚠️', failed: '❌' };
+      const icon = icons[state.status] || '📝';
+
+      const fieldCount = section.fields?.length || 0;
+      let metaText = `${fieldCount} fields`;
+      if (state.report?.summary) {
+        const s = state.report.summary;
+        metaText = `${s.filled} filled · ${s.check} check · ${s.failed + s.not_found} failed`;
+      }
+
+      let btnLabel = 'Fill';
+      if (state.status === 'done')  btnLabel = 'Re-fill';
+      if (state.status === 'check') btnLabel = 'Re-fill';
+
+      card.className = `section-card ${state.status || ''}`;
+      card.innerHTML = `
+        <div class="section-icon">${icon}</div>
+        <div class="section-body">
+          <div class="section-name">${escHtml(section.section_name)}</div>
+          <div class="section-meta">${metaText}</div>
+        </div>
+        <button class="btn-fill ${state.status || ''}">${btnLabel}</button>
+      `;
+
+      card.querySelector('.btn-fill').addEventListener('click', () => startFill(section, idx));
+
+      if (isAdmin) {
+        const del = document.createElement('button');
+        del.className = 'btn-del-section';
+        del.title = 'Delete this section';
+        del.textContent = '🗑';
+        del.addEventListener('click', (e) => { e.stopPropagation(); deleteSection(section); });
+        card.appendChild(del);
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  // Save & continue: pull the student's prior per-section progress for this exam
+  // and merge it into sectionStates (without overwriting anything filled THIS
+  // session), so re-opening the sidebar restores ✅ on completed sections.
+  async function hydrateProgress() {
+    if (progressLoaded || !examId) return;
+    progressLoaded = true;
+    try {
+      const res = await msg('GET_FILL_PROGRESS', { exam_id: examId });
+      if (res && res.success && Array.isArray(res.data)) {
+        res.data.forEach((row) => {
+          if (!sectionStates[row.section_id]) {
+            sectionStates[row.section_id] = {
+              status: row.status,
+              report: { summary: row.summary },
+              persisted: true
+            };
+          }
+        });
+        renderSections();
+      }
+    } catch (_) { /* non-blocking — progress is a nicety, never block the UI */ }
+  }
+
+  // Admin-only: remove a section from the adapter.
+  async function deleteSection(section) {
+    if (!confirm(`Delete section "${section.section_name}"? This removes it from the adapter for all students.`)) return;
+
+    const res = await msg('DELETE_SECTION', { exam_id: examId, section_id: section.section_id });
+    if (!res || res.success === false) {
+      showError((res && res.error) || 'Failed to delete section');
+      return;
+    }
+
+    // Drop it locally and re-render so the list updates immediately.
+    adapter.sections = (adapter.sections || []).filter(s => s.section_id !== section.section_id);
+    delete sectionStates[section.section_id];
+    renderSections();
+  }
+
+  // ════════════ Phase 2: pre-fill review / edit ════════════
+
+  let reviewCtx = null;   // { section, idx, rows: [{ path, label, original, current }] }
+
+  function resolvePath(obj, path) {
+    return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+  }
+  function setPath(obj, path, val) {
+    const parts = path.split('.');
+    let o = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (o[parts[i]] == null || typeof o[parts[i]] !== 'object') o[parts[i]] = {};
+      o = o[parts[i]];
+    }
+    o[parts[parts.length - 1]] = val;
+  }
+  function humanize(path) {
+    return path.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function showReviewState(section, idx) {
+    showView('review');
+    $('reviewSectionName').textContent = section.section_name;
+
+    // One editable row per DISTINCT source. Sources shared by multiple form
+    // fields (e.g. student.email feeding two inputs) appear once and edit once.
+    const seen = new Set();
+    const rows = [];
+    (section.fields || []).forEach(f => {
+      const src = f.source;
+      if (!src || seen.has(src)) return;
+      seen.add(src);
+      const val = resolvePath(profile, src);
+      if (val !== null && typeof val === 'object') return;   // skip arrays/objects (subjects, etc.)
+      rows.push({
+        path: src,
+        label: f.label || humanize(src),
+        original: val == null ? '' : String(val),
+        current:  val == null ? '' : String(val)
+      });
+    });
+
+    reviewCtx = { section, idx, rows };
+    renderReviewRows(rows);
+  }
+
+  function renderReviewRows(rows) {
+    const c = $('reviewList');
+    c.innerHTML = '';
+    if (!rows.length) {
+      c.innerHTML = '<div class="review-empty">No pre-fillable fields detected for this section.</div>';
+      return;
+    }
+    rows.forEach((row, i) => {
+      const el = document.createElement('div');
+      el.className = 'review-row';
+      el.innerHTML =
+        '<label class="review-label" for="rv_' + i + '">' + escHtml(row.label) + '</label>' +
+        '<input class="review-input" id="rv_' + i + '" type="text" value="' + escAttr(row.original) + '" />';
+      el.querySelector('input').addEventListener('input', e => { row.current = e.target.value; });
+      c.appendChild(el);
+    });
+  }
+
+  async function confirmReviewAndFill() {
+    if (!reviewCtx) return;
+    const { section, idx, rows } = reviewCtx;
+
+    // Diff: only the paths the student actually changed.
+    const changes = {};       // path -> new value     (for SYNC_PROFILE)
+    const auditChanges = {};   // path -> { from, to }  (for the audit report)
+    rows.forEach(r => {
+      if (r.current !== r.original) {
+        changes[r.path] = r.current;
+        auditChanges[r.path] = { from: r.original, to: r.current };
+      }
+    });
+
+    // Apply edits to the in-memory profile so the filler uses the reviewed values.
+    Object.entries(changes).forEach(([path, val]) => setPath(profile, path, val));
+
+    // Persist to the UniTracko profile. Non-blocking: a sync hiccup must never
+    // stop the student from completing their form.
+    if (Object.keys(changes).length > 0) {
+      try { await msg('SYNC_PROFILE', { changes }); } catch (_) { /* form-only fallback */ }
+    }
+
+    // Hand off to the existing fill pipeline. confirmed_at is set whenever the
+    // student confirms — even with no edits, confirming is the acknowledgement
+    // the audit spec asks for.
+    fillSection(section, idx, {
+      changes: Object.keys(auditChanges).length ? auditChanges : null,
+      confirmed_at: new Date().toISOString()
+    });
+  }
+
+  // ─── Fill: single section ───
+
+  async function fillSection(section, idx = 0, reviewMeta = null) {
+    nextSectionIdx = idx + 1;
+
+    showView('filling');
+    $('fillingSectionName').textContent = section.section_name;
+    $('fillCount').textContent = '0';
+    $('fillLiveList').innerHTML = '';
+    setRingProgress(0, 0);
+
+    const totalFields = section.fields?.length || 0;
+
+    try {
+      const result = await msg('FILL_SECTION', {
+        section:       section.section_id,
+        fields:        section.fields,
+        userData:      profile,
+        page_indicator: section.page_indicator || null,
+        admin_validate: adminValidateMode
+      });
+
+      if (!result.success) { showError(result.error || 'Fill failed'); return; }
+
+      const report = result.report;
+
+      if (report?.page_mismatch) {
+        showError(report.page_mismatch_note || 'Wrong page for this section — please navigate to the right step first.');
+        return;
+      }
+
+      // Animate the live list
+      let doneCount = 0;
+      for (const r of report.results) {
+        // Admin-validation 'unmapped' entries are page fields not in the adapter —
+        // they aren't a fill outcome, so keep them out of the fill animation.
+        if (r.status === 'unmapped') continue;
+        doneCount++;
+        addLiveRow(r);
+        $('fillCount').textContent = doneCount;
+        setRingProgress(doneCount, totalFields);
+        await sleep(60);
+      }
+
+      // Persist section state
+      let sectionStatus = 'done';
+      if (report.summary.failed > 0 || report.summary.not_found > 0) sectionStatus = 'failed';
+      else if (report.summary.check > 0) sectionStatus = 'check';
+
+      sectionStates[section.section_id] = { status: sectionStatus, report };
+
+      // Fire-and-forget analytics + audit trail
+      msg('SEND_FILL_REPORT', {
+        exam_id: examId,
+        section: section.section_id,
+        adapter_version: adapter.version || 1,
+        results: report.results,
+        student_changes: reviewMeta?.changes || null,
+        confirmed_at:    reviewMeta?.confirmed_at || null,
+        validation_run:  adminValidateMode
+      }).catch(() => {});
+
+      await sleep(400);
+      showCompleteState(section, report, reviewMeta);
+
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ─── Progress ring ───
+
+  function setRingProgress(done, total) {
+    const circumference = 163;
+    const pct = total > 0 ? done / total : 0;
+    const offset = circumference - pct * circumference;
+    const ring = $('ringFill');
+    if (ring) ring.style.strokeDashoffset = offset;
+  }
+
+  function addLiveRow(result) {
+    const icons = { filling: '…', filled: '✓', check: '!', failed: '✗', not_found: '✗', skipped: '✋' };
+    const row = document.createElement('div');
+    row.className = `live-row ${result.status === 'filled' ? 'done' : result.status}`;
+    const displayVal = formatReportValue(result.value);
+    row.textContent = `${icons[result.status] || '?'}  ${result.label}${displayVal ? ' → ' + displayVal : ''}`;
+    $('fillLiveList').appendChild(row);
+    $('fillLiveList').scrollTop = $('fillLiveList').scrollHeight;
+  }
+
+  // ─── Complete state ───
+
+  // Student-facing guidance for a 'skipped' (manual) field. Upload vs. fill-in is
+  // decided by the field TYPE (stable adapter config), NOT the producer's note
+  // string — the note is only a fallback for older payloads that lack `type`. The
+  // raw dev note ('Configured to leave blank' / 'No document URL in profile') is
+  // never shown to the student.
+  function manualGuidance(r) {
+    const isUpload = r.type === 'file' || (!r.type && /document|url/i.test(r.note || ''));
+    return isUpload
+      ? 'Upload this document yourself (or add it to your profile).'
+      : "You'll need to fill this in yourself (e.g. CAPTCHA / OTP).";
+  }
+
+  function showCompleteState(section, report, reviewMeta = null) {
+    showView('complete');
+
+    const s = report.summary;
+    // 'skipped' is intentionally uncounted by summarise() (it must never inflate
+    // failed or flip a section off 'done'), so derive the manual list locally.
+    const skipped = report.results.filter(r => r.status === 'skipped');
+    const totalDone = s.filled + s.check;
+    const hasFailed = s.failed + s.not_found > 0;
+    const isClean   = s.check === 0 && !hasFailed;
+
+    // Header
+    const header = $('completeHeader');
+    header.className = `complete-header ${isClean ? 'success' : hasFailed ? 'failed' : 'partial'}`;
+    header.innerHTML = `
+      <div class="complete-emoji">${isClean ? '🎉' : hasFailed ? '⚠️' : '✅'}</div>
+      <div class="complete-title">${isClean ? 'Filled perfectly!' : hasFailed ? 'Some fields need attention' : 'Filled — verify highlighted'}</div>
+      <div class="complete-sub">${section.section_name} · ${totalDone} of ${s.total} fields done</div>
+    `;
+
+    // Summary strip
+    $('summaryStrip').innerHTML = `
+      <div class="stat-pill filled"><span class="stat-num">${s.filled}</span><span class="stat-label">Filled</span></div>
+      <div class="stat-pill check" ><span class="stat-num">${s.check}</span><span class="stat-label">Check</span></div>
+      <div class="stat-pill failed"><span class="stat-num">${s.failed + s.not_found}</span><span class="stat-label">Failed</span></div>
+      <div class="stat-pill manual"><span class="stat-num">${skipped.length}</span><span class="stat-label">Manual</span></div>
+    `;
+
+    // Per-field report
+    const container = $('fillReport');
+    container.innerHTML = '';
+
+    // Manual-actions block — the headline checklist of everything the auto-fill
+    // can't do (CAPTCHA, OTP, live photo, signature, uploads). Sits at the very
+    // top so the student sees their remaining work first. Rendered only when ≥1.
+    if (skipped.length) {
+      const block = document.createElement('div');
+      block.className = 'manual-actions';
+      block.innerHTML = `
+        <div class="manual-actions-title">✋ Complete these yourself (${skipped.length})</div>
+        ${skipped.map(r => `
+          <div class="manual-actions-item">
+            <span class="manual-actions-label">${escHtml(r.label)}</span>
+            <span class="manual-actions-guide">${escHtml(manualGuidance(r))}</span>
+          </div>`).join('')}
+      `;
+      container.appendChild(block);
+    }
+
+    // Audit strip — only for student-reviewed/confirmed fills (the spec's
+    // "Changes made by the student" + "User confirmations", surfaced in context).
+    if (reviewMeta) {
+      const n = reviewMeta.changes ? Object.keys(reviewMeta.changes).length : 0;
+      const t = reviewMeta.confirmed_at ? new Date(reviewMeta.confirmed_at).toLocaleTimeString() : '';
+      const audit = document.createElement('div');
+      audit.className = 'audit-strip';
+      audit.textContent = n > 0
+        ? `You changed ${n} value${n === 1 ? '' : 's'} · confirmed at ${t}`
+        : `Reviewed & confirmed at ${t}`;
+      container.appendChild(audit);
+    }
+
+    for (const r of report.results) {
+      const iconMap = { filled: '✅', check: '⚠️', failed: '❌', not_found: '❌', skipped: '✋' };
+      const row = document.createElement('div');
+      row.className = `report-row status-${r.status}`;
+
+      row.innerHTML = `
+        <span class="report-icon">${iconMap[r.status] || '❓'}</span>
+        <div class="report-content">
+          <div class="report-label">${escHtml(r.label)}</div>
+          ${r.value    ? `<div class="report-value">→ ${escHtml(formatReportValue(r.value))}</div>` : ''}
+          ${r.note && (r.status === 'check')  ? `<div class="report-note">${escHtml(r.note)}</div>` : ''}
+          ${r.note && (r.status === 'failed' || r.status === 'not_found') ? `<div class="report-note error">${escHtml(r.note)}</div>` : ''}
+          ${r.status === 'skipped' ? `<div class="report-note manual">${escHtml(manualGuidance(r))}</div>` : ''}
+        </div>
+      `;
+      container.appendChild(row);
+    }
+
+    // "Fill Next" button
+    const fillNextBtn = $('fillNextBtn');
+    if (adapter?.sections && nextSectionIdx < adapter.sections.length) {
+      fillNextBtn.style.display = 'block';
+      fillNextBtn.textContent = `Fill ${adapter.sections[nextSectionIdx].section_name} →`;
+    } else {
+      fillNextBtn.style.display = 'none';
+    }
+  }
+
+  // ─── Builder (admin-only) ───
+
+  async function openBuilder() {
+    showView('builder');
+    $('builderTitle').textContent = `Build Adapter — ${examName}`;
+    $('builderSub').textContent = 'Navigate to a page with a visible registration form, then click "Scan This Page".';
+    $('builderResultArea').style.display = 'none';
+    $('builderResult').style.display = 'none';
+    builderState = { section: null, fillReports: {} };
+
+    if (profileSchemaPaths.length === 0) {
+      try {
+        // Lightweight fallback list — covers everything in profileSchema.js.
+        // Pulled at runtime would require an admin-token call from the sidebar;
+        // we instead bundle a stable subset here. The CMS editor uses the live
+        // /admin/exam-adapters/profile-schema endpoint for the same purpose.
+        profileSchemaPaths = DEFAULT_PROFILE_PATHS;
+      } catch (_) { /* noop */ }
+    }
+  }
+
+  async function runScanAndBuild() {
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Scanning…');
+    $('builderResult').style.display = 'none';
+    removeCheckAgainButton();
+
+    const scan = await msgSafe('SCAN_PAGE', undefined, 30000);
+    if (!scan?.success) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Scan This Page');
+      showBuilderResult('error', scan?.error || 'Failed to scan page');
+      return;
+    }
+
+    if (!scan.page?.fields?.length) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Scan This Page');
+      showBuilderResult('error', 'No form fields detected on this page. Make sure the registration form is visible and try again.');
+      return;
+    }
+
+    // Baseline for post-failure recovery: what the server had before this build.
+    lastBuildBaseline = {
+      version: lastKnownAdapterVersion,
+      sectionIds: new Set(((adapter && adapter.sections) || []).map((s) => s.section_id))
+    };
+
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Building with AI…');
+
+    const build = await msgSafe('BUILD_ADAPTER_SECTION', { exam_id: examId, exam_name: examName, page: scan.page }, 160000);
+    setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
+
+    if (!build?.success) {
+      // The backend may have finished after the client gave up (timeout) —
+      // check before declaring failure.
+      if (await tryRecoverCompletedBuild()) return;
+      showBuilderResult('error', build?.error || 'AI build failed');
+      showCheckAgainButton();
+      return;
+    }
+
+    builderState.section = build.data.section;
+    builderState.fillReports = {};
+    lastKnownAdapterVersion = build.data.version || lastKnownAdapterVersion;
+
+    renderBuilderSection(builderState.section);
+
+    // Auto-fill immediately after building — no extra click needed
+    const mappedFields = builderState.section.fields.filter(f => f.source);
+    if (mappedFields.length > 0) {
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', true, 'Filling form…');
+      showBuilderResult('info', `AI mapped ${builderState.section.fields.length} fields. Auto-filling ${mappedFields.length} now…`);
+
+      const result = await msg('FILL_SECTION', {
+        section: builderState.section.section_id,
+        page_indicator: builderState.section.page_indicator || null,
+        fields: mappedFields,
+        userData: profile,
+        admin_validate: adminValidateMode
+      });
+
+      setLoadingState('scanPageBtn', 'scanPageBtnText', 'scanPageSpinner', false, 'Re-scan This Page');
+
+      if (result?.success) {
+        builderState.fillReports = {};
+        for (const r of result.report?.results || []) {
+          builderState.fillReports[r.field_id] =
+            r.status === 'filled'    ? 'filled' :
+            r.status === 'check'     ? 'check'  :
+            r.status === 'not_found' ? 'nodata' : 'failed';
+        }
+        renderBuilderSection(builderState.section);
+        const s = result.report?.summary || {};
+        showBuilderResult('success',
+          `Done! ${s.filled || 0} filled · ${s.check || 0} check · ${(s.failed || 0) + (s.not_found || 0)} failed`
+        );
+      } else {
+        showBuilderResult('error', result?.error || 'Fill failed after build');
+      }
+    } else {
+      showBuilderResult('success', `Mapped ${builderState.section.fields.length} fields but none had a matching source. Review the mappings and click "Apply & Fill".`);
+    }
+  }
+
+  /**
+   * After a client-side build failure (timeout etc.) the backend may still have
+   * completed and persisted the section. Re-fetch the adapter bypassing the
+   * background cache; a version bump beyond the pre-build baseline means a
+   * build landed.
+   */
+  async function tryRecoverCompletedBuild() {
+    const fresh = await msgSafe('GET_ADAPTER', { exam_id: examId, force: true }, 20000);
+    if (!fresh?.success || !fresh.data) return false;
+
+    const freshVersion = fresh.data.version || 0;
+    const sections = Array.isArray(fresh.data.sections) ? fresh.data.sections : [];
+    if (freshVersion <= lastBuildBaseline.version || sections.length === 0) return false;
+
+    adapter = fresh.data;
+    lastKnownAdapterVersion = freshVersion;
+
+    // Prefer a section_id the server didn't have before this build (appended);
+    // a re-built existing section keeps its id, so fall back to the last one.
+    const section = sections.find((s) => !lastBuildBaseline.sectionIds.has(s.section_id))
+      || sections[sections.length - 1];
+    builderState = { section, fillReports: {} };
+    renderBuilderSection(section);
+    showBuilderResult('success', 'Build completed in the background — mappings recovered. Review, then Apply & Fill or Save.');
+    removeCheckAgainButton();
+    return true;
+  }
+
+  function showCheckAgainButton() {
+    let btn = $('builderCheckAgainBtn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'builderCheckAgainBtn';
+      btn.className = 'btn-secondary full';
+      btn.style.marginTop = '8px';
+      btn.textContent = 'Check again — did the build finish?';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Checking…';
+        const recovered = await tryRecoverCompletedBuild();
+        if (!recovered) {
+          btn.disabled = false;
+          btn.textContent = 'Check again — did the build finish?';
+          showBuilderResult('error', 'No new section on the server yet — the build may still be running. Try again in a minute.');
+        }
+      });
+      $('builderResultArea').appendChild(btn);
+    }
+    btn.style.display = 'block';
+  }
+
+  function removeCheckAgainButton() {
+    const btn = $('builderCheckAgainBtn');
+    if (btn) btn.remove();
+  }
+
+  function renderBuilderSection(section) {
+    $('builderResultArea').style.display = 'block';
+    $('builderSectionName').value = section.section_name || '';
+    const pi = section.page_indicator || { type: 'url_contains', value: '' };
+    $('builderPageIndicatorType').value = pi.type;
+    $('builderPageIndicatorValue').value = pi.value;
+    $('builderFieldCount').textContent = section.fields.length;
+
+    const list = $('builderFieldsList');
+    list.innerHTML = '';
+
+    section.fields.forEach((f, idx) => {
+      const row = document.createElement('div');
+      row.className = 'builder-field-row';
+      row.dataset.idx = idx;
+
+      const sourceOptions = profileSchemaPaths.map((p) => {
+        const sel = p.path === f.source ? ' selected' : '';
+        return `<option value="${escAttr(p.path)}"${sel}>${escHtml(p.path)}</option>`;
+      }).join('');
+
+      const typeOptions = ['text', 'select', 'date', 'radio', 'checkbox', 'file', 'select_or_text']
+        .map((t) => `<option value="${t}"${t === f.type ? ' selected' : ''}>${t}</option>`).join('');
+
+      const status = builderState.fillReports[f.field_id];
+      const statusLabels = { filled: 'filled', check: 'check', failed: 'failed', nodata: 'no data' };
+      const statusBadge = status ? `<span class="row-status ${status}">${statusLabels[status] || status}</span>` : '';
+
+      row.innerHTML = `
+        <div class="row-top">
+          <span class="row-label" title="${escAttr(f.label)}">${escHtml(f.label || f.field_id)}</span>
+          ${statusBadge}
+        </div>
+        <div class="row-top">
+          <select class="row-source"><option value="">— skip —</option>${sourceOptions}</select>
+          <select class="row-type">${typeOptions}</select>
+        </div>
+        <div class="row-meta">id: ${escHtml(f.field_id)}</div>
+      `;
+      row.querySelector('.row-source').addEventListener('change', (e) => {
+        section.fields[idx].source = e.target.value || null;
+      });
+      row.querySelector('.row-type').addEventListener('change', (e) => {
+        section.fields[idx].type = e.target.value;
+      });
+      list.appendChild(row);
+    });
+  }
+
+  async function applyAndFillFromBuilder() {
+    const section = currentSectionFromBuilderUI();
+    if (!section || section.fields.length === 0) {
+      showBuilderResult('error', 'No fields to fill');
+      return;
+    }
+    const fields = section.fields.filter((f) => f.source);
+    if (fields.length === 0) {
+      showBuilderResult('error', 'Pick at least one source path before filling');
+      return;
+    }
+
+    showBuilderResult('info', 'Filling on the live page…');
+    const result = await msg('FILL_SECTION', {
+      section: section.section_id,
+      page_indicator: section.page_indicator || null,
+      fields,
+      userData: profile,
+      admin_validate: adminValidateMode
+    });
+
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Fill failed');
+      return;
+    }
+    builderState.fillReports = {};
+    for (const r of result.report?.results || []) {
+      builderState.fillReports[r.field_id] =
+        r.status === 'filled'    ? 'filled' :
+        r.status === 'check'     ? 'check'  :
+        r.status === 'not_found' ? 'nodata' : 'failed';
+    }
+    renderBuilderSection(builderState.section);
+    const s = result.report?.summary || {};
+    showBuilderResult('success',
+      `Live fill: ${s.filled || 0} filled · ${s.check || 0} check · ${(s.failed || 0) + (s.not_found || 0)} failed`
+    );
+  }
+
+  async function saveBuilderSection() {
+    const section = currentSectionFromBuilderUI();
+    if (!section) return;
+
+    setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', true, 'Saving…');
+
+    const result = await msgSafe('BUILD_ADAPTER_SECTION', {
+      exam_id: examId,
+      exam_name: examName,
+      // Re-scan so the backend's selectors match what's actually on the page now.
+      // Using the AI build endpoint here ALSO lets us merge by section_id.
+      page: await reuseLastScannedPage(section)
+    }, 160000);
+    setLoadingState('builderSaveBtn', 'builderSaveBtnText', 'builderSaveSpinner', false, 'Save Section');
+
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Save failed');
+      return;
+    }
+    showBuilderResult('success', `Saved. Adapter version: ${result.data.version}`);
+    lastKnownAdapterVersion = result.data.version || lastKnownAdapterVersion;
+  }
+
+  /**
+   * Until we add a dedicated PATCH-section call from the extension, "Save"
+   * re-runs the build (idempotent — same section_id replaces the existing entry).
+   * This keeps the extension's payload tiny.
+   */
+  async function reuseLastScannedPage(section) {
+    const scan = await msg('SCAN_PAGE');
+    if (scan?.success && scan.page) return scan.page;
+    // Fallback: synthesize a minimal page from the editor (no fields options though)
+    return {
+      url: currentTabUrl,
+      title: section.section_name,
+      headings: [section.section_name],
+      fields: section.fields.map((f) => ({
+        label: f.label,
+        id: (f.selectors?.by_id || [])[0] || '',
+        name: (f.selectors?.by_name || [])[0] || '',
+        placeholder: (f.selectors?.by_placeholder || [])[0] || '',
+        type: f.type,
+        idx: typeof f.selectors?.by_index === 'number' ? f.selectors.by_index : 0
+      }))
+    };
+  }
+
+  function currentSectionFromBuilderUI() {
+    if (!builderState.section) return null;
+    const section = builderState.section;
+    section.section_name = $('builderSectionName').value.trim() || section.section_name;
+    section.page_indicator = {
+      type: $('builderPageIndicatorType').value,
+      value: $('builderPageIndicatorValue').value.trim()
+    };
+    return section;
+  }
+
+  async function publishAdapterFromBuilder() {
+    if (!confirm('Publish this adapter so all students can use it?')) return;
+    showBuilderResult('info', 'Publishing…');
+    const result = await msg('PUBLISH_ADAPTER', { exam_id: examId, status: 'published' });
+    if (!result?.success) {
+      showBuilderResult('error', result?.error || 'Publish failed');
+      return;
+    }
+    showBuilderResult('success', 'Published! Students can now use this adapter.');
+    hasPublishedAdapter = true;
+  }
+
+  function showBuilderResult(kind, message) {
+    $('builderResultArea').style.display = 'block';
+    const el = $('builderResult');
+    el.className = `alert alert-${kind === 'error' ? 'error' : kind === 'success' ? 'success' : 'info'}`;
+    el.textContent = message;
+    el.style.display = 'flex';
+  }
+
+  function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+
+  // Inline copy of the most common profile paths (mirrors backend/src/services/adapterBuilderService/profileSchema.js).
+  const DEFAULT_PROFILE_PATHS = [
+    'student.full_name', 'student.first_name', 'student.last_name', 'student.name',
+    'student.father_name', 'student.mother_name', 'student.guardian_name',
+    'student.dob', 'student.gender', 'student.category', 'student.sub_category',
+    'student.disability', 'student.nationality', 'student.religion', 'student.marital_status',
+    'student.mother_tongue', 'student.annual_family_income',
+    'student.occupation_of_father', 'student.occupation_of_mother',
+    'student.aadhar_no', 'student.id_document_type', 'student.pan_no', 'student.apaar_id',
+    'student.mobile', 'student.alternate_mobile', 'student.email', 'student.landline',
+    'address.line1', 'address.line2', 'address.city', 'address.district',
+    'address.state', 'address.pincode', 'address.country',
+    'education.class_10.board', 'education.class_10.school', 'education.class_10.passing_year',
+    'education.class_10.roll_no', 'education.class_10.total_marks', 'education.class_10.obtained_marks',
+    'education.class_10.percentage', 'education.class_10.state', 'education.class_10.city',
+    'education.class_10.school_pincode', 'education.class_10.marks_type', 'education.class_10.result_status',
+    'education.class_12.board', 'education.class_12.school', 'education.class_12.passing_year',
+    'education.class_12.roll_no', 'education.class_12.total_marks', 'education.class_12.obtained_marks',
+    'education.class_12.percentage', 'education.class_12.state', 'education.class_12.city',
+    'education.class_12.school_pincode', 'education.class_12.stream', 'education.class_12.is_appearing',
+    'education.class_12.marks_type', 'education.class_12.cgpa', 'education.class_12.result_status',
+    'education.class_12.pass_status', 'education.class_12.education_type',
+    'documents.photo', 'documents.signature', 'documents.id_proof', 'documents.aadhar_card',
+    'documents.matric_marksheet', 'documents.postmatric_marksheet',
+    'documents.sc_certificate', 'documents.st_certificate', 'documents.obc_certificate',
+    'documents.ews_certificate', 'documents.pwbd_certificate', 'documents.category_certificate',
+    'other.medium', 'other.language'
+  ].map((p) => ({ path: p }));
+
+  // ─── OTP Login Flow ───
+
+  let otpEmail = '';
+  let otpTimerInterval = null;
+
+  function bindLoginEvents() {
+    // Step A: send OTP
+    $('emailForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      if (!email) return;
+
+      setLoadingState('sendOtpBtn', 'sendOtpBtnText', 'sendOtpSpinner', true, 'Sending…');
+      $('emailError').style.display = 'none';
+
+      const result = await msg('SEND_OTP', { email });
+
+      setLoadingState('sendOtpBtn', 'sendOtpBtnText', 'sendOtpSpinner', false, 'Send OTP');
+
+      if (!result.success) {
+        $('emailError').textContent = result.error || 'Failed to send OTP';
+        $('emailError').style.display = 'flex';
+        return;
+      }
+
+      otpEmail = email;
+      $('otpSentTo').textContent = `Code sent to ${email}`;
+      $('loginStepEmail').style.display = 'none';
+      $('loginStepOtp').style.display = 'block';
+
+      setupOtpInputs();
+      startOtpTimer(result.expiresIn || 600);
+      // focus first digit
+      document.querySelectorAll('.otp-digit')[0]?.focus();
+    });
+
+    // Step B: verify OTP
+    $('otpForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const digits = [...document.querySelectorAll('.otp-digit')].map(d => d.value).join('');
+      if (digits.length < 6) return;
+
+      setLoadingState('verifyOtpBtn', 'verifyOtpBtnText', 'verifyOtpSpinner', true, 'Verifying…');
+      $('otpError').style.display = 'none';
+
+      const result = await msg('VERIFY_OTP', { email: otpEmail, code: digits });
+
+      setLoadingState('verifyOtpBtn', 'verifyOtpBtnText', 'verifyOtpSpinner', false, 'Verify & Sign In');
+
+      if (!result.success) {
+        $('otpError').textContent = result.error || 'Invalid OTP — please try again';
+        $('otpError').className = 'alert alert-error';
+        $('otpError').style.display = 'flex';
+        document.querySelectorAll('.otp-digit').forEach(d => {
+          d.classList.add('error');
+          setTimeout(() => d.classList.remove('error'), 500);
+        });
+        return;
+      }
+
+      // Show green success briefly before loading
+      $('otpError').textContent = '✓ Verified! Loading your profile…';
+      $('otpError').className = 'alert alert-success';
+      $('otpError').style.display = 'flex';
+
+      clearOtpTimer();
+      await sleep(800);
+      await detectAndLoad();
+    });
+
+    // Connect via existing website / CMS session (SSO)
+    $('ssoConnectBtn').addEventListener('click', async () => {
+      setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', true, 'Connecting…');
+      $('ssoError').style.display = 'none';
+
+      const sso = await msg('TRY_WEB_SSO', { userInitiated: true });
+
+      setLoadingState('ssoConnectBtn', 'ssoConnectText', 'ssoConnectSpinner', false, 'Connect with my CollegeFinder login');
+
+      if (sso?.authenticated) {
+        if (manualExamSelected) await loadProfileAndRoute({ checkPortalLogin: false });
+        else await detectAndLoad();
+        return;
+      }
+      $('ssoError').textContent = 'No active CollegeFinder session found. Open and sign in to CollegeFinder in another tab, then try again — or use OTP above.';
+      $('ssoError').style.display = 'flex';
+    });
+
+    // Go back to email step
+    $('changeEmailBtn').addEventListener('click', () => {
+      clearOtpTimer();
+      $('loginStepOtp').style.display = 'none';
+      $('loginStepEmail').style.display = 'block';
+      $('emailError').style.display = 'none';
+    });
+  }
+
+  function setupOtpInputs() {
+    const digits = [...document.querySelectorAll('.otp-digit')];
+    digits.forEach((inp, i) => {
+      inp.value = '';
+      inp.classList.remove('filled', 'error');
+
+      inp.addEventListener('input', () => {
+        const val = inp.value.replace(/\D/g, '');
+        inp.value = val ? val[0] : '';
+        if (val) {
+          inp.classList.add('filled');
+          if (i < digits.length - 1) digits[i + 1].focus();
+          else $('verifyOtpBtn').focus();
+        } else {
+          inp.classList.remove('filled');
+        }
+      });
+
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) {
+          digits[i - 1].focus();
+          digits[i - 1].value = '';
+          digits[i - 1].classList.remove('filled');
+        }
+        if (e.key === 'ArrowLeft' && i > 0) digits[i - 1].focus();
+        if (e.key === 'ArrowRight' && i < digits.length - 1) digits[i + 1].focus();
+      });
+
+      inp.addEventListener('paste', e => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        digits.forEach((d, idx) => {
+          d.value = paste[idx] || '';
+          d.classList.toggle('filled', !!d.value);
+        });
+        const next = Math.min(paste.length, digits.length - 1);
+        digits[next].focus();
+      });
+    });
+  }
+
+  function startOtpTimer(seconds) {
+    clearOtpTimer();
+    let remaining = seconds;
+
+    function tick() {
+      if (remaining <= 0) {
+        $('otpTimer').textContent = 'OTP expired — go back and request a new one';
+        $('otpTimer').className = 'otp-timer expiring';
+        $('verifyOtpBtn').disabled = true;
+        return;
+      }
+      const mins = Math.floor(remaining / 60);
+      const secs = String(remaining % 60).padStart(2, '0');
+      $('otpTimer').textContent = `OTP expires in ${mins}:${secs}`;
+      $('otpTimer').className = remaining <= 60 ? 'otp-timer expiring' : 'otp-timer';
+      remaining--;
+    }
+
+    tick();
+    otpTimerInterval = setInterval(tick, 1000);
+  }
+
+  function clearOtpTimer() {
+    if (otpTimerInterval) { clearInterval(otpTimerInterval); otpTimerInterval = null; }
+  }
+
+  function setLoadingState(btnId, textId, spinnerId, loading, label) {
+    const btn     = $(btnId);
+    const txtEl   = $(textId);
+    const spinner = $(spinnerId);
+    btn.disabled = loading;
+    txtEl.textContent = label;
+    spinner.style.display = loading ? 'block' : 'none';
+  }
+
+  // ─── Events ───
+
+  function bindEvents() {
+    bindLoginEvents();
+
+    // Fill portal email button
+    $('fillPortalEmailBtn').addEventListener('click', () => fillPortalEmail());
+
+    // Logout
+    $('logoutBtn').addEventListener('click', async () => {
+      await msg('LOGOUT');
+      profile = null; adapter = null; sectionStates = {}; progressLoaded = false;
+      manualExamSelected = false; examCatalog = null;
+      showExamBadgeHide();
+      await detectAndLoad();
+    });
+
+    // Manual exam picker entry points
+    $('manualSelectBtn').addEventListener('click', () => openExamPicker());
+    $('noAdapterPickerBtn').addEventListener('click', () => openExamPicker());
+    $('readyPickerBtn').addEventListener('click', () => openExamPicker());
+
+    // Picker: back returns to URL auto-detection
+    $('pickerBackBtn').addEventListener('click', () => {
+      manualExamSelected = false;
+      showExamBadgeHide();
+      detectAndLoad();
+    });
+
+    // Picker: live search filter
+    $('pickerSearch').addEventListener('input', (e) => renderExamCatalog(e.target.value));
+
+    // Back to sections
+    $('backToSections').addEventListener('click', () => showReadyState());
+    $('confirmReviewBtn').addEventListener('click', () => confirmReviewAndFill());
+    $('backFromReviewBtn').addEventListener('click', () => showReadyState());
+
+    // Fill next section
+    $('fillNextBtn').addEventListener('click', () => {
+      if (adapter?.sections && nextSectionIdx < adapter.sections.length) {
+        fillSection(adapter.sections[nextSectionIdx], nextSectionIdx);
+      }
+    });
+
+    // Credits: lifecycle actions + buy-block navigation
+    $('markSubmittedBtn').addEventListener('click', () => markApplicationSubmitted());
+    $('cancelRefundBtn').addEventListener('click', () => cancelAndRefund());
+    $('buyBlockBackBtn').addEventListener('click', () => showReadyState());
+
+    // Retry
+    $('retryBtn').addEventListener('click', () => detectAndLoad());
+
+    // Builder admin entry points
+    $('openBuilderBtn').addEventListener('click', () => openBuilder());
+    $('startBuilderBtn').addEventListener('click', () => openBuilder());
+    $('portalLoginOpenBuilderBtn').addEventListener('click', () => openBuilder());
+    $('exitBuilderBtn').addEventListener('click', () => {
+      if (adapter && adapter.sections?.length) showReadyState();
+      else showNoAdapterState();
+    });
+    $('scanPageBtn').addEventListener('click', () => runScanAndBuild());
+    $('builderApplyFillBtn').addEventListener('click', () => applyAndFillFromBuilder());
+    $('builderSaveBtn').addEventListener('click', () => saveBuilderSection());
+    $('publishAdapterBtn').addEventListener('click', () => publishAdapterFromBuilder());
+
+    // Listen for tab URL changes (user navigates within portal)
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'complete' && tab.active) {
+        currentTabUrl = tab.url || currentTabUrl;
+        detectAndLoad();
+      }
+    });
+
+    // Re-detect when the user SWITCHES tabs (the side panel is shared across tabs,
+    // so switching to the exam portal must re-run detection). onUpdated only fires
+    // on navigation, not on tab activation — this fills that gap.
+    chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        const newUrl = tab?.url || '';
+        if (newUrl === currentTabUrl) return;     // same page — nothing to do
+        currentTabUrl = newUrl;
+        manualExamSelected = false;               // new tab context → fresh detection
+        showExamBadgeHide();
+        detectAndLoad();
+      } catch (_) { /* tab gone */ }
+    });
+
+    // Re-detect when switching browser windows.
+    chrome.windows.onFocusChanged.addListener(async (windowId) => {
+      if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, windowId });
+        const newUrl = tab?.url || '';
+        if (!newUrl || newUrl === currentTabUrl) return;
+        currentTabUrl = newUrl;
+        manualExamSelected = false;
+        showExamBadgeHide();
+        detectAndLoad();
+      } catch (_) { /* ignore */ }
+    });
+  }
+
+  function showExamBadgeHide() {
+    const badge = $('examBadge');
+    if (badge) badge.style.display = 'none';
+  }
+
+  // ─── Utils ───
+
+  function msg(type, payload) {
+    return chrome.runtime.sendMessage({ type, payload });
+  }
+
+  /**
+   * sendMessage that can never hang the UI: rejections (MV3 worker killed,
+   * "message port closed") resolve to { success:false }, and a timeout guard
+   * covers the never-settles case.
+   */
+  function msgSafe(type, payload, timeoutMs = 30000) {
+    return Promise.race([
+      chrome.runtime.sendMessage({ type, payload }).catch((err) => ({
+        success: false, error: `Extension messaging failed: ${err.message}`
+      })),
+      new Promise((resolve) => setTimeout(() => resolve({
+        success: false, error: `Timed out after ${Math.round(timeoutMs / 1000)}s — try again`
+      }), timeoutMs))
+    ]);
+  }
+
+  /** Replace long document / S3 URLs with a short label in the sidebar */
+  function formatReportValue(val) {
+    if (val == null || val === '') return '';
+    const s = String(val).trim();
+    if (/^https?:\/\//i.test(s)) return 'uploaded';
+    return s;
+  }
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+})();
