@@ -13,7 +13,7 @@
  */
 
 const db = require('../../config/database');
-const { PROFILE_PATHS, isValidSource, refreshRegistryCache } = require('../../services/adapterBuilderService/profileSchema');
+const { isValidSource, refreshRegistryCache, getPromptSchema } = require('../../services/adapterBuilderService/profileSchema');
 
 class ExamAdapterController {
   static async list(req, res) {
@@ -36,7 +36,10 @@ class ExamAdapterController {
   }
 
   static async getProfileSchema(req, res) {
-    res.json({ success: true, data: PROFILE_PATHS });
+    // Full whitelist: hardcoded core paths + approved discovered fields, so the
+    // editor's `source` dropdown can select fields admins approved in the queue.
+    // getPromptSchema() = PROFILE_PATHS ∪ approvedExtra (already core-deduped).
+    res.json({ success: true, data: getPromptSchema() });
   }
 
   static async getOne(req, res) {
