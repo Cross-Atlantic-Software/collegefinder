@@ -1,11 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
+import Providers from "./Providers";
 import "./globals.css";
-
-const Providers = dynamic(() => import("./Providers"), {
-  ssr: true,
-});
 
 // Avoid next/font/google here: production builds fetch Google Fonts at compile time and fail
 // on servers with no outbound HTTPS (e.g. locked-down EC2). Typography uses globals.css
