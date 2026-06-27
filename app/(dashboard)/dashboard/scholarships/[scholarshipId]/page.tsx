@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { Award, ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
+import { Sidebar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
-import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
+import { DetailMappedExams } from "@/components/dashboard/DetailMappedExams";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
 import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
@@ -59,11 +59,6 @@ function DetailShell({
         loadShortlistCounts={false}
       />
       <div className="flex h-screen flex-1 flex-col">
-        <TopBar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
@@ -140,20 +135,25 @@ export default function ScholarshipDetailPage() {
   return (
     <DetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
-        <div className="px-4 py-3 md:px-6">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
-              {scholarship.scholarship_name}
-            </h1>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-              {[
-                scholarship.scholarship_type,
-                scholarship.conducting_authority,
-                scholarship.scholarship_amount,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "Scholarship"}
-            </p>
+        <div className="px-4 py-2.5 md:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+              <Award className="h-7 w-7" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 md:text-[2rem]">
+                {scholarship.scholarship_name}
+              </h1>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {[
+                  scholarship.scholarship_type,
+                  scholarship.conducting_authority,
+                  scholarship.scholarship_amount,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Scholarship"}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -188,6 +188,11 @@ export default function ScholarshipDetailPage() {
         <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
+            <DetailMappedExams
+              linkedExams={scholarship.linkedExams}
+              linkFrom="dashboard-scholarship-shortlist"
+              subtitle="Exams mapped to this scholarship"
+            />
           </div>
 
           <aside className={[
@@ -248,11 +253,6 @@ export default function ScholarshipDetailPage() {
                 </Button>
               </div>
             </div>
-            <DetailRecommendedExamsCTA
-              linkedExams={scholarship.linkedExams}
-              linkFrom="dashboard-scholarship-shortlist"
-              subtitle="Mapped via scholarship exams and colleges."
-            />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
               lectures={taggedLecturePreviews}

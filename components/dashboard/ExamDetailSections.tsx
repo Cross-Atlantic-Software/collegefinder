@@ -32,15 +32,15 @@ export function ExamDetailSections({ sections }: ExamDetailSectionsProps) {
   return (
     <div className="space-y-4">
       {sections.map((section) => (
-        <article key={section.id} className="rounded-2xl bg-white p-5 dark:bg-slate-900">
+        <article key={section.id} className="rounded-2xl bg-white p-4 dark:bg-slate-900">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
             {section.title}
           </h2>
-          <dl className="mt-4 space-y-2 md:grid md:grid-cols-2 md:items-start md:gap-3 md:space-y-0">
+          <dl className="mt-3 space-y-1.5 md:grid md:grid-cols-2 md:items-start md:gap-2 md:space-y-0">
             {section.fields.map((item) => (
               <div
                 key={`${section.id}-${item.label}`}
-                className={`rounded-lg bg-[#F6F8FA] px-3 py-2 dark:bg-slate-950 ${
+                className={`self-start rounded-lg bg-[#F6F8FA] px-3 py-1.5 dark:bg-slate-950 ${
                   FULL_WIDTH_EXAM_FIELDS.has(item.label) ? "md:col-span-2" : ""
                 }`}
               >

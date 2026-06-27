@@ -54,7 +54,7 @@ export function CollegeShortlistCard({
           maxVisible={LINKED_EXAM_CHIPS_CARD_MAX}
         />
 
-        <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-auto pt-3">
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="themeButtonOutline"

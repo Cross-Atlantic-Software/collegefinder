@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
+import { Sidebar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
-import { DetailRecommendedExamsCTA } from "@/components/dashboard/DetailRecommendedExamsCTA";
+import { DetailMappedExams } from "@/components/dashboard/DetailMappedExams";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { InstituteLogo } from "@/components/dashboard/InstituteLogo";
 import {
@@ -67,11 +67,6 @@ function DetailShell({
         loadShortlistCounts={false}
       />
       <div className="flex h-screen flex-1 flex-col">
-        <TopBar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
@@ -149,7 +144,7 @@ export default function InstituteDetailPage() {
   return (
     <DetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
-        <div className="px-4 py-3 md:px-6">
+        <div className="px-4 py-2.5 md:px-6">
           <div className="flex items-center gap-3">
             <InstituteLogo institute={institute} className="h-14 w-14 shrink-0 p-1.5" />
             <div className="min-w-0">
@@ -194,6 +189,11 @@ export default function InstituteDetailPage() {
         <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
+            <DetailMappedExams
+              linkedExams={institute.linkedExams}
+              linkFrom={examLinkFrom}
+              subtitle="Exams offered by this coaching"
+            />
           </div>
 
           <aside className={[
@@ -262,11 +262,6 @@ export default function InstituteDetailPage() {
                 </Button>
               </div>
             </div>
-            <DetailRecommendedExamsCTA
-              linkedExams={institute.linkedExams}
-              linkFrom={examLinkFrom}
-              subtitle="Mapped via coaching exams."
-            />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
               lectures={taggedLecturePreviews}

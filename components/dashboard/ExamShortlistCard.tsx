@@ -82,7 +82,7 @@ export function ExamShortlistCard({
 
   return (
     <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
-      <ExamCardHeader exam={exam} name={name} />
+      <ExamCardHeader exam={exam} name={name} borderClassName="" />
 
       <div className="relative flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-3 pt-2.5">
         <div className="absolute right-2 top-2 z-10">
@@ -96,7 +96,7 @@ export function ExamShortlistCard({
 
         <ExamCardFields exam={exam} overviewClassName="pr-8" linkFrom="exam-shortlist" />
 
-        <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-auto pt-3">
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="themeButtonOutline"

@@ -43,7 +43,7 @@ export function CoachingShortlistCard({
 
   return (
     <article className="group flex h-full flex-col overflow-visible rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900">
-      <div className="flex gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
+      <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1 space-y-1">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 dark:text-slate-100">
             {institute.institute_name}
@@ -79,7 +79,7 @@ export function CoachingShortlistCard({
           maxVisible={LINKED_EXAM_CHIPS_CARD_MAX}
         />
 
-        <div className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-auto pt-3">
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="themeButtonOutline"

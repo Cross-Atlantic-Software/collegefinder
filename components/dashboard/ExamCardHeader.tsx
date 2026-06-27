@@ -14,14 +14,14 @@ type ExamCardHeaderProps = {
 export function ExamCardHeader({
   exam,
   name,
-  borderClassName = "border-slate-100 dark:border-slate-800",
+  borderClassName = "border-b border-slate-100 dark:border-slate-800",
 }: ExamCardHeaderProps) {
   const examType = examCardTypeLabel(exam);
   const conductingAuthority = examCardConductingAuthority(exam);
 
   return (
     <div
-      className={`flex items-start gap-2.5 border-b px-3 pt-2 pb-1.5 ${borderClassName}`}
+      className={`flex items-start gap-2.5 px-3 pt-2 pb-1.5 ${borderClassName}`}
     >
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-slate-900 dark:text-slate-100">

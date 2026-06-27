@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { Play } from "lucide-react";
 import type { ExamTaggedLecturePreview } from "@/api/exams";
 
 type ExamDetailRecommendedVideosProps = {
@@ -13,6 +12,15 @@ type ExamDetailRecommendedVideosProps = {
 };
 
 const EXAM_PREP_HREF = "/dashboard?section=exam-prep&mode=self";
+const VISIBLE_COUNT = 3;
+
+// Preview data has no thumbnail URL, so each card uses a deterministic gradient cover.
+const THUMB_GRADIENTS = [
+  "from-[#341050] to-[#7c3aed]",
+  "from-[#0f766e] to-[#22d3ee]",
+  "from-[#b45309] to-[#f59e0b]",
+  "from-[#9d174d] to-[#fb7185]",
+];
 
 export function ExamDetailRecommendedVideos({
   count,
@@ -36,112 +44,61 @@ export function ExamDetailRecommendedVideos({
           ]
         : [];
 
-  const [activeIndex, setActiveIndex] = useState(0);
-
   if (count <= 0 || slides.length === 0) return null;
+
+  const visible = slides.slice(0, VISIBLE_COUNT);
+  const remaining = count - visible.length;
 
   return (
     <article className="min-w-0 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 md:p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {title}
-          </h3>
-          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            {subtitle}
-          </p>
-        </div>
-        {slides.length > 1 ? (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 transition hover:ring-black disabled:opacity-30 dark:bg-slate-800 dark:ring-slate-700"
-              disabled={activeIndex === 0}
-              aria-label="Previous video"
-            >
-              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveIndex((i) => Math.min(slides.length - 1, i + 1))}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 transition hover:ring-black disabled:opacity-30 dark:bg-slate-800 dark:ring-slate-700"
-              disabled={activeIndex === slides.length - 1}
-              aria-label="Next video"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : null}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{subtitle}</p>
       </div>
 
-      <div className="mt-2.5 overflow-hidden rounded-xl">
-        <div
-          className="flex transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-        >
-          {slides.map((item) => {
-            const track = item.subjectName?.trim() || item.topicName?.trim() || "Self study";
-            const reason =
-              item.hookSummary?.trim() ||
-              [item.topicName?.trim(), item.channel?.trim()].filter(Boolean).join(" · ") ||
-              "Watch curated prep videos for this exam.";
+      <div className="mt-3 space-y-3">
+        {visible.map((item, idx) => {
+          const track = item.subjectName?.trim() || item.topicName?.trim() || "Self study";
+          const gradient = THUMB_GRADIENTS[idx % THUMB_GRADIENTS.length];
 
-            return (
+          return (
+            <Link
+              key={item.id}
+              href={EXAM_PREP_HREF}
+              className="group block overflow-hidden rounded-xl border border-slate-100 bg-slate-50/80 transition hover:border-[#FAD53C] hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/40"
+            >
               <div
-                key={item.id}
-                className="w-full shrink-0 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-800/40"
+                className={`relative flex aspect-video w-full items-center justify-center bg-gradient-to-br ${gradient}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="line-clamp-2 text-[13px] font-semibold text-slate-900 dark:text-slate-100">
-                    {item.title}
-                  </p>
-                  <span className="shrink-0 rounded-full bg-yellow-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                    Video
-                  </span>
-                </div>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black shadow transition group-hover:scale-110">
+                  <Play className="h-4 w-4 translate-x-[1px] fill-current" />
+                </span>
+                <span className="absolute left-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
                   {track}
-                </p>
-                <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                  {reason}
-                </p>
-                <Link
-                  href={EXAM_PREP_HREF}
-                  className="mt-2 inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-neutral-800"
-                >
-                  Watch video <ChevronRight className="h-3 w-3" />
-                </Link>
+                </span>
               </div>
-            );
-          })}
-        </div>
-
-        {slides.length > 1 ? (
-          <div className="mt-2 flex items-center justify-center gap-1.5">
-            {slides.map((item, idx) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveIndex(idx)}
-                aria-label={`Show video ${idx + 1}`}
-                className={`relative h-1 overflow-hidden rounded-full transition-all ${
-                  idx === activeIndex ? "w-8 bg-[#FAD53C]/30" : "w-1.5 bg-slate-200 dark:bg-slate-700"
-                }`}
-              >
-                {idx === activeIndex ? (
-                  <span className="absolute inset-y-0 left-0 w-full rounded-full bg-[#FAD53C]" />
+              <div className="p-2.5">
+                <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                  {item.title}
+                </p>
+                {item.channel?.trim() ? (
+                  <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    {item.channel}
+                  </p>
                 ) : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
-      {count > slides.length ? (
-        <p className="mt-2 text-center text-[10px] font-medium text-slate-400">
-          +{count - slides.length} more in Exam Prep
-        </p>
+      {remaining > 0 ? (
+        <Link
+          href={EXAM_PREP_HREF}
+          className="mt-3 block rounded-full bg-black py-1.5 text-center text-[11px] font-semibold text-white transition hover:bg-neutral-800"
+        >
+          +{remaining} more in Exam Prep
+        </Link>
       ) : null}
     </article>
   );
