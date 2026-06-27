@@ -158,16 +158,5 @@ export function buildScholarshipDetailSections(
   pushItem(tracking, "Application Link", scholarship.application_link);
   sections.push({ id: "tracking", title: "Tracking & Links", items: tracking });
 
-  // 8. Mapping
-  const mapping: Array<{ label: string; value: string }> = [];
-  if (scholarship.linkedColleges?.length) {
-    pushItem(
-      mapping,
-      "Colleges",
-      scholarship.linkedColleges.map((c) => c.name).filter(Boolean).join(", ")
-    );
-  }
-  sections.push({ id: "mappings", title: "Mapping", items: mapping });
-
   return sections;
 }
