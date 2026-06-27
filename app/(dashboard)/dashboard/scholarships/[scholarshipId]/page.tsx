@@ -9,6 +9,7 @@ import { Sidebar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
 import { DetailMappedExams } from "@/components/dashboard/DetailMappedExams";
+import { ScholarshipMappedColleges } from "@/components/dashboard/ScholarshipMappedColleges";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { buildScholarshipDetailSections } from "@/lib/scholarshipDisplay";
 import { useScholarshipDetailQuery } from "@/lib/scholarshipDetailQueries";
@@ -193,6 +194,7 @@ export default function ScholarshipDetailPage() {
               linkFrom="dashboard-scholarship-shortlist"
               subtitle="Exams mapped to this scholarship"
             />
+            <ScholarshipMappedColleges colleges={scholarship.linkedColleges ?? []} />
           </div>
 
           <aside className={[
