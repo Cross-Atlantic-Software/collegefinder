@@ -16,6 +16,8 @@ type TopBarProps = {
   onToggleSidebar: () => void;
   onToggleCollapse: () => void;
   isSidebarCollapsed: boolean;
+  /** Custom content rendered in the left area (e.g. the dashboard heading + stats). */
+  headerSlot?: React.ReactNode;
   /** When user is on Exam Shortlist, sync search with that section */
   examShortlistToolbar?: SearchToolbarProps;
   /** When user is on College Shortlist */
@@ -51,6 +53,7 @@ export default function TopBar({
   onToggleSidebar,
   onToggleCollapse,
   isSidebarCollapsed,
+  headerSlot,
   examShortlistToolbar,
   collegeShortlistToolbar,
   instituteShortlistToolbar,
@@ -84,30 +87,29 @@ export default function TopBar({
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm">
-      <div className="flex items-center gap-4 px-4 py-3 md:px-6">
-        {/* Search */}
-        <div className="flex-1 flex items-center gap-3">
-          <div
-            className={`flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20 ${
-              shortlistToolbar ? "flex" : "hidden md:flex"
-            }`}
-          >
-            <BiSearch className="h-4 w-4 flex-shrink-0" />
-            <input
-              placeholder={placeholder}
-              className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
-              value={shortlistToolbar?.searchValue ?? ""}
-              onChange={(e) => shortlistToolbar?.onSearchChange(e.target.value)}
-              disabled={!shortlistToolbar}
-            />
-          </div>
+      <div className="flex items-center gap-4 px-4 py-2 md:px-6">
+        {/* Left: page header content or section search */}
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {headerSlot ? (
+            headerSlot
+          ) : shortlistToolbar ? (
+            <div className="flex flex-1 items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all duration-200 focus-within:border-action-500 focus-within:ring-1 focus-within:ring-action-500/20">
+              <BiSearch className="h-4 w-4 flex-shrink-0" />
+              <input
+                placeholder={placeholder}
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-slate-500"
+                value={shortlistToolbar.searchValue}
+                onChange={(e) => shortlistToolbar.onSearchChange(e.target.value)}
+              />
+            </div>
+          ) : null}
         </div>
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-2" ref={profileMenuRef}>
           <button
             aria-label="Notifications"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
           >
             <BiBell className="h-5 w-5" />
             <span className="absolute top-1 right-1 h-4 min-w-4 rounded-full bg-action-500 px-1 text-[10px] font-semibold leading-4 text-white">4</span>
@@ -117,7 +119,7 @@ export default function TopBar({
             onClick={() => setProfileOpen((v) => !v)}
             aria-expanded={profileOpen}
             aria-haspopup="menu"
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
           >
             <div className="relative h-7 w-7 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               {user?.profile_photo ? (

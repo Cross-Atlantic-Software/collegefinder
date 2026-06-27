@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { BiCheck, BiChevronLeft, BiChevronRight } from "react-icons/bi";
+import { BiCheck, BiChevronLeft, BiChevronRight, BiInfoCircle } from "react-icons/bi";
 import { Button } from "../shared";
 import UpcomingDeadlinesCard from "./UpcomingDeadlinesCard";
 import { useDashboardExamsMetaQuery } from "@/lib/dashboardExamShortlistQueries";
@@ -693,7 +693,7 @@ export default function MiddleContent() {
         }
       `}} />
       <section className="relative grid xl:h-full xl:min-h-0 flex-1 gap-3 xl:grid-cols-[2.15fr,1fr]">
-        <div className="relative z-30 flex xl:h-full xl:min-h-0 flex-col gap-3 overflow-visible">
+        <div className="relative z-30 flex xl:h-full xl:min-h-0 flex-col gap-1 overflow-visible">
           <article className="flex xl:min-h-0 flex-[1.3] flex-col overflow-visible xl:overflow-hidden">
             {examMetaLoading ? (
               <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
@@ -714,10 +714,22 @@ export default function MiddleContent() {
           <div className="grid xl:min-h-0 flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
             <article className="relative z-20 flex xl:h-full flex-col xl:overflow-hidden rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
               {/* Card header — always visible */}
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
-              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                Track profile and milestone progress across your admission journey.
-              </p>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Progress Meter</h3>
+                <span className="group/info relative inline-flex">
+                  <BiInfoCircle
+                    className="h-3.5 w-3.5 cursor-help text-slate-400 outline-none transition-colors hover:text-slate-600 focus-visible:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    tabIndex={0}
+                    aria-label="How progress updates"
+                  />
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none invisible absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600 opacity-0 shadow-lg transition-opacity duration-150 group-hover/info:visible group-hover/info:opacity-100 group-focus-within/info:visible group-focus-within/info:opacity-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    Progress updates as you complete your profile, upload documents, build shortlists, fill applications, and take mock tests.
+                  </span>
+                </span>
+              </div>
 
               {/* Scrollable step list with fade-out hint */}
               <div className="relative mt-2.5 xl:min-h-0 flex-1">
@@ -778,28 +790,28 @@ export default function MiddleContent() {
                   aria-hidden="true"
                 />
               </div>
-
-              {/* Footer note — always visible */}
-              {!profileCompletionLoading &&
-                !documentVaultLoading &&
-                !examMetaLoading &&
-                !collegesMetaLoading &&
-                !scholarshipsMetaLoading &&
-                !institutesMetaLoading && (
-                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                  Progress updates as you complete your profile, upload documents, build shortlists, fill applications, and take mock tests.
-                </p>
-              )}
             </article>
 
-            <article className="relative z-50 flex xl:h-full flex-col rounded-2xl bg-white p-3 pb-5 dark:bg-slate-900">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Confidence Meter</h3>
-              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                See how your topic confidence is improving based on mock and revision performance.
-              </p>
+            <article className="relative z-50 flex xl:h-full flex-col rounded-2xl bg-white p-3 dark:bg-slate-900">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Confidence Meter</h3>
+                <span className="group/info relative inline-flex">
+                  <BiInfoCircle
+                    className="h-3.5 w-3.5 cursor-help text-slate-400 outline-none transition-colors hover:text-slate-600 focus-visible:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    tabIndex={0}
+                    aria-label="How confidence is measured"
+                  />
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none invisible absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600 opacity-0 shadow-lg transition-opacity duration-150 group-hover/info:visible group-hover/info:opacity-100 group-focus-within/info:visible group-focus-within/info:opacity-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    See how your topic confidence is improving based on mock and revision performance.
+                  </span>
+                </span>
+              </div>
               {/* Two-column on wide panels, single-column when cramped.
                   min-w-0 + overflow-hidden prevent any donut from escaping. */}
-              <div className="mt-2.5 grid min-w-0 flex-1 grid-cols-1 gap-2.5 [container-type:inline-size] sm:grid-cols-2">
+              <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 [container-type:inline-size] sm:grid-cols-2">
                 <ConfidenceDonut
                   totalLabel="Total Topics"
                   totalValue="30"
@@ -817,29 +829,29 @@ export default function MiddleContent() {
           </div>
         </div>
 
-        <div className="flex xl:h-full xl:min-h-0 flex-col gap-3 xl:overflow-hidden">
-          <article className="rounded-2xl bg-white dark:bg-slate-900 p-3 shrink-0">
+        <div className="flex xl:h-full xl:min-h-0 flex-col gap-1 xl:overflow-hidden">
+          <article className="rounded-2xl bg-white dark:bg-slate-900 px-3 pt-3 pb-1 shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recommendations</h2>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                {/* <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                   Personalized actions to keep your preparation momentum high.
-                </p>
+                </p> */}
               </div>
               <div className="hidden md:flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                 <button
                   onClick={goToPreviousRecommendation}
                   aria-label="Previous recommendation"
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
                 >
-                  <BiChevronLeft className="h-4 w-4" />
+                  <BiChevronLeft className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={goToNextRecommendation}
                   aria-label="Next recommendation"
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
                 >
-                  <BiChevronRight className="h-4 w-4" />
+                  <BiChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -865,7 +877,7 @@ export default function MiddleContent() {
                       <Button
                         variant="themeButton"
                         size="sm"
-                        className="!rounded-full px-3 py-1 text-[11px]"
+                        className="!rounded-full !px-2 !py-0.5 text-[9px] leading-none"
                       >
                         Take Action
                       </Button>

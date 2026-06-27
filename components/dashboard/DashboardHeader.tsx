@@ -33,32 +33,32 @@ export default function DashboardHeader() {
   const airRank = "—";
 
   return (
-    <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="px-4 py-2 md:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dashboard</p>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{fullName}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:justify-items-end">
-            <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">AIR</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{airRank}</p>
-            </div>
-            <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Stream</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{stream}</p>
-            </div>
-            <div className="min-w-[90px] rounded-lg bg-slate-50 px-2.5 py-2 text-left dark:bg-slate-800/80">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Profile</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {profileStrength === null ? "…" : `${profileStrength}%`}
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <div className="min-w-0 leading-none">
+        <p className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
+          Dashboard
+        </p>
+        <p className="truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">{fullName}</p>
       </div>
-    </section>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        <StatChip label="AIR" value={airRank} />
+        <StatChip label="Stream" value={stream} />
+        <StatChip label="Profile" value={profileStrength === null ? "…" : `${profileStrength}%`} />
+      </div>
+    </div>
+  );
+}
+
+function StatChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="hidden min-w-[58px] rounded-lg bg-slate-50 px-2 py-0.5 text-left leading-tight dark:bg-slate-800/80 sm:block">
+      <p className="text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+      <p className="max-w-[110px] truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
+        {value}
+      </p>
+    </div>
   );
 }
