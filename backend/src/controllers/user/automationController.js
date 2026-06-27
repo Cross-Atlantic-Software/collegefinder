@@ -365,3 +365,134 @@ exports.getApplication = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * GET /api/user/exam-extra-fields/:taxonomyExamId
+ * The approved discovered.* profile fields this exam's adapter references that
+ * the student hasn't filled yet — so the Apply flow can collect them inline.
+ * Resolves the adapter via the same slug-derived join the dashboard uses
+ * (Exam.findApplyReadyMap). Non-fatal by design: any problem returns an empty
+ * list so applying is never blocked. Core profile fields never appear here.
+ */
+exports.getExamExtraFields = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const taxonomyExamId = parseInt(req.params.taxonomyExamId, 10);
+        if (!Number.isInteger(taxonomyExamId)) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const adapterRes = await pool.query(
+            `SELECT a.adapter_config
+               FROM exams_taxonomies t
+               JOIN exam_adapters a
+                 ON a.exam_id = btrim(regexp_replace(lower(COALESCE(NULLIF(t.code, ''), t.name)), '[^a-z0-9]+', '_', 'g'), '_')
+                AND a.approval_status = 'approved'
+                AND a.status = 'published'
+                AND a.is_active = TRUE
+              WHERE t.id = $1
+              LIMIT 1`,
+            [taxonomyExamId]
+        );
+        if (adapterRes.rows.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const rawCfg = adapterRes.rows[0].adapter_config;
+        const config = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : (rawCfg || {});
+        const sections = Array.isArray(config.sections) ? config.sections : [];
+
+        // Distinct discovered.* sources the adapter actually fills.
+        const wanted = new Set();
+        for (const section of sections) {
+            for (const field of (section.fields || [])) {
+                if (typeof field.source === 'string' && field.source.startsWith('discovered.')) {
+                    wanted.add(field.source);
+                }
+            }
+        }
+        if (wanted.size === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Only surface APPROVED registry fields (label/type), minus any the
+        // student has already filled (value present in profile_field_values).
+        const fieldsRes = await pool.query(
+            `SELECT r.field_path, r.label, r.type, v.value
+               FROM profile_field_registry r
+               LEFT JOIN profile_field_values v
+                 ON v.field_path = r.field_path AND v.user_id = $1
+              WHERE r.field_path = ANY($2::text[])
+                AND r.status = 'approved'`,
+            [userId, [...wanted]]
+        );
+
+        const data = fieldsRes.rows
+            .filter((row) => row.value == null || String(row.value).trim() === '')
+            .map((row) => ({
+                field_path: row.field_path,
+                label: row.label || row.field_path,
+                type: row.type || 'text'
+            }));
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Error fetching exam extra fields (non-fatal):', error);
+        res.json({ success: true, data: [] });
+    }
+};
+
+/**
+ * PUT /api/user/profile-field-values
+ * Upserts student-entered values for approved discovered.* fields into
+ * profile_field_values — the table the ExamFill fill-profile overlay reads.
+ * Body: { values: { "discovered.x": "B+", ... } }.
+ * Allow-listed: only paths that are approved discovered.* registry rows are
+ * written, so a student can never set an arbitrary profile path.
+ */
+exports.saveProfileFieldValues = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const values =
+            req.body && typeof req.body.values === 'object' && req.body.values
+                ? req.body.values
+                : null;
+        if (!values) {
+            return res.status(400).json({ success: false, message: 'values object is required' });
+        }
+
+        const requestedPaths = Object.keys(values).filter(
+            (p) => typeof p === 'string' && p.startsWith('discovered.')
+        );
+        if (requestedPaths.length === 0) {
+            return res.json({ success: true, data: { saved: 0 } });
+        }
+
+        const allowedRes = await pool.query(
+            `SELECT field_path FROM profile_field_registry
+              WHERE field_path = ANY($1::text[]) AND status = 'approved'`,
+            [requestedPaths]
+        );
+        const allowed = new Set(allowedRes.rows.map((r) => r.field_path));
+
+        let saved = 0;
+        for (const path of requestedPaths) {
+            if (!allowed.has(path)) continue;
+            const raw = values[path];
+            const value = raw == null ? '' : String(raw).slice(0, 1000);
+            await pool.query(
+                `INSERT INTO profile_field_values (user_id, field_path, value, source)
+                 VALUES ($1, $2, $3, 'student_edit')
+                 ON CONFLICT (user_id, field_path)
+                 DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
+                [userId, path.slice(0, 150), value]
+            );
+            saved += 1;
+        }
+
+        res.json({ success: true, data: { saved } });
+    } catch (error) {
+        console.error('Error saving profile field values:', error);
+        res.status(500).json({ success: false, message: 'Failed to save field values' });
+    }
+};

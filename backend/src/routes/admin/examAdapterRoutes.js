@@ -58,6 +58,14 @@ router.patch(
   ExamAdapterController.reviewDiscoveredField
 );
 
+router.delete(
+  '/discovered-fields/:id',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanDelete,
+  ExamAdapterController.deleteDiscoveredField
+);
+
 // Single adapter
 router.get(
   '/:examId',

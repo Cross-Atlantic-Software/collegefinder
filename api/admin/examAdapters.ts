@@ -247,6 +247,14 @@ export async function reviewDiscoveredField(
   });
 }
 
+export async function deleteDiscoveredField(
+  id: number
+): Promise<ApiResponse<{ id: number; field_path: string }>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/discovered-fields/${id}`, {
+    method: 'DELETE'
+  });
+}
+
 // ─── Admin validation & approval ──────────────────────────────────────
 
 /** Latest validation-run fill report per section (the review-screen feed). */

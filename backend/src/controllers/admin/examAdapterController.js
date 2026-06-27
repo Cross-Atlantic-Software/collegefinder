@@ -469,6 +469,41 @@ class ExamAdapterController {
       res.status(500).json({ success: false, message: err.message || 'Failed to review discovered field' });
     }
   }
+
+  /**
+   * DELETE /discovered-fields/:id — permanently remove a discovered field from
+   * the registry (used to clean up test/unwanted fields from the Approved or
+   * Rejected tabs, which have no other way to delete). Also clears any per-student
+   * values stored for its path, then refreshes the whitelist cache so the field
+   * drops out of the source dropdown / fill schema immediately.
+   */
+  static async deleteDiscoveredField(req, res) {
+    try {
+      const { id } = req.params;
+      const found = await db.query(
+        'SELECT field_path FROM profile_field_registry WHERE id = $1',
+        [id]
+      );
+      if (!found.rows[0]) {
+        return res.status(404).json({ success: false, message: `Discovered field '${id}' not found` });
+      }
+      const fieldPath = found.rows[0].field_path;
+      // Clear orphaned per-student values for this path (best-effort; the table
+      // may not exist in older envs, so never let it block the registry delete).
+      try {
+        await db.query('DELETE FROM profile_field_values WHERE field_path = $1', [fieldPath]);
+      } catch (valErr) {
+        console.warn(`⚠️  profile_field_values cleanup skipped (non-fatal): ${valErr.message}`);
+      }
+      await db.query('DELETE FROM profile_field_registry WHERE id = $1', [id]);
+      // Refresh the whitelist cache so the change takes effect immediately.
+      await refreshRegistryCache();
+      res.json({ success: true, data: { id: Number(id), field_path: fieldPath } });
+    } catch (err) {
+      console.error('Error deleting discovered field:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to delete discovered field' });
+    }
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

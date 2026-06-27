@@ -7,10 +7,11 @@ import AdminHeader from '@/components/admin/layout/AdminHeader';
 import {
   listDiscoveredFields,
   reviewDiscoveredField,
+  deleteDiscoveredField,
   DiscoveredField,
   DiscoveredFieldStatus
 } from '@/api/admin/examAdapters';
-import { FiArrowLeft, FiCheck, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiX, FiTrash2 } from 'react-icons/fi';
 import { useToast } from '@/components/shared';
 
 const STATUS_TABS: DiscoveredFieldStatus[] = ['pending', 'approved', 'rejected'];
@@ -65,6 +66,26 @@ export default function DiscoveredFieldsPage() {
       }
     } catch (err) {
       showError('Failed to update field');
+      console.error(err);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleDelete = async (field: DiscoveredField) => {
+    const name = field.discovered_label || field.label || field.field_path;
+    if (!confirm(`Remove "${name}" permanently? This deletes it from the registry and any saved student values.`)) return;
+    try {
+      setActingId(field.id);
+      const res = await deleteDiscoveredField(field.id);
+      if (res.success) {
+        showSuccess('Field removed');
+        fetchFields(statusTab);
+      } else {
+        showError(res.message || 'Failed to remove field');
+      }
+    } catch (err) {
+      showError('Failed to remove field');
       console.error(err);
     } finally {
       setActingId(null);
@@ -129,15 +150,13 @@ export default function DiscoveredFieldsPage() {
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">TYPE</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">DISCOVERED FROM</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">PAGE URL</th>
-                      {statusTab === 'pending' && (
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
-                      )}
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {fields.length === 0 ? (
                       <tr>
-                        <td colSpan={statusTab === 'pending' ? 6 : 5} className="px-4 py-6 text-center text-sm text-slate-500">
+                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                           No {statusTab} fields.
                         </td>
                       </tr>
@@ -153,8 +172,8 @@ export default function DiscoveredFieldsPage() {
                           <td className="px-4 py-2 text-xs text-slate-600 font-mono max-w-[280px] truncate" title={f.discovered_page_url || ''}>
                             {f.discovered_page_url || '—'}
                           </td>
-                          {statusTab === 'pending' && (
-                            <td className="px-4 py-2">
+                          <td className="px-4 py-2">
+                            {statusTab === 'pending' ? (
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleReview(f.id, 'approve')}
@@ -173,8 +192,17 @@ export default function DiscoveredFieldsPage() {
                                   Reject
                                 </button>
                               </div>
-                            </td>
-                          )}
+                            ) : (
+                              <button
+                                onClick={() => handleDelete(f)}
+                                disabled={actingId === f.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-lg disabled:opacity-60"
+                              >
+                                <FiTrash2 className="h-3 w-3" />
+                                Remove
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}

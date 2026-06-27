@@ -21,7 +21,14 @@ import {
   getExamApplicationWindowStatus,
   isExamApplicationButtonEnabled,
 } from "@/lib/examDisplay";
-import { addExamToApplications, APPLICATIONS_NOTICE_KEY } from "@/lib/examApplicationApi";
+import {
+  addExamToApplications,
+  getExamExtraFields,
+  saveProfileFieldValues,
+  APPLICATIONS_NOTICE_KEY,
+  type ExamExtraField,
+} from "@/lib/examApplicationApi";
+import { ExamExtraFieldsModal } from "@/components/dashboard/ExamExtraFieldsModal";
 import { useExamDetailQuery } from "@/lib/examDetailQueries";
 import { useExamLinkedCollegesQuery } from "@/lib/examLinkedCollegesQueries";
 import { useExamLinkedInstitutesQuery } from "@/lib/examLinkedInstitutesQueries";
@@ -132,6 +139,10 @@ export default function ExamDetailPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [startApplicationSaving, setStartApplicationSaving] = useState(false);
   const [startApplicationError, setStartApplicationError] = useState<string | null>(null);
+  const [extraFields, setExtraFields] = useState<ExamExtraField[]>([]);
+  const [showExtraModal, setShowExtraModal] = useState(false);
+  const [extraSaving, setExtraSaving] = useState(false);
+  const [extraError, setExtraError] = useState<string | null>(null);
 
   const { data: pageData, isLoading, isError, error } = useExamDetailQuery(examId);
   const exam = pageData?.exam;
@@ -198,10 +209,10 @@ export default function ExamDetailPage() {
   const canStartApplication =
     exam != null && isExamApplicationButtonEnabled(getExamApplicationWindowStatus(exam));
 
-  const handleStartApplication = async () => {
-    if (examNumericId == null || !canStartApplication || startApplicationSaving) return;
-    setStartApplicationSaving(true);
-    setStartApplicationError(null);
+  // Creates the application and navigates to My Applications. Shared by the
+  // direct path and the post-extra-fields path.
+  const proceedApply = async () => {
+    if (examNumericId == null) return;
     try {
       const result = await addExamToApplications(examNumericId);
       if (!result.ok) {
@@ -212,6 +223,56 @@ export default function ExamDetailPage() {
       router.push("/dashboard?section=applications");
     } catch {
       setStartApplicationError("Could not add this exam to My Applications.");
+    }
+  };
+
+  const handleStartApplication = async () => {
+    if (examNumericId == null || !canStartApplication || startApplicationSaving) return;
+    setStartApplicationSaving(true);
+    setStartApplicationError(null);
+    try {
+      // If this exam needs any discovered profile fields the student hasn't
+      // filled, collect them inline first. Best-effort: an empty result (or any
+      // lookup failure) just proceeds straight to applying.
+      const missing = await getExamExtraFields(examNumericId);
+      if (missing.length > 0) {
+        setExtraFields(missing);
+        setExtraError(null);
+        setShowExtraModal(true);
+        setStartApplicationSaving(false);
+        return;
+      }
+      await proceedApply();
+    } catch {
+      setStartApplicationError("Could not add this exam to My Applications.");
+    } finally {
+      setStartApplicationSaving(false);
+    }
+  };
+
+  // Modal "Save & Continue": persist the entered values, then apply.
+  const handleExtraSubmit = async (values: Record<string, string>) => {
+    setExtraSaving(true);
+    setExtraError(null);
+    try {
+      await saveProfileFieldValues(values);
+      setShowExtraModal(false);
+      setStartApplicationSaving(true);
+      await proceedApply();
+    } catch {
+      setExtraError("Couldn't save those details. You can skip and continue.");
+    } finally {
+      setExtraSaving(false);
+      setStartApplicationSaving(false);
+    }
+  };
+
+  // Modal "Skip for now": apply without the extra fields (non-blocking).
+  const handleExtraSkip = async () => {
+    setShowExtraModal(false);
+    setStartApplicationSaving(true);
+    try {
+      await proceedApply();
     } finally {
       setStartApplicationSaving(false);
     }
@@ -389,6 +450,15 @@ export default function ExamDetailPage() {
                 {startApplicationError ? (
                   <p className="text-center text-xs text-red-600 dark:text-red-400">{startApplicationError}</p>
                 ) : null}
+                <ExamExtraFieldsModal
+                  isOpen={showExtraModal}
+                  examName={exam.name}
+                  fields={extraFields}
+                  saving={extraSaving}
+                  error={extraError}
+                  onSkip={() => void handleExtraSkip()}
+                  onSubmit={(values) => void handleExtraSubmit(values)}
+                />
                 <Button
                   variant="themeButtonOutline"
                   size="sm"

@@ -36,4 +36,18 @@ router.post('/automation-applications', authenticate, automationController.creat
  */
 router.put('/automation-applications/:id', authenticate, automationController.updateApplication);
 
+/**
+ * @route   GET /api/user/exam-extra-fields/:taxonomyExamId
+ * @desc    Approved discovered.* fields this exam needs that the student hasn't filled
+ * @access  Private (authenticated user)
+ */
+router.get('/exam-extra-fields/:taxonomyExamId', authenticate, automationController.getExamExtraFields);
+
+/**
+ * @route   PUT /api/user/profile-field-values
+ * @desc    Save student-entered values for approved discovered.* profile fields
+ * @access  Private (authenticated user)
+ */
+router.put('/profile-field-values', authenticate, automationController.saveProfileFieldValues);
+
 module.exports = router;
