@@ -7,10 +7,10 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FiTrendingUp } from "react-icons/fi";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
+import { Sidebar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { CollegeDetailSections } from "@/components/dashboard/CollegeDetailSections";
-import { CollegeDetailRecommendedExams } from "@/components/dashboard/CollegeDetailRecommendedExams";
+import { DetailMappedExams } from "@/components/dashboard/DetailMappedExams";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { buildCollegeDetailSections, collegeLocationLine } from "@/lib/collegeDisplay";
 import { useCollegeDetailQuery } from "@/lib/collegeDetailQueries";
@@ -96,11 +96,6 @@ function CollegeDetailShell({
         loadShortlistCounts={false}
       />
       <div className="flex h-screen flex-1 flex-col">
-        <TopBar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
@@ -188,15 +183,15 @@ export default function CollegeDetailPage() {
   return (
     <CollegeDetailShell onSectionChange={handleSectionChange}>
       <section className="bg-white dark:bg-slate-900">
-        <div className="px-4 py-3 md:px-6">
+        <div className="px-4 py-2.5 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 dark:ring-slate-700">
               <Image
                 src={logoSrc}
                 alt=""
                 fill
                 className="object-cover"
-                sizes="44px"
+                sizes="56px"
                 priority
               />
             </div>
@@ -247,6 +242,11 @@ export default function CollegeDetailPage() {
         <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <CollegeDetailSections sections={sections} />
+            <DetailMappedExams
+              linkedExams={college.linkedExams}
+              linkFrom="dashboard-college-shortlist"
+              subtitle="Exams accepted by this college"
+            />
           </div>
 
           <aside className={[
@@ -297,7 +297,6 @@ export default function CollegeDetailPage() {
                 </Button>
               </div>
             </div>
-            <CollegeDetailRecommendedExams college={college} />
             <ExamDetailRecommendedVideos
               count={taggedLectureCount}
               lectures={taggedLecturePreviews}

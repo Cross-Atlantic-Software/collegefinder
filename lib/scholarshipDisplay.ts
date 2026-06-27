@@ -160,13 +160,6 @@ export function buildScholarshipDetailSections(
 
   // 8. Mapping
   const mapping: Array<{ label: string; value: string }> = [];
-  if (scholarship.linkedExams?.length) {
-    pushItem(
-      mapping,
-      "Exams",
-      scholarship.linkedExams.map((e) => e.code?.trim() || e.name).join(", ")
-    );
-  }
   if (scholarship.linkedColleges?.length) {
     pushItem(
       mapping,

@@ -6,11 +6,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { MdSchool } from "react-icons/md";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/shared";
-import { Sidebar, TopBar, type DashboardSectionId } from "@/components/dashboard";
+import { Sidebar, type DashboardSectionId } from "@/components/dashboard";
 import { DetailShortlistButton } from "@/components/dashboard/DetailShortlistButton";
 import { ExamLogo } from "@/components/dashboard/ExamLogo";
 import { ExamDetailRecommendedVideos } from "@/components/dashboard/ExamDetailRecommendedVideos";
 import { ExamDetailSections } from "@/components/dashboard/ExamDetailSections";
+import { ExamDetailMappedColleges } from "@/components/dashboard/ExamDetailMappedColleges";
 import { DetailMappingCarousel } from "@/components/dashboard/DetailMappingCarousel";
 import {
   buildExamDetailSections,
@@ -19,12 +20,6 @@ import {
   getExamApplicationWindowStatus,
   isExamApplicationButtonEnabled,
 } from "@/lib/examDisplay";
-import {
-  collegeCardSubtitle,
-  collegeExamDetailStatsLine,
-  collegeLocationLine,
-} from "@/lib/collegeDisplay";
-import { slugifyCollegeName } from "@/lib/collegeSlug";
 import { scholarshipDetailHref } from "@/lib/scholarshipSlug";
 import {
   instituteExamDetailStatsLine,
@@ -121,11 +116,6 @@ function ExamDetailShell({
         loadShortlistCounts={false}
       />
       <div className="flex h-screen flex-1 flex-col bg-[#F6F8FA] dark:bg-slate-950">
-        <TopBar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
         <div className="flex-1 overflow-y-auto bg-[#F6F8FA] dark:bg-slate-950">{children}</div>
       </div>
     </div>
@@ -168,17 +158,6 @@ export default function ExamDetailPage() {
   const subtitle = exam ? examCardSubtitle(exam) : null;
   const websiteUrl = exam?.website?.trim() || null;
 
-  const collegeMappingItems = useMemo(
-    () =>
-      linkedColleges.map((c) => ({
-        id: c.id,
-        title: c.college_name,
-        subtitle: collegeCardSubtitle(c) || c.college_type || "College",
-        meta: collegeExamDetailStatsLine(c) || collegeLocationLine(c),
-        href: `/dashboard/colleges/${slugifyCollegeName(c.college_name)}?from=exam-detail`,
-      })),
-    [linkedColleges]
-  );
   const scholarshipMappingItems = useMemo(
     () =>
       linkedScholarships.map((s) => ({
@@ -317,11 +296,12 @@ export default function ExamDetailPage() {
       onSectionChange={handleSectionChange}
     >
       <section className="bg-white dark:bg-slate-900">
-        <div className="px-4 py-4 md:px-6">
-          <div className="mx-auto flex gap-4 md:gap-6">
+        <div className="px-4 py-2.5 md:px-6">
+          <div className="mx-auto flex items-center gap-3">
+            <ExamLogo exam={exam} className="h-14 w-14 shrink-0 p-1.5" />
             <div className="min-w-0 flex-1">
               {levelBadge ? (
-                <span className="mb-2 inline-block rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-700">
+                <span className="mb-1 inline-block rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-700">
                   {levelBadge}
                 </span>
               ) : null}
@@ -329,10 +309,9 @@ export default function ExamDetailPage() {
                 {exam.name}
               </h1>
               {subtitle ? (
-                <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">{subtitle}</p>
+                <p className="mt-0.5 text-sm font-medium text-slate-600 dark:text-slate-400">{subtitle}</p>
               ) : null}
             </div>
-            <ExamLogo exam={exam} className="h-24 w-24 shrink-0 p-2 md:h-28 md:w-28" />
           </div>
         </div>
       </section>
@@ -365,6 +344,10 @@ export default function ExamDetailPage() {
         <div className="mx-auto grid w-full grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             <ExamDetailSections sections={sections} />
+            <ExamDetailMappedColleges
+              colleges={linkedColleges}
+              totalCount={linkedCollegesTotal}
+            />
           </div>
 
           <aside className={[
@@ -436,12 +419,6 @@ export default function ExamDetailPage() {
                 </Button>
               </div>
             </div>
-            <DetailMappingCarousel
-              title="Linked Colleges"
-              subtitle={`Colleges tagged to this exam (${linkedCollegesTotal} total).`}
-              viewLabel="View College"
-              items={collegeMappingItems}
-            />
             <DetailMappingCarousel
               title="Linked Scholarships"
               subtitle={`Scholarships tagged to this exam (${linkedScholarshipTotal} total).`}

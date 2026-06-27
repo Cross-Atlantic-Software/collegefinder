@@ -229,11 +229,6 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
   pushItem(academic, "Accepted exams", collegeAcceptedExams(c));
   sections.push({ id: "academic", title: "Academic Progress", items: academic });
 
-  // 4. Ranking & Reputation
-  const ranking: Array<{ label: string; value: string }> = [];
-  pushNumber(ranking, "NIRF ranking", c.nirf_ranking != null ? Number(c.nirf_ranking) : null);
-  sections.push({ id: "ranking", title: "Ranking & Reputation", items: ranking });
-
   // 5. Admissions By Programs / Branch
   if (c.programs?.length) {
     sections.push({
@@ -284,11 +279,6 @@ export function buildCollegeDetailSections(c: DashboardCollege): CollegeDetailSe
   pushItem(fees, "Average package", c.average_package);
   pushItem(fees, "Placement rate", c.placement_rate);
   sections.push({ id: "fees", title: "Fees and Placements", items: fees });
-
-  // 7. Mappings
-  const mappings: Array<{ label: string; value: string }> = [];
-  pushItem(mappings, "Exams", collegeAcceptedExams(c));
-  sections.push({ id: "mappings", title: "Mappings", items: mappings });
 
   return sections;
 }

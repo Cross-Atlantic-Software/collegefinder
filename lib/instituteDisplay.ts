@@ -211,16 +211,5 @@ export function buildInstituteDetailSections(
   pushItem(performance, "Student Strength", institute.student_strength);
   sections.push({ id: "statistics", title: "Performance & Reputation", items: performance });
 
-  // 7. Mapping
-  const mapping: Array<{ label: string; value: string }> = [];
-  if (institute.linkedExams?.length) {
-    pushItem(
-      mapping,
-      "Exams",
-      institute.linkedExams.map((e) => e.code?.trim() || e.name).join(", ")
-    );
-  }
-  sections.push({ id: "mappings", title: "Mapping", items: mapping });
-
   return sections;
 }
