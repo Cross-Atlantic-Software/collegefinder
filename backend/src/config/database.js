@@ -27,9 +27,11 @@ pool.on('connect', () => {
   console.log('✅ Connected to PostgreSQL database');
 });
 
+// Idle clients can drop for routine reasons (DB idle-timeout, network blip, RDS
+// failover). `pg` automatically discards the broken client and creates a fresh one
+// on the next query, so we log and recover here instead of killing the process.
 pool.on('error', (err) => {
-  console.error('❌ Unexpected error on idle client', err);
-  process.exit(-1);
+  console.error('❌ Unexpected error on idle PostgreSQL client (pool will recover):', err.message);
 });
 
 // Initialize database tables

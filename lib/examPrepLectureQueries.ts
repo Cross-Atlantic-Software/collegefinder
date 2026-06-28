@@ -30,7 +30,7 @@ export function useExamPrepRecommendedQuery(
     staleTime: 30_000,
     gcTime: 10 * 60_000,
     retry: 2,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     enabled,
   });
 }
@@ -56,7 +56,7 @@ export function useExamPrepLecturesBySubjectQuery(opts: {
     staleTime: 30_000,
     gcTime: 10 * 60_000,
     retry: 2,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     enabled: enabled && !!subjectId,
   });
 }

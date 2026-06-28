@@ -1,28 +1,37 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+// Always-visible shell + default "dashboard" view stay statically imported so the
+// first paint has no extra round-trip.
 import {
-  ApplicationsPage,
-  ExamPreparation,
   MiddleContent,
-  ReferralCard,
   Sidebar,
   TopBar,
-  TestModule,
-  ShortlistExams,
-  ShortlistColleges,
-  ShortlistInstitutes,
-  ShortlistScholarships,
-  Settings,
 } from "@/components/dashboard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
-import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
-import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
-import Counselling from "@/components/dashboard/Counselling";
-import UtCreditsWallet from "@/components/dashboard/UtCredits/UtCreditsWallet";
+
+// Each non-default section is code-split: its JS chunk is fetched only when that
+// section becomes active, keeping the initial dashboard bundle small. `ssr` is left
+// at its default (true) so render behavior is identical to the static imports.
+const ProfileTabs = dynamic(() => import("@/components/dashboard/ProfileTabs/ProfileTabs"));
+const KnowYourStrengths = dynamic(() => import("@/components/dashboard/KnowYourStrengths"));
+const AdmissionHelp = dynamic(() => import("@/components/dashboard/AdmissionHelp"));
+const Counselling = dynamic(() => import("@/components/dashboard/Counselling"));
+const UtCreditsWallet = dynamic(() => import("@/components/dashboard/UtCredits/UtCreditsWallet"));
+const ApplicationsPage = dynamic(() => import("@/components/dashboard/Applications"));
+const ExamPreparation = dynamic(() => import("@/components/dashboard/ExamPreparation"));
+const TestModule = dynamic(() => import("@/components/dashboard/TestModule"));
+const ShortlistExams = dynamic(() => import("@/components/dashboard/ShortlistExams"));
+const ShortlistColleges = dynamic(() => import("@/components/dashboard/ShortlistColleges"));
+const ShortlistInstitutes = dynamic(() => import("@/components/dashboard/ShortlistInstitutes"));
+const ShortlistScholarships = dynamic(() => import("@/components/dashboard/ShortlistScholarships"));
+const Settings = dynamic(() => import("@/components/dashboard/Settings"));
+const ReferralCard = dynamic(() =>
+  import("@/components/dashboard/ReferralCard").then((m) => m.ReferralCard)
+);
 
 type SectionId =
   | "dashboard"

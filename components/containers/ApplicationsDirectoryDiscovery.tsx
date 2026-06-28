@@ -70,7 +70,6 @@ export default function ApplicationsDirectoryDiscovery() {
                   alt="One-click application form filling preview"
                   fill
                   className="object-cover object-top"
-                  priority
                   unoptimized
                 />
               </div>

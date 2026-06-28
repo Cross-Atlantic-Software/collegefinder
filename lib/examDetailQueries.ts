@@ -130,7 +130,7 @@ export function useExamDetailQuery(idOrSlug: string, enabled = true) {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     retry: 1,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     placeholderData: () => {
       const cachedExam = findEnrichedExamInDashboardCache(qc, key);
       if (!cachedExam) return undefined;
