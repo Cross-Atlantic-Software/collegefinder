@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { FiCheck, FiCheckCircle } from "react-icons/fi";
+import { FiCheckCircle, FiArrowUpRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +42,6 @@ const QUERY_TYPES = [
 type CareerOpt = { id: string; label: string; logo?: string | null };
 
 export default function ContactSection({ contact }: { contact: LandingPageContent["contact"] }) {
-    const contactPoints = contact.points || [];
     const [isVisible, setIsVisible] = useState(false);
     const sectionRef = useRef<HTMLElement>(null);
     const router = useRouter();
@@ -516,25 +515,18 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                                 .
                             </h3>
                             <p className="mt-4 max-w-lg whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
-                                {contact.subtitle}
+                                Turn Uncertainty Into A Clear Roadmap.
                             </p>
-                            <ul className="mt-8 space-y-6">
-                                {contactPoints.map((point, idx) => (
-                                    <li key={`${point.title}-${idx}`} className="flex items-start gap-3">
-                                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-300 text-black">
-                                            <FiCheck className="text-sm" />
-                                        </span>
-                                        <div>
-                                            <p className="text-base font-semibold text-black">
-                                                <span className="landing-scribble-hover">{point.title}</span>
-                                            </p>
-                                            <p className="mt-1 whitespace-pre-line text-sm text-black/60">
-                                                {point.description}
-                                            </p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
+
+                            <div className="mt-8 flex justify-start">
+                                <Link
+                                    href="https://unitracko.com/blogs"
+                                    className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
+                                >
+                                    Join Our Feed
+                                    <FiArrowUpRight className="landing-icon-slide text-base" />
+                                </Link>
+                            </div>
                         </div>
 
                         <div
@@ -716,26 +708,18 @@ export default function ContactSection({ contact }: { contact: LandingPageConten
                         </h3>
 
                         <p className="mt-4 max-w-lg whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
-                            {contact.subtitle}
+                            Turn Uncertainty Into A Clear Roadmap.
                         </p>
 
-                        <ul className="mt-8 space-y-6">
-                            {contactPoints.map((point, idx) => (
-                                <li key={`${point.title}-${idx}`} className="flex items-start gap-3">
-                                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-300 text-black">
-                                        <FiCheck className="text-sm" />
-                                    </span>
-                                    <div>
-                                        <p className="text-base font-semibold text-black">
-                                            <span className="landing-scribble-hover">{point.title}</span>
-                                        </p>
-                                        <p className="mt-1 whitespace-pre-line text-sm text-black/60">
-                                            {point.description}
-                                        </p>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="mt-8 flex justify-start">
+                            <Link
+                                href="https://unitracko.com/blogs"
+                                className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-black/85"
+                            >
+                                Join Our Feed
+                                <FiArrowUpRight className="landing-icon-slide text-base" />
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="relative mx-auto w-full max-w-[460px]">
