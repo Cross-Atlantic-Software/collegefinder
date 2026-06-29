@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getLandingPageContent } from "@/api";
+import { getLandingPageContent, getPublicTestimonials, type PublicTestimonial } from "@/api";
 import type { LandingPageContent } from "@/types/landingPage";
 import {
   AudienceSection,
@@ -12,6 +12,7 @@ import {
   Hero,
   HowItWorksSection,
   InfoSection,
+  TestimonialsSection,
 } from "@/components/containers";
 import OnboardingLoader from "@/components/shared/OnboardingLoader";
 import { HomeSignupWelcomeLayer } from "@/components/shared/HomeSignupWelcomeLayer";
@@ -22,6 +23,7 @@ export default function Home() {
   const { isLoading } = useAuth();
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [landingError, setLandingError] = useState<string | null>(null);
+  const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -30,12 +32,18 @@ export default function Home() {
     (async () => {
       setLandingError(null);
       try {
-        const res = await getLandingPageContent();
+        const [contentRes, testimonialsRes] = await Promise.all([
+          getLandingPageContent(),
+          getPublicTestimonials(),
+        ]);
         if (cancelled) return;
-        if (res.success && res.data?.content) {
-          setLanding(res.data.content);
+        if (contentRes.success && contentRes.data?.content) {
+          setLanding(contentRes.data.content);
         } else {
-          setLandingError(res.message || "Could not load page content.");
+          setLandingError(contentRes.message || "Could not load page content.");
+        }
+        if (testimonialsRes.success && testimonialsRes.data?.testimonials) {
+          setTestimonials(testimonialsRes.data.testimonials);
         }
       } catch {
         if (!cancelled) setLandingError("Could not load page content.");
@@ -82,6 +90,9 @@ export default function Home() {
         </ScrollRevealSection>
         <ScrollRevealSection delayMs={260}>
           <AudienceSection audience={landing.audience} />
+        </ScrollRevealSection>
+        <ScrollRevealSection delayMs={300}>
+          <TestimonialsSection testimonials={testimonials} copy={landing.testimonials} />
         </ScrollRevealSection>
       </div>
       <div id="get-in-touch" className="scroll-mt-20 md:scroll-mt-24">

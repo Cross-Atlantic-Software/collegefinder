@@ -5,11 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { FiArrowUpRight } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
 import type { LandingPageContent } from "@/types/landingPage";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
     const sectionRef = useRef<HTMLElement>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+    const { isAuthenticated } = useAuth();
+
+    const ctaHref = isAuthenticated
+        ? "/dashboard?section=know-your-strengths"
+        : "https://unitracko.com/strengths-directory";
 
     useEffect(() => {
         const check = () => {
@@ -71,22 +77,21 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
         
             <div className="appContainer relative z-10 flex min-h-[100svh] items-end py-12 sm:py-16 md:py-20 lg:pb-24">
                 <div className="max-w-2xl pb-[calc(env(safe-area-inset-bottom)+0.25rem)]  md:pb-0">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white sm:text-sm">
+                        Student-First Decision Intelligence Platform
+                    </p>
+
                     <h1 className="text-[1.6rem] font-extrabold leading-[1.12] text-white sm:text-3xl md:text-5xl">
-                        {hero.headingLine1}
-                        <span className="mt-1 block">
-                            <RoughNotation
-                                type="underline"
-                                show={isVisible}
-                                color="#f0c544"
-                                strokeWidth={3}
-                                padding={4}
-                                animationDelay={700}
-                                animationDuration={1400}
-                            >
-                                <span className="text-[#f0c544]">{hero.headingLine2}</span>
-                            </RoughNotation>
+                        <span className="text-[#f0c544]">
+                            <span className="block">Your Future.</span>
+                            <span className="block">Your Choices.</span>
+                            <span className="block">Your Decision.</span>
                         </span>
                     </h1>
+
+                    <p className="mt-4 text-base font-medium text-white/90 sm:text-lg">
+                        From Aspirations to Admissions.
+                    </p>
 
                     {/* <div className="mt-7 grid w-full gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-5 md:gap-8">
                         {pains.map((label, i) => {
@@ -106,10 +111,10 @@ export default function Hero({ hero }: { hero: LandingPageContent["hero"] }) {
                     </div> */}
 
                     <Link
-                        href={hero.ctaHref || "/signup"}
+                        href={ctaHref}
                         className="landing-cta group mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
                     >
-                        {hero.ctaLabel}
+                        {hero.ctaLabel || "Find My Fit"}
                         <FiArrowUpRight className="landing-icon-slide text-base" />
                     </Link>
                 </div>

@@ -324,18 +324,21 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                     <div className="relative">
                         <div className="bg-white pb-10 text-center md:pb-12">
                             <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                                {features.sectionTitleBefore}{" "}
-                                <RoughNotation
-                                    type="underline"
-                                    show={headingVisible}
-                                    color="#f0c544"
-                                    strokeWidth={4}
-                                    padding={4}
-                                    animationDelay={500}
-                                    animationDuration={1400}
-                                >
-                                    {features.sectionTitleUnderline}
-                                </RoughNotation>
+                                <span className="block font-medium text-2xl md:text-3xl">The Good News?</span>
+                                <span className="mt-1 block">You Can Unlock Your True</span>
+                                <span className="mt-1 block">
+                                    <RoughNotation
+                                        type="underline"
+                                        show={headingVisible}
+                                        color="#f0c544"
+                                        strokeWidth={4}
+                                        padding={3}
+                                        animationDelay={500}
+                                        animationDuration={1400}
+                                    >
+                                        <span className="text-[#f0c544]">Potential</span>
+                                    </RoughNotation>
+                                </span>
                             </h2>
                             <p className="mt-4 whitespace-pre-line text-sm text-black/50 md:text-base">
                                 {features.sectionSubtitle}

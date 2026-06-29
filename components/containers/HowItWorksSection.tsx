@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from "react-icons/fi";
 import type { LandingPageContent } from "@/types/landingPage";
@@ -9,8 +8,16 @@ import { LandingCardFrame } from "./LandingCardFrame";
 const OPEN_DURATION_MS = 4200;
 const HOW_IT_WORKS_VIDEO_SRC = "/landing-page/explainer.mp4";
 
-export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingPageContent["howItWorks"] }) {
-    const steps = howItWorks.steps || [];
+const HOW_IT_WORKS_STEPS = [
+    { title: "Discover", description: "Exams, colleges and opportunities - find your fit" },
+    { title: "Plan", description: "Explore, visualise and set a goal" },
+    { title: "Apply", description: "Monitor applications with our one-click system" },
+    { title: "Decide", description: "Make confident decisions with clarity" },
+    { title: "Stay Ahead", description: "Receive reminders and updates to up your admission game" },
+];
+
+export default function HowItWorksSection({}: { howItWorks: LandingPageContent["howItWorks"] }) {
+    const steps = HOW_IT_WORKS_STEPS;
     const sectionRef = useRef<HTMLElement | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [isInView, setIsInView] = useState(false);
@@ -141,14 +148,14 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                            {howItWorks.title}
+                            What is <span className="text-[#f0c544]">UniTracko?</span>
                         </h3>
                         <p
                             className={`mt-4 max-w-xl whitespace-pre-line text-sm leading-relaxed text-black/60 transition-all delay-100 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:text-base ${
                                 isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
                             }`}
                         >
-                           {howItWorks.subtitle}
+                           Five Steps. One Platform. Your Decision.
                         </p>
 
                         <div className="relative mt-8">
@@ -247,20 +254,6 @@ export default function HowItWorksSection({ howItWorks }: { howItWorks: LandingP
                             </ul>
                         </div>
 
-                        <div
-                            className={`mt-8 flex flex-wrap items-center gap-4 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                                isInView ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-                            }`}
-                            style={{ transitionDelay: "760ms" }}
-                        >
-                            <Link
-                                href="/signup"
-                                className="landing-cta group inline-flex items-center gap-2 rounded-full bg-black px-8 py-3 text-sm font-semibold text-white hover:bg-black/85 md:text-base"
-                            >
-                                {howItWorks.demoCta}
-                                <FiChevronRight className="landing-icon-slide text-base" />
-                            </Link>
-                        </div>
                     </div>
 
                     <div

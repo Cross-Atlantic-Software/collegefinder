@@ -29,18 +29,21 @@ export default function Features() {
                 <div className="mx-auto text-center">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">FEATURES</p>
                     <h2 className="mt-4 text-4xl font-extrabold leading-tight text-black md:text-5xl">
-                        <RoughNotation
-                            type="underline"
-                            show={isVisible}
-                            color="#f0c544"
-                            strokeWidth={4}
-                            padding={5}
-                            animationDelay={500}
-                            animationDuration={1500}
-                            multiline
-                        >
-                            UNLOCK THE ULTIMATE COMMAND CENTRE
-                        </RoughNotation>
+                        <span className="block">The Good News?</span>
+                        <span className="mt-1 block">
+                            You Can Unlock Your True{" "}
+                            <RoughNotation
+                                type="underline"
+                                show={isVisible}
+                                color="#f0c544"
+                                strokeWidth={4}
+                                padding={5}
+                                animationDelay={500}
+                                animationDuration={1500}
+                            >
+                                <span className="text-[#f0c544]">Potential</span>
+                            </RoughNotation>
+                        </span>
                     </h2>
                     <p className="mt-4 text-sm text-black/50 md:text-base">
                         We&apos;ve built the unfair advantage you&apos;ve been looking for.

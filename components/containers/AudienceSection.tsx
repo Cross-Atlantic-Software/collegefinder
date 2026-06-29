@@ -1,13 +1,40 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+// import Link from "next/link"; // restore when the "Why UniTracko Exists" section below is re-enabled
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
 import { RoughNotation } from "react-rough-notation";
+import Lottie, { type LottieRefCurrentProps } from "lottie-react";
+import eyeAnim from "@/public/LottieiCONS/doodle-black-221-eye-hover-pinch.json";
+import idCardAnim from "@/public/LottieiCONS/doodle-black-16-id-business-card-hover-pinch.json";
+import folderUserAnim from "@/public/LottieiCONS/doodle-black-714-folder-user-hover-pinch.json";
 import type { LandingPageContent } from "@/types/landingPage";
 
 type AudienceKey = "students" | "parents";
+
+const WHY_CHOOSE_CARDS: Array<{ text: string; doodle?: object; svg?: string }> = [
+    { text: "No Commissions.\nNo Hidden Agendas.\nNo Guesswork.", doodle: idCardAnim },
+    { text: "You decide.\nWe empower.", doodle: folderUserAnim },
+    { text: "Insights backed by\nreal information.", doodle: eyeAnim },
+    { text: "Clarity you can\ntrust.", svg: "/LottieiCONS/doodle-black-717-web-protection-hover-pinch.gif" },
+];
+
+/** Site-style hand-drawn doodle that plays once, then loops with a short pause. */
+function CardDoodle({ animationData }: { animationData: object }) {
+    const lottieRef = useRef<LottieRefCurrentProps>(null);
+    return (
+        <Lottie
+            lottieRef={lottieRef}
+            animationData={animationData}
+            loop={false}
+            onComplete={() => {
+                setTimeout(() => lottieRef.current?.goToAndPlay(0, true), 1400);
+            }}
+            className="h-12 w-12"
+        />
+    );
+}
 
 export default function AudienceSection({ audience }: { audience: LandingPageContent["audience"] }) {
     const [activeAudience, setActiveAudience] = useState<AudienceKey>("students");
@@ -28,17 +55,27 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
             }
         > => ({
             students: {
-                points: audience.studentPoints || [],
+                points: [
+                    "Guidance based on student goals and preferences.",
+                    "Uncover opportunities beyond the obvious choices.",
+                    "Access to transparent, student-first intelligent decision support.",
+                    "Psycho-analytical profiling and assessment-based aptitude mapping.",
+                ],
                 image: "/landing-page/how_it_works.png",
                 imageAlt: "Students using UniTracko",
             },
             parents: {
-                points: audience.parentPoints || [],
+                points: [
+                    "Recommendations based on fit—not incentives.",
+                    "No commission-based suggestions.",
+                    "Cost and scholarship clarity.",
+                    "Live progress tracking at every step.",
+                ],
                 image: "/landing-page/parent.png",
                 imageAlt: "Parents confidence view",
             },
         }),
-        [audience.studentPoints, audience.parentPoints]
+        []
     );
 
     const active = audienceContent[displayAudience];
@@ -144,9 +181,6 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                                 </RoughNotation>
                             </span>
                         </h3>
-                        <p className="mx-auto mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-black/60 md:text-base">
-                        {audience.subtitle}
-                        </p>
 
                         <div
                             className="mx-auto mt-6 grid w-full max-w-sm grid-cols-2 rounded-2xl bg-sky-100 p-1 sm:inline-flex sm:w-auto sm:max-w-none sm:rounded-full"
@@ -223,6 +257,7 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                     </div>
                 </div>
 
+                {/* ===== "Why UniTracko Exists" section — temporarily hidden (kept for later) =====
                 <div className="landing-grid-gap grid items-center lg:grid-cols-[0.44fr_0.56fr]">
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/55">
@@ -259,6 +294,39 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                             height={854}
                             className="h-auto w-full object-cover"
                         />
+                    </div>
+                </div>
+                ===== end hidden section ===== */}
+
+                {/* Why Choose UniTracko? */}
+                <div className="text-center">
+                    <h3 className="text-3xl font-extrabold leading-tight text-black sm:text-4xl md:text-5xl">
+                        Why Choose <span className="text-[#f0c544]">UniTracko?</span>
+                    </h3>
+                    <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-black/60 md:text-base">
+                        The admission race begins in Class II and most students don&apos;t realize how
+                        much they&apos;re missing until it&apos;s too late. UniTracko makes sure that
+                        never happens.
+                    </p>
+
+                    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {WHY_CHOOSE_CARDS.map((card) => (
+                            <div
+                                key={card.text}
+                                className="group flex flex-col items-center gap-4 rounded-[22px] border-2 border-black/10 bg-amber-50/70 px-6 py-8 text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#f0c544] hover:shadow-[0_12px_30px_-12px_rgba(240,197,68,0.6)]"
+                            >
+                                <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#f0c544]/25">
+                                    {card.svg ? (
+                                        <Image src={card.svg} alt="" width={48} height={48} className="h-12 w-12" unoptimized />
+                                    ) : card.doodle ? (
+                                        <CardDoodle animationData={card.doodle} />
+                                    ) : null}
+                                </span>
+                                <p className="whitespace-pre-line text-base font-semibold leading-relaxed text-black">
+                                    {card.text}
+                                </p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
