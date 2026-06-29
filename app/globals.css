@@ -452,6 +452,31 @@ button {
   animation: doodle-float 2.6s ease-in-out infinite;
 }
 
+/* Testimonials marquee (desktop) — continuous horizontal scroll. */
+@keyframes testimonials-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(var(--testimonials-shift, 0px) * -1));
+  }
+}
+
+.testimonials-marquee-track {
+  animation: testimonials-marquee var(--testimonials-duration, 45s) linear infinite;
+  will-change: transform;
+}
+
+.testimonials-marquee-wrap:hover .testimonials-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .testimonials-marquee-track {
+    animation: none;
+  }
+}
+
 .scroll-reveal {
   opacity: 0;
   transform: translateY(42px) scale(0.985);
