@@ -325,7 +325,7 @@ export default function FeatureStackSection({ features }: { features: LandingPag
                         <div className="bg-white pb-10 text-center md:pb-12">
                             <h2 className="text-4xl font-extrabold leading-tight text-black md:text-5xl">
                                 <span className="block font-medium text-2xl md:text-3xl">The Good News?</span>
-                                <span className="mt-1 block">You Can Unlock Your True</span>
+                                <span className="mt-1 block">Unlock Your True</span>
                                 <span className="mt-1 block">
                                     <RoughNotation
                                         type="underline"

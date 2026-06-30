@@ -31,7 +31,7 @@ export default function Features() {
                     <h2 className="mt-4 text-4xl font-extrabold leading-tight text-black md:text-5xl">
                         <span className="block">The Good News?</span>
                         <span className="mt-1 block">
-                            You Can Unlock Your True{" "}
+                            Unlock Your True{" "}
                             <RoughNotation
                                 type="underline"
                                 show={isVisible}

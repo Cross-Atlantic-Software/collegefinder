@@ -7,11 +7,14 @@ import AdminHeader from '@/components/admin/layout/AdminHeader';
 import {
   listExamAdapters,
   createExamAdapter,
+  importExamAdapter,
   deleteExamAdapter,
   setExamAdapterStatus,
-  ExamAdapter
+  ExamAdapter,
+  AdapterFile,
+  UnmatchedField
 } from '@/api/admin/examAdapters';
-import { FiPlus, FiSearch, FiCheckCircle, FiClock, FiCpu, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiCheckCircle, FiClock, FiCpu, FiX, FiUpload } from 'react-icons/fi';
 import { AdminTableActions } from '@/components/admin/AdminTableActions';
 import { ConfirmationModal, useToast } from '@/components/shared';
 
@@ -32,6 +35,17 @@ export default function ExamAdaptersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({ exam_id: '', exam_name: '', portal_url_pattern: '' });
   const [isCreating, setIsCreating] = useState(false);
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importPublish, setImportPublish] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    examName: string;
+    version: number;
+    published: boolean;
+    unmatched: UnmatchedField[];
+  } | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
@@ -113,6 +127,81 @@ export default function ExamAdaptersPage() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImportText(String(reader.result || ''));
+    reader.onerror = () => showError('Could not read that file');
+    reader.readAsText(file);
+    e.target.value = ''; // allow re-selecting the same file
+  };
+
+  const handleImport = async () => {
+    const text = importText.trim();
+    if (!text) {
+      showError('Paste your adapter JSON or upload a .json file first');
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      showError('That is not valid JSON. Check the file content and try again.');
+      return;
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      showError('The adapter file must be a JSON object.');
+      return;
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (!obj.exam_id || !obj.exam_name || !obj.portal_url_pattern) {
+      showError('File must include exam_id, exam_name and portal_url_pattern.');
+      return;
+    }
+    if (!Array.isArray(obj.sections)) {
+      showError('File must include a "sections" array.');
+      return;
+    }
+    try {
+      setIsImporting(true);
+      const res = await importExamAdapter({
+        adapter: obj as unknown as AdapterFile,
+        publish: importPublish
+      });
+      if (res.success && res.data) {
+        const unmatched = res.data.unmatched_fields || [];
+        showSuccess(
+          `Imported "${res.data.exam_name}" (v${res.data.version})${
+            importPublish ? ' — published & live for the extension.' : ' — saved as draft.'
+          }`
+        );
+        fetchAdapters();
+        setImportText('');
+        // Keep the modal open to show which form fields have no data in our user DB.
+        setImportResult({
+          examName: res.data.exam_name,
+          version: res.data.version,
+          published: importPublish,
+          unmatched
+        });
+      } else {
+        showError(res.message || 'Import failed');
+      }
+    } catch (err) {
+      showError('Import failed');
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const closeImportModal = () => {
+    setShowImportModal(false);
+    setImportResult(null);
+    setImportText('');
   };
 
   const handleToggleStatus = async (adapter: ExamAdapter) => {
@@ -205,13 +294,22 @@ export default function ExamAdaptersPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg"
-            >
-              <FiPlus className="h-4 w-4" />
-              Register New Exam
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-[#341050] text-[#341050] hover:bg-[#341050]/5 rounded-lg"
+              >
+                <FiUpload className="h-4 w-4" />
+                Import Adapter JSON
+              </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] hover:bg-[#2a0c40] text-white rounded-lg"
+              >
+                <FiPlus className="h-4 w-4" />
+                Register New Exam
+              </button>
+            </div>
           </div>
 
           <div className="mb-3 text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
@@ -381,6 +479,160 @@ export default function ExamAdaptersPage() {
                 {isCreating ? 'Registering…' : 'Register'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import adapter JSON modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+              <h2 className="text-base font-semibold text-slate-900">
+                {importResult ? 'Import complete' : 'Import Adapter JSON'}
+              </h2>
+              <button onClick={closeImportModal} className="text-slate-400 hover:text-slate-600">
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+
+            {!importResult ? (
+              <>
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Paste your full adapter file (the same JSON you keep in{' '}
+                    <code className="font-mono">examfill-extension/adapters/</code>) or upload the{' '}
+                    <code className="font-mono">.json</code> file. It saves straight to the database —
+                    no commit or deployment needed. The exam is matched by its{' '}
+                    <code className="font-mono">exam_id</code>; importing an existing one updates it.
+                  </p>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <FiUpload className="h-3.5 w-3.5" />
+                      Upload .json file
+                      <input type="file" accept=".json,application/json" onChange={handleImportFile} className="hidden" />
+                    </label>
+                    {importText && (
+                      <button
+                        onClick={() => setImportText('')}
+                        className="text-xs text-slate-500 hover:text-slate-700"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <textarea
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    placeholder={'{\n  "exam_id": "nata",\n  "exam_name": "NATA 2026",\n  "portal_url_pattern": "nata-app.org",\n  "sections": [ ... ]\n}'}
+                    spellCheck={false}
+                    className="w-full h-72 px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#341050]/25 focus:border-[#341050] outline-none resize-y"
+                  />
+
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={importPublish}
+                      onChange={(e) => setImportPublish(e.target.checked)}
+                    />
+                    Publish immediately (the extension starts using it right away). Uncheck to save as a draft.
+                  </label>
+                </div>
+                <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50">
+                  <button
+                    onClick={closeImportModal}
+                    className="px-3 py-1.5 text-sm text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    disabled={isImporting}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:bg-[#2a0c40] disabled:opacity-60"
+                  >
+                    <FiUpload className="h-4 w-4" />
+                    {isImporting ? 'Importing…' : importPublish ? 'Import & Publish' : 'Import as Draft'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    <FiCheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      <strong>{importResult.examName}</strong> saved (v{importResult.version}){' '}
+                      {importResult.published ? '— published & live.' : '— saved as draft.'}
+                    </span>
+                  </div>
+
+                  {importResult.unmatched.length === 0 ? (
+                    <div className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-3">
+                      ✅ Every field in this form maps to data in your user DB. Nothing missing.
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800 mb-1">
+                        {importResult.unmatched.length} field
+                        {importResult.unmatched.length === 1 ? '' : 's'} in this form have no matching
+                        data in your user DB:
+                      </p>
+                      <p className="text-[11px] text-slate-500 mb-2">
+                        The extension can&apos;t auto-fill these. Either add the data to your user
+                        profile schema, or fix the field&apos;s <code className="font-mono">source</code> in the editor.
+                      </p>
+                      <div className="max-h-64 overflow-auto border border-slate-200 rounded-lg">
+                        <table className="w-full text-xs">
+                          <thead className="bg-slate-50 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-1.5 text-left font-semibold text-slate-600">SECTION</th>
+                              <th className="px-3 py-1.5 text-left font-semibold text-slate-600">FIELD</th>
+                              <th className="px-3 py-1.5 text-left font-semibold text-slate-600">ISSUE</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {importResult.unmatched.map((u, i) => (
+                              <tr key={`${u.field_id}-${i}`}>
+                                <td className="px-3 py-1.5 text-slate-600">{u.section}</td>
+                                <td className="px-3 py-1.5">
+                                  <div className="text-slate-800">{u.label || u.field_id}</div>
+                                  {u.source && (
+                                    <div className="text-[10px] text-slate-400 font-mono">{u.source}</div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  {u.reason === 'no_source' ? (
+                                    <span className="text-slate-500">No data mapping set</span>
+                                  ) : (
+                                    <span className="text-amber-700">Source not in user DB</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50">
+                  <button
+                    onClick={() => setImportResult(null)}
+                    className="px-3 py-1.5 text-sm text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100"
+                  >
+                    Import another
+                  </button>
+                  <button
+                    onClick={closeImportModal}
+                    className="px-3 py-1.5 text-sm bg-[#341050] text-white rounded-lg hover:bg-[#2a0c40]"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

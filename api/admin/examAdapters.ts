@@ -75,6 +75,31 @@ export interface ExamAdapterDetail extends ExamAdapter {
   adapter_config: AdapterConfig;
 }
 
+/** Shape of a full adapter JSON file (as authored in examfill-extension/adapters/*.json). */
+export interface AdapterFile {
+  exam_id: string;
+  exam_name: string;
+  portal_url_pattern: string;
+  version?: number;
+  sections: AdapterSection[];
+  [k: string]: unknown;
+}
+
+/** A form field that can't be auto-filled from the user DB. */
+export interface UnmatchedField {
+  section: string;
+  label: string;
+  field_id: string;
+  /** null = no source mapping; string = source not found in profile schema. */
+  source: string | null;
+  reason: 'no_source' | 'unknown_source';
+}
+
+export interface ImportAdapterResult extends ExamAdapter {
+  section_count?: number;
+  unmatched_fields?: UnmatchedField[];
+}
+
 export interface ProfilePathEntry {
   path: string;
   type: string;
@@ -103,6 +128,20 @@ export async function createExamAdapter(payload: {
   portal_url_pattern: string;
 }): Promise<ApiResponse<ExamAdapter>> {
   return apiRequest(API_ENDPOINTS.ADMIN.EXAM_ADAPTERS, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Upsert a complete adapter from a pasted/uploaded JSON file.
+ * `publish` defaults to true on the backend (adapter goes live immediately).
+ */
+export async function importExamAdapter(payload: {
+  adapter: AdapterFile;
+  publish?: boolean;
+}): Promise<ApiResponse<ImportAdapterResult>> {
+  return apiRequest(`${API_ENDPOINTS.ADMIN.EXAM_ADAPTERS}/import`, {
     method: 'POST',
     body: JSON.stringify(payload)
   });

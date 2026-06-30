@@ -304,7 +304,7 @@ export default function AudienceSection({ audience }: { audience: LandingPageCon
                         Why Choose <span className="text-[#f0c544]">UniTracko?</span>
                     </h3>
                     <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-black/60 md:text-base">
-                        The admission race begins in Class II and most students don&apos;t realize how
+                        The admission race begins in Class 11 and most students don&apos;t realize how
                         much they&apos;re missing until it&apos;s too late. UniTracko makes sure that
                         never happens.
                     </p>
