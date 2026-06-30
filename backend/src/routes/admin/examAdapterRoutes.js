@@ -34,6 +34,15 @@ router.post(
   ExamAdapterController.create
 );
 
+// Import a complete adapter from a pasted/uploaded JSON file (upsert + optional publish)
+router.post(
+  '/import',
+  authenticateAdmin,
+  requireModuleAccess(MODULE_CODE),
+  requireCanEdit,
+  ExamAdapterController.importAdapter
+);
+
 // Single adapter
 router.get(
   '/:examId',

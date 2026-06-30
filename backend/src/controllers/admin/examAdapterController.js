@@ -249,6 +249,131 @@ class ExamAdapterController {
       res.status(500).json({ success: false, message: err.message || 'Failed to delete adapter' });
     }
   }
+
+  /**
+   * POST /api/admin/exam-adapters/import
+   * Upsert a complete adapter from a pasted/uploaded JSON file (the same shape
+   * authored in examfill-extension/adapters/*.json). This is the admin-panel
+   * equivalent of running scripts/seed*Adapter.js — it stores the adapter
+   * exactly as authored (sections kept raw) so the extension gets what you wrote.
+   *
+   * Body: the full adapter object, optionally wrapped as { adapter, publish }.
+   *   { exam_id, exam_name, portal_url_pattern, version?, sections: [...] }
+   *   publish (default true) → status 'published' + is_active TRUE (live immediately).
+   */
+  static async importAdapter(req, res) {
+    try {
+      const body = req.body || {};
+      const adapter = body.adapter && typeof body.adapter === 'object' ? body.adapter : body;
+      const publish = body.publish !== false; // default: go live
+
+      const { exam_id, exam_name, portal_url_pattern, sections, version: fileVersion } = adapter;
+
+      if (!exam_id || !exam_name || !portal_url_pattern) {
+        return res.status(400).json({
+          success: false,
+          message: 'Adapter file must include exam_id, exam_name and portal_url_pattern'
+        });
+      }
+      if (!Array.isArray(sections)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Adapter file must include a "sections" array'
+        });
+      }
+
+      const cleanId = String(exam_id).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+      if (!cleanId) {
+        return res.status(400).json({ success: false, message: 'exam_id must contain alphanumerics' });
+      }
+
+      // Store only the sections (drop file-level metadata), matching the seed scripts.
+      const configWithoutMeta = { sections };
+      const status = publish ? 'published' : 'draft';
+      const isActive = publish;
+
+      // Version: honor the file's version if it's a positive number, else bump existing / start at 1.
+      const existing = await db.query('SELECT version FROM exam_adapters WHERE exam_id = $1', [cleanId]);
+      let version;
+      if (typeof fileVersion === 'number' && Number.isFinite(fileVersion) && fileVersion > 0) {
+        version = Math.floor(fileVersion);
+      } else if (existing.rows[0]) {
+        version = (existing.rows[0].version || 0) + 1;
+      } else {
+        version = 1;
+      }
+
+      const result = await db.query(
+        `INSERT INTO exam_adapters
+           (exam_id, exam_name, portal_url_pattern, adapter_config, version,
+            is_active, status, is_ai_generated, created_by, updated_by,
+            last_verified_at, last_verified_by)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, FALSE, $8, $8,
+            CASE WHEN $7 = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END,
+            CASE WHEN $7 = 'published' THEN $8 ELSE NULL END)
+         ON CONFLICT (exam_id) DO UPDATE SET
+           exam_name = EXCLUDED.exam_name,
+           portal_url_pattern = EXCLUDED.portal_url_pattern,
+           adapter_config = EXCLUDED.adapter_config,
+           version = EXCLUDED.version,
+           is_active = EXCLUDED.is_active,
+           status = EXCLUDED.status,
+           updated_by = EXCLUDED.updated_by,
+           last_verified_at = CASE WHEN EXCLUDED.status = 'published'
+                                   THEN CURRENT_TIMESTAMP ELSE exam_adapters.last_verified_at END,
+           last_verified_by = CASE WHEN EXCLUDED.status = 'published'
+                                   THEN EXCLUDED.updated_by ELSE exam_adapters.last_verified_by END,
+           updated_at = CURRENT_TIMESTAMP
+         RETURNING *`,
+        [
+          cleanId,
+          String(exam_name).slice(0, 100),
+          String(portal_url_pattern).slice(0, 200),
+          JSON.stringify(configWithoutMeta),
+          version,
+          isActive,
+          status,
+          req.admin?.email || null
+        ]
+      );
+
+      // Flag fields the extension can't auto-fill: no source mapping, or a source
+      // that isn't a known profile path in our user DB.
+      const unmatchedFields = [];
+      for (const section of sections) {
+        if (!section || !Array.isArray(section.fields)) continue;
+        for (const field of section.fields) {
+          if (!field || typeof field !== 'object') continue;
+          const src = typeof field.source === 'string' ? field.source.trim() : '';
+          if (!src) {
+            unmatchedFields.push({
+              section: section.section_name || section.section_id || '',
+              label: field.label || field.field_id || '',
+              field_id: field.field_id || '',
+              source: null,
+              reason: 'no_source'
+            });
+          } else if (!isValidSource(src)) {
+            unmatchedFields.push({
+              section: section.section_name || section.section_id || '',
+              label: field.label || field.field_id || '',
+              field_id: field.field_id || '',
+              source: src,
+              reason: 'unknown_source'
+            });
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        data: { ...result.rows[0], section_count: sections.length, unmatched_fields: unmatchedFields }
+      });
+    } catch (err) {
+      console.error('Error importing exam adapter:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to import adapter' });
+    }
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
