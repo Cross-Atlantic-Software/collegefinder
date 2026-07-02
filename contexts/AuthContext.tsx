@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, getCurrentUser } from '@/api';
 import { getAuthToken, setAuthToken, setUser, removeAuthToken, getUser as getStoredUser, syncAuthCookie } from '@/lib/auth';
@@ -60,14 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, []);
 
-  const login = (token: string, userData: User) => {
+  const login = useCallback((token: string, userData: User) => {
     setAuthToken(token);
     setUser(userData);
     setUserState(userData);
     setUserVerifiedFromServer(true); // Login response is from server
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setIsLoggingOut(true);
     // Small delay for smooth transition
     setTimeout(() => {
@@ -76,9 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoggingOut(false);
       router.replace('/login');
     }, 300);
-  };
+  }, [router]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const response = await getCurrentUser();
       if (response.success && response.data) {
@@ -88,9 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error refreshing user:', error);
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     user,
     isLoading,
     isLoggingOut,
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     refreshUser,
-  };
+  }), [user, isLoading, isLoggingOut, userVerifiedFromServer, login, logout, refreshUser]);
 
   return (
     <AuthContext.Provider value={value}>

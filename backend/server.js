@@ -4,6 +4,19 @@ const cors = require('cors');
 const db = require('./src/config/database');
 const { initJobs } = require('./src/jobs/index');
 
+// Process-level safety nets. Without these, one stray rejection or error outside an
+// Express handler terminates the whole process (Node >=15) -> PM2 restart -> 502s.
+// An unhandled rejection is logged and the process keeps serving. An uncaught
+// exception may leave the process in an undefined state, so we log and exit cleanly
+// to let PM2 restart from a known-good state (never silently swallow-and-continue).
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled promise rejection (kept alive):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught exception, shutting down for a clean restart:', err);
+  process.exit(1);
+});
+
 const app = express();
 
 // Middleware

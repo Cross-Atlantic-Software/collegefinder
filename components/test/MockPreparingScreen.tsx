@@ -27,7 +27,10 @@ export default function MockPreparingScreen({
   const [elapsedSec, setElapsedSec] = useState(0);
   const readyCalled = useRef(false);
   const onReadyRef = useRef(onReady);
-  onReadyRef.current = onReady;
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     const tick = setInterval(() => setElapsedSec((s) => s + 1), 1000);
