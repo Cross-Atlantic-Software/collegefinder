@@ -148,6 +148,14 @@ const baseNavItems: {
     getValue: () => "",
   },
   {
+    id: "strengths-quiz",
+    label: "Strengths Quiz",
+    sub: "New assessment",
+    icon: FaBrain,
+    activeIcon: FaBrain,
+    getValue: () => "",
+  },
+  {
     id: "admission-help",
     label: "Admission Help",
     sub: "Expert guidance",

@@ -19,6 +19,7 @@ import {
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileTabs from "@/components/dashboard/ProfileTabs/ProfileTabs";
 import KnowYourStrengths from "@/components/dashboard/KnowYourStrengths";
+import UniTrackoAssessment from "@/components/dashboard/UniTracko/UniTrackoAssessment";
 import StrengthPaymentReturnHandler from "@/components/dashboard/KnowYourStrengths/StrengthPaymentReturnHandler";
 import AdmissionHelp from "@/components/dashboard/AdmissionHelp";
 import Counselling from "@/components/dashboard/Counselling";
@@ -37,6 +38,7 @@ type SectionId =
   | "test-module"
   | "counselling"
   | "know-your-strengths"
+  | "strengths-quiz"
   | "admission-help"
   | "referral"
   | "settings";
@@ -54,6 +56,7 @@ const VALID_SECTIONS: SectionId[] = [
   "test-module",
   "counselling",
   "know-your-strengths",
+  "strengths-quiz",
   "admission-help",
   "referral",
   "settings",
@@ -137,10 +140,11 @@ function DashboardPageContent() {
     "test-module",
     "counselling",
     "know-your-strengths",
+    "strengths-quiz",
     "admission-help",
     "referral",
     "settings",
-  ];
+  ] as SectionId[];
 
   return (
     <div className="h-screen flex bg-[#F6F8FA] dark:bg-slate-950 text-slate-900 dark:text-slate-50">
@@ -245,6 +249,13 @@ function DashboardPageContent() {
                   <KnowYourStrengths
                     onSectionChange={(section) => navigateSection(section as SectionId)}
                   />
+                )}
+
+                {activeSection === "strengths-quiz" && (
+                  <div className="w-full p-4 md:p-6">
+                    {/* onComplete is where results can later be sent to the backend */}
+                    <UniTrackoAssessment onComplete={() => {}} />
+                  </div>
                 )}
 
                 {activeSection === "admission-help" && (

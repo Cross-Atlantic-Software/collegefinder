@@ -17,6 +17,7 @@ export type DashboardSectionId =
   | "test-module"
   | "counselling"
   | "know-your-strengths"
+  | "strengths-quiz"
   | "admission-help"
   | "referral"
   | "settings";

@@ -1,0 +1,219 @@
+/*
+ * UniTracko assessment widget styles.
+ * Everything is scoped under .unitracko-widget (the root the component renders
+ * into) so nothing here leaks into the rest of the host site's global CSS —
+ * no bare `body`, `h1`, `button`, `input` selectors.
+ *
+ * Import this once, globally, e.g. in app/layout.jsx:
+ *   import "@/styles/unitracko.css";
+ *
+ * Font: this assumes Inter is already loaded site-wide (it is, on
+ * unitracko.com, via --font-inter-sans). If not, add:
+ *   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+ */
+
+.unitracko-widget {
+  --ut-ink: #140E27;
+  --ut-muted: #6b6b80;
+  --ut-line: #e7e3f3;
+  --ut-accent: #7A00FF;
+  --ut-accent2: #DB0078;
+  --ut-yellow: #FAD53C;
+  --ut-yellow-deep: #E7BC09;
+  --ut-accent-light: #f3eaff;
+  --ut-bg: #F6F8FA;
+  --ut-navy-1: #140E27;
+  --ut-navy-2: #240F3C;
+  --ut-navy-3: #341050;
+  --ut-domain: #7A00FF; /* overridden inline per current domain */
+
+  font-family: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ut-ink);
+  max-width: 780px;
+  margin: 0 auto;
+}
+.unitracko-widget * { box-sizing: border-box; }
+
+.unitracko-widget .ut-card {
+  background: #fff;
+  border: 1px solid var(--ut-line);
+  border-radius: 22px;
+  padding: 30px;
+  box-shadow: 0 12px 36px rgba(20, 14, 39, 0.08);
+  animation: ut-fadeIn 0.3s ease;
+}
+@keyframes ut-fadeIn { from { opacity: 0; transform: translateY(8px) scale(0.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.unitracko-widget h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.4px; font-weight: 800; }
+.unitracko-widget h2 { font-size: 19px; margin: 0 0 4px; font-weight: 700; }
+.unitracko-widget .ut-sub { color: var(--ut-muted); margin: 0 0 20px; line-height: 1.55; }
+.unitracko-widget label { display: block; font-size: 14px; font-weight: 700; margin: 16px 0 6px; }
+.unitracko-widget input[type="text"], .unitracko-widget select {
+  width: 100%; padding: 12px 14px; border: 2px solid var(--ut-line);
+  border-radius: 12px; font-size: 15px; transition: border-color 0.15s; font-family: inherit;
+}
+.unitracko-widget input[type="text"]:focus, .unitracko-widget select:focus { outline: none; border-color: var(--ut-accent); }
+.unitracko-widget button { font-family: inherit; }
+
+.unitracko-widget button.ut-primary {
+  background: linear-gradient(90deg, var(--ut-accent) 0%, #B903B8 50%, var(--ut-accent2) 100%);
+  color: #fff; border: none;
+  padding: 14px 26px; border-radius: 999px; font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: 22px; transition: transform 0.12s, box-shadow 0.15s;
+  box-shadow: 0 6px 18px rgba(122, 0, 255, 0.28);
+  letter-spacing: 0.1px;
+}
+.unitracko-widget button.ut-primary:hover:not(:disabled) { transform: translateY(-2px) scale(1.01); box-shadow: 0 10px 24px rgba(122, 0, 255, 0.36); }
+.unitracko-widget button.ut-primary:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+.unitracko-widget button.ut-primary:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.unitracko-widget button.ut-ghost {
+  background: transparent; color: var(--ut-accent); border: 2px solid var(--ut-accent);
+  padding: 10px 18px; border-radius: 999px; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.12s;
+}
+.unitracko-widget button.ut-ghost:hover { background: var(--ut-accent-light); transform: translateY(-1px); }
+.unitracko-widget .ut-brand-bar { display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.unitracko-widget .ut-brand-bar img { height: 26px; }
+
+/* ---- Welcome ---- */
+.unitracko-widget .ut-welcome-badges { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.unitracko-widget .ut-welcome-badge {
+  font-size: 12px; font-weight: 800; padding: 6px 13px; border-radius: 999px;
+  background: var(--ut-accent-light); color: var(--ut-accent); border: 1.5px solid rgba(109,40,217,0.15);
+}
+
+/* ---- Question screen ---- */
+.unitracko-widget .ut-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--ut-muted); font-weight: 600; }
+.unitracko-widget .ut-domain-chip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800;
+  padding: 5px 13px; border-radius: 999px; margin-bottom: 14px;
+  background: color-mix(in srgb, var(--ut-domain) 14%, white); color: var(--ut-domain);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ut-domain) 20%, transparent);
+}
+.unitracko-widget .ut-progress-track { height: 8px; background: var(--ut-line); border-radius: 5px; margin-bottom: 6px; overflow: hidden; }
+.unitracko-widget .ut-progress-fill { height: 100%; background: linear-gradient(90deg, var(--ut-domain), color-mix(in srgb, var(--ut-domain) 60%, #fff)); transition: width 0.25s ease; border-radius: 5px; }
+.unitracko-widget .ut-progress-pct { font-size: 12px; color: var(--ut-muted); text-align: right; margin-bottom: 18px; }
+.unitracko-widget .ut-q-prompt { font-size: 19px; font-weight: 700; line-height: 1.45; margin: 4px 0 24px; color: var(--ut-ink); }
+
+.unitracko-widget .ut-option {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 15px 16px; margin-bottom: 10px;
+  border: 1.5px solid var(--ut-line); border-radius: 13px; background: #fff; cursor: pointer; font-size: 15px;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.unitracko-widget .ut-option:hover { border-color: var(--ut-domain); background: color-mix(in srgb, var(--ut-domain) 6%, white); transform: translateX(2px); }
+.unitracko-widget .ut-option.ut-selected { border-color: var(--ut-domain); background: color-mix(in srgb, var(--ut-domain) 10%, white); font-weight: 600; }
+.unitracko-widget .ut-option-dot {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ut-line);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff;
+}
+.unitracko-widget .ut-option.ut-selected .ut-option-dot { background: var(--ut-domain); border-color: var(--ut-domain); }
+
+.unitracko-widget .ut-slider-wrap { margin: 24px 0 28px; }
+.unitracko-widget .ut-slider-value { display: flex; justify-content: center; align-items: center; margin-bottom: 18px; }
+.unitracko-widget .ut-slider-bubble {
+  width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800; color: #fff; background: var(--ut-domain);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--ut-domain) 45%, transparent);
+  transition: background 0.15s;
+}
+.unitracko-widget input[type="range"] {
+  width: 100%; height: 8px; border-radius: 5px; appearance: none; -webkit-appearance: none;
+  background: linear-gradient(90deg, var(--ut-domain) var(--ut-fill, 50%), var(--ut-line) var(--ut-fill, 50%));
+  outline: none;
+}
+.unitracko-widget input[type="range"]::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; border: 4px solid var(--ut-domain); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.unitracko-widget input[type="range"]::-moz-range-thumb {
+  width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid var(--ut-domain);
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.unitracko-widget .ut-slider-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--ut-muted); margin-top: 10px; font-weight: 600; }
+.unitracko-widget .ut-nav-row { display: flex; justify-content: space-between; margin-top: 30px; }
+
+/* ---- Report ---- */
+.unitracko-widget .ut-report-headline {
+  background: linear-gradient(135deg, var(--ut-accent), #7c3aed);
+  color: #fff; border-radius: 14px; padding: 20px 22px; margin: 18px 0 26px;
+}
+.unitracko-widget .ut-report-headline .ut-headline-text { font-size: 16px; font-weight: 600; line-height: 1.5; }
+.unitracko-widget .ut-domain-overview { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 28px; }
+.unitracko-widget .ut-domain-row { display: flex; align-items: center; gap: 10px; }
+.unitracko-widget .ut-domain-row .ut-d-icon { font-size: 16px; width: 22px; text-align: center; }
+.unitracko-widget .ut-domain-row .ut-d-name { width: 70px; font-size: 13px; font-weight: 700; color: var(--ut-ink); }
+.unitracko-widget .ut-domain-row .ut-d-track { flex: 1; height: 10px; background: var(--ut-line); border-radius: 5px; overflow: hidden; }
+.unitracko-widget .ut-domain-row .ut-d-fill { display: block; height: 100%; border-radius: 5px; }
+.unitracko-widget .ut-domain-row .ut-d-pct { width: 34px; text-align: right; font-size: 12px; font-weight: 700; color: var(--ut-muted); }
+
+.unitracko-widget .ut-strength-card {
+  border: 1.5px solid var(--ut-line); border-left: 5px solid var(--ut-domain); border-radius: 14px;
+  padding: 18px 20px; margin-bottom: 14px; background: color-mix(in srgb, var(--ut-domain) 3%, white);
+}
+.unitracko-widget .ut-strength-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.unitracko-widget .ut-strength-head h2 { display: flex; align-items: center; gap: 8px; }
+.unitracko-widget .ut-strength-rank { color: var(--ut-domain); font-weight: 800; font-size: 14px; }
+.unitracko-widget .ut-bar-track { height: 9px; background: var(--ut-line); border-radius: 5px; margin: 10px 0; overflow: hidden; }
+.unitracko-widget .ut-bar-fill { height: 100%; background: var(--ut-domain); border-radius: 5px; }
+.unitracko-widget .ut-domain-pill {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ut-domain) 14%, white); color: var(--ut-domain); font-weight: 700; margin-bottom: 8px;
+}
+.unitracko-widget .ut-sc-section { margin: 8px 0; color: var(--ut-muted); line-height: 1.5; font-size: 14px; }
+.unitracko-widget .ut-sc-section b { color: var(--ut-ink); font-weight: 700; }
+.unitracko-widget .ut-sc-section.ut-sc-tip { background: color-mix(in srgb, var(--ut-domain) 8%, white); border-radius: 10px; padding: 9px 12px; margin-top: 10px; }
+.unitracko-widget .ut-sc-section.ut-sc-tip b { color: var(--ut-domain); }
+
+.unitracko-widget .ut-exam-grid { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
+.unitracko-widget .ut-exam-chip {
+  display: inline-flex; align-items: center; font-size: 13px; font-weight: 800; padding: 9px 16px;
+  background: color-mix(in srgb, var(--ut-cat) 12%, white); color: var(--ut-cat); border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--ut-cat) 25%, white); text-decoration: none;
+  transition: transform 0.12s, box-shadow 0.15s; cursor: pointer;
+}
+.unitracko-widget .ut-exam-chip:hover { transform: translateY(-2px); box-shadow: 0 6px 14px color-mix(in srgb, var(--ut-cat) 30%, transparent); }
+.unitracko-widget .ut-exam-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 16px; font-size: 12px; color: var(--ut-muted); }
+.unitracko-widget .ut-exam-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.unitracko-widget .ut-exam-legend .ut-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* ---- Share card (Wrapped-style hero reveal) ---- */
+.unitracko-widget .ut-share-card-wrap { display: flex; justify-content: center; margin: 4px 0 26px; }
+.unitracko-widget .ut-share-card {
+  width: 100%; max-width: 360px; border-radius: 26px; padding: 28px 26px 22px;
+  color: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column;
+  background: linear-gradient(165deg, var(--ut-navy-1) 0%, var(--ut-navy-2) 55%, var(--ut-navy-3) 100%);
+  box-shadow: 0 18px 40px rgba(20, 14, 39, 0.4);
+}
+.unitracko-widget .ut-share-card::before {
+  content: ""; position: absolute; inset: -40% -40% auto auto; width: 70%; height: 70%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(250,213,60,0.16), transparent 70%);
+}
+.unitracko-widget .ut-share-card .ut-sc-logo { height: 22px; display: block; margin: 0 auto 18px; }
+.unitracko-widget .ut-share-card .ut-sc-name { font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 2px; }
+.unitracko-widget .ut-share-card .ut-sc-label { font-size: 12px; text-align: center; opacity: 0.65; margin-bottom: 18px; letter-spacing: 0.3px; }
+.unitracko-widget .ut-sc-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+.unitracko-widget .ut-sc-row:last-of-type { border-bottom: none; }
+.unitracko-widget .ut-sc-rank { font-size: 13px; font-weight: 800; color: var(--ut-yellow); width: 18px; }
+.unitracko-widget .ut-sc-thumb {
+  flex: none; width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; background: color-mix(in srgb, var(--ut-row-color) 30%, transparent);
+}
+.unitracko-widget .ut-sc-row-name { flex: 1; font-size: 15px; font-weight: 700; }
+.unitracko-widget .ut-sc-row-score { font-size: 14px; font-weight: 800; color: var(--ut-yellow); }
+.unitracko-widget .ut-share-card .ut-sc-line {
+  margin-top: 18px; padding-top: 14px; font-size: 12px; line-height: 1.5; opacity: 0.7;
+  border-top: 1px solid rgba(255,255,255,0.15); text-align: center;
+}
+.unitracko-widget .ut-share-actions { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+
+@media (max-width: 540px) {
+  .unitracko-widget .ut-card { padding: 20px; border-radius: 14px; }
+  .unitracko-widget h1 { font-size: 23px; }
+}
+
+@media print {
+  .unitracko-widget button { display: none !important; }
+  .unitracko-widget .ut-card { box-shadow: none; border: none; }
+}
